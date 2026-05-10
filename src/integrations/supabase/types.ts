@@ -103,6 +103,7 @@ export type Database = {
           id: string
           parent_id: string | null
           role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["user_status"]
           username: string
           wallet_balance: number
         }
@@ -111,6 +112,7 @@ export type Database = {
           id: string
           parent_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["user_status"]
           username: string
           wallet_balance?: number
         }
@@ -119,6 +121,7 @@ export type Database = {
           id?: string
           parent_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["user_status"]
           username?: string
           wallet_balance?: number
         }
@@ -182,7 +185,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      admin_list_profiles: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          parent_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["user_status"]
+          username: string
+          wallet_balance: number
+        }[]
+      }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       transfer_cashier_to_owner: {
         Args: { _cashier_id: string }
@@ -190,7 +208,8 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "cashier"
+      app_role: "owner" | "cashier" | "admin"
+      user_status: "pending" | "approved" | "suspended" | "expelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -318,7 +337,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "cashier"],
+      app_role: ["owner", "cashier", "admin"],
+      user_status: ["pending", "approved", "suspended", "expelled"],
     },
   },
 } as const
