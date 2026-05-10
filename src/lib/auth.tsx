@@ -2,12 +2,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+export type UserStatus = "pending" | "approved" | "suspended" | "expelled";
 export type Profile = {
   id: string;
   username: string;
-  role: "owner" | "cashier";
+  role: "owner" | "cashier" | "admin";
   parent_id: string | null;
   wallet_balance: number;
+  status: UserStatus;
 };
 
 type AuthCtx = {
@@ -28,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = async (uid: string) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
-    setProfile((data as Profile) ?? null);
+    setProfile(data ? (data as unknown as Profile) : null);
   };
 
   useEffect(() => {
