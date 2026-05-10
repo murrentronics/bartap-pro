@@ -134,30 +134,30 @@ function AdminPage() {
                 <div className="flex flex-wrap gap-2">
                   {k === "pending" && (
                     <>
-                      <Button size="sm" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "approved" } }), "Approved")}>
+                      <Button size="sm" onClick={() => act(() => setUserStatus(r.id, "approved"), "Approved")}>
                         <Check className="h-4 w-4 mr-1" /> Approve
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "expelled" } }), "Denied")}>
+                      <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Denied")}>
                         <X className="h-4 w-4 mr-1" /> Deny
                       </Button>
                     </>
                   )}
                   {k === "approved" && (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "suspended" } }), "Suspended")}>
+                      <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "suspended"), "Suspended")}>
                         <Ban className="h-4 w-4 mr-1" /> Suspend
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "expelled" } }), "Expelled")}>
+                      <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
                         <UserMinus className="h-4 w-4 mr-1" /> Expel
                       </Button>
                     </>
                   )}
                   {k === "suspended" && (
                     <>
-                      <Button size="sm" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "approved" } }), "Re-activated")}>
+                      <Button size="sm" onClick={() => act(() => setUserStatus(r.id, "approved"), "Re-activated")}>
                         <RotateCw className="h-4 w-4 mr-1" /> Re-activate
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => act(() => setStatus({ data: { user_id: r.id, status: "expelled" } }), "Expelled")}>
+                      <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
                         <UserMinus className="h-4 w-4 mr-1" /> Expel
                       </Button>
                     </>
@@ -165,7 +165,7 @@ function AdminPage() {
                   {k !== "expelled" && (
                     <Button size="sm" variant="destructive" onClick={() => {
                       if (confirm(`Delete ${r.username}? This cannot be undone.`)) {
-                        act(() => del({ data: { user_id: r.id } }), "Deleted");
+                        act(() => adminDeleteUser(r.id), "Deleted");
                       }
                     }}>
                       <Trash2 className="h-4 w-4" />
