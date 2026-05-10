@@ -17,15 +17,15 @@ export const listAllProfiles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
+    const { data, error } = await (supabaseAdmin
+      .from("profiles") as any)
       .select("id, username, role, status, created_at, wallet_balance")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    // attach email
     const { data: users } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     const emailMap = new Map(users.users.map((u) => [u.id, u.email ?? ""]));
-    return (data ?? []).map((p) => ({ ...p, email: emailMap.get(p.id) ?? "" }));
+    return ((data ?? []) as Array<{ id: string; username: string; role: string; status: string; wallet_balance: number; created_at: string }>)
+      .map((p) => ({ ...p, email: emailMap.get(p.id) ?? "" }));
   });
 
 export const setUserStatus = createServerFn({ method: "POST" })
@@ -37,8 +37,10 @@ export const setUserStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const { error } = await supabaseAdmin
-      .from("profiles").update({ status: data.status }).eq("id", data.user_id);
+    const { error } = await (supabaseAdmin
+      .from("profiles") as any)
+      .update({ status: data.status })
+      .eq("id", data.user_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
