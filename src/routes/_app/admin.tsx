@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2, ShieldAlert, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/admin")({
   component: AdminPage,
