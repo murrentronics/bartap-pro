@@ -103,6 +103,7 @@ export type Database = {
           id: string
           parent_id: string | null
           role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["user_status"]
           username: string
           wallet_balance: number
         }
@@ -111,6 +112,7 @@ export type Database = {
           id: string
           parent_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["user_status"]
           username: string
           wallet_balance?: number
         }
@@ -119,6 +121,7 @@ export type Database = {
           id?: string
           parent_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["user_status"]
           username?: string
           wallet_balance?: number
         }
@@ -183,6 +186,7 @@ export type Database = {
     }
     Functions: {
       get_owner_id: { Args: { _user_id: string }; Returns: string }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       transfer_cashier_to_owner: {
         Args: { _cashier_id: string }
@@ -191,6 +195,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "cashier" | "admin"
+      user_status: "pending" | "approved" | "suspended" | "expelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -319,6 +324,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "cashier", "admin"],
+      user_status: ["pending", "approved", "suspended", "expelled"],
     },
   },
 } as const
