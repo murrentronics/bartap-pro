@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Trash2, Minus, Plus, DollarSign, Loader2 } from "lucide-react";
+import { Search, Trash2, Minus, Plus, DollarSign, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -54,6 +54,7 @@ function RegisterPage() {
   };
   const dec = (id: string) =>
     setCart((c) => c.flatMap((i) => (i.id === id ? (i.qty > 1 ? [{ ...i, qty: i.qty - 1 }] : []) : [i])));
+  const removeItem = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
 
   return (
     <div className="grid lg:grid-cols-[1fr,380px] gap-6">
@@ -122,6 +123,9 @@ function RegisterPage() {
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addToCart(i)}><Plus className="h-3 w-3" /></Button>
               </div>
               <div className="font-black text-primary w-16 text-right">${(i.qty * Number(i.price)).toFixed(2)}</div>
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItem(i.id)}>
+                <X className="h-3 w-3" />
+              </Button>
             </div>
           ))}
         </div>
