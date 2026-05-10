@@ -24,7 +24,7 @@ function WalletPage() {
     const ownerId = profile.role === "owner" ? profile.id : profile.parent_id!;
     supabase.from("orders").select("*").eq(profile.role === "owner" ? "owner_id" : "cashier_id", profile.role === "owner" ? ownerId : profile.id)
       .order("created_at", { ascending: false }).limit(20)
-      .then(({ data }) => setOrders((data ?? []) as Order[]));
+      .then(({ data }) => setOrders((data ?? []) as unknown as Order[]));
   }, [profile?.id]);
 
   if (!profile) return null;
