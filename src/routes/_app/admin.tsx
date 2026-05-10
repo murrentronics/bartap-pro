@@ -89,6 +89,16 @@ function AdminPage() {
         <h1 className="text-2xl font-black">Admin · Users</h1>
       </div>
 
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search by username or email…"
+          className="pl-9"
+        />
+      </div>
+
       <Tabs defaultValue="pending">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="pending" className="gap-2">
