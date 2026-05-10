@@ -16,6 +16,7 @@ import { Route as AppWalletRouteImport } from './routes/_app/wallet'
 import { Route as AppRegisterRouteImport } from './routes/_app/register'
 import { Route as AppProductsRouteImport } from './routes/_app/products'
 import { Route as AppCashiersRouteImport } from './routes/_app/cashiers'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -51,10 +52,16 @@ const AppCashiersRoute = AppCashiersRouteImport.update({
   path: '/cashiers',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRoute
   '/cashiers': typeof AppCashiersRoute
   '/products': typeof AppProductsRoute
   '/register': typeof AppRegisterRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRoute
   '/cashiers': typeof AppCashiersRoute
   '/products': typeof AppProductsRoute
   '/register': typeof AppRegisterRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/admin': typeof AppAdminRoute
   '/_app/cashiers': typeof AppCashiersRoute
   '/_app/products': typeof AppProductsRoute
   '/_app/register': typeof AppRegisterRoute
@@ -83,17 +92,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/admin'
     | '/cashiers'
     | '/products'
     | '/register'
     | '/wallet'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/cashiers' | '/products' | '/register' | '/wallet'
+  to:
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/cashiers'
+    | '/products'
+    | '/register'
+    | '/wallet'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/admin'
     | '/_app/cashiers'
     | '/_app/products'
     | '/_app/register'
@@ -157,10 +175,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCashiersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
   AppCashiersRoute: typeof AppCashiersRoute
   AppProductsRoute: typeof AppProductsRoute
   AppRegisterRoute: typeof AppRegisterRoute
@@ -168,6 +194,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
   AppCashiersRoute: AppCashiersRoute,
   AppProductsRoute: AppProductsRoute,
   AppRegisterRoute: AppRegisterRoute,
@@ -184,3 +211,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
