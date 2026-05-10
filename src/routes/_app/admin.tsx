@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2, ShieldAlert } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2, ShieldAlert, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin")({
   component: AdminPage,
@@ -35,6 +36,7 @@ function AdminPage() {
   const del = useServerFn(adminDeleteUser);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     if (!loading && profile && profile.role !== "admin") nav({ to: "/register" });
@@ -57,12 +59,18 @@ function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
 
-  const buckets = useMemo(() => ({
-    pending: rows.filter((r) => r.status === "pending"),
-    approved: rows.filter((r) => r.status === "approved"),
-    suspended: rows.filter((r) => r.status === "suspended"),
-    expelled: rows.filter((r) => r.status === "expelled"),
-  }), [rows]);
+  const buckets = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const filtered = needle
+      ? rows.filter((r) => r.username.toLowerCase().includes(needle) || r.email.toLowerCase().includes(needle))
+      : rows;
+    return {
+      pending: filtered.filter((r) => r.status === "pending"),
+      approved: filtered.filter((r) => r.status === "approved"),
+      suspended: filtered.filter((r) => r.status === "suspended"),
+      expelled: filtered.filter((r) => r.status === "expelled"),
+    };
+  }, [rows, q]);
 
   const act = async (fn: () => Promise<unknown>, msg: string) => {
     try { await fn(); toast.success(msg); await refresh(); }
@@ -79,6 +87,16 @@ function AdminPage() {
       <div className="flex items-center gap-3">
         <ShieldAlert className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-black">Admin · Users</h1>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search by username or email…"
+          className="pl-9"
+        />
       </div>
 
       <Tabs defaultValue="pending">

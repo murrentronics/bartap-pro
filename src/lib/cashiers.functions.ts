@@ -38,8 +38,10 @@ export const deleteCashier = createServerFn({ method: "POST" })
       .from("profiles").select("parent_id, wallet_balance").eq("id", data.cashier_id).maybeSingle();
     if (!cashier || cashier.parent_id !== userId) throw new Error("Not authorized");
 
+    // Always clear wallet to owner first (no-op if balance is 0)
     if (Number(cashier.wallet_balance) > 0) {
-      await supabaseAdmin.rpc("transfer_cashier_to_owner", { _cashier_id: data.cashier_id });
+      const { error: rpcErr } = await supabaseAdmin.rpc("transfer_cashier_to_owner", { _cashier_id: data.cashier_id });
+      if (rpcErr) throw new Error(rpcErr.message);
     }
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.cashier_id);
     if (error) throw new Error(error.message);
