@@ -14,16 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          cashier_id: string
+          change_given: number
+          created_at: string
+          id: string
+          items: Json
+          owner_id: string
+          paid: number
+          total: number
+        }
+        Insert: {
+          cashier_id: string
+          change_given: number
+          created_at?: string
+          id?: string
+          items: Json
+          owner_id: string
+          paid: number
+          total: number
+        }
+        Update: {
+          cashier_id?: string
+          change_given?: number
+          created_at?: string
+          id?: string
+          items?: Json
+          owner_id?: string
+          paid?: number
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          owner_id: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          owner_id: string
+          price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          owner_id?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          username: string
+          wallet_balance: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          parent_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          username: string
+          wallet_balance?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          username?: string
+          wallet_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          note: string | null
+          order_id: string | null
+          profile_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          profile_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          profile_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_owner_id: { Args: { _user_id: string }; Returns: string }
+      is_owner: { Args: { _user_id: string }; Returns: boolean }
+      transfer_cashier_to_owner: {
+        Args: { _cashier_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "cashier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +317,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "cashier"],
+    },
   },
 } as const
