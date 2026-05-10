@@ -2,12 +2,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+export type UserStatus = "pending" | "approved" | "suspended" | "expelled";
 export type Profile = {
   id: string;
   username: string;
-  role: "owner" | "cashier";
+  role: "owner" | "cashier" | "admin";
   parent_id: string | null;
   wallet_balance: number;
+  status: UserStatus;
 };
 
 type AuthCtx = {
