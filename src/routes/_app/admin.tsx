@@ -32,9 +32,6 @@ type Row = {
 function AdminPage() {
   const { profile, loading } = useAuth();
   const nav = useNavigate();
-  const list = useServerFn(listAllProfiles);
-  const setStatus = useServerFn(setUserStatus);
-  const del = useServerFn(adminDeleteUser);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
@@ -46,8 +43,8 @@ function AdminPage() {
   const refresh = async () => {
     setBusy(true);
     try {
-      const data = (await list()) as Row[];
-      setRows(data.filter((r) => r.role === "owner"));
+      const data = await listAllProfiles();
+      setRows((data ?? []).filter((r) => r.role === "owner") as Row[]);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
