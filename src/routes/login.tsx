@@ -14,11 +14,13 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   const nav = useNavigate();
   useEffect(() => {
-    if (!loading && session) nav({ to: "/register" });
-  }, [session, loading, nav]);
+    if (!loading && session && profile) {
+      nav({ to: profile.role === "admin" ? "/admin" : "/register" });
+    }
+  }, [session, profile, loading, nav]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10"
