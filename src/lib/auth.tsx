@@ -50,6 +50,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) return;
+    const ch = supabase
+      .channel(`profile-${uid}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
+        (payload) => {
+          setProfile((prev) => ({ ...(prev as Profile), ...(payload.new as Profile) }));
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [session?.user?.id]);
+
   const value: AuthCtx = {
     user: session?.user ?? null,
     session,
