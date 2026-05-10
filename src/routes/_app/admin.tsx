@@ -58,19 +58,14 @@ function AdminPage() {
   useEffect(() => {
     if (profile?.role !== "admin") return;
     refresh();
-    import("@/integrations/supabase/client").then(({ supabase }) => {
-      const ch = supabase
-        .channel("admin-profiles")
-        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
-          refresh();
-        })
-        .subscribe();
-      (refresh as unknown as { _ch?: unknown })._ch = ch;
-    });
+    const ch = supabase
+      .channel("admin-profiles")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        refresh();
+      })
+      .subscribe();
     return () => {
-      import("@/integrations/supabase/client").then(({ supabase }) => {
-        supabase.removeAllChannels();
-      });
+      supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
