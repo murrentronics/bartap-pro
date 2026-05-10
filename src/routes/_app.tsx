@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, LogOut } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, LogOut, ShieldAlert, Ban, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app")({
@@ -26,12 +26,34 @@ function AppLayout() {
   }
 
   const isOwner = profile.role === "owner";
-  const navItems = [
-    { to: "/register", label: "Register", icon: Wine },
-    ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
-    { to: "/wallet", label: "Wallet", icon: Wallet },
-    ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
-  ];
+  const isAdmin = profile.role === "admin";
+
+  if (!isAdmin) {
+    if (profile.status === "expelled") {
+      return <FullScreenStatus icon={UserMinus} title="Account expelled"
+        message="Your account has been expelled. You no longer have access to Bartendaz Pro."
+        onSignOut={() => { signOut(); nav({ to: "/login" }); }} />;
+    }
+    if (profile.status === "suspended") {
+      return <FullScreenStatus icon={Ban} title="Account suspended"
+        message="Please wait while admin is reviewing your account."
+        onSignOut={() => { signOut(); nav({ to: "/login" }); }} />;
+    }
+    if (profile.status === "pending") {
+      return <FullScreenStatus icon={ShieldAlert} title="Awaiting approval"
+        message="Your owner account is pending admin approval. You'll get access once approved."
+        onSignOut={() => { signOut(); nav({ to: "/login" }); }} />;
+    }
+  }
+
+  const navItems = isAdmin
+    ? [{ to: "/admin", label: "Users", icon: Users }]
+    : [
+        { to: "/register", label: "Register", icon: Wine },
+        ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
+        { to: "/wallet", label: "Wallet", icon: Wallet },
+        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
+      ];
 
   return (
     <div className="min-h-screen pb-24">
@@ -75,6 +97,29 @@ function AppLayout() {
           })}
         </div>
       </nav>
+    </div>
+  );
+}
+
+function FullScreenStatus({
+  icon: Icon, title, message, onSignOut,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  message: string;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style={{ background: "radial-gradient(circle at 50% 0%, oklch(0.25 0.05 30) 0%, oklch(0.12 0.02 30) 70%)" }}>
+      <div className="max-w-md text-center space-y-6">
+        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20 border border-destructive/40">
+          <Icon className="h-10 w-10 text-destructive" />
+        </div>
+        <h1 className="text-3xl font-black">{title}</h1>
+        <p className="text-muted-foreground">{message}</p>
+        <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+      </div>
     </div>
   );
 }
