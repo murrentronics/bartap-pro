@@ -17,6 +17,15 @@ function AppLayout() {
     if (!loading && !session) nav({ to: "/login" });
   }, [session, loading, nav]);
 
+  useEffect(() => {
+    if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
+      nav({ to: "/admin" });
+    }
+    if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
+      nav({ to: "/register" });
+    }
+  }, [loading, profile, loc.pathname, nav]);
+
   if (loading || !session || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
