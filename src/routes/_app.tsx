@@ -88,7 +88,7 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen">
-      <header className="bg-background border-b border-border relative z-30">
+      <header className="bg-background/90 backdrop-blur border-b border-border relative z-30">
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">

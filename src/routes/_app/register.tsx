@@ -38,7 +38,7 @@ function RegisterPage() {
       .eq("owner_id", ownerId)
       .order("name", { ascending: true })
       .then(({ data }) => {
-        setProducts(((data ?? []) as unknown) as Product[]);
+        setProducts((data ?? []) as Product[]);
         setLoading(false);
       });
   }, [ownerId]);
@@ -67,7 +67,7 @@ function RegisterPage() {
   return (
     <>
       {/* Sticky search + category tabs — sticks at top-0 once header scrolls away */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border space-y-1.5">
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-1.5">
         <div className="relative max-w-2xl mx-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -117,7 +117,7 @@ function RegisterPage() {
             {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${category} found.`}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {filtered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               return (
@@ -228,36 +228,34 @@ const ROWS = [
 function OnScreenKeyboard({ onKey }: { onKey: (k: string) => void }) {
   return (
     <div
-      className="fixed bottom-0 inset-x-0 z-20 bg-background border-t border-border"
+      className="fixed bottom-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-t border-border px-1 py-1.5 space-y-1"
       style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
     >
-      <div className="max-w-2xl mx-auto px-1 py-1.5 space-y-1">
-        {ROWS.map((row, ri) => (
-          <div key={ri} className="flex justify-center gap-1">
-            {row.map((k) => (
-              <button
-                key={k}
-                onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
-                className={`flex-1 max-w-[2.6rem] h-9 rounded-lg font-bold text-sm transition active:scale-90 select-none ${
-                  k === "⌫"
-                    ? "bg-destructive/30 text-destructive max-w-[3.5rem]"
-                    : "bg-muted hover:bg-muted/70 text-foreground"
-                }`}
-              >
-                {k === "⌫" ? <Delete className="h-4 w-4 mx-auto" /> : k}
-              </button>
-            ))}
-          </div>
-        ))}
-        {/* Space bar row */}
-        <div className="flex justify-center gap-1 px-2">
-          <button
-            onPointerDown={(e) => { e.preventDefault(); onKey("SPACE"); }}
-            className="flex-1 h-9 rounded-lg bg-muted hover:bg-muted/70 text-xs font-bold text-muted-foreground transition active:scale-95 select-none"
-          >
-            SPACE
-          </button>
+      {ROWS.map((row, ri) => (
+        <div key={ri} className="flex justify-center gap-1">
+          {row.map((k) => (
+            <button
+              key={k}
+              onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
+              className={`flex-1 max-w-[2.6rem] h-9 rounded-lg font-bold text-sm transition active:scale-90 select-none ${
+                k === "⌫"
+                  ? "bg-destructive/30 text-destructive max-w-[3.5rem]"
+                  : "bg-muted hover:bg-muted/70 text-foreground"
+              }`}
+            >
+              {k === "⌫" ? <Delete className="h-4 w-4 mx-auto" /> : k}
+            </button>
+          ))}
         </div>
+      ))}
+      {/* Space bar row */}
+      <div className="flex justify-center gap-1 px-2">
+        <button
+          onPointerDown={(e) => { e.preventDefault(); onKey("SPACE"); }}
+          className="flex-1 h-9 rounded-lg bg-muted hover:bg-muted/70 text-xs font-bold text-muted-foreground transition active:scale-95 select-none"
+        >
+          SPACE
+        </button>
       </div>
     </div>
   );
