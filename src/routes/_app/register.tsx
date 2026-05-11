@@ -321,8 +321,15 @@ function CashOverlay({
                 </div>
                 {cart.map((i) => (
                   <div key={i.id} className="flex items-center gap-2 p-2 rounded-xl bg-background/50">
+                    <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                      {i.image_url ? (
+                        <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-lg">{i.category === "snacks" ? "🍟" : "🍹"}</span>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate text-sm">{i.name}</div>
+                      <div className="font-semibold truncate text-sm whitespace-nowrap">{i.name}</div>
                       <div className="text-xs text-muted-foreground">${Number(i.price).toFixed(2)} × {i.qty}</div>
                     </div>
                     <div className="flex items-center gap-1">
