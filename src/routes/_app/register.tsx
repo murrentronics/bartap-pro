@@ -38,7 +38,7 @@ function RegisterPage() {
       .eq("owner_id", ownerId)
       .order("name", { ascending: true })
       .then(({ data }) => {
-        setProducts((data ?? []) as Product[]);
+        setProducts(((data ?? []) as unknown) as Product[]);
         setLoading(false);
       });
   }, [ownerId]);
