@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/register")({
   component: RegisterPage,
 });
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category: string };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category };
 type CartItem = Product & { qty: number };
 
 type Category = "drinks" | "snacks";
