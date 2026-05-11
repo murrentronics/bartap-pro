@@ -19,10 +19,10 @@ export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
 });
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: "drinks" | "snacks" };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
 
 // ─── Template images ────────────────────────────────────────────────────────
-// Auto-generated from public/assets/templates/
+// Images now live in /assets/templates/beers/
 const TEMPLATE_IMAGES: { file: string; label: string }[] = [
   { file: "Allagash-White.jpeg", label: "Allagash White" },
   { file: "Amstel-Light.jpeg", label: "Amstel Light" },
@@ -81,12 +81,27 @@ const TEMPLATE_IMAGES: { file: string; label: string }[] = [
   { file: "White-Claw-Ruby-Grapefruit-Hard-Seltzer.jpeg", label: "White Claw Ruby Grapefruit" },
 ];
 
+// Templates grouped by folder
+const TEMPLATE_FOLDERS: Record<string, { file: string; label: string }[]> = {
+  beers:   TEMPLATE_IMAGES,
+  liquor:  [], // drop images in public/assets/templates/liquor/
+  drinks:  [], // drop images in public/assets/templates/drinks/
+  snacks:  [], // drop images in public/assets/templates/snacks/
+};
+
 function ProductsPage() {
   const { profile } = useAuth();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState<"drinks" | "snacks">("drinks");
+  const [category, setCategory] = useState<string>("beers");
+
+  const CATS = [
+    { value: "beers",  label: "Beers",  emoji: "🍺" },
+    { value: "liquor", label: "Liquor", emoji: "🥃" },
+    { value: "drinks", label: "Drinks", emoji: "🥤" },
+    { value: "snacks", label: "Snacks", emoji: "🍟" },
+  ];
 
   const load = async () => {
     if (!profile) return;
@@ -99,13 +114,27 @@ function ProductsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [profile?.id]);
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    load();
+
+    // Realtime: silently refresh when products change
+    const ch = supabase
+      .channel(`products-mgmt-${profile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` },
+        () => load()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id]);
 
   if (profile?.role !== "owner") {
     return <div className="text-center text-muted-foreground py-20">Only owners can manage items.</div>;
   }
 
-  const filtered = items.filter((p) => (p.category || "drinks") === category);
+  const filtered = items.filter((p) => (p.category || "beers") === category);
 
   return (
     <div>
@@ -126,18 +155,18 @@ function ProductsPage() {
           </Dialog>
         </div>
 
-        {/* Drinks / Snacks tabs */}
-        <div className="grid grid-cols-2 gap-2">
-          {(["drinks", "snacks"] as const).map((cat) => (
+        {/* 4 category tabs */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {CATS.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`h-8 rounded-xl font-bold text-sm transition ${
-                category === cat ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+              key={cat.value}
+              onClick={() => setCategory(cat.value)}
+              className={`h-8 rounded-xl font-bold text-xs transition ${
+                category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
-              style={category === cat ? { background: "var(--gradient-hero)" } : {}}
+              style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              {cat === "drinks" ? "🍺 Drinks" : "🍟 Snacks"}
+              {cat.emoji} {cat.label}
             </button>
           ))}
         </div>
@@ -201,14 +230,14 @@ function ProductsPage() {
 }
 
 // ─── Template Picker ─────────────────────────────────────────────────────────
-function TemplatePicker({ onSelect, onBack, ownerId }: {
+function TemplatePicker({ onSelect, onBack, ownerId, category }: {
   onSelect: (url: string, label: string) => void;
   onBack: () => void;
   ownerId: string;
+  category: string;
 }) {
   const [usedUrls, setUsedUrls] = useState<Set<string>>(new Set());
 
-  // Fetch used template URLs fresh every time picker mounts
   useEffect(() => {
     supabase
       .from("products")
@@ -224,15 +253,26 @@ function TemplatePicker({ onSelect, onBack, ownerId }: {
       });
   }, [ownerId]);
 
-  const available = TEMPLATE_IMAGES.filter(
-    (t) => !usedUrls.has(`/assets/templates/${t.file}`)
+  const folderImages = TEMPLATE_FOLDERS[category] ?? [];
+  const available = folderImages.filter(
+    (t) => !usedUrls.has(`/assets/templates/${category}/${t.file}`)
   );
+
+  if (folderImages.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
+        <LayoutGrid className="h-10 w-10 opacity-30" />
+        <p className="text-sm">No templates in this category yet.</p>
+        <p className="text-xs opacity-60">Drop images into <code>public/assets/templates/{category}/</code></p>
+      </div>
+    );
+  }
 
   if (available.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
         <LayoutGrid className="h-10 w-10 opacity-30" />
-        <p className="text-sm">All templates are already in use.</p>
+        <p className="text-sm">All templates in this category are already in use.</p>
       </div>
     );
   }
@@ -242,7 +282,7 @@ function TemplatePicker({ onSelect, onBack, ownerId }: {
       <div className="flex-1 overflow-y-auto">
         <div className="grid grid-cols-3 gap-2">
           {available.map((t) => {
-            const url = `/assets/templates/${t.file}`;
+            const url = `/assets/templates/${category}/${t.file}`;
             return (
               <button
                 key={t.file}
@@ -268,12 +308,13 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
   const { profile } = useAuth();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState<"drinks" | "snacks">("drinks");
+  const [category, setCategory] = useState<string>("beers");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [templateCategory, setTemplateCategory] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
@@ -290,6 +331,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
     setPreview(url);
     if (!name) setName(label);
     setShowTemplates(false);
+    setTemplateCategory(null);
   };
 
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
@@ -317,12 +359,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
     const { error } = await supabase.from("products").insert({
-      owner_id: profile.id, name: name.trim(), price: Number(price), image_url,
+      owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Item added");
-    setName(""); setPrice(""); setCategory("drinks"); setFile(null); setPreview(null); setTemplateUrl(null);
+    setName(""); setPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
     onDone();
   };
 
@@ -331,17 +373,45 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       <DialogHeader className="shrink-0 pb-0">
         <div className="flex items-center gap-3">
           {showTemplates && (
-            <button onClick={() => setShowTemplates(false)} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0">
+            <button
+              onClick={() => {
+                if (templateCategory) { setTemplateCategory(null); }
+                else { setShowTemplates(false); }
+              }}
+              className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0"
+            >
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <DialogTitle>{showTemplates ? "Choose Template" : "Add Bar Item"}</DialogTitle>
+          <DialogTitle>
+            {!showTemplates ? "Add Bar Item" : templateCategory ? `${templateCategory.charAt(0).toUpperCase() + templateCategory.slice(1)} Templates` : "Choose Category"}
+          </DialogTitle>
         </div>
       </DialogHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-        {showTemplates ? (
-          <TemplatePicker onSelect={onTemplateSelect} onBack={() => setShowTemplates(false)} ownerId={ownerId} />
+        {showTemplates && !templateCategory ? (
+          /* Category picker — 2×2 grid */
+          <div className="grid grid-cols-2 gap-3 p-1">
+            {[
+              { value: "beers",  label: "Beers",  emoji: "🍺" },
+              { value: "liquor", label: "Liquor", emoji: "🥃" },
+              { value: "drinks", label: "Drinks", emoji: "🥤" },
+              { value: "snacks", label: "Snacks", emoji: "🍟" },
+            ].map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => setTemplateCategory(cat.value)}
+                className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-border hover:border-primary transition active:scale-95 font-black text-lg"
+                style={{ background: "var(--gradient-card)" }}
+              >
+                <span className="text-4xl">{cat.emoji}</span>
+                <span className="text-sm font-black">{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : showTemplates && templateCategory ? (
+          <TemplatePicker onSelect={onTemplateSelect} onBack={() => setTemplateCategory(null)} ownerId={ownerId} category={templateCategory} />
         ) : (
           <div className="space-y-3">
 
@@ -387,10 +457,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
               <Label className="text-xs">Category</Label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as "drinks" | "snacks")}
+                onChange={(e) => setCategory(e.target.value)}
                 className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
               >
-                <option value="drinks">🍺 Drinks</option>
+                <option value="beers">🍺 Beers</option>
+                <option value="liquor">🥃 Liquor</option>
+                <option value="drinks">🥤 Drinks</option>
                 <option value="snacks">🍟 Snacks</option>
               </select>
             </div>

@@ -1,0 +1,4 @@
+-- Add new category values (existing 'drinks' and 'snacks' stay valid)
+-- We just allow any text value — no enum constraint on category column
+-- Update existing template images to use new category paths if needed
+-- No schema change needed since category is TEXT NOT NULL DEFAULT 'drinks'

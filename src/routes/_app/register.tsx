@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Search, Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2, Delete,
+  Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,36 +16,58 @@ export const Route = createFileRoute("/_app/register")({
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category };
 type CartItem = Product & { qty: number };
 
-type Category = "drinks" | "snacks";
+type Category = "beers" | "liquor" | "drinks" | "snacks";
+
+const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
+  { value: "beers",   label: "Beers",   emoji: "🍺" },
+  { value: "liquor",  label: "Liquor",  emoji: "🥃" },
+  { value: "drinks",  label: "Drinks",  emoji: "🥤" },
+  { value: "snacks",  label: "Snacks",  emoji: "🍟" },
+];
 
 function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<Category>("drinks");
+  const [category, setCategory] = useState<Category>("beers");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
   const [saleResult, setSaleResult] = useState<{ paid: number; change: number } | null>(null);
+  const [kbHeight, setKbHeight] = useState(120); // keyboard height in px, updated on mount
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
   useEffect(() => {
     if (!ownerId) return;
-    supabase
-      .from("products")
-      .select("*")
-      .eq("owner_id", ownerId)
-      .order("name", { ascending: true })
-      .then(({ data }) => {
-        setProducts((data ?? []) as Product[]);
-        setLoading(false);
-      });
+
+    const fetchProducts = () =>
+      supabase
+        .from("products")
+        .select("*")
+        .eq("owner_id", ownerId)
+        .order("name", { ascending: true })
+        .then(({ data }) => {
+          setProducts((data ?? []) as Product[]);
+          setLoading(false);
+        });
+
+    fetchProducts();
+
+    // Realtime: silently refresh when products change
+    const ch = supabase
+      .channel(`products-register-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+        () => fetchProducts()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
   }, [ownerId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const byCat = products.filter((p) => (p.category || "drinks") === category);
+    const byCat = products.filter((p) => (p.category || "beers") === category);
     return q ? byCat.filter((p) => p.name.toLowerCase().includes(q)) : byCat;
   }, [products, search, category]);
 
@@ -66,41 +88,22 @@ function RegisterPage() {
 
   return (
     <>
-      {/* Sticky search + category tabs — sticks at top-0 once header scrolls away */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-1.5">
-        <div className="relative max-w-2xl mx-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-10 h-9 text-sm"
-          />
-          {search && (
+      {/* Sticky category tabs only — no search bar */}
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        {/* Category tabs — 4 across */}
+        <div className="max-w-2xl mx-auto grid grid-cols-4 gap-1.5">
+          {CATEGORIES.map((cat) => (
             <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full flex items-center justify-center bg-muted-foreground/30 hover:bg-muted-foreground/50 transition"
-              aria-label="Clear search"
-            >
-              <X className="h-3 w-3 text-foreground" />
-            </button>
-          )}
-        </div>
-
-        {/* Drinks / Snacks tabs */}
-        <div className="max-w-2xl mx-auto grid grid-cols-2 gap-2">
-          {(["drinks", "snacks"] as Category[]).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`h-8 rounded-xl font-bold text-sm capitalize transition ${
-                category === cat
+              key={cat.value}
+              onClick={() => setCategory(cat.value)}
+              className={`h-8 rounded-xl font-bold text-xs transition ${
+                category === cat.value
                   ? "text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
-              style={category === cat ? { background: "var(--gradient-hero)" } : {}}
+              style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              {cat === "drinks" ? "🍺 Drinks" : "🍟 Snacks"}
+              {cat.emoji} {cat.label}
             </button>
           ))}
         </div>
@@ -114,7 +117,7 @@ function RegisterPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${category} found.`}
+            {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -165,9 +168,12 @@ function RegisterPage() {
         )}
       </div>
 
-      {/* Sticky CASH button */}
+      {/* Sticky CASH button — animates up when search text is present */}
       {cartCount > 0 && (
-        <div className="fixed bottom-[10.5rem] inset-x-0 z-20 px-4 pb-2 pointer-events-none">
+        <div
+          className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none transition-all duration-300 ease-in-out"
+          style={{ bottom: search ? kbHeight + 52 : kbHeight + 8 }}
+        >
           <div className="max-w-2xl mx-auto pointer-events-auto">
             <button
               onClick={() => setCashOpen(true)}
@@ -208,12 +214,30 @@ function RegisterPage() {
         />
       )}
 
+      {/* Search text display — sits right on top of keyboard */}
+      {search && (
+        <div
+          className="fixed inset-x-0 z-30 px-3 pointer-events-none"
+          style={{ bottom: kbHeight }}
+        >
+          <div className="max-w-2xl mx-auto flex items-center justify-between bg-black/95 rounded-t-xl px-4 py-2.5 border-x border-t border-white/10 shadow-2xl">
+            <span className="text-white font-bold text-lg tracking-widest">{search}</span>
+            <button
+              className="pointer-events-auto text-white/50 hover:text-white transition ml-3 shrink-0"
+              onPointerDown={(e) => { e.preventDefault(); setSearch(""); }}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Permanent on-screen keyboard — above footer nav */}
       <OnScreenKeyboard onKey={(k) => {
         if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
         if (k === "SPACE") { setSearch((s) => s + " "); return; }
-        setSearch((s) => s + k);
-      }} />
+        setSearch((s) => s + k.toLowerCase());
+      }} onHeightChange={setKbHeight} />
     </>
   );
 }
@@ -225,10 +249,23 @@ const ROWS = [
   ["Z","X","C","V","B","N","M","⌫"],
 ];
 
-function OnScreenKeyboard({ onKey }: { onKey: (k: string) => void }) {
+function OnScreenKeyboard({ onKey, onHeightChange, searchText }: { 
+  onKey: (k: string) => void; 
+  onHeightChange?: (h: number) => void;
+  searchText: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current && onHeightChange) {
+      onHeightChange(ref.current.offsetHeight);
+    }
+  });
+
   return (
     <div
-      className="fixed bottom-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-t border-border px-1 py-1.5 space-y-1"
+      ref={ref}
+      className="fixed bottom-0 inset-x-0 z-[25] bg-background/95 backdrop-blur border-t border-border px-1 py-1.5 space-y-1"
       style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
     >
       {ROWS.map((row, ri) => (
