@@ -80,9 +80,9 @@ function CashiersPage() {
     );
   }
 
-  const authHeaders = session?.access_token
+  const authHeaders: HeadersInit | undefined = session?.access_token
     ? { authorization: `Bearer ${session.access_token}` }
-    : {};
+    : undefined;
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
 });
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category: string };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: "drinks" | "snacks" };
 
 // ─── Template images ────────────────────────────────────────────────────────
 // Auto-generated from public/assets/templates/
@@ -317,7 +317,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
     const { error } = await supabase.from("products").insert({
-      owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
+      owner_id: profile.id, name: name.trim(), price: Number(price), image_url,
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
