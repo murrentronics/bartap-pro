@@ -23,7 +23,7 @@ function LoginPage() {
   }, [session, profile, loading, nav]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10"
+    <div className="min-h-screen flex items-center justify-center px-3 py-8"
       style={{ background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)" }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">

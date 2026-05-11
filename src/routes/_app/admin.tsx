@@ -55,14 +55,21 @@ function AdminPage() {
   useEffect(() => {
     if (profile?.role !== "admin") return;
     refresh();
+
+    // Realtime for instant updates
     const ch = supabase
       .channel("admin-profiles")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
         refresh();
       })
       .subscribe();
+
+    // Poll every 10s as fallback (realtime RLS can miss INSERT events for new rows)
+    const poll = setInterval(refresh, 10_000);
+
     return () => {
       supabase.removeChannel(ch);
+      clearInterval(poll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
@@ -108,7 +115,7 @@ function AdminPage() {
       </div>
 
       <Tabs defaultValue="pending">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="pending" className="gap-2">
             Pending
             {buckets.pending.length > 0 && (
@@ -126,7 +133,7 @@ function AdminPage() {
               <p className="text-sm text-muted-foreground py-8 text-center">No {k} users</p>
             )}
             {buckets[k].map((r) => (
-              <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card">
+              <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card">
                 <div className="min-w-0">
                   <div className="font-semibold">{r.username}</div>
                   <div className="text-xs text-muted-foreground truncate">{r.email}</div>

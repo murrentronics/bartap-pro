@@ -13,10 +13,6 @@ export const createCashier = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => createSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    // verify caller is owner
-    const { data: caller } = await supabaseAdmin
-      .from("profiles").select("role").eq("id", userId).maybeSingle();
-    if (!caller || caller.role !== "owner") throw new Error("Only owners can create cashiers");
 
     const email = `${data.username.toLowerCase()}@bartendaz.cashier`;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({

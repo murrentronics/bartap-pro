@@ -78,3 +78,28 @@
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* ── Mobile responsiveness ─────────────────────────────────── */
+
+/* Prevent horizontal overflow on all screens */
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Hide scrollbars visually but keep scroll working */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prevent inputs from zooming on iOS (font-size >= 16px) */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
