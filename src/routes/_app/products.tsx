@@ -95,7 +95,7 @@ function ProductsPage() {
       .select("*")
       .eq("owner_id", profile.id)
       .order("name", { ascending: true });
-    setItems((data ?? []) as Product[]);
+    setItems(((data ?? []) as unknown) as Product[]);
     setLoading(false);
   };
 
@@ -318,7 +318,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
     }
     const { error } = await supabase.from("products").insert({
       owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
-    });
+    } as never);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Item added");

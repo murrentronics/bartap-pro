@@ -91,7 +91,7 @@ function CashiersPage() {
     try {
       await create({
         data: { username: u, password: p },
-        headers: authHeaders,
+        headers: authHeaders as Record<string, string>,
       });
       toast.success(`Cashier "${u}" created`);
       setU(""); setP("");
@@ -122,7 +122,7 @@ function CashiersPage() {
     try {
       await del({
         data: { cashier_id: c.id },
-        headers: authHeaders,
+        headers: authHeaders as Record<string, string>,
       });
       toast.success(`Removed ${c.username}`);
       load();
