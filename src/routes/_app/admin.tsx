@@ -707,7 +707,7 @@ function TemplateGalleryPanel() {
     load(); // refresh gallery
   };
 
-  const visible = filterCat === "all" ? templates : templates.filter((t) => t.category === filterCat);
+  const visible = templates.filter((t) => t.category === filterCat);
 
   const counts = templates.reduce<Record<string, number>>((acc, t) => {
     acc[t.category] = (acc[t.category] ?? 0) + 1;
