@@ -141,6 +141,54 @@ export type Database = {
           },
         ]
       }
+      subscription_payments: {
+        Row: {
+          created_at: string
+          due_date: string
+          id: string
+          owner_id: string
+          paid_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date: string
+          id?: string
+          owner_id: string
+          paid_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string
+          id?: string
+          owner_id?: string
+          paid_at?: string
+        }
+        Relationships: []
+      }
+      template_images: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          label: string
+          url: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          label: string
+          url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          label?: string
+          url?: string
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount: number
@@ -205,9 +253,14 @@ export type Database = {
           wallet_balance: number
         }[]
       }
+      decrement_stock_item: { Args: { p_items: Json }; Returns: undefined }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
+      owner_reset_wallet: {
+        Args: { _owner_id: string; _prev_balance: number }
+        Returns: undefined
+      }
       transfer_cashier_to_owner: {
         Args: { _cashier_id: string }
         Returns: undefined
