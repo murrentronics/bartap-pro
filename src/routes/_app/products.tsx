@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Minus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search } from "lucide-react";
+import { Camera, ImagePlus, Plus, Minus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -105,7 +105,73 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
   );
 }
 
-// ─── Template Picker — DB only ────────────────────────────────────────────────
+// ─── Template Keyboard ───────────────────────────────────────────────────────
+const TMPL_NUM_ROW = ["1","2","3","4","5","6","7","8","9","0","."];
+const TMPL_ROWS = [
+  ["Q","W","E","R","T","Y","U","I","O","P"],
+  ["A","S","D","F","G","H","J","K","L"],
+  ["Z","X","C","V","B","N","M","⌫"],
+];
+
+function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onClose: () => void }) {
+  return (
+    <div
+      className="fixed bottom-0 inset-x-0 z-[80] bg-background/98 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)", boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {/* Dismiss tab — sits above the keyboard top border */}
+      <div className="absolute -top-7 inset-x-0 flex justify-center pointer-events-none">
+        <button
+          onPointerDown={(e) => { e.preventDefault(); onClose(); }}
+          className="pointer-events-auto h-7 w-16 rounded-t-2xl flex items-center justify-center bg-background border border-b-0 border-border hover:bg-muted/70 transition active:scale-95"
+          aria-label="Hide keyboard"
+        >
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+      {/* Number row */}
+      <div className="flex justify-center gap-1">
+        {TMPL_NUM_ROW.map((k) => (
+          <button
+            key={k}
+            onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
+            className="flex-1 h-9 rounded-lg font-bold text-sm bg-muted hover:bg-muted/70 text-foreground transition active:scale-90 select-none"
+          >
+            {k}
+          </button>
+        ))}
+      </div>
+      {/* Letter rows */}
+      {TMPL_ROWS.map((row, ri) => (
+        <div key={ri} className="flex justify-center gap-1">
+          {row.map((k) => (
+            <button
+              key={k}
+              onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
+              className={`flex-1 max-w-[2.6rem] h-9 rounded-lg font-bold text-sm transition active:scale-90 select-none ${
+                k === "⌫"
+                  ? "bg-destructive/30 text-destructive max-w-[3.5rem]"
+                  : "bg-muted hover:bg-muted/70 text-foreground"
+              }`}
+            >
+              {k === "⌫" ? "⌫" : k}
+            </button>
+          ))}
+        </div>
+      ))}
+      {/* Space bar */}
+      <div className="flex justify-center gap-1 px-2">
+        <button
+          onPointerDown={(e) => { e.preventDefault(); onKey("SPACE"); }}
+          className="flex-1 h-9 rounded-lg bg-muted hover:bg-muted/70 text-xs font-bold text-muted-foreground transition active:scale-95 select-none"
+        >
+          SPACE
+        </button>
+      </div>
+    </div>
+  );
+}
 function TemplatePicker({ onSelect, ownerId, category, search }: {
   onSelect: (url: string, label: string, category: string) => void;
   ownerId: string;
@@ -271,7 +337,7 @@ function ProductsPage() {
                 <Plus className="h-4 w-4 mr-1" /> Add Item
               </Button>
             </DialogTrigger>
-            <AddItemDialog ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
+            <AddItemDialog key={open ? "open" : "closed"} ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
           </Dialog>
         </div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -296,7 +362,7 @@ function ProductsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No {category} yet — tap Add Item.</div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => (
               <div
                 key={p.id}
@@ -400,6 +466,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
+  const [templateKbOpen, setTemplateKbOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
@@ -425,6 +492,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
     setCategory(templateCategory);
     setShowTemplates(false);
     setTemplateSearch("");
+    setTemplateKbOpen(false);
   };
 
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
@@ -461,12 +529,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
   };
 
   return (
-    <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col p-4 gap-3">
-      <DialogHeader className="shrink-0 pb-0">
+    <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] flex flex-col p-4 gap-0">
+      <DialogHeader className="shrink-0 pb-3">
         <div className="flex items-center gap-3">
           {showTemplates && (
             <button
-              onClick={() => setShowTemplates(false)}
+              onClick={() => { setShowTemplates(false); setTemplateKbOpen(false); }}
               className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -479,23 +547,26 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         {showTemplates ? (
           <div className="flex flex-col h-full">
-            {/* Sticky search + category tabs */}
-            <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)" }}>
+            {/* Sticky search + category tabs — top:-1px bleeds over the gap */}
+            <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)", top: "-1px", paddingTop: "1px" }}>
               {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  value={templateSearch}
-                  onChange={(e) => setTemplateSearch(e.target.value)}
-                  placeholder="Search templates…"
-                  className="pl-8 h-8 text-sm"
-                />
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex-1 pl-8 h-8 text-sm rounded-md border border-border bg-background flex items-center cursor-pointer select-none relative"
+                  onPointerDown={(e) => { e.preventDefault(); setTemplateKbOpen(true); }}
+                >
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <span className={templateSearch ? "text-foreground" : "text-muted-foreground"}>
+                    {templateSearch || "Search templates…"}
+                  </span>
+                </div>
                 {templateSearch && (
                   <button
-                    onClick={() => setTemplateSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onPointerDown={(e) => { e.preventDefault(); setTemplateSearch(""); }}
+                    className="h-8 px-3 rounded-md text-xs font-black transition active:scale-95 shrink-0 border"
+                    style={{ background: "#000", color: "#ef4444", borderColor: "#ef4444" }}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    Delete
                   </button>
                 )}
               </div>
@@ -504,7 +575,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 {CATS.map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => setTemplateCat(cat.value)}
+                    onClick={() => { setTemplateCat(cat.value); setTemplateKbOpen(false); }}
                     className={`h-8 rounded-xl font-bold text-xs transition ${
                       templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
@@ -515,13 +586,26 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 ))}
               </div>
             </div>
-            {/* Scrollable grid */}
-            <TemplatePicker
-              onSelect={onTemplateSelect}
-              ownerId={ownerId}
-              category={templateCat}
-              search={templateSearch}
-            />
+            {/* Scrollable grid — add bottom padding when keyboard is open */}
+            <div style={templateKbOpen ? { paddingBottom: "14rem" } : {}}>
+              <TemplatePicker
+                onSelect={onTemplateSelect}
+                ownerId={ownerId}
+                category={templateCat}
+                search={templateSearch}
+              />
+            </div>
+            {/* Custom keyboard — stop propagation so tapping keys doesn't dismiss */}
+            {templateKbOpen && (
+              <TemplateKeyboard
+                onKey={(k) => {
+                  if (k === "⌫") { setTemplateSearch((s) => s.slice(0, -1)); return; }
+                  if (k === "SPACE") { setTemplateSearch((s) => s + " "); return; }
+                  setTemplateSearch((s) => s + k.toLowerCase());
+                }}
+                onClose={() => setTemplateKbOpen(false)}
+              />
+            )}
           </div>
         ) : (
           <div className="space-y-3">

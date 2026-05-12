@@ -59,16 +59,22 @@ function RegisterPage() {
 
     fetchProducts();
 
-    // Realtime: re-fetch on any product change
+    // Realtime: re-fetch on any product change for this owner
+    // Note: no filter on DELETE events — deleted rows can't match column filters
     const ch = supabase
       .channel(`products-register-${ownerId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+        () => { fetchProducts(); }
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+        () => { fetchProducts(); }
+      )
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "products" },
         (payload) => {
-          fetchProducts();
-          // If a product was deleted, remove it from cart
-          if (payload.eventType === "DELETE" && payload.old?.id) {
-            setCart((c) => c.filter((i) => i.id !== payload.old.id));
-          }
+          // Only act if the deleted product belonged to this owner
+          if (payload.old?.owner_id && payload.old.owner_id !== ownerId) return;
+          setProducts((prev) => prev.filter((p) => p.id !== payload.old?.id));
+          setCart((c) => c.filter((i) => i.id !== payload.old?.id));
         }
       )
       .subscribe();
@@ -136,7 +142,7 @@ function RegisterPage() {
             {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               const outOfStock = (p.stock_qty ?? 1) === 0;
@@ -195,6 +201,16 @@ function RegisterPage() {
                       <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
                         <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Low stock banner (1–5) */}
+                  {!outOfStock && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                    <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center py-1"
+                      style={{ background: "oklch(0.35 0.18 50 / 0.85)" }}>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-orange-200 leading-none">
+                        Low Stock · {p.stock_qty}
+                      </span>
                     </div>
                   )}
                 </button>

@@ -99,11 +99,15 @@ CREATE TRIGGER on_order_insert AFTER INSERT ON public.orders
 CREATE OR REPLACE FUNCTION public.transfer_cashier_to_owner(_cashier_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  _bal NUMERIC;
-  _parent UUID;
-  _caller UUID := auth.uid();
+  _bal      NUMERIC;
+  _parent   UUID;
+  _username TEXT;
+  _caller   UUID := auth.uid();
 BEGIN
-  SELECT wallet_balance, parent_id INTO _bal, _parent FROM public.profiles WHERE id = _cashier_id;
+  SELECT wallet_balance, parent_id, username
+    INTO _bal, _parent, _username
+    FROM public.profiles
+   WHERE id = _cashier_id;
   IF _parent IS NULL OR _parent <> _caller THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
@@ -113,7 +117,7 @@ BEGIN
     INSERT INTO public.wallet_transactions(profile_id, amount, type, note)
       VALUES (_cashier_id, -_bal, 'transfer_out', 'Cleared to owner');
     INSERT INTO public.wallet_transactions(profile_id, amount, type, note)
-      VALUES (_parent, _bal, 'transfer_in', 'Cleared from cashier');
+      VALUES (_parent, _bal, 'transfer_in', 'Cleared from cashier: ' || _username);
   END IF;
 END;
 $$;
