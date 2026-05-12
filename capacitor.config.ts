@@ -10,8 +10,9 @@ const config: CapacitorConfig = {
   // Replace the URL below with your actual deployed domain once you have it.
   // Comment this out to use a local build instead.
   server: {
-    url: "https://bartendaz-pro.pages.dev",
+    url: "https://bartendazpro.lovable.app",
     cleartext: false,
+    androidScheme: "https",
   },
   plugins: {
     Camera: {},
