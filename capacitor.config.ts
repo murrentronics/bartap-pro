@@ -4,16 +4,8 @@ const config: CapacitorConfig = {
   appId: "com.bartendaz.pro",
   appName: "Bartendaz Pro",
   webDir: "dist/client",
-  // ─── Live URL mode ───────────────────────────────────────────────────────
-  // The Android app loads your deployed site directly.
-  // No separate SPA build needed — just deploy normally and this picks it up.
-  // Replace the URL below with your actual deployed domain once you have it.
-  // Comment this out to use a local build instead.
-  server: {
-    url: "https://bartendazpro.lovable.app",
-    cleartext: false,
-    androidScheme: "https",
-  },
+  // No server.url — app runs from bundled local assets on the device.
+  // Users only need their own internet connection (for Supabase API calls).
   plugins: {
     Camera: {},
     Filesystem: {},
