@@ -14,60 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      subscription_payments: {
-        Row: {
-          id: string
-          owner_id: string
-          paid_at: string
-          due_date: string
-          note: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          owner_id: string
-          paid_at?: string
-          due_date: string
-          note?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          owner_id?: string
-          paid_at?: string
-          due_date?: string
-          note?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      template_images: {
-        Row: {
-          id: string
-          url: string
-          label: string
-          category: string
-          source_url: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          url: string
-          label: string
-          category?: string
-          source_url?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          url?: string
-          label?: string
-          category?: string
-          source_url?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       orders: {
         Row: {
           cashier_id: string
