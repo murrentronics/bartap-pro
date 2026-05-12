@@ -285,7 +285,7 @@ function RegisterPage() {
       )}
 
       {/* Permanent on-screen keyboard — above footer nav */}
-      <OnScreenKeyboard onKey={(k) => {
+      <OnScreenKeyboard searchText={search} onKey={(k) => {
         if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
         if (k === "SPACE") { setSearch((s) => s + " "); return; }
         setSearch((s) => s + k.toLowerCase());
