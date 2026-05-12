@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth";
+import { SplashScreen } from "@/components/SplashScreen";
+import { useState } from "react";
 import appCss from "../styles.css?url";
 
 function NotFound() {
@@ -28,7 +30,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
+      // Viewport: covers notch/safe areas, prevents zoom
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" },
       { title: "Bartendaz Pro — Bar POS & Wallet" },
       { name: "description", content: "Fast bar POS for owners and cashiers. Cash items, track wallet, manage staff." },
       { property: "og:title", content: "Bartendaz Pro — Bar POS & Wallet" },
@@ -39,8 +42,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/68fb9316-47d7-4abe-9d45-1e3f5a182351/id-preview-01dc6fae--5bfccddf-6cf7-4a91-9cbb-1edabd90b8ab.lovable.app-1778420278990.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
+      // PWA / Android
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      // "black-translucent" lets content go under the status bar (notch area)
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Bartendaz" },
+      { name: "theme-color", content: "#0a0a0a" },
+      // Android Chrome — hide address bar when added to home screen
+      { name: "application-name", content: "Bartendaz Pro" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -58,9 +74,19 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [splashDone, setSplashDone] = useState(false);
+
+  // Register service worker for PWA/Android install support
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {/* ignore */});
+    });
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <Outlet />
         <Toaster richColors position="top-center" />
       </AuthProvider>

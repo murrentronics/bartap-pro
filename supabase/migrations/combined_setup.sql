@@ -38,6 +38,8 @@ CREATE TABLE public.products (
   name TEXT NOT NULL,
   price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
   image_url TEXT,
+  category TEXT NOT NULL DEFAULT 'drinks',
+  stock_qty INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
@@ -133,6 +135,9 @@ CREATE POLICY "Auth delete product images" ON storage.objects FOR DELETE
 -- ============================================================
 ALTER TABLE public.profiles REPLICA IDENTITY FULL;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+
+ALTER TABLE public.products REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
 
 -- ============================================================
 -- MIGRATION 3: Add admin role

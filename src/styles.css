@@ -103,3 +103,65 @@ body {
 input, select, textarea {
   font-size: max(16px, 1em);
 }
+
+/* ── Global input visibility fix ──────────────────────────────
+   Dark theme makes inputs nearly invisible. Force a light
+   background + dark text + bright border on all text inputs.
+──────────────────────────────────────────────────────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+select,
+textarea {
+  background-color: #ffffff !important;
+  color: #111111 !important;
+  border: 1.5px solid #d1a84b !important; /* amber accent border */
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #f5c842 !important;
+  box-shadow: 0 0 0 2px oklch(0.78 0.17 65 / 0.35) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #888888 !important;
+}
+
+/* ── Android PWA / Safe Area (notch + nav bar) ─────────────────────────────── */
+
+/*
+  When installed as a PWA with display:standalone and viewport-fit=cover:
+  - env(safe-area-inset-top)    = height of status bar / notch
+  - env(safe-area-inset-bottom) = height of Android gesture nav bar
+  These are 0 in a normal browser tab.
+*/
+
+/* Push the app header down below the device status bar / notch */
+header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Ensure the bottom of the page clears the Android gesture nav bar */
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Utility class used on fixed bottom elements (keyboard, cash button, etc.) */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+}
+
+/* Fixed bottom bars (on-screen keyboard, cash button) must also clear the nav bar */
+.fixed.bottom-0,
+[class*="fixed"][class*="inset-x-0"][class*="bottom-0"] {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Left/right safe areas for landscape notch devices */
+.safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}

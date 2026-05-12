@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Bartendaz Pro Logo Preview</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 40px;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    .row { display: flex; gap: 40px; align-items: center; }
+    .label { text-align: center; font-size: 13px; color: #888; margin-top: 8px; }
+    img, svg { display: block; }
+  </style>
+</head>
+<body>
+  <h2 style="color:#E8922A;letter-spacing:2px">BARTENDAZ PRO — Logo Preview</h2>
+
+  <div class="row">
+    <!-- 512×512 -->
+    <div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="256" height="256">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0A030"/>
+            <stop offset="100%" stop-color="#C0441A"/>
+          </linearGradient>
+          <radialGradient id="bg1" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#2E1A08"/>
+            <stop offset="100%" stop-color="#0F0A04"/>
+          </radialGradient>
+        </defs>
+        <!-- Dark background -->
+        <circle cx="256" cy="256" r="256" fill="url(#bg1)"/>
+        <!-- Subtle glow ring -->
+        <circle cx="256" cy="256" r="240" fill="none" stroke="#F0A030" stroke-width="2" opacity="0.2"/>
+        <!-- Big B -->
+        <text x="256" y="340" font-family="Georgia, serif" font-size="310" font-weight="900"
+              text-anchor="middle" fill="url(#g1)" opacity="0.97">B</text>
+        <!-- PRO pill -->
+        <rect x="298" y="358" width="100" height="36" rx="12" fill="url(#g1)"/>
+        <text x="348" y="382" font-family="Arial, sans-serif" font-size="18" font-weight="800"
+              text-anchor="middle" fill="#1A0A02" letter-spacing="2">PRO</text>
+      </svg>
+      <div class="label">512×512 (full)</div>
+    </div>
+
+    <!-- 192×192 -->
+    <div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
+        <defs>
+          <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0A030"/>
+            <stop offset="100%" stop-color="#C0441A"/>
+          </linearGradient>
+          <radialGradient id="bg2" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#2E1A08"/>
+            <stop offset="100%" stop-color="#0F0A04"/>
+          </radialGradient>
+        </defs>
+        <circle cx="256" cy="256" r="256" fill="url(#bg2)"/>
+        <circle cx="256" cy="256" r="240" fill="none" stroke="#F0A030" stroke-width="2" opacity="0.2"/>
+        <text x="256" y="340" font-family="Georgia, serif" font-size="310" font-weight="900"
+              text-anchor="middle" fill="url(#g2)" opacity="0.97">B</text>
+        <rect x="298" y="358" width="100" height="36" rx="12" fill="url(#g2)"/>
+        <text x="348" y="382" font-family="Arial, sans-serif" font-size="18" font-weight="800"
+              text-anchor="middle" fill="#1A0A02" letter-spacing="2">PRO</text>
+      </svg>
+      <div class="label">192×192</div>
+    </div>
+
+    <!-- 48×48 (app icon size) -->
+    <div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96">
+        <defs>
+          <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0A030"/>
+            <stop offset="100%" stop-color="#C0441A"/>
+          </linearGradient>
+          <radialGradient id="bg3" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#2E1A08"/>
+            <stop offset="100%" stop-color="#0F0A04"/>
+          </radialGradient>
+        </defs>
+        <circle cx="256" cy="256" r="256" fill="url(#bg3)"/>
+        <text x="256" y="340" font-family="Georgia, serif" font-size="310" font-weight="900"
+              text-anchor="middle" fill="url(#g3)" opacity="0.97">B</text>
+        <rect x="298" y="358" width="100" height="36" rx="12" fill="url(#g3)"/>
+        <text x="348" y="382" font-family="Arial, sans-serif" font-size="18" font-weight="800"
+              text-anchor="middle" fill="#1A0A02" letter-spacing="2">PRO</text>
+      </svg>
+      <div class="label">96×96 (icon)</div>
+    </div>
+  </div>
+
+  <p style="color:#555;font-size:12px;max-width:500px;text-align:center">
+    Open <strong style="color:#E8922A">public/logo.svg</strong> in any browser to see the full image.
+    Upload it to <a href="https://icon.kitchen" target="_blank" style="color:#E8922A">icon.kitchen</a>
+    to generate all Android icon sizes automatically.
+  </p>
+</body>
+</html>

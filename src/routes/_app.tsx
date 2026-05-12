@@ -88,7 +88,7 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen">
-      <header className="bg-background/90 backdrop-blur border-b border-border relative z-30">
+      <header className="bg-background/90 backdrop-blur border-b border-border relative z-30" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -98,8 +98,11 @@ function AppLayout() {
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Hamburger menu */}
-          <div className="relative" ref={menuRef}>
+          {/* Right side: username + hamburger menu */}
+          <div className="flex items-center gap-2" ref={menuRef}>
+            <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
+              {profile.username}
+            </span>
             <button
               onClick={() => setMenuOpen((o) => !o)}
               className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"

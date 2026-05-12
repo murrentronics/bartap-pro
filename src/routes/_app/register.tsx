@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/register")({
   component: RegisterPage,
 });
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category; stock_qty?: number };
 type CartItem = Product & { qty: number };
 
 type Category = "beers" | "liquor" | "drinks" | "snacks";
@@ -38,32 +38,43 @@ function RegisterPage() {
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
+  // Stable fetch — always reads latest ownerId via ref
+  const ownerIdRef = useRef(ownerId);
+  useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
+
+  const fetchProducts = useCallback(async () => {
+    const id = ownerIdRef.current;
+    if (!id) return;
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .eq("owner_id", id)
+      .order("name", { ascending: true });
+    setProducts((data ?? []) as Product[]);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (!ownerId) return;
 
-    const fetchProducts = () =>
-      supabase
-        .from("products")
-        .select("*")
-        .eq("owner_id", ownerId)
-        .order("name", { ascending: true })
-        .then(({ data }) => {
-          setProducts((data ?? []) as Product[]);
-          setLoading(false);
-        });
-
     fetchProducts();
 
-    // Realtime: silently refresh when products change
+    // Realtime: re-fetch on any product change
     const ch = supabase
       .channel(`products-register-${ownerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
-        () => fetchProducts()
+        (payload) => {
+          fetchProducts();
+          // If a product was deleted, remove it from cart
+          if (payload.eventType === "DELETE" && payload.old?.id) {
+            setCart((c) => c.filter((i) => i.id !== payload.old.id));
+          }
+        }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
-  }, [ownerId]);
+  }, [ownerId, fetchProducts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -73,6 +84,11 @@ function RegisterPage() {
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
+
+  // Close cash overlay immediately if cart becomes empty (e.g. order/item deleted)
+  useEffect(() => {
+    if (cashOpen && cart.length === 0) setCashOpen(false);
+  }, [cart, cashOpen]);
 
   const addToCart = (p: Product) => {
     setCart((c) => {
@@ -123,11 +139,13 @@ function RegisterPage() {
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {filtered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
+              const outOfStock = (p.stock_qty ?? 1) === 0;
               return (
                 <button
                   key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="group relative aspect-[3/4] rounded-2xl overflow-hidden border transition active:scale-95"
+                  onClick={() => !outOfStock && addToCart(p)}
+                  disabled={outOfStock}
+                  className={`group relative aspect-[3/4] rounded-2xl overflow-hidden border transition ${outOfStock ? "cursor-not-allowed" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
@@ -145,6 +163,15 @@ function RegisterPage() {
                     <div className="font-bold text-sm leading-tight line-clamp-2 text-white">{p.name}</div>
                     <div className="text-primary font-black text-base">${Number(p.price).toFixed(2)}</div>
                   </div>
+
+                  {/* Stock qty badge (top-left) — always visible when stock_qty is defined */}
+                  {p.stock_qty !== undefined && !outOfStock && (
+                    <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
+                      <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
+                    </div>
+                  )}
+
+                  {/* Cart qty badge (top-right) */}
                   {inCart && (
                     <div className="absolute top-2 right-2 flex items-center gap-1">
                       <button
@@ -158,6 +185,15 @@ function RegisterPage() {
                         style={{ background: "var(--gradient-hero)" }}
                       >
                         {inCart.qty}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Out-of-stock overlay */}
+                  {outOfStock && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
+                      <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                        <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
                       </div>
                     </div>
                   )}
@@ -265,8 +301,8 @@ function OnScreenKeyboard({ onKey, onHeightChange, searchText }: {
   return (
     <div
       ref={ref}
-      className="fixed bottom-0 inset-x-0 z-[25] bg-background/95 backdrop-blur border-t border-border px-1 py-1.5 space-y-1"
-      style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
+      className="fixed bottom-0 inset-x-0 z-[25] bg-background/95 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)", boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
     >
       {ROWS.map((row, ri) => (
         <div key={ri} className="flex justify-center gap-1">
@@ -322,13 +358,25 @@ function CashOverlay({
     if (!enough || !profile) return;
     setBusy(true);
     const ownerId = profile.role === "owner" ? profile.id : profile.parent_id!;
+
+    // 1. Insert the order
     const { error } = await supabase.from("orders").insert({
       owner_id: ownerId, cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       total, paid: Number(paid), change_given: change,
     });
+    if (error) { setBusy(false); toast.error(error.message); return; }
+
+    // 2. Decrement stock via RPC (SECURITY DEFINER — works for both owners and cashiers)
+    const { error: stockErr } = await supabase.rpc("decrement_stock_item", {
+      p_items: cart.map((c) => ({ id: c.id, qty: c.qty })),
+    });
+    if (stockErr) {
+      // Non-fatal: order is already saved, just log it
+      console.warn("Stock decrement failed:", stockErr.message);
+    }
+
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
     onSuccess(Number(paid), change);
   };
 

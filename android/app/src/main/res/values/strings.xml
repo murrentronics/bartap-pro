@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bartendaz Pro</string>
+    <string name="title_activity_main">Bartendaz Pro</string>
+    <string name="package_name">com.bartendaz.pro</string>
+    <string name="custom_url_scheme">com.bartendaz.pro</string>
+</resources>

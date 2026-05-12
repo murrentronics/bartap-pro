@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft } from "lucide-react";
+import { Camera, ImagePlus, Plus, Minus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -19,82 +19,190 @@ export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
 });
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
-
-// ─── Template images ────────────────────────────────────────────────────────
-// Images now live in /assets/templates/beers/
-const TEMPLATE_IMAGES: { file: string; label: string }[] = [
-  { file: "Allagash-White.jpeg", label: "Allagash White" },
-  { file: "Amstel-Light.jpeg", label: "Amstel Light" },
-  { file: "Beck8217s.jpeg", label: "Beck's" },
-  { file: "Bell8217s-Two-Hearted-Ale-IPA.jpeg", label: "Bell's Two Hearted IPA" },
-  { file: "Breckenridge-Brewery-Avalanche-Ale.jpeg", label: "Breckenridge Avalanche Ale" },
-  { file: "Bud-ICE.jpeg", label: "Bud Ice" },
-  { file: "Bud-Light-Lime.jpeg", label: "Bud Light Lime" },
-  { file: "Bud-Light-Orange-1.jpeg", label: "Bud Light Orange" },
-  { file: "Bud-Light-Platinum.jpeg", label: "Bud Light Platinum" },
-  { file: "Bud-Light-Seltzer-Black-Cherry.jpeg", label: "Bud Light Seltzer Black Cherry" },
-  { file: "Bud-Light-Seltzer-Mango.jpeg", label: "Bud Light Seltzer Mango" },
-  { file: "Busch-Beer.jpeg", label: "Busch Beer" },
-  { file: "Busch-Light.jpeg", label: "Busch Light" },
-  { file: "Carib-Ginger-Shandy.jpeg", label: "Carib Ginger Shandy" },
-  { file: "Carib-Lime-Shandy.jpeg", label: "Carib Lime Shandy" },
-  { file: "Carib-Royal-Extra-Stout.jpeg", label: "Carib Royal Extra Stout" },
-  { file: "Carib-Sorrel-Shandy.jpeg", label: "Carib Sorrel Shandy" },
-  { file: "ci-carib-lager-9e90aefa7d7efd45.png", label: "Carib Lager" },
-  { file: "ci-labatt-blue-166b3625536163c9.png", label: "Labatt Blue" },
-  { file: "ci-mikes-hard-strawberry-lemonade-6d4febd243670fea.jpeg", label: "Mike's Hard Strawberry Lemonade" },
-  { file: "Cigar-City-Brewing-Jai-Alai-IPA.jpeg", label: "Cigar City Jai Alai IPA" },
-  { file: "Coors-Banquet-Lager-Beer.jpeg", label: "Coors Banquet" },
-  { file: "Corona-Extra-Coronita.jpeg", label: "Corona Extra" },
-  { file: "Corona-Hard-Seltzer-Gluten-Free-Spiked-Sparkling-Water-Variety-Pack.jpeg", label: "Corona Hard Seltzer" },
-  { file: "Golden-Road-Brewing-Mango-Cart.jpeg", label: "Golden Road Mango Cart" },
-  { file: "Guinness-Extra-Stout.jpeg", label: "Guinness Extra Stout" },
-  { file: "Heineken-Light.jpeg", label: "Heineken Light" },
-  { file: "Heineken-Non-Alcoholic-0.0.jpeg", label: "Heineken 0.0" },
-  { file: "Lagunitas-Little-Sumpin8217-Sumpin8217-Ale.jpeg", label: "Lagunitas Little Sumpin' Ale" },
-  { file: "Left-Hand-Milk-Stout-Nitro.jpeg", label: "Left Hand Milk Stout Nitro" },
-  { file: "Mackeson-XXX-Stout-2.jpeg", label: "Mackeson XXX Stout" },
-  { file: "Michelob-Ultra-Pure-Gold.jpeg", label: "Michelob Ultra Pure Gold" },
-  { file: "Mike8217s-Hard-Black-Cherry-Lemonade.jpeg", label: "Mike's Hard Black Cherry" },
-  { file: "Mike8217s-Hard-Lemonade.jpeg", label: "Mike's Hard Lemonade" },
-  { file: "Miller-64-Extra-Light-Lager.jpeg", label: "Miller 64" },
-  { file: "Miller-High-Life-American-Lager-Beer.jpeg", label: "Miller High Life" },
-  { file: "Modelo-Negra.jpeg", label: "Modelo Negra" },
-  { file: "Narragansett-Lager.jpeg", label: "Narragansett Lager" },
-  { file: "Natural-Light.jpeg", label: "Natural Light" },
-  { file: "Pabst-Blue-Ribbon-Hard-Coffee.jpeg", label: "PBR Hard Coffee" },
-  { file: "Pacifico-Clara.jpeg", label: "Pacifico Clara" },
-  { file: "Peroni-Nastro-Azzurro-Pale-Lager-Beer.jpeg", label: "Peroni Nastro Azzurro" },
-  { file: "Presidente.jpeg", label: "Presidente" },
-  { file: "Samuel-Adams-Boston-Lager-Beer.jpeg", label: "Samuel Adams Boston Lager" },
-  { file: "Shiner-Bock.jpeg", label: "Shiner Bock" },
-  { file: "Sierra-Nevada-Pale-Ale.jpeg", label: "Sierra Nevada Pale Ale" },
-  { file: "Smirnoff-Ice-Green-Apple.jpeg", label: "Smirnoff Ice Green Apple" },
-  { file: "Smirnoff-Ice-Original.jpeg", label: "Smirnoff Ice Original" },
-  { file: "Smirnoff-Ice-Raspberry.jpeg", label: "Smirnoff Ice Raspberry" },
-  { file: "Smirnoff-Ice-Red-White-038-Berry.jpeg", label: "Smirnoff Ice Red White & Berry" },
-  { file: "Smirnoff-Ice-Screwdriver.jpeg", label: "Smirnoff Ice Screwdriver" },
-  { file: "Smirnoff-Ice-Triple-Black.jpeg", label: "Smirnoff Ice Triple Black" },
-  { file: "Smirnoff-Ice-Watermelon-Mimosa.jpeg", label: "Smirnoff Ice Watermelon Mimosa" },
-  { file: "Victory-Brewing-Sour-Monkey.jpeg", label: "Victory Sour Monkey" },
-  { file: "White-Claw-Ruby-Grapefruit-Hard-Seltzer.jpeg", label: "White Claw Ruby Grapefruit" },
-];
-
-// Templates grouped by folder
-const TEMPLATE_FOLDERS: Record<string, { file: string; label: string }[]> = {
-  beers:   TEMPLATE_IMAGES,
-  liquor:  [], // drop images in public/assets/templates/liquor/
-  drinks:  [], // drop images in public/assets/templates/drinks/
-  snacks:  [], // drop images in public/assets/templates/snacks/
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  image_url: string | null;
+  category?: string;
+  stock_qty: number;
 };
 
+// ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
+function StockNumpad({ productId, currentQty, onClose, onSaved }: {
+  productId: string;
+  currentQty: number;
+  onClose: () => void;
+  onSaved: (newQty: number) => void;
+}) {
+  const [value, setValue] = useState(String(currentQty));
+  const [busy, setBusy] = useState(false);
+
+  const handleKey = (k: string) => {
+    if (k === "⌫") { setValue((v) => (v.length > 1 ? v.slice(0, -1) : "0")); return; }
+    if (k === "C") { setValue("0"); return; }
+    setValue((v) => {
+      const next = v === "0" ? k : v + k;
+      return Number(next) > 9999 ? v : next;
+    });
+  };
+
+  const save = async () => {
+    setBusy(true);
+    const newQty = Number(value);
+    const { error } = await supabase
+      .from("products")
+      .update({ stock_qty: newQty })
+      .eq("id", productId);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    onSaved(newQty);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <span className="text-base font-black">Set Stock Qty</span>
+          <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mx-5 mb-4 h-14 rounded-2xl border border-border bg-muted/30 flex items-center justify-center">
+          <span className="text-4xl font-black text-primary">{value}</span>
+        </div>
+        <div className="px-5 pb-5 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {["1","2","3","4","5","6","7","8","9","C","0","⌫"].map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => handleKey(k)}
+                className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${
+                  k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                  : k === "C" ? "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                  : "bg-muted hover:bg-muted/70 text-foreground"
+                }`}
+              >{k}</button>
+            ))}
+          </div>
+          <button
+            onClick={save}
+            disabled={busy}
+            className="w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Done"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Template Picker — DB only ────────────────────────────────────────────────
+function TemplatePicker({ onSelect, ownerId, category, search }: {
+  onSelect: (url: string, label: string, category: string) => void;
+  ownerId: string;
+  category: string;
+  search: string;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [available, setAvailable] = useState<{ url: string; label: string }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+
+      const { data: usedData } = await supabase
+        .from("products")
+        .select("image_url")
+        .eq("owner_id", ownerId);
+      const usedUrls = new Set(
+        (usedData ?? [])
+          .map((r: { image_url: string | null }) => r.image_url)
+          .filter((u): u is string => !!u)
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: dbTemplates } = await (supabase as any)
+        .from("template_images")
+        .select("url, label")
+        .eq("category", category)
+        .order("label", { ascending: true });
+
+      const templates = ((dbTemplates as { url: string; label: string }[]) ?? [])
+        .filter((t) => !usedUrls.has(t.url));
+
+      if (!cancelled) {
+        setAvailable(templates);
+        setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [ownerId, category]);
+
+  const q = search.trim().toLowerCase();
+  const visible = q
+    ? available.filter((t) => t.label.toLowerCase().includes(q))
+    : available;
+
+  if (loading) {
+    return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (available.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
+        <LayoutGrid className="h-10 w-10 opacity-30" />
+        <p className="text-sm font-semibold">No templates in this category yet.</p>
+        <p className="text-xs opacity-60">Ask your admin to import some from the Admin → Import tab.</p>
+      </div>
+    );
+  }
+
+  if (visible.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
+        <p className="text-sm">No results for "{search}"</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {visible.map((t) => (
+        <button
+          key={t.url}
+          onClick={() => onSelect(t.url, t.label, category)}
+          className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition"
+          style={{ background: "var(--gradient-card)" }}
+        >
+          <img src={t.url} alt={t.label} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent">
+            <div className="text-white text-xs font-bold leading-tight line-clamp-2">{t.label}</div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Products Page ────────────────────────────────────────────────────────────
 function ProductsPage() {
   const { profile } = useAuth();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<string>("beers");
+  const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
 
   const CATS = [
     { value: "beers",  label: "Beers",  emoji: "🍺" },
@@ -103,32 +211,30 @@ function ProductsPage() {
     { value: "snacks", label: "Snacks", emoji: "🍟" },
   ];
 
-  const load = async () => {
-    if (!profile) return;
+  const profileRef = useRef(profile);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+
+  const load = useCallback(async () => {
+    const p = profileRef.current;
+    if (!p) return;
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("owner_id", profile.id)
+      .eq("owner_id", p.id)
       .order("name", { ascending: true });
     setItems((data ?? []) as Product[]);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (!profile?.id) return;
-
     load();
-
-    // Realtime: silently refresh when products change
     const ch = supabase
       .channel(`products-mgmt-${profile.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` },
-        () => load()
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => load())
       .subscribe();
-
     return () => { supabase.removeChannel(ch); };
-  }, [profile?.id]);
+  }, [profile?.id, load]);
 
   if (profile?.role !== "owner") {
     return <div className="text-center text-muted-foreground py-20">Only owners can manage items.</div>;
@@ -136,9 +242,23 @@ function ProductsPage() {
 
   const filtered = items.filter((p) => (p.category || "beers") === category);
 
+  const updateStock = async (id: string, delta: number) => {
+    const item = items.find((p) => p.id === id);
+    if (!item) return;
+    const newQty = Math.max(0, (item.stock_qty ?? 0) + delta);
+    setItems((prev) => prev.map((p) => p.id === id ? { ...p, stock_qty: newQty } : p));
+    const { error } = await supabase.from("products").update({ stock_qty: newQty }).eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      setItems((prev) => prev.map((p) => p.id === id ? { ...p, stock_qty: item.stock_qty } : p));
+    }
+  };
+
+  const stockNumpadProduct = stockNumpadId ? items.find((p) => p.id === stockNumpadId) : null;
+
   return (
     <div>
-      {/* Sticky header: title + add button + tabs */}
+      {/* Sticky header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <div>
@@ -154,8 +274,6 @@ function ProductsPage() {
             <AddItemDialog ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
           </Dialog>
         </div>
-
-        {/* 4 category tabs */}
         <div className="grid grid-cols-4 gap-1.5">
           {CATS.map((cat) => (
             <button
@@ -174,13 +292,9 @@ function ProductsPage() {
 
       <div className="pt-3">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            No {category} yet — tap Add Item.
-          </div>
+          <div className="text-center py-20 text-muted-foreground">No {category} yet — tap Add Item.</div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {filtered.map((p) => (
@@ -194,6 +308,38 @@ function ProductsPage() {
                   : <div className="absolute inset-0 flex items-center justify-center text-4xl">
                       {p.category === "snacks" ? "🍟" : "🍹"}
                     </div>}
+
+                {/* Out-of-stock overlay — covers only the middle (image area), not the bottom bar */}
+                {(p.stock_qty ?? 0) === 0 && (
+                  <div className="absolute inset-x-0 top-10 bottom-10 z-[5] flex items-center justify-center bg-red-950/70 backdrop-blur-[1px] pointer-events-none">
+                    <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                      <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stock controls */}
+                <div className="absolute top-0 inset-x-0 flex items-center justify-between px-1.5 pt-1.5 gap-1 z-10">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); updateStock(p.id, -1); }}
+                    className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-600/80 active:scale-90 transition text-white shadow shrink-0"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
+                    className="flex-1 h-7 rounded-full flex items-center justify-center bg-black/70 hover:bg-black/90 active:scale-95 transition shadow"
+                  >
+                    <span className="text-xs font-black text-white leading-none">{p.stock_qty ?? 0}</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); updateStock(p.id, 1); }}
+                    className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-green-600/80 active:scale-90 transition text-white shadow shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
                 <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent">
                   <div className="font-bold text-sm text-white truncate">{p.name}</div>
                   <div className="flex justify-between items-center">
@@ -225,80 +371,17 @@ function ProductsPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-// ─── Template Picker ─────────────────────────────────────────────────────────
-function TemplatePicker({ onSelect, onBack, ownerId, category }: {
-  onSelect: (url: string, label: string) => void;
-  onBack: () => void;
-  ownerId: string;
-  category: string;
-}) {
-  const [usedUrls, setUsedUrls] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    supabase
-      .from("products")
-      .select("image_url")
-      .eq("owner_id", ownerId)
-      .then(({ data }) => {
-        const urls = new Set(
-          (data ?? [])
-            .map((r: { image_url: string | null }) => r.image_url)
-            .filter((u): u is string => !!u && u.startsWith("/assets/templates/"))
-        );
-        setUsedUrls(urls);
-      });
-  }, [ownerId]);
-
-  const folderImages = TEMPLATE_FOLDERS[category] ?? [];
-  const available = folderImages.filter(
-    (t) => !usedUrls.has(`/assets/templates/${category}/${t.file}`)
-  );
-
-  if (folderImages.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
-        <LayoutGrid className="h-10 w-10 opacity-30" />
-        <p className="text-sm">No templates in this category yet.</p>
-        <p className="text-xs opacity-60">Drop images into <code>public/assets/templates/{category}/</code></p>
-      </div>
-    );
-  }
-
-  if (available.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
-        <LayoutGrid className="h-10 w-10 opacity-30" />
-        <p className="text-sm">All templates in this category are already in use.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-3 gap-2">
-          {available.map((t) => {
-            const url = `/assets/templates/${category}/${t.file}`;
-            return (
-              <button
-                key={t.file}
-                onClick={() => onSelect(url, t.label)}
-                className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition"
-                style={{ background: "var(--gradient-card)" }}
-              >
-                <img src={url} alt={t.label} className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/80 to-transparent">
-                  <div className="text-white text-xs font-bold truncate">{t.label}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {stockNumpadId && stockNumpadProduct && (
+        <StockNumpad
+          productId={stockNumpadId}
+          currentQty={stockNumpadProduct.stock_qty ?? 0}
+          onClose={() => setStockNumpadId(null)}
+          onSaved={(newQty) => {
+            setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, stock_qty: newQty } : p));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -314,9 +397,18 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [templateCategory, setTemplateCategory] = useState<string | null>(null);
+  // which category tab is active inside the template picker
+  const [templateCat, setTemplateCat] = useState<string>("beers");
+  const [templateSearch, setTemplateSearch] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
+
+  const CATS = [
+    { value: "beers",  emoji: "🍺" },
+    { value: "liquor", emoji: "🥃" },
+    { value: "drinks", emoji: "🥤" },
+    { value: "snacks", emoji: "🍟" },
+  ];
 
   const onPick = (f: File | undefined | null) => {
     if (!f) return;
@@ -325,18 +417,18 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
     setPreview(URL.createObjectURL(f));
   };
 
-  const onTemplateSelect = (url: string, label: string) => {
+  const onTemplateSelect = (url: string, label: string, templateCategory: string) => {
     setTemplateUrl(url);
     setFile(null);
     setPreview(url);
     if (!name) setName(label);
+    setCategory(templateCategory);
     setShowTemplates(false);
-    setTemplateCategory(null);
+    setTemplateSearch("");
   };
 
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
 
-  // Numpad handler for price
   const handleNumpad = (k: string) => {
     if (k === "⌫") { setPrice((v) => v.slice(0, -1)); return; }
     if (k === ".") { if (!price.includes(".")) setPrice((v) => v + "."); return; }
@@ -374,50 +466,67 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
         <div className="flex items-center gap-3">
           {showTemplates && (
             <button
-              onClick={() => {
-                if (templateCategory) { setTemplateCategory(null); }
-                else { setShowTemplates(false); }
-              }}
+              onClick={() => setShowTemplates(false)}
               className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <DialogTitle>
-            {!showTemplates ? "Add Bar Item" : templateCategory ? `${templateCategory.charAt(0).toUpperCase() + templateCategory.slice(1)} Templates` : "Choose Category"}
-          </DialogTitle>
+          <DialogTitle>{showTemplates ? "Choose Template" : "Add Bar Item"}</DialogTitle>
         </div>
       </DialogHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-        {showTemplates && !templateCategory ? (
-          /* Category picker — 2×2 grid */
-          <div className="grid grid-cols-2 gap-3 p-1">
-            {[
-              { value: "beers",  label: "Beers",  emoji: "🍺" },
-              { value: "liquor", label: "Liquor", emoji: "🥃" },
-              { value: "drinks", label: "Drinks", emoji: "🥤" },
-              { value: "snacks", label: "Snacks", emoji: "🍟" },
-            ].map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setTemplateCategory(cat.value)}
-                className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-border hover:border-primary transition active:scale-95 font-black text-lg"
-                style={{ background: "var(--gradient-card)" }}
-              >
-                <span className="text-4xl">{cat.emoji}</span>
-                <span className="text-sm font-black">{cat.label}</span>
-              </button>
-            ))}
+        {showTemplates ? (
+          <div className="flex flex-col h-full">
+            {/* Sticky search + category tabs */}
+            <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)" }}>
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  placeholder="Search templates…"
+                  className="pl-8 h-8 text-sm"
+                />
+                {templateSearch && (
+                  <button
+                    onClick={() => setTemplateSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Category tabs */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {CATS.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setTemplateCat(cat.value)}
+                    className={`h-8 rounded-xl font-bold text-xs transition ${
+                      templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={templateCat === cat.value ? { background: "var(--gradient-hero)" } : {}}
+                  >
+                    {cat.emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Scrollable grid */}
+            <TemplatePicker
+              onSelect={onTemplateSelect}
+              ownerId={ownerId}
+              category={templateCat}
+              search={templateSearch}
+            />
           </div>
-        ) : showTemplates && templateCategory ? (
-          <TemplatePicker onSelect={onTemplateSelect} onBack={() => setTemplateCategory(null)} ownerId={ownerId} category={templateCategory} />
         ) : (
           <div className="space-y-3">
-
-            {/* Image area with buttons top-right and category bottom-right */}
+            {/* Image area */}
             <div className="flex gap-3 items-stretch">
-              {/* Half-width portrait image */}
               <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0" style={{ background: "var(--gradient-card)" }}>
                 {preview
                   ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
@@ -431,17 +540,15 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPick(e.target.files?.[0])} />
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onPick(e.target.files?.[0])} />
               </div>
-
-              {/* Right side: action buttons only */}
               <div className="flex flex-col gap-2 flex-1 justify-center">
+                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => setShowTemplates(true)}>
+                  <LayoutGrid className="h-4 w-4 mr-1.5" /> Template
+                </Button>
                 <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => camRef.current?.click()}>
                   <Camera className="h-4 w-4 mr-1.5" /> Take Photo
                 </Button>
                 <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => fileRef.current?.click()}>
                   <ImagePlus className="h-4 w-4 mr-1.5" /> Upload
-                </Button>
-                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => setShowTemplates(true)}>
-                  <LayoutGrid className="h-4 w-4 mr-1.5" /> Template
                 </Button>
               </div>
             </div>
@@ -467,14 +574,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
               </select>
             </div>
 
-            {/* Price display + numpad */}
+            {/* Price */}
             <div>
               <Label className="text-xs">Price</Label>
-              {/* Preview box */}
               <div className="h-10 rounded-lg border border-border bg-muted/30 flex items-center px-3 mb-2">
                 <span className="text-lg font-black text-primary">${price || "0.00"}</span>
               </div>
-              {/* Compact numpad */}
               <div className="grid grid-cols-3 gap-1.5">
                 {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                   <button
@@ -482,17 +587,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                     type="button"
                     onClick={() => handleNumpad(k)}
                     className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
-                      k === "⌫"
-                        ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
-                        : "bg-muted hover:bg-muted/70 text-foreground"
+                      k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
                     }`}
-                  >
-                    {k}
-                  </button>
+                  >{k}</button>
                 ))}
               </div>
             </div>
-
           </div>
         )}
       </div>
