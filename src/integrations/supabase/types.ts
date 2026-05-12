@@ -64,28 +64,34 @@ export type Database = {
       }
       products: {
         Row: {
+          category: string
           created_at: string
           id: string
           image_url: string | null
           name: string
           owner_id: string
           price: number
+          stock_qty: number
         }
         Insert: {
+          category?: string
           created_at?: string
           id?: string
           image_url?: string | null
           name: string
           owner_id: string
           price: number
+          stock_qty?: number
         }
         Update: {
+          category?: string
           created_at?: string
           id?: string
           image_url?: string | null
           name?: string
           owner_id?: string
           price?: number
+          stock_qty?: number
         }
         Relationships: [
           {
