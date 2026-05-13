@@ -6,6 +6,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import path from "path";
 import fs from "fs";
 
+const externalSupabaseUrl = "https://vavfsgbrfpvolskscolf.supabase.co";
+const externalSupabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInJlZiI6InZhdmZzZ2JyZnB2b2xza3Njb2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODcyNDAsImV4cCI6MjA5Mzk2MzI0MH0.DNNQJ8sHPWljEpYuRoyXtCmR6QCkKmAzfyd08C6kovI";
+
 // Plugin that stubs out all TanStack Start server-only modules
 function stubServerModules(): Plugin {
   const STUB_IDS = [
@@ -126,7 +129,8 @@ export default defineConfig({
     },
   },
   define: {
-    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(process.env.VITE_SUPABASE_URL),
-    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(process.env.VITE_SUPABASE_PUBLISHABLE_KEY),
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(externalSupabaseUrl),
+    "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify("vavfsgbrfpvolskscolf"),
+    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(externalSupabasePublishableKey),
   },
 });
