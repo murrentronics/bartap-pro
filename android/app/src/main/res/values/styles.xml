@@ -4,11 +4,16 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 
-    <style name="AppTheme.NoActionBar" parent="AppTheme" />
+    <style name="AppTheme.NoActionBar" parent="AppTheme">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 
-    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme" />
+    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
+        <item name="android:background">@drawable/splash_background</item>
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 
 </resources>
