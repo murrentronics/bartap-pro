@@ -1,11 +1,9 @@
 // Capacitor/Android version of __root.tsx
-// No SSR imports — no ?url, no HeadContent, no Scripts, no shellComponent.
+// No SSR imports, no SplashScreen (Android has its own)
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth";
-import { SplashScreen } from "@/components/SplashScreen";
-import { useState } from "react";
 
 function NotFound() {
   return (
@@ -28,12 +26,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [splashDone, setSplashDone] = useState(false);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <Outlet />
         <Toaster richColors position="top-center" />
       </AuthProvider>
