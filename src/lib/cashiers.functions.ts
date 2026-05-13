@@ -1,45 +1,46 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+// Browser-compatible version — calls Supabase directly (no server functions)
+import { supabase } from "@/integrations/supabase/client";
 
-const createSchema = z.object({
-  username: z.string().trim().min(3).max(30).regex(/^[a-z0-9_]+$/i, "letters, numbers, underscore"),
-  password: z.string().min(6).max(72),
-});
+export const createCashier = async (data: { username: string; password: string }) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
 
-export const createCashier = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => createSchema.parse(d))
-  .handler(async ({ data, context }) => {
-    const { userId } = context;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-    const email = `${data.username.toLowerCase()}@bartendaz.cashier`;
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: { username: data.username, role: "cashier", parent_id: userId },
-    });
-    if (error) throw new Error(error.message);
-    return { id: created.user?.id, username: data.username };
+  const res = await fetch(`${supabaseUrl}/functions/v1/create-cashier`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": supabaseKey,
+    },
+    body: JSON.stringify({ username: data.username, password: data.password }),
   });
 
-export const deleteCashier = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ cashier_id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { data: cashier } = await supabaseAdmin
-      .from("profiles").select("parent_id, wallet_balance").eq("id", data.cashier_id).maybeSingle();
-    if (!cashier || cashier.parent_id !== userId) throw new Error("Not authorized");
+  const json = await res.json() as { id?: string; username?: string; error?: string };
+  if (!res.ok) throw new Error(json.error ?? "Failed to create cashier");
+  return json;
+};
 
-    // Always clear wallet to owner first (no-op if balance is 0)
-    if (Number(cashier.wallet_balance) > 0) {
-      const { error: rpcErr } = await supabaseAdmin.rpc("transfer_cashier_to_owner", { _cashier_id: data.cashier_id });
-      if (rpcErr) throw new Error(rpcErr.message);
-    }
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.cashier_id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+export const deleteCashier = async (data: { cashier_id: string }) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/delete-cashier`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": supabaseKey,
+    },
+    body: JSON.stringify({ cashier_id: data.cashier_id }),
   });
+
+  const json = await res.json() as { ok?: boolean; error?: string };
+  if (!res.ok) throw new Error(json.error ?? "Failed to delete cashier");
+  return json;
+};

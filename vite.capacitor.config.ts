@@ -20,8 +20,22 @@ function stubServerModules(): Plugin {
   const STUB_CODE: Record<string, string> = {
     "@tanstack/react-start": `
       export const useServerFn = (fn) => fn;
-      export const createServerFn = () => () => {};
-      export const createMiddleware = () => ({ server: () => ({}) });
+      export const createServerFn = () => {
+        const fn = () => () => Promise.resolve(null);
+        fn.middleware = () => fn;
+        fn.validator = () => fn;
+        fn.handler = (h) => h;
+        fn.server = (h) => fn;
+        fn.client = (h) => fn;
+        return fn;
+      };
+      export const createMiddleware = () => {
+        const m = {};
+        m.middleware = () => m;
+        m.server = () => m;
+        m.client = () => m;
+        return m;
+      };
       export default {};
     `,
     "@tanstack/react-start/server": `
@@ -101,6 +115,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: path.resolve(__dirname, "index.capacitor.html"),
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "@tanstack/react-router", "@tanstack/react-query"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-pdf": ["jspdf"],
+          "vendor-canvas": ["html2canvas"],
+        },
+      },
       external: [
         // Node built-ins — not available in browser
         /^node:/,
