@@ -1,0 +1,2 @@
+# Redirect root and all app routes to the download page
+/   /download.html  302
