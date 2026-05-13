@@ -617,13 +617,24 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
 
       {/* Editable label + category */}
       <div className="px-1.5 pt-1 pb-1.5 bg-black/85 space-y-1">
-        {/* Label — inline editable */}
-        <input
-          className="w-full bg-transparent text-white text-xs font-bold outline-none border-b border-transparent focus:border-primary/60 transition truncate"
+        {/* Label — inline editable, up to 3 lines */}
+        <textarea
+          className="w-full bg-transparent text-white text-xs font-bold outline-none border-b border-transparent focus:border-primary/60 transition resize-none leading-tight"
+          style={{ minHeight: "1.2em", maxHeight: "3.6em", overflow: "hidden" }}
+          rows={1}
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={(e) => {
+            setLabel(e.target.value);
+            // Auto-grow up to 3 lines
+            e.target.style.height = "auto";
+            e.target.style.height = Math.min(e.target.scrollHeight, 57) + "px";
+          }}
+          onFocus={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = Math.min(e.target.scrollHeight, 57) + "px";
+          }}
           onBlur={() => save(label, category)}
-          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
           title="Click to edit name"
         />
         {/* Category — 4 emoji buttons */}

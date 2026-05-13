@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +19,11 @@ import { Route as AppProductsRouteImport } from './routes/_app/products'
 import { Route as AppCashiersRouteImport } from './routes/_app/cashiers'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
+const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
+  id: '/__root/capacitor',
+  path: '/capacitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -61,6 +67,7 @@ const AppAdminRoute = AppAdminRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/capacitor': typeof _rootCapacitorRoute
   '/admin': typeof AppAdminRoute
   '/cashiers': typeof AppCashiersRoute
   '/products': typeof AppProductsRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/capacitor': typeof _rootCapacitorRoute
   '/admin': typeof AppAdminRoute
   '/cashiers': typeof AppCashiersRoute
   '/products': typeof AppProductsRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/__root/capacitor': typeof _rootCapacitorRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/cashiers': typeof AppCashiersRoute
   '/_app/products': typeof AppProductsRoute
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/capacitor'
     | '/admin'
     | '/cashiers'
     | '/products'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/capacitor'
     | '/admin'
     | '/cashiers'
     | '/products'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/__root/capacitor'
     | '/_app/admin'
     | '/_app/cashiers'
     | '/_app/products'
@@ -122,10 +134,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  _rootCapacitorRoute: typeof _rootCapacitorRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/__root/capacitor': {
+      id: '/__root/capacitor'
+      path: '/capacitor'
+      fullPath: '/capacitor'
+      preLoaderRoute: typeof _rootCapacitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -207,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  _rootCapacitorRoute: _rootCapacitorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -34,6 +34,8 @@ function stubServerModules(): Plugin {
     name: "stub-server-modules",
     enforce: "pre",
     resolveId(id, importer) {
+      // Stub ?url imports — these are SSR-only and crash in browser builds
+      if (id.endsWith('?url')) return '\0stub:url-import';
       // Exact matches for known server packages
       if (STUB_IDS.includes(id)) return "\0stub:" + id;
       // Stub the auth middleware — it's server-only
@@ -46,6 +48,7 @@ function stubServerModules(): Plugin {
       return null;
     },
     load(id) {
+      if (id === '\0stub:url-import') return `export default '';`;
       if (id === "\0stub:generic") return `export default {}; export const __esModule = true;`;
       if (id === "\0stub:auth-middleware") {
         return `export const requireSupabaseAuth = () => {}; export default {};`;
@@ -96,6 +99,11 @@ export default defineConfig({
       "@/integrations/supabase/auth-middleware": path.resolve(
         __dirname,
         "src/integrations/supabase/auth-middleware.capacitor.ts"
+      ),
+      // Use capacitor-safe root route (no SSR imports)
+      [path.resolve(__dirname, "src/routes/__root.tsx")]: path.resolve(
+        __dirname,
+        "src/routes/__root.capacitor.tsx"
       ),
     },
   },

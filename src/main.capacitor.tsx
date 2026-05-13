@@ -1,5 +1,4 @@
 // Client-only entry point for Capacitor/Android builds.
-// Uses TanStack Router in pure browser mode — no SSR, no TanStack Start.
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter, createHashHistory } from "@tanstack/react-router";
@@ -9,7 +8,16 @@ import { Toaster } from "@/components/ui/sonner";
 import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 
-// Hash history so Capacitor file:// URLs work correctly
+// Catch any unhandled errors and show them on screen so we can debug
+window.onerror = (msg, src, line, col, err) => {
+  document.body.style.cssText = "background:#000;color:#f00;padding:20px;font-size:14px;font-family:monospace;white-space:pre-wrap;overflow:auto;";
+  document.body.innerHTML = "<b>APP ERROR</b>\n\n" + msg + "\n\nFile: " + src + "\nLine: " + line + "\n\n" + (err?.stack || "");
+};
+window.onunhandledrejection = (e) => {
+  document.body.style.cssText = "background:#000;color:#f00;padding:20px;font-size:14px;font-family:monospace;white-space:pre-wrap;overflow:auto;";
+  document.body.innerHTML = "<b>UNHANDLED PROMISE</b>\n\n" + (e.reason?.stack || e.reason || "unknown");
+};
+
 const hashHistory = createHashHistory();
 const queryClient = new QueryClient();
 
