@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import path from "path";
+import fs from "fs";
 
 // Plugin that stubs out all TanStack Start server-only modules
 function stubServerModules(): Plugin {
@@ -36,6 +37,8 @@ function stubServerModules(): Plugin {
     resolveId(id, importer) {
       // Stub ?url imports — these are SSR-only and crash in browser builds
       if (id.endsWith('?url')) return '\0stub:url-import';
+      // Stub start.ts — it uses createMiddleware/createStart which are SSR-only
+      if (id.includes('src/start') || id.endsWith('/start.ts') || id === './start.ts') return '\0stub:start';
       // Exact matches for known server packages
       if (STUB_IDS.includes(id)) return "\0stub:" + id;
       // Stub the auth middleware — it's server-only
@@ -49,6 +52,7 @@ function stubServerModules(): Plugin {
     },
     load(id) {
       if (id === '\0stub:url-import') return `export default '';`;
+      if (id === '\0stub:start') return `export const startInstance = { getOptions: () => ({}) }; export default {};`;
       if (id === "\0stub:generic") return `export default {}; export const __esModule = true;`;
       if (id === "\0stub:auth-middleware") {
         return `export const requireSupabaseAuth = () => {}; export default {};`;
@@ -75,7 +79,21 @@ function stubServerModules(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [stubServerModules(), react(), tailwindcss(), tsconfigPaths()],
+  plugins: [
+    stubServerModules(),
+    react(),
+    tailwindcss(),
+    tsconfigPaths(),
+    // After build, rename index.capacitor.html → index.html for Capacitor
+    {
+      name: "rename-capacitor-html",
+      closeBundle() {
+        const src = path.resolve(__dirname, "dist/client/index.capacitor.html");
+        const dest = path.resolve(__dirname, "dist/client/index.html");
+        if (fs.existsSync(src)) fs.copyFileSync(src, dest);
+      },
+    } as Plugin,
+  ],
   root: ".",
   build: {
     rollupOptions: {
