@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth";
+import { SplashScreen } from "@/components/SplashScreen";
+import { useState } from "react";
 import appCss from "../styles.css?url";
 
 function NotFound() {
@@ -72,6 +74,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [splashDone, setSplashDone] = useState(false);
 
   // Register service worker for PWA/Android install support
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -83,6 +86,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <Outlet />
         <Toaster richColors position="top-center" />
       </AuthProvider>

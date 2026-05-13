@@ -2,9 +2,8 @@ package com.bartendaz.pro;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -12,37 +11,20 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
+    private boolean keyboardVisible = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setupEdgeToEdge();
-    }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        hideNavBar();
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideNavBar();
-    }
-
-    private void setupEdgeToEdge() {
         Window window = getWindow();
-
-        // Edge-to-edge — content draws behind system bars
         WindowCompat.setDecorFitsSystemWindows(window, false);
 
-        // Black status bar, transparent nav bar
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.setStatusBarColor(android.graphics.Color.BLACK);
             window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
         }
 
-        // White icons on dark background
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(window, window.getDecorView());
         if (controller != null) {
@@ -50,7 +32,28 @@ public class MainActivity extends BridgeActivity {
             controller.setAppearanceLightNavigationBars(false);
         }
 
+        // Listen for keyboard visibility changes
+        ViewCompat.setOnApplyWindowInsetsListener(window.getDecorView(), (v, insets) -> {
+            keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+            if (!keyboardVisible) {
+                hideNavBar();
+            }
+            return insets;
+        });
+
         hideNavBar();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (!keyboardVisible) hideNavBar();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && !keyboardVisible) hideNavBar();
     }
 
     private void hideNavBar() {
@@ -58,9 +61,7 @@ public class MainActivity extends BridgeActivity {
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(window, window.getDecorView());
         if (controller != null) {
-            // Hide nav bar, keep status bar visible (needed for keyboard to work)
             controller.hide(WindowInsetsCompat.Type.navigationBars());
-            // Swipe up from bottom to temporarily show nav bar
             controller.setSystemBarsBehavior(
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             );
