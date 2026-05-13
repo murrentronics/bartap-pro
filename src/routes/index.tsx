@@ -12,7 +12,7 @@ function IndexRedirect() {
   const nav = useNavigate();
   useEffect(() => {
     if (loading) return;
-    nav({ to: session ? "/register" : "/login" });
+    nav({ to: session ? "/register" : "/login", replace: true });
   }, [session, loading, nav]);
   return (
     <div className="flex min-h-screen items-center justify-center">

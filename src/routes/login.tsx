@@ -65,12 +65,12 @@ function SignInForm() {
     <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl p-6"
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
       <div>
-        <Label>Email or Cashier Username</Label>
-        <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="owner@bar.com or cashier1" required />
+        <Label htmlFor="signin-id">Email or Cashier Username</Label>
+        <Input id="signin-id" name="username" autoComplete="username" value={id} onChange={(e) => setId(e.target.value)} placeholder="owner@bar.com or cashier1" required />
       </div>
       <div>
-        <Label>Password</Label>
-        <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} required />
+        <Label htmlFor="signin-pw">Password</Label>
+        <Input id="signin-pw" name="password" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required />
       </div>
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
@@ -99,16 +99,16 @@ function SignUpForm() {
     <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl p-6"
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
       <div>
-        <Label>Bar / Owner Username</Label>
-        <Input value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} />
+        <Label htmlFor="signup-username">Bar / Owner Username</Label>
+        <Input id="signup-username" name="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} />
       </div>
       <div>
-        <Label>Email</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Label htmlFor="signup-email">Email</Label>
+        <Input id="signup-email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </div>
       <div>
-        <Label>Password</Label>
-        <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} />
+        <Label htmlFor="signup-pw">Password</Label>
+        <Input id="signup-pw" name="password" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} />
       </div>
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Creating..." : "Create owner account"}

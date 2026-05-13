@@ -25,6 +25,7 @@ const router = createRouter({
   routeTree,
   history: hashHistory,
   context: { queryClient },
+  defaultPreloadStaleTime: 0,
 });
 
 declare module "@tanstack/react-router" {
