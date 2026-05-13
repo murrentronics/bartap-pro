@@ -7,7 +7,7 @@ import path from "path";
 import fs from "fs";
 
 const externalSupabaseUrl = "https://vavfsgbrfpvolskscolf.supabase.co";
-const externalSupabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInJlZiI6InZhdmZzZ2JyZnB2b2xza3Njb2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODcyNDAsImV4cCI6MjA5Mzk2MzI0MH0.DNNQJ8sHPWljEpYuRoyXtCmR6QCkKmAzfyd08C6kovI";
+const externalSupabasePublishableKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhdmZzZ2JyZnB2b2xza3Njb2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODcyNDAsImV4cCI6MjA5Mzk2MzI0MH0.DNNQJ8sHPWljEpYuRoyXtCmR6QCkKmAzfyd08C6kovI";
 
 // Plugin that stubs out all TanStack Start server-only modules
 function stubServerModules(): Plugin {
