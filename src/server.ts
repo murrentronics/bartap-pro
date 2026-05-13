@@ -50,8 +50,6 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
   );
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
@@ -66,8 +64,31 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+// ── Route guard: only /download is publicly accessible ──────────────────────
+function routeGuard(request: Request): Response | null {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // Allow /download and /downloads/* (APK file)
+  if (path === "/download" || path === "/download.html" || path.startsWith("/downloads/")) {
+    return null; // allow
+  }
+
+  // Allow static assets needed by the download page
+  if (path.startsWith("/assets/") || path === "/favicon.ico" || path === "/logo.svg") {
+    return null; // allow
+  }
+
+  // Everything else → redirect to /download
+  return Response.redirect(new URL("/download", request.url).toString(), 302);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Check route guard first
+    const guardResponse = routeGuard(request);
+    if (guardResponse) return guardResponse;
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
