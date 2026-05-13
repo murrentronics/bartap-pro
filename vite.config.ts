@@ -21,6 +21,8 @@ export default defineConfig({
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(externalSupabaseUrl),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify("vavfsgbrfpvolskscolf"),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(externalSupabasePublishableKey),
+      "process.env.SUPABASE_URL": JSON.stringify(externalSupabaseUrl),
+      "process.env.SUPABASE_PUBLISHABLE_KEY": JSON.stringify(externalSupabasePublishableKey),
     },
   },
 });
