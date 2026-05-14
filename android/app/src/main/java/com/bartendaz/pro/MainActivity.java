@@ -3,7 +3,6 @@ package com.bartendaz.pro;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Window;
-import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -11,14 +10,16 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
-    private boolean keyboardVisible = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         Window window = getWindow();
-        WindowCompat.setDecorFitsSystemWindows(window, false);
+
+        // Keep status bar visible (black background, white icons)
+        // Do NOT use setDecorFitsSystemWindows(false) — it removes the status bar padding
+        // and breaks keyboard behavior
+        WindowCompat.setDecorFitsSystemWindows(window, true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.setStatusBarColor(android.graphics.Color.BLACK);
@@ -30,30 +31,24 @@ public class MainActivity extends BridgeActivity {
         if (controller != null) {
             controller.setAppearanceLightStatusBars(false);
             controller.setAppearanceLightNavigationBars(false);
+            // Hide nav bar, swipe up to show temporarily
+            controller.hide(WindowInsetsCompat.Type.navigationBars());
+            controller.setSystemBarsBehavior(
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            );
         }
-
-        // Listen for keyboard visibility changes
-        ViewCompat.setOnApplyWindowInsetsListener(window.getDecorView(), (v, insets) -> {
-            keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
-            if (!keyboardVisible) {
-                hideNavBar();
-            }
-            return insets;
-        });
-
-        hideNavBar();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (!keyboardVisible) hideNavBar();
+        hideNavBar();
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && !keyboardVisible) hideNavBar();
+        if (hasFocus) hideNavBar();
     }
 
     private void hideNavBar() {
