@@ -13,12 +13,7 @@ import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppWalletRouteImport } from './routes/_app/wallet'
-import { Route as AppRegisterRouteImport } from './routes/_app/register'
-import { Route as AppProductsRouteImport } from './routes/_app/products'
-import { Route as AppCashiersRouteImport } from './routes/_app/cashiers'
-import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
   id: '/__root/capacitor',
@@ -39,111 +34,47 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppWalletRoute = AppWalletRouteImport.update({
-  id: '/wallet',
-  path: '/wallet',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRegisterRoute = AppRegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppProductsRoute = AppProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCashiersRoute = AppCashiersRouteImport.update({
-  id: '/cashiers',
-  path: '/cashiers',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminRoute = AppAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
-  '/admin': typeof AppAdminRoute
-  '/cashiers': typeof AppCashiersRoute
-  '/products': typeof AppProductsRoute
-  '/register': typeof AppRegisterRoute
-  '/wallet': typeof AppWalletRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
-  '/admin': typeof AppAdminRoute
-  '/cashiers': typeof AppCashiersRoute
-  '/products': typeof AppProductsRoute
-  '/register': typeof AppRegisterRoute
-  '/wallet': typeof AppWalletRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/__root/capacitor': typeof _rootCapacitorRoute
-  '/_app/admin': typeof AppAdminRoute
-  '/_app/cashiers': typeof AppCashiersRoute
-  '/_app/products': typeof AppProductsRoute
-  '/_app/register': typeof AppRegisterRoute
-  '/_app/wallet': typeof AppWalletRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/download'
-    | '/login'
-    | '/capacitor'
-    | '/admin'
-    | '/cashiers'
-    | '/products'
-    | '/register'
-    | '/wallet'
+  fullPaths: '/' | '/download' | '/login' | '/capacitor'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/download'
-    | '/login'
-    | '/capacitor'
-    | '/admin'
-    | '/cashiers'
-    | '/products'
-    | '/register'
-    | '/wallet'
+  to: '/download' | '/login' | '/capacitor' | '/'
   id:
     | '__root__'
-    | '/'
     | '/_app'
     | '/download'
     | '/login'
     | '/__root/capacitor'
-    | '/_app/admin'
-    | '/_app/cashiers'
-    | '/_app/products'
-    | '/_app/register'
-    | '/_app/wallet'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   DownloadRoute: typeof DownloadRoute
   LoginRoute: typeof LoginRoute
@@ -180,71 +111,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/wallet': {
-      id: '/_app/wallet'
-      path: '/wallet'
-      fullPath: '/wallet'
-      preLoaderRoute: typeof AppWalletRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/register': {
-      id: '/_app/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof AppRegisterRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/products': {
-      id: '/_app/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof AppProductsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/cashiers': {
-      id: '/_app/cashiers'
-      path: '/cashiers'
-      fullPath: '/cashiers'
-      preLoaderRoute: typeof AppCashiersRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/admin': {
-      id: '/_app/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AppAdminRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
   }
 }
 
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
-  AppCashiersRoute: typeof AppCashiersRoute
-  AppProductsRoute: typeof AppProductsRoute
-  AppRegisterRoute: typeof AppRegisterRoute
-  AppWalletRoute: typeof AppWalletRoute
+  AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
-  AppCashiersRoute: AppCashiersRoute,
-  AppProductsRoute: AppProductsRoute,
-  AppRegisterRoute: AppRegisterRoute,
-  AppWalletRoute: AppWalletRoute,
+  AppIndexRoute: AppIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   DownloadRoute: DownloadRoute,
   LoginRoute: LoginRoute,
