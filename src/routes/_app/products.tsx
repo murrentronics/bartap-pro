@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, ImagePlus, Plus, Minus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { CATEGORIES, categoryIcon } from "@/lib/categories";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -268,13 +269,6 @@ export default function ProductsPage() {
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
 
-  const CATS = [
-    { value: "beers",  label: "Beers",  emoji: "🍺" },
-    { value: "liquor", label: "Liquor", emoji: "🥃" },
-    { value: "drinks", label: "Drinks", emoji: "🥤" },
-    { value: "snacks", label: "Snacks", emoji: "🍟" },
-  ];
-
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
 
@@ -338,17 +332,18 @@ export default function ProductsPage() {
             <AddItemDialog key={open ? "open" : "closed"} ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
           </Dialog>
         </div>
-        <div className="grid grid-cols-4 gap-1.5">
-          {CATS.map((cat) => (
+        <div className="grid grid-cols-5 gap-1.5">
+          {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-8 rounded-xl font-bold text-xs transition ${
+              className={`h-11 rounded-xl font-bold text-xl transition ${
                 category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
+              title={cat.label}
             >
-              {cat.emoji} {cat.label}
+              {cat.icon}
             </button>
           ))}
         </div>
@@ -357,7 +352,7 @@ export default function ProductsPage() {
       <div className="pt-3">        {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">No {category} yet — tap Add Item.</div>
+          <div className="text-center py-20 text-muted-foreground">No {CATEGORIES.find(c=>c.value===category)?.label ?? category} yet — tap Add Item.</div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => (
@@ -369,7 +364,7 @@ export default function ProductsPage() {
                 {p.image_url
                   ? <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
                   : <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                      {p.category === "snacks" ? "🍟" : "🍹"}
+                      {categoryIcon(p.category ?? "drinks")}
                     </div>}
 
                 {/* Out-of-stock overlay — covers only the middle (image area), not the bottom bar */}
@@ -467,13 +462,6 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
-  const CATS = [
-    { value: "beers",  emoji: "🍺" },
-    { value: "liquor", emoji: "🥃" },
-    { value: "drinks", emoji: "🥤" },
-    { value: "snacks", emoji: "🍟" },
-  ];
-
   const onPick = (f: File | undefined | null) => {
     if (!f) return;
     setFile(f);
@@ -568,17 +556,18 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 )}
               </div>
               {/* Category tabs */}
-              <div className="grid grid-cols-4 gap-1.5">
-                {CATS.map((cat) => (
+              <div className="grid grid-cols-5 gap-1.5">
+                {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
                     onClick={() => { setTemplateCat(cat.value); setTemplateKbOpen(false); }}
-                    className={`h-8 rounded-xl font-bold text-xs transition ${
+                    className={`h-11 rounded-xl font-bold text-xl transition ${
                       templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                     style={templateCat === cat.value ? { background: "var(--gradient-hero)" } : {}}
+                    title={cat.label}
                   >
-                    {cat.emoji}
+                    {cat.icon}
                   </button>
                 ))}
               </div>
@@ -648,10 +637,9 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 onChange={(e) => setCategory(e.target.value)}
                 className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
               >
-                <option value="beers">🍺 Beers</option>
-                <option value="liquor">🥃 Liquor</option>
-                <option value="drinks">🥤 Drinks</option>
-                <option value="snacks">🍟 Snacks</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
+                ))}
               </select>
             </div>
 

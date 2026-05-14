@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { CATEGORIES, type CategoryValue } from "@/lib/categories";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -128,8 +129,8 @@ type ImportedImage = {
   duplicate: boolean;
 };
 
-const TEMPLATE_CATEGORIES = ["beers", "liquor", "drinks", "snacks"] as const;
-type TemplateCategory = typeof TEMPLATE_CATEGORIES[number];
+const TEMPLATE_CATEGORIES = CATEGORIES.map(c => c.value) as CategoryValue[];
+type TemplateCategory = CategoryValue;
 
 // ─── Shared label cleaner (used by import panel + fix-all) ───────────────────
 function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
@@ -340,9 +341,7 @@ function TemplateImportPanel() {
   const selectedCount = images.filter((i) => i.selected).length;
   const newCount = images.filter((i) => !i.duplicate).length;
 
-  const CAT_EMOJI: Record<TemplateCategory, string> = {
-    beers: "🍺", liquor: "🥃", drinks: "🥤", snacks: "🍟",
-  };
+  const CAT_EMOJI = Object.fromEntries(CATEGORIES.map(c => [c.value, c.icon])) as Record<TemplateCategory, string>;
 
   return (
     <div className="space-y-5">
@@ -395,25 +394,28 @@ function TemplateImportPanel() {
         {/* Default category selector */}
         <div>
           <Label className="text-xs">Default Category (can change per image below)</Label>
-          <div className="grid grid-cols-4 gap-2 mt-1">
-            {TEMPLATE_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setDefaultCategory(cat);
-                  // Apply to all unselected-as-duplicate images that haven't been individually changed
-                  setImages((imgs) => imgs.map((i) => i.duplicate ? i : { ...i, category: cat }));
-                }}
-                className={`h-9 rounded-xl font-bold text-xs capitalize transition border ${
-                  defaultCategory === cat
-                    ? "text-primary-foreground border-transparent"
-                    : "bg-muted text-muted-foreground border-border hover:text-foreground"
-                }`}
-                style={defaultCategory === cat ? { background: "var(--gradient-hero)" } : {}}
-              >
-                {CAT_EMOJI[cat]} {cat}
-              </button>
-            ))}
+          <div className="grid grid-cols-5 gap-2 mt-1">
+            {TEMPLATE_CATEGORIES.map((cat) => {
+              const catDef = CATEGORIES.find(c => c.value === cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setDefaultCategory(cat);
+                    setImages((imgs) => imgs.map((i) => i.duplicate ? i : { ...i, category: cat }));
+                  }}
+                  className={`h-11 rounded-xl font-bold text-xl transition border ${
+                    defaultCategory === cat
+                      ? "text-primary-foreground border-transparent"
+                      : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                  }`}
+                  style={defaultCategory === cat ? { background: "var(--gradient-hero)" } : {}}
+                  title={catDef?.label ?? cat}
+                >
+                  {CAT_EMOJI[cat]}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -532,9 +534,7 @@ function TemplateImportPanel() {
 // ─── Template Gallery Panel ───────────────────────────────────────────────────
 type SavedTemplate = { id: string; url: string; label: string; category: string; created_at: string };
 
-const CAT_EMOJI: Record<string, string> = {
-  beers: "🍺", liquor: "🥃", drinks: "🥤", snacks: "🍟",
-};
+const CAT_EMOJI: Record<string, string> = Object.fromEntries(CATEGORIES.map(c => [c.value, c.icon]));
 
 function TemplateCard({ t, onDelete, onCategoryChange }: {
   t: SavedTemplate;
@@ -725,21 +725,25 @@ function TemplateGalleryPanel() {
     <div className="space-y-4">
       {/* Category filter tabs + Fix Titles button */}
       <div className="flex items-center gap-2">
-        <div className="grid grid-cols-4 gap-1.5 flex-1">
-          {TEMPLATE_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setFilterCat(cat)}
-              className={`h-9 rounded-xl font-bold text-xs capitalize transition border ${
-                filterCat === cat
-                  ? "text-primary-foreground border-transparent"
-                  : "bg-muted text-muted-foreground border-border hover:text-foreground"
-              }`}
-              style={filterCat === cat ? { background: "var(--gradient-hero)" } : {}}
-            >
-              {CAT_EMOJI[cat]} {cat} <span className="opacity-70">({counts[cat] ?? 0})</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-5 gap-2 flex-1">
+          {TEMPLATE_CATEGORIES.map((cat) => {
+            const catDef = CATEGORIES.find(c => c.value === cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => setFilterCat(cat)}
+                className={`h-14 rounded-xl font-bold text-2xl transition border ${
+                  filterCat === cat
+                    ? "text-primary-foreground border-transparent"
+                    : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                }`}
+                style={filterCat === cat ? { background: "var(--gradient-hero)" } : {}}
+                title={`${catDef?.label ?? cat} (${counts[cat] ?? 0})`}
+              >
+                {CAT_EMOJI[cat]}
+              </button>
+            );
+          })}
         </div>
         <Button
           size="sm"

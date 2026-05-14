@@ -7,24 +7,16 @@ import {
   Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category; stock_qty?: number };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number };
 type CartItem = Product & { qty: number };
-
-type Category = "beers" | "liquor" | "drinks" | "snacks";
-
-const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
-  { value: "beers",   label: "Beers",   emoji: "🍺" },
-  { value: "liquor",  label: "Liquor",  emoji: "🥃" },
-  { value: "drinks",  label: "Drinks",  emoji: "🥤" },
-  { value: "snacks",  label: "Snacks",  emoji: "🍟" },
-];
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<Category>("beers");
+  const [category, setCategory] = useState<CategoryValue>("beers");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
@@ -107,20 +99,21 @@ export default function RegisterPage() {
     <>
       {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        {/* Category tabs — 4 across */}
-        <div className="max-w-2xl mx-auto grid grid-cols-4 gap-1.5">
+        {/* Category tabs — icons only, 5 across */}
+        <div className="max-w-2xl mx-auto grid grid-cols-5 gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-8 rounded-xl font-bold text-xs transition ${
+              className={`h-11 rounded-xl font-bold text-xl transition ${
                 category === cat.value
                   ? "text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
+              title={cat.label}
             >
-              {cat.emoji} {cat.label}
+              {cat.icon}
             </button>
           ))}
         </div>
@@ -157,7 +150,7 @@ export default function RegisterPage() {
                     <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                      {p.category === "snacks" ? "🍟" : "🍹"}
+                      {categoryIcon(p.category ?? "drinks")}
                     </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 p-2 text-left bg-gradient-to-t from-black/85 via-black/50 to-transparent">
@@ -418,7 +411,7 @@ function CashOverlay({
                       {i.image_url ? (
                         <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
                       ) : (
-                        <span className="text-lg">{i.category === "snacks" ? "🍟" : "🍹"}</span>
+                        <span className="text-lg">{categoryIcon(i.category ?? "drinks")}</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

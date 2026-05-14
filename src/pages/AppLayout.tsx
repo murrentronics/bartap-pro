@@ -165,7 +165,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3">
+      <main className="max-w-2xl mx-auto px-3 py-3">
         <Outlet />
       </main>
     </div>
