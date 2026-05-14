@@ -1,8 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerFn } from "@tanstack/react-start";
 import { createCashier, deleteCashier } from "@/lib/cashiers.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -18,10 +16,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { downloadPdf } from "@/lib/download";
-
-export const Route = createFileRoute("/_app/cashiers")({
-  component: CashiersPage,
-});
 
 type Cashier = { id: string; username: string; wallet_balance: number };
 
@@ -269,7 +263,7 @@ function CashierStatement({ cashier, onClose }: { cashier: Cashier; onClose: () 
 }
 
 // ─── Main Cashiers Page ───────────────────────────────────────────────────────
-function CashiersPage() {
+export default function CashiersPage() {
   const { profile, session, refreshProfile } = useAuth();
   const [list, setList] = useState<Cashier[]>([]);
   const [tab, setTab] = useState("add");
@@ -279,8 +273,8 @@ function CashiersPage() {
   const [statementCashier, setStatementCashier] = useState<Cashier | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const create = useServerFn(createCashier);
-  const del = useServerFn(deleteCashier);
+  const create = createCashier;
+  const del = deleteCashier;
 
   const load = async () => {
     if (!profile) return;
@@ -312,13 +306,14 @@ function CashiersPage() {
   const authHeaders: HeadersInit | undefined = session?.access_token
     ? { authorization: `Bearer ${session.access_token}` }
     : undefined;
+  void authHeaders; // unused now but kept for reference
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.access_token) { toast.error("Not authenticated"); return; }
     setBusy(true);
     try {
-      await create({ data: { username: u, password: p }, headers: authHeaders });
+      await create({ username: u, password: p });
       toast.success(`Cashier "${u}" created`);
       setU(""); setP("");
       setTab("manage");
@@ -344,7 +339,7 @@ function CashiersPage() {
   const onDelete = async (c: Cashier) => {
     if (!session?.access_token) { toast.error("Not authenticated"); return; }
     try {
-      await del({ data: { cashier_id: c.id }, headers: authHeaders });
+      await del({ cashier_id: c.id });
       toast.success(`Removed ${c.username}`);
       load();
       refreshProfile();

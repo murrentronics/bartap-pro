@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,10 +5,6 @@ import { Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight, ArrowDownLeft
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
-
-export const Route = createFileRoute("/_app/wallet")({
-  component: WalletPage,
-});
 
 type Order = {
   id: string;
@@ -591,7 +586,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   );
 }
 
-function WalletPage() {
+export default function WalletPage() {
   const { profile } = useAuth();
   if (!profile) return null;
   if (profile.role === "owner") return <OwnerWallet profile={profile} />;

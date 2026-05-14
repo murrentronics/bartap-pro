@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import {
   listAllProfiles,
@@ -18,10 +18,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
-
-export const Route = createFileRoute("/_app/admin")({
-  component: AdminPage,
-});
 
 type Row = {
   id: string;
@@ -786,7 +782,7 @@ function TemplateGalleryPanel() {
 }
 
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
-function AdminPage() {
+export default function AdminPage() {
   const { profile, loading } = useAuth();
   const nav = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
@@ -794,7 +790,7 @@ function AdminPage() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!loading && profile && profile.role !== "admin") nav({ to: "/register" });
+    if (!loading && profile && profile.role !== "admin") nav("/register", { replace: true });
   }, [profile, loading, nav]);
 
   const refresh = async () => {

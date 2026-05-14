@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,10 +13,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-export const Route = createFileRoute("/_app/products")({
-  component: ProductsPage,
-});
 
 type Product = {
   id: string;
@@ -262,7 +257,7 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
 }
 
 // ─── Products Page ────────────────────────────────────────────────────────────
-function ProductsPage() {
+export default function ProductsPage() {
   const { profile } = useAuth();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +7,6 @@ import {
   Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
-
-export const Route = createFileRoute("/_app/register")({
-  component: RegisterPage,
-});
 
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: Category; stock_qty?: number };
 type CartItem = Product & { qty: number };
@@ -25,7 +20,7 @@ const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
   { value: "snacks",  label: "Snacks",  emoji: "🍟" },
 ];
 
-function RegisterPage() {
+export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
