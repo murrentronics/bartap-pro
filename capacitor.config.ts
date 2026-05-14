@@ -5,19 +5,18 @@ const config: CapacitorConfig = {
   appName: "Bartendaz Pro",
   webDir: "dist/client",
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      launchAutoHide: true,
+      showSpinner: false,
+      backgroundColor: "#000000",
+    },
     Camera: {},
     Filesystem: {},
     Share: {},
-    Keyboard: {
-      resize: "ionic",
-      style: "dark",
-      resizeOnFullScreen: true,
-    },
   },
   android: {
     backgroundColor: "#000000",
-    allowMixedContent: true,
-    captureInput: true,
   },
 };
 
