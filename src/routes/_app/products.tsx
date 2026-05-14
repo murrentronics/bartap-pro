@@ -317,7 +317,7 @@ export default function ProductsPage() {
   return (
     <div>
       {/* Sticky sub-header — sits below the app header */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-3 pb-3 bg-background/95 backdrop-blur border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black leading-tight">Bar Items</h1>
@@ -332,12 +332,12 @@ export default function ProductsPage() {
             <AddItemDialog key={open ? "open" : "closed"} ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
           </Dialog>
         </div>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-5 gap-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-11 rounded-xl font-bold text-xl transition ${
+              className={`h-14 rounded-xl font-bold text-2xl transition ${
                 category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
@@ -556,12 +556,12 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 )}
               </div>
               {/* Category tabs */}
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-5 gap-2">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
                     onClick={() => { setTemplateCat(cat.value); setTemplateKbOpen(false); }}
-                    className={`h-11 rounded-xl font-bold text-xl transition ${
+                    className={`h-14 rounded-xl font-bold text-2xl transition ${
                       templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                     style={templateCat === cat.value ? { background: "var(--gradient-hero)" } : {}}
