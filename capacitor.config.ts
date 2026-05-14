@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
     Filesystem: {},
     Share: {},
     Keyboard: {
-      resize: "body",
+      resize: "ionic",
       style: "dark",
       resizeOnFullScreen: true,
     },
@@ -17,6 +17,7 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: "#000000",
     allowMixedContent: true,
+    captureInput: true,
   },
 };
 

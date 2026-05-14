@@ -113,7 +113,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
       requestAnimationFrame(tick);
     }, 2000);
     const t5 = setTimeout(() => setFadeOut(true), 4500);
-    const t6 = setTimeout(() => onDone(), 5000);
+    const t6 = setTimeout(() => onDone(), 4800); // unmount faster after fade starts
 
     return () => { [t1, t2, t3, t4, t5, t6].forEach(clearTimeout); };
   }, [onDone]);
@@ -132,6 +132,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
         gap: 0,
         opacity: fadeOut ? 0 : 1,
         transition: "opacity 0.5s ease",
+        pointerEvents: fadeOut ? "none" : "all",
         // Safe area padding for notch devices
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
