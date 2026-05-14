@@ -105,8 +105,8 @@ export default function RegisterPage() {
 
   return (
     <>
-      {/* Sticky category tabs only — no search bar */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+      {/* Sticky category tabs — sits below the app header */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         {/* Category tabs — 4 across */}
         <div className="max-w-2xl mx-auto grid grid-cols-4 gap-1.5">
           {CATEGORIES.map((cat) => (

@@ -350,7 +350,11 @@ export default function CashiersPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-black mb-6">Cashiers</h1>
+      {/* Sticky page title */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <h1 className="text-xl font-black leading-tight">Cashiers</h1>
+      </div>
+      <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="add">Add Cashier</TabsTrigger>
@@ -426,6 +430,7 @@ export default function CashiersPage() {
       {statementCashier && (
         <CashierStatement cashier={statementCashier} onClose={() => setStatementCashier(null)} />
       )}
+      </div>
     </div>
   );
 }

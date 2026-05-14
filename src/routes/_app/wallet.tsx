@@ -88,6 +88,11 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
   return (
     <div className="space-y-5">
+      {/* Sticky page title */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <h1 className="text-xl font-black leading-tight">Wallet</h1>
+      </div>
+
       {/* Balance card */}
       <section
         className="rounded-3xl p-6 relative overflow-hidden"
@@ -469,6 +474,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   return (
     <div className="space-y-5">
+      {/* Sticky page title */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <h1 className="text-xl font-black leading-tight">Wallet</h1>
+      </div>
+
       <section className="rounded-3xl p-6 relative overflow-hidden" style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">

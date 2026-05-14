@@ -114,16 +114,19 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
       className="fixed bottom-0 inset-x-0 z-[80] bg-background/98 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)", boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
       onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
-      {/* Dismiss tab — sits above the keyboard top border */}
-      <div className="absolute -top-7 inset-x-0 flex justify-center pointer-events-none">
-        <button
-          onPointerDown={(e) => { e.preventDefault(); onClose(); }}
-          className="pointer-events-auto h-7 w-16 rounded-t-2xl flex items-center justify-center bg-background border border-b-0 border-border hover:bg-muted/70 transition active:scale-95"
-          aria-label="Hide keyboard"
-        >
+      {/* Dismiss tab — sits above the keyboard top border.
+          Uses a full-width invisible hit area so nothing behind it gets tapped. */}
+      <div
+        className="absolute inset-x-0 flex justify-center"
+        style={{ top: "-28px", height: "28px", pointerEvents: "auto" }}
+        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+      >
+        <div className="h-7 w-16 rounded-t-2xl flex items-center justify-center bg-background border border-b-0 border-border hover:bg-muted/70 transition active:scale-95">
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </button>
+        </div>
       </div>
       {/* Number row */}
       <div className="flex justify-center gap-1">
@@ -242,7 +245,7 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
       {visible.map((t) => (
         <button
           key={t.url}
-          onClick={() => onSelect(t.url, t.label, category)}
+          onPointerDown={(e) => { e.preventDefault(); onSelect(t.url, t.label, category); }}
           className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition"
           style={{ background: "var(--gradient-card)" }}
         >
@@ -319,8 +322,8 @@ export default function ProductsPage() {
 
   return (
     <div>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
+      {/* Sticky sub-header — sits below the app header */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black leading-tight">Bar Items</h1>
@@ -351,8 +354,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="pt-3">
-        {loading ? (
+      <div className="pt-3">        {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No {category} yet — tap Add Item.</div>
@@ -483,7 +485,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
     setTemplateUrl(url);
     setFile(null);
     setPreview(url);
-    if (!name) setName(label);
+    setName(label);  // always update name from the selected template
     setCategory(templateCategory);
     setShowTemplates(false);
     setTemplateSearch("");
@@ -543,7 +545,7 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
         {showTemplates ? (
           <div className="flex flex-col h-full">
             {/* Sticky search + category tabs — top:-1px bleeds over the gap */}
-            <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)", top: "-1px", paddingTop: "1px" }}>
+            <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)", paddingTop: "1px" }}>
               {/* Search */}
               <div className="flex items-center gap-2">
                 <div

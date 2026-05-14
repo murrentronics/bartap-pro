@@ -100,7 +100,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen">
       <header
-        className="bg-background/90 backdrop-blur border-b border-border relative z-30"
+        className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
@@ -165,7 +165,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-3">
+      <main className="max-w-2xl mx-auto px-3">
         <Outlet />
       </main>
     </div>

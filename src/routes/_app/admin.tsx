@@ -844,9 +844,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <ShieldAlert className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-black">Admin</h1>
+      {/* Sticky page title */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-black leading-tight">Admin</h1>
+        </div>
       </div>
 
       <Tabs defaultValue="users">
