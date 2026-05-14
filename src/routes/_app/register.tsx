@@ -204,13 +204,10 @@ function RegisterPage() {
                     </div>
                   )}
 
-                  {/* Low stock banner (1–5) */}
-                  {!outOfStock && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                    <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center py-1"
-                      style={{ background: "oklch(0.35 0.18 50 / 0.85)" }}>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-orange-200 leading-none">
-                        Low Stock · {p.stock_qty}
-                      </span>
+                  {/* Low stock badge (top-right corner) — only when in cart badge is not showing */}
+                  {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                      <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
                     </div>
                   )}
                 </button>
