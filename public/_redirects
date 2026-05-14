@@ -1,2 +1,2 @@
-# Redirect root and all app routes to the download page
-/   /download.html  302
+# SPA fallback - all routes go to index.html for client-side routing
+/*    /index.html   200
