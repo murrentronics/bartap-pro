@@ -1,4 +1,4 @@
-// Capacitor/Android version of __root.tsx
+// Capacitor/Android version of __root.tsx — no SSR imports
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
