@@ -317,7 +317,7 @@ export default function ProductsPage() {
   return (
     <div>
       {/* Sticky sub-header — sits below the app header */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-3 pb-3 bg-background/95 backdrop-blur border-b border-border space-y-2">
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black leading-tight">Bar Items</h1>

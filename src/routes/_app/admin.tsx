@@ -724,7 +724,7 @@ function TemplateGalleryPanel() {
   return (
     <div className="space-y-4">
       {/* Category filter tabs + Fix Titles button — sticky below header */}
-      <div className="sticky top-[88px] z-10 -mx-3 px-3 py-3 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-[88px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2">
           <div className="grid grid-cols-5 gap-2 flex-1">
             {TEMPLATE_CATEGORIES.map((cat) => {

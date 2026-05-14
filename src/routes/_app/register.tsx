@@ -86,6 +86,15 @@ export default function RegisterPage() {
   const addToCart = (p: Product) => {
     setCart((c) => {
       const ex = c.find((i) => i.id === p.id);
+      const currentQty = ex?.qty ?? 0;
+      const availableStock = p.stock_qty ?? Infinity;
+      
+      // Don't add if we've already reached the stock limit
+      if (currentQty >= availableStock) {
+        toast.error(`Only ${availableStock} in stock`);
+        return c;
+      }
+      
       return ex ? c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i)) : [...c, { ...p, qty: 1 }];
     });
   };
@@ -98,7 +107,7 @@ export default function RegisterPage() {
   return (
     <>
       {/* Sticky category tabs — sits below the app header */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-3 pb-3 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
         {/* Category tabs — icons only, 5 across */}
         <div className="max-w-2xl mx-auto grid grid-cols-5 gap-2">
           {CATEGORIES.map((cat) => (
