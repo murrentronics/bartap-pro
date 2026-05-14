@@ -17,7 +17,7 @@ const router = createRouter({
   context: { queryClient },
   defaultPreloadStaleTime: 0,
   defaultPreload: false,
-  defaultViewTransition: false,
+  scrollRestoration: false,
 });
 
 declare module "@tanstack/react-router" {
@@ -25,12 +25,10 @@ declare module "@tanstack/react-router" {
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster richColors position="top-center" />
-      </AuthProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <RouterProvider router={router} />
+      <Toaster richColors position="top-center" />
+    </AuthProvider>
+  </QueryClientProvider>
 );
