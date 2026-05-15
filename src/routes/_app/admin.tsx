@@ -789,15 +789,18 @@ function TemplateGalleryPanel() {
 
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const { profile, loading } = useAuth();
+  const { profile, loading, signOut } = useAuth();
   const nav = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!loading && profile && profile.role !== "admin") nav("/register", { replace: true });
-  }, [profile, loading, nav]);
+    if (!loading && profile && profile.role !== "admin") {
+      // Admin-only web: sign out non-admin users
+      signOut().then(() => nav("/login", { replace: true }));
+    }
+  }, [profile, loading, nav, signOut]);
 
   const refresh = async () => {
     setBusy(true);
