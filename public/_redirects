@@ -1,7 +1,8 @@
-# Admin routes only - serve the app
-/admin        /index.html   200
-/admin/*      /index.html   200
+# Admin routes - serve the app (must come first)
+/admin*  /index.html  200
 
-# Root and everything else redirects to download page
-/             /download.html  302
-/*            /download.html  302
+# Root redirects to download page
+/  /download.html  302
+
+# Catch-all - everything else goes to download
+/*  /download.html  302
