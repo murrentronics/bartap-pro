@@ -17,6 +17,7 @@ export default function BillingPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | null>(null);
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showRenewalPaymentMethod, setShowRenewalPaymentMethod] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -156,6 +157,27 @@ export default function BillingPage() {
     toast.success("Copied to clipboard");
   };
 
+  const cancelPendingPayment = async () => {
+    if (!pendingPayment) return;
+    
+    setLoading(true);
+    const { error } = await supabase
+      .from("billing_payments")
+      .delete()
+      .eq("id", pendingPayment.id)
+      .eq("status", "pending"); // Extra safety check
+    
+    setLoading(false);
+    
+    if (error) {
+      toast.error("Failed to cancel payment");
+      return;
+    }
+    
+    toast.success("Payment cancelled");
+    loadPayments();
+  };
+
   const pendingPayment = payments.find(p => p.status === "pending");
   const lastPaidPayment = payments.find(p => p.status === "paid");
   const hasActivePlan = profile?.billing_status === "active";
@@ -203,15 +225,15 @@ export default function BillingPage() {
                     Next payment due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
                   </p>
                 </div>
-                {/* Show Mark Paid button if no pending payment and has next due date */}
-                {!pendingPayment && nextDueDate && (
+                {/* Show Pay Fee button if no pending payment and has next due date */}
+                {!pendingPayment && nextDueDate && !showRenewalPaymentMethod && (
                   <Button
-                    onClick={() => createPayment(true)}
+                    onClick={() => setShowRenewalPaymentMethod(true)}
                     disabled={loading}
                     variant={isOverdue ? "destructive" : "default"}
                     className="font-bold"
                   >
-                    {loading ? "Creating..." : isOverdue ? "Overdue - Mark Paid" : "Mark Paid"}
+                    {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
                   </Button>
                 )}
               </>
@@ -263,9 +285,17 @@ export default function BillingPage() {
               </div>
 
               <div className="border-t pt-4">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   💵 Pay cash directly to admin. Your payment is pending admin confirmation.
                 </p>
+                <Button
+                  variant="outline"
+                  onClick={cancelPendingPayment}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  Cancel Payment
+                </Button>
               </div>
             </div>
           </Card>
@@ -391,24 +421,104 @@ export default function BillingPage() {
                   </div>
                 )}
               </div>
+              
+              <div className="border-t pt-4">
+                <Button
+                  variant="outline"
+                  onClick={cancelPendingPayment}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  Cancel Payment
+                </Button>
+              </div>
             </div>
           </Card>
         )}
 
-        {/* Show Mark Paid button for overdue users who need to renew */}
-        {!pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired" && (
+        {/* Renewal Payment Method Selection */}
+        {showRenewalPaymentMethod && !pendingPayment && (
+          <Card className="p-6 border-primary">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Choose Payment Method</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowRenewalPaymentMethod(false)}>
+                Cancel
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Cash Payment Option */}
+              <button
+                onClick={() => {
+                  createPayment(true, "cash");
+                  setShowRenewalPaymentMethod(false);
+                }}
+                disabled={loading}
+                className="p-6 rounded-xl border-2 border-border hover:border-primary transition text-left disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="text-2xl">💵</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Cash Payment</h3>
+                    <p className="text-xs text-green-500">Instant submission</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Pay cash directly to admin. Your payment will be marked as pending immediately.
+                </p>
+              </button>
+
+              {/* Bank Transfer Option */}
+              <button
+                onClick={() => {
+                  if (bankTransferEnabled) {
+                    createPayment(true, "bank");
+                    setShowRenewalPaymentMethod(false);
+                  }
+                }}
+                disabled={!bankTransferEnabled || loading}
+                className={`p-6 rounded-xl border-2 text-left transition ${
+                  bankTransferEnabled 
+                    ? "border-border hover:border-primary cursor-pointer" 
+                    : "border-border bg-muted/30 opacity-50 cursor-not-allowed"
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <span className="text-2xl">🏦</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Bank Transfer</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {bankTransferEnabled ? "Transfer to bank account" : "Coming soon"}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {bankTransferEnabled 
+                    ? "Transfer to admin's bank account with reference number." 
+                    : "Transfer to admin's bank account. Currently unavailable."}
+                </p>
+              </button>
+            </div>
+          </Card>
+        )}
+
+        {/* Show payment method selection for overdue users who need to renew */}
+        {!pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired" && !showRenewalPaymentMethod && (
           <Card className="p-6 border-red-500">
             <h2 className="text-xl font-bold mb-4 text-red-500">Renew Your Subscription</h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Your subscription has expired. Make your payment and click the button below to notify admin.
+              Your subscription has expired. Choose how you want to pay.
             </p>
             <Button
-              onClick={() => createPayment(true)}
+              onClick={() => setShowRenewalPaymentMethod(true)}
               disabled={loading}
               variant="destructive"
               className="w-full h-12 text-base font-bold"
             >
-              {loading ? "Creating..." : "I've Made Payment - Notify Admin"}
+              Pay Fee
             </Button>
           </Card>
         )}

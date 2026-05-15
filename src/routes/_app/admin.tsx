@@ -268,67 +268,15 @@ function TemplateImportPanel() {
     return s || "Untitled";
   };
 
-  // Search for images - try multiple sources for best results
-  const searchImages = async (query: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
-    // Add Trinidad/Caribbean context for better local product results
-    const searchQuery = `${query} Trinidad Tobago Caribbean product grocery store`;
-    
-    // Use Pixabay with enhanced search terms
-    return searchImagesPixabay(searchQuery, onProgress);
-  };
-
-  // Fallback to Pixabay with enhanced search
-  const searchImagesPixabay = async (query: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
-    const allResults: { url: string; label: string }[] = [];
-    
-    // Try multiple search variations for better results
-    const searchVariations = [
-      query, // Original query
-      `${query} product package`,
-      `${query} bottle can`,
-    ];
-    
-    for (const searchTerm of searchVariations) {
-      try {
-        const res = await fetch(
-          `https://pixabay.com/api/?key=9656065-a4094594c34f9ac14c7fc4c39&q=${encodeURIComponent(searchTerm)}&image_type=photo&per_page=200&safesearch=true`,
-          { signal: AbortSignal.timeout(15000) }
-        );
-
-        if (!res.ok) continue;
-
-        const data = await res.json() as { hits: { largeImageURL: string; tags: string }[] };
-        const pageResults = data.hits.map((img) => ({
-          url: img.largeImageURL,
-          label: img.tags.split(',')[0].trim() || query,
-        }));
-        
-        // Add unique results only
-        for (const result of pageResults) {
-          if (!allResults.find(r => r.url === result.url)) {
-            allResults.push(result);
-            onProgress(allResults.length);
-          }
-        }
-        
-        // Stop if we have enough results
-        if (allResults.length >= 300) break;
-        
-      } catch (e) {
-        continue;
-      }
-    }
-
-    if (allResults.length === 0) {
-      throw new Error("No images found. Try a different search term or paste a URL.");
-    }
-
-    return allResults;
-  };
-
   const handleImport = async () => {
     const input = pageUrl.trim();
-    if (!input) { toast.error("Enter a URL or search term"); return; }
+    if (!input) { toast.error("Enter a URL"); return; }
+    
+    // Only allow URLs
+    if (!input.startsWith("http://") && !input.startsWith("https://")) {
+      toast.error("Please enter a valid URL (must start with http:// or https://)");
+      return;
+    }
     
     setImporting(true);
     setImportCount(0);
@@ -337,16 +285,9 @@ function TemplateImportPanel() {
 
     try {
       setImportStatus("parsing");
-      let rawImages: { url: string; label: string }[];
       
-      // Check if input is a URL or search term
-      if (input.startsWith("http://") || input.startsWith("https://")) {
-        // URL scraping
-        rawImages = await fetchViaEdgeFunction(input, (n) => setImportCount(n));
-      } else {
-        // Image search
-        rawImages = await searchImages(input, (n) => setImportCount(n));
-      }
+      // URL scraping only
+      const rawImages = await fetchViaEdgeFunction(input, (n) => setImportCount(n));
 
       const found: ImportedImage[] = rawImages.map((img) => ({
         url: img.url,
@@ -359,7 +300,7 @@ function TemplateImportPanel() {
       setImportStatus("done");
 
       if (found.length === 0) {
-        toast.error(input.startsWith("http") ? "No product images found on that page." : "No images found for that search.");
+        toast.error("No product images found on that page.");
       } else {
         setImages(found);
         toast.success(`Found ${found.length} images — ${found.filter(i => !i.duplicate).length} new`);
@@ -428,17 +369,17 @@ function TemplateImportPanel() {
               <Input
                 value={pageUrl}
                 onChange={(e) => setPageUrl(e.target.value)}
-                placeholder="Dixee Biscuit or https://example.com/products"
+                placeholder="https://example.com/products"
                 className="pl-9"
                 onKeyDown={(e) => e.key === "Enter" && handleImport()}
               />
             </div>
             <Button onClick={handleImport} disabled={importing || !pageUrl.trim()}>
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Enter a product name to search free images, or paste a URL to scrape a website
+            Paste a URL to scrape product images from a website
           </p>
         </div>
 
