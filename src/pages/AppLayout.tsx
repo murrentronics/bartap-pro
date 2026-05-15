@@ -28,6 +28,10 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
+    // Redirect pending owners to billing page
+    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
+      nav("/billing", { replace: true });
+    }
   }, [loading, profile, loc.pathname, nav]);
 
   // Close menu on outside click
@@ -66,26 +70,18 @@ export default function AppLayout() {
         />
       );
     }
-    if (profile.status === "suspended") {
+    if (profile.status === "suspended" && loc.pathname !== "/billing") {
       return (
         <FullScreenStatus
           icon={Ban}
           title="Account suspended"
-          message="Please wait while admin is reviewing your account."
+          message="Your account is suspended. Please check your billing page or contact admin."
           onSignOut={() => { signOut(); nav("/login"); }}
+          showBillingButton={() => nav("/billing")}
         />
       );
     }
-    if (profile.status === "pending") {
-      return (
-        <FullScreenStatus
-          icon={ShieldAlert}
-          title="Awaiting approval"
-          message="Your owner account is pending admin approval. You'll get access once approved."
-          onSignOut={() => { signOut(); nav("/login"); }}
-        />
-      );
-    }
+    // Don't show pending screen anymore - just redirect to billing (handled in useEffect above)
   }
 
   const navItems = isAdmin
@@ -182,11 +178,13 @@ function FullScreenStatus({
   title,
   message,
   onSignOut,
+  showBillingButton,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   message: string;
   onSignOut: () => void;
+  showBillingButton?: () => void;
 }) {
   return (
     <div
@@ -199,7 +197,12 @@ function FullScreenStatus({
         </div>
         <h1 className="text-3xl font-black">{title}</h1>
         <p className="text-muted-foreground">{message}</p>
-        <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+        <div className="flex gap-3 justify-center">
+          {showBillingButton && (
+            <Button onClick={showBillingButton}>Go to Billing</Button>
+          )}
+          <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+        </div>
       </div>
     </div>
   );

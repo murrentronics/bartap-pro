@@ -161,3 +161,34 @@ CREATE TRIGGER update_admin_bank_details_updated_at
   BEFORE UPDATE ON admin_bank_details
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+
+-- Function to check and set accounts to pending with overdue payments
+CREATE OR REPLACE FUNCTION check_overdue_payments()
+RETURNS void AS $$
+BEGIN
+  -- Set owners to pending whose subscription has expired and no pending payment
+  UPDATE profiles
+  SET status = 'pending'
+  WHERE role = 'owner'
+    AND billing_status = 'active'
+    AND subscription_end_date < NOW()
+    AND status = 'approved'
+    AND NOT EXISTS (
+      SELECT 1 FROM billing_payments 
+      WHERE owner_id = profiles.id 
+      AND status = 'pending'
+    );
+    
+  -- Update billing status to expired
+  UPDATE profiles
+  SET billing_status = 'expired'
+  WHERE role = 'owner'
+    AND billing_status = 'active'
+    AND subscription_end_date < NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create a cron job to run this daily (requires pg_cron extension)
+-- Note: This needs to be set up manually in Supabase dashboard or run periodically
+-- SELECT cron.schedule('check-overdue-payments', '0 0 * * *', 'SELECT check_overdue_payments()');

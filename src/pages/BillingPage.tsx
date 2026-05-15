@@ -125,7 +125,17 @@ export default function BillingPage() {
         <Card className="p-6">
           <h2 className="text-xl font-bold mb-4">Subscription Status</h2>
           <div className="flex items-center gap-3">
-            {hasActivePlan ? (
+            {profile?.status === "pending" ? (
+              <>
+                <AlertCircle className="h-6 w-6 text-yellow-500" />
+                <div>
+                  <p className="font-bold text-yellow-500">Pending Admin Approval</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your account is awaiting admin approval. Choose a plan below to get started.
+                  </p>
+                </div>
+              </>
+            ) : hasActivePlan ? (
               <>
                 <CheckCircle className="h-6 w-6 text-green-500" />
                 <div>
