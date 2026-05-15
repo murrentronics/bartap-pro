@@ -3,53 +3,8 @@ const path = require('path');
 
 const distDir = path.join(__dirname, '..', 'dist', 'client');
 
-// Check if index.html exists before renaming
-const indexPath = path.join(distDir, 'index.html');
-const adminPath = path.join(distDir, 'admin.html');
+// Rename index.html to admin.html is NOT needed
+// Just keep index.html as the admin app
 
-if (fs.existsSync(indexPath)) {
-  fs.renameSync(indexPath, adminPath);
-  console.log('✓ Renamed index.html to admin.html');
-} else {
-  console.log('⚠ index.html not found, skipping rename');
-}
+console.log('✓ Admin build complete: index.html serves admin app at root');
 
-// Create simple index.html that redirects to download
-fs.writeFileSync(
-  path.join(distDir, 'index.html'),
-  `<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="refresh" content="0; url=/download.html">
-  <script>window.location.href = '/download.html';</script>
-</head>
-<body>
-  <p>Redirecting...</p>
-</body>
-</html>`
-);
-console.log('✓ Created index.html redirect');
-
-// Copy download.html
-const downloadSrc = path.join(__dirname, '..', 'public', 'download.html');
-const downloadDest = path.join(distDir, 'download.html');
-
-if (fs.existsSync(downloadSrc)) {
-  fs.copyFileSync(downloadSrc, downloadDest);
-  console.log('✓ Copied download.html');
-} else {
-  console.log('⚠ download.html not found in public/');
-}
-
-// Create _redirects for admin deployment
-// This allows /admin to work while root goes to download
-fs.writeFileSync(
-  path.join(distDir, '_redirects'),
-  `/admin /admin.html 200
-/admin/* /admin.html 200
-/download /download.html 200
-/ /download.html 200
-`
-);
-
-console.log('✓ Post-build complete: admin.html at /admin, download.html at root');
