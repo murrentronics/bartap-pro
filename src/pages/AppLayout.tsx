@@ -169,7 +169,7 @@ export default function AppLayout() {
         { to: "/admin/banking", label: "Banking", icon: Building2 },
       ]
     : [
-        { to: "/register", label: "Cashier", icon: Wine },
+        { to: "/register", label: "Bar", icon: Wine },
         ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
         { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),

@@ -270,6 +270,7 @@ export default function CashiersPage() {
   const [u, setU] = useState("");
   const [p, setP] = useState("");
   const [busy, setBusy] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [statementCashier, setStatementCashier] = useState<Cashier | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -311,6 +312,24 @@ export default function CashiersPage() {
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.access_token) { toast.error("Not authenticated"); return; }
+    
+    // Validate username format - no spaces, single word
+    if (/\s/.test(u)) {
+      const errorMsg = "Username cannot contain spaces. Use a single word (e.g., cashier1, john_doe)";
+      setUsernameError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    // Validate username format - only lowercase letters, numbers, underscore
+    if (!/^[a-z0-9_]+$/.test(u)) {
+      const errorMsg = "Username must contain only lowercase letters, numbers, and underscores";
+      setUsernameError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    setUsernameError(null);
     setBusy(true);
     try {
       await create({ username: u, password: p });
@@ -369,14 +388,41 @@ export default function CashiersPage() {
           >
             <div>
               <Label>Username</Label>
-              <Input value={u} onChange={(e) => setU(e.target.value)} placeholder="cashier1" required minLength={3} autoComplete="off" />
-              <p className="text-xs text-muted-foreground mt-1">Lowercase letters, numbers, underscore.</p>
+              <Input 
+                value={u} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setU(val);
+                  // Real-time validation
+                  if (val.length > 0) {
+                    if (/\s/.test(val)) {
+                      setUsernameError("No spaces allowed");
+                    } else if (!/^[a-z0-9_]+$/.test(val)) {
+                      setUsernameError("Only lowercase letters, numbers, and underscores");
+                    } else {
+                      setUsernameError(null);
+                    }
+                  } else {
+                    setUsernameError(null);
+                  }
+                }} 
+                placeholder="cashier1" 
+                required 
+                minLength={3} 
+                autoComplete="off"
+                className={usernameError ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {usernameError ? (
+                <p className="text-xs text-red-500 mt-1 font-medium">{usernameError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">Single word only. Use lowercase letters, numbers, or underscores (no spaces).</p>
+              )}
             </div>
             <div>
               <Label>Password</Label>
               <Input type="password" value={p} onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" />
             </div>
-            <Button type="submit" disabled={busy} className="w-full h-12 font-black" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+            <Button type="submit" disabled={busy || !!usernameError} className="w-full h-12 font-black" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
               {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : <><UserPlus className="h-4 w-4 mr-2" /> Create Cashier</>}
             </Button>
           </form>
