@@ -28,10 +28,6 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
-    // Redirect pending owners to billing page
-    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
-      nav("/billing", { replace: true });
-    }
   }, [loading, profile, loc.pathname, nav]);
 
   // Close menu on outside click
@@ -58,30 +54,107 @@ export default function AppLayout() {
 
   const isOwner = profile.role === "owner";
   const isAdmin = profile.role === "admin";
+  const isPending = !isAdmin && profile.status === "pending";
+  const isSuspended = !isAdmin && profile.status === "suspended";
 
-  if (!isAdmin) {
-    if (profile.status === "expelled") {
-      return (
-        <FullScreenStatus
-          icon={UserMinus}
-          title="Account expelled"
-          message="Your account has been expelled. You no longer have access to Bartendaz Pro."
-          onSignOut={() => { signOut(); nav("/login"); }}
-        />
-      );
-    }
-    if (profile.status === "suspended" && loc.pathname !== "/billing") {
-      return (
-        <FullScreenStatus
-          icon={Ban}
-          title="Account suspended"
-          message="Your account is suspended. Please check your billing page or contact admin."
-          onSignOut={() => { signOut(); nav("/login"); }}
-          showBillingButton={() => nav("/billing")}
-        />
-      );
-    }
-    // Don't show pending screen anymore - just redirect to billing (handled in useEffect above)
+  // Expelled users get full screen block
+  if (!isAdmin && profile.status === "expelled") {
+    return (
+      <FullScreenStatus
+        icon={UserMinus}
+        title="Account expelled"
+        message="Your account has been expelled. You no longer have access to Bartendaz Pro."
+        onSignOut={() => { signOut(); nav("/login"); }}
+      />
+    );
+  }
+
+  // Suspended users: show full screen on all pages except billing
+  if (isSuspended && loc.pathname !== "/billing") {
+    return (
+      <FullScreenStatus
+        icon={Ban}
+        title="Account suspended"
+        message="Your account is suspended. Please check your billing page or contact admin."
+        onSignOut={() => { signOut(); nav("/login"); }}
+        showBillingButton={() => nav("/billing")}
+      />
+    );
+  }
+
+  // Pending users: show pending message on all pages except billing
+  const showPendingBlock = isPending && loc.pathname !== "/billing";
+  if (showPendingBlock) {
+    return (
+      <div className="min-h-screen">
+        <header
+          className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-border"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        >
+          <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                <Wine className="h-3.5 w-3.5 text-primary-foreground" />
+              </div>
+              <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
+            </div>
+            <div className="flex items-center gap-2" ref={menuRef}>
+              <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
+                {profile.username}
+              </span>
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                Menu
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
+                  style={{ background: "var(--gradient-card)" }}
+                >
+                  <Link
+                    to="/billing"
+                    className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary"
+                  >
+                    <CreditCard className="h-5 w-5 shrink-0" />
+                    Billing
+                  </Link>
+                  <button
+                    onClick={() => { signOut(); nav("/login"); }}
+                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition"
+                  >
+                    <X className="h-5 w-5 shrink-0" />
+                    Logout / Salir
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <main className="max-w-2xl mx-auto px-3 py-3">
+          <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+            <div className="max-w-md text-center space-y-6">
+              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500/20 border border-yellow-500/40">
+                <ShieldAlert className="h-10 w-10 text-yellow-500" />
+              </div>
+              <h1 className="text-3xl font-black">Account Pending</h1>
+              <p className="text-muted-foreground">
+                Your account is awaiting admin approval. Please complete your billing setup to activate your account.
+              </p>
+              <Button onClick={() => nav("/billing")} size="lg">
+                Go to Billing
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   const navItems = isAdmin
