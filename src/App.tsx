@@ -15,25 +15,6 @@ import BillingPage from "@/pages/BillingPage";
 import AdminBankingPage from "@/pages/AdminBankingPage";
 import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 
-// Admin-only guard component
-function AdminOnlyGuard({ children }: { children: React.ReactNode }) {
-  const { profile, loading, signOut } = useAuth();
-
-  useEffect(() => {
-    if (!loading && profile && profile.role !== "admin") {
-      // Force sign out non-admin users immediately
-      signOut();
-    }
-  }, [profile, loading, signOut]);
-
-  // Don't render anything for non-admin users
-  if (!loading && profile && profile.role !== "admin") {
-    return null;
-  }
-
-  return <>{children}</>;
-}
-
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
@@ -46,27 +27,25 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <AdminOnlyGuard>
-        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-        <HashRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<Navigate to="/admin" replace />} />
-              <Route path="register" element={<RegisterPage />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="wallet" element={<WalletPage />} />
-              <Route path="cashiers" element={<CashiersPage />} />
-              <Route path="billing" element={<BillingPage />} />
-              <Route path="admin" element={<AdminPage />} />
-              <Route path="admin/banking" element={<AdminBankingPage />} />
-              <Route path="admin/billing" element={<AdminBillingManagementPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </HashRouter>
-        <Toaster richColors position="top-center" />
-      </AdminOnlyGuard>
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      <HashRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Navigate to="/register" replace />} />
+            <Route path="register" element={<RegisterPage />} />
+            <Route path="products" element={<ProductsPage />} />
+            <Route path="wallet" element={<WalletPage />} />
+            <Route path="cashiers" element={<CashiersPage />} />
+            <Route path="billing" element={<BillingPage />} />
+            <Route path="admin" element={<AdminPage />} />
+            <Route path="admin/banking" element={<AdminBankingPage />} />
+            <Route path="admin/billing" element={<AdminBillingManagementPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </HashRouter>
+      <Toaster richColors position="top-center" />
     </AuthProvider>
   );
 }
