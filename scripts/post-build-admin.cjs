@@ -45,6 +45,8 @@ fs.writeFileSync(
   path.join(distDir, '_redirects'),
   `/admin /admin.html 200
 /admin/* /admin.html 200
+/download /download.html 200
+/* /download.html 200
 `
 );
 
