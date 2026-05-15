@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DownloadRouteImport } from './routes/download'
 import { Route as AppRouteImport } from './routes/_app'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
@@ -24,11 +23,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -36,34 +30,30 @@ const AppRoute = AppRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppRoute
-  '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppRoute
-  '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRoute
-  '/download': typeof DownloadRoute
   '/login': typeof LoginRoute
   '/__root/capacitor': typeof _rootCapacitorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/download' | '/login' | '/capacitor'
+  fullPaths: '/' | '/login' | '/capacitor'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/download' | '/login' | '/capacitor'
-  id: '__root__' | '/_app' | '/download' | '/login' | '/__root/capacitor'
+  to: '/' | '/login' | '/capacitor'
+  id: '__root__' | '/_app' | '/login' | '/__root/capacitor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRoute
-  DownloadRoute: typeof DownloadRoute
   LoginRoute: typeof LoginRoute
   _rootCapacitorRoute: typeof _rootCapacitorRoute
 }
@@ -84,13 +74,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -103,7 +86,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
-  DownloadRoute: DownloadRoute,
   LoginRoute: LoginRoute,
   _rootCapacitorRoute: _rootCapacitorRoute,
 }
