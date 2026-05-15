@@ -18,7 +18,7 @@ import { CheckCircle, XCircle, Clock, Search, DollarSign } from "lucide-react";
 import type { BillingPayment } from "@/types/billing";
 
 type PaymentWithOwner = BillingPayment & {
-  profiles: { username: string; email: string } | null;
+  profiles: { username: string } | null;
 };
 
 export default function AdminBillingManagementPage() {
@@ -52,7 +52,7 @@ export default function AdminBillingManagementPage() {
       .from("billing_payments")
       .select(`
         *,
-        profiles:owner_id (username, email)
+        profiles:owner_id (username)
       `)
       .order("created_at", { ascending: false });
 
@@ -72,8 +72,7 @@ export default function AdminBillingManagementPage() {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(p =>
         p.reference_number.toLowerCase().includes(term) ||
-        p.profiles?.username.toLowerCase().includes(term) ||
-        p.profiles?.email.toLowerCase().includes(term)
+        p.profiles?.username.toLowerCase().includes(term)
       );
     }
 
@@ -244,7 +243,6 @@ export default function AdminBillingManagementPage() {
                       <span className="font-mono text-sm font-bold">{payment.reference_number}</span>
                     </div>
                     <p className="text-sm font-bold">{payment.profiles?.username || "Unknown"}</p>
-                    <p className="text-xs text-muted-foreground">{payment.profiles?.email}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Created: {new Date(payment.created_at).toLocaleString()}
                     </p>
@@ -278,7 +276,6 @@ export default function AdminBillingManagementPage() {
                 <div>
                   <Label>Owner</Label>
                   <p className="font-bold">{selectedPayment.profiles?.username}</p>
-                  <p className="text-sm text-muted-foreground">{selectedPayment.profiles?.email}</p>
                 </div>
 
                 <div>
