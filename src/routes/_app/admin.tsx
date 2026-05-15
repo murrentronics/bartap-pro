@@ -50,73 +50,74 @@ function formatDate(d: Date): string {
 }
 
 // ─── Subscription Badge ───────────────────────────────────────────────────────
-function SubscriptionBadge({ ownerId, joinedAt, onPaid }: {
+function SubscriptionBadge({ ownerId }: {
   ownerId: string;
-  joinedAt: string;
-  onPaid: () => void;
 }) {
-  const [payment, setPayment] = useState<SubPayment | null | undefined>(undefined); // undefined = loading
-  const [paying, setPaying] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [paidCount, setPaidCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("subscription_payments")
-      .select("id, owner_id, paid_at, due_date")
-      .eq("owner_id", ownerId)
-      .order("due_date", { ascending: false })
-      .limit(1)
-      .then(({ data }) => setPayment((data ?? [])[0] ?? null));
+    const loadData = async () => {
+      // Get profile with subscription details
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("subscription_end_date, billing_status")
+        .eq("id", ownerId)
+        .single();
+      
+      // Get count of paid payments
+      const { data: payments } = await supabase
+        .from("billing_payments")
+        .select("id, plan_id")
+        .eq("owner_id", ownerId)
+        .eq("status", "paid");
+      
+      // Get plan amount from the most recent payment
+      let planAmount = 0;
+      if (payments && payments.length > 0) {
+        const { data: plan } = await supabase
+          .from("billing_plans")
+          .select("amount")
+          .eq("id", payments[0].plan_id)
+          .single();
+        
+        if (plan) planAmount = plan.amount;
+      }
+      
+      setProfile({ ...profileData, planAmount });
+      setPaidCount(payments?.length || 0);
+      setLoading(false);
+    };
+    
+    loadData();
   }, [ownerId]);
 
-  const dueDate = payment
-    ? new Date(payment.due_date)
-    : nextDueDate(joinedAt);
+  if (loading || !profile) return null;
+
+  const dueDate = profile.subscription_end_date ? new Date(profile.subscription_end_date) : null;
+  if (!dueDate) return null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isOverdue = dueDate < today;
   const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / 86400000);
-
-  const markPaid = async () => {
-    setPaying(true);
-    const newDue = nextDueDate(dueDate.toISOString());
-    const { error } = await supabase.from("subscription_payments").insert({
-      owner_id: ownerId,
-      paid_at: new Date().toISOString(),
-      due_date: newDue.toISOString().split("T")[0],
-    });
-    setPaying(false);
-    if (error) { toast.error(error.message); return; }
-    setPayment({ id: "", owner_id: ownerId, paid_at: new Date().toISOString(), due_date: newDue.toISOString().split("T")[0] });
-    toast.success(`Marked paid — next due ${formatDate(newDue)}`);
-    onPaid();
-  };
-
-  if (payment === undefined) return null; // still loading
+  const isNearExpiry = daysUntil <= 7;
 
   return (
     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-      isOverdue
+      isNearExpiry
         ? "bg-red-500/15 border border-red-500/30 text-red-400"
-        : daysUntil <= 30
-        ? "bg-orange-500/15 border border-orange-500/30 text-orange-400"
         : "bg-muted border border-border text-muted-foreground"
     }`}>
-      {isOverdue
-        ? <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-        : <CalendarClock className="h-3.5 w-3.5 shrink-0" />}
+      {isNearExpiry ? (
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+      ) : (
+        <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+      )}
       <span>
-        {isOverdue
-          ? `Subscription overdue since ${formatDate(dueDate)}`
-          : `Due ${formatDate(dueDate)}${daysUntil <= 30 ? ` (${daysUntil}d)` : ""}`}
+        {paidCount} cycle{paidCount !== 1 ? 's' : ''} • ${profile.planAmount?.toFixed(2) || '0.00'} • Due {formatDate(dueDate)}
+        {isNearExpiry && ` (${daysUntil}d)`}
       </span>
-      <button
-        onClick={markPaid}
-        disabled={paying}
-        className="ml-1 px-2 py-0.5 rounded-md bg-green-600/80 hover:bg-green-600 text-white text-[10px] font-black transition active:scale-95 disabled:opacity-50 shrink-0"
-      >
-        {paying ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mark Paid"}
-      </button>
     </div>
   );
 }
@@ -852,6 +853,7 @@ export default function AdminPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
+  const [nearExpiryCount, setNearExpiryCount] = useState(0);
 
   useEffect(() => {
     if (!loading && profile && profile.role !== "admin") {
@@ -871,6 +873,39 @@ export default function AdminPage() {
       setBusy(false);
     }
   };
+
+  // Calculate near-expiry count for approved users
+  useEffect(() => {
+    const checkNearExpiry = async () => {
+      const approvedUsers = rows.filter(r => r.status === "approved");
+      let count = 0;
+      
+      for (const user of approvedUsers) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("subscription_end_date")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.subscription_end_date) {
+          const dueDate = new Date(profileData.subscription_end_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / 86400000);
+          
+          if (daysUntil <= 7) {
+            count++;
+          }
+        }
+      }
+      
+      setNearExpiryCount(count);
+    };
+    
+    if (rows.length > 0) {
+      checkNearExpiry();
+    }
+  }, [rows]);
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
@@ -945,7 +980,12 @@ export default function AdminPage() {
                   <Badge variant="destructive" className="rounded-full px-2 py-0 text-xs">{buckets.pending.length}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="approved" className="gap-2">
+                Approved
+                {nearExpiryCount > 0 && (
+                  <Badge variant="destructive" className="rounded-full px-2 py-0 text-xs">{nearExpiryCount}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="suspended">Suspended</TabsTrigger>
               <TabsTrigger value="expelled">Expelled</TabsTrigger>
             </TabsList>
@@ -1015,11 +1055,7 @@ export default function AdminPage() {
                     </div>
                     {/* Subscription reminder — show for approved/suspended users */}
                     {(k === "approved" || k === "suspended") && (
-                      <SubscriptionBadge
-                        ownerId={r.id}
-                        joinedAt={r.created_at}
-                        onPaid={refresh}
-                      />
+                      <SubscriptionBadge ownerId={r.id} />
                     )}
                   </div>
                 ))}
