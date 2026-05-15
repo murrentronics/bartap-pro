@@ -723,40 +723,27 @@ function TemplateGalleryPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Category filter tabs + Fix Titles button — sticky below header */}
+      {/* Category filter tabs — sticky below header */}
       <div className="sticky top-[88px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="grid grid-cols-5 gap-2 flex-1">
-            {TEMPLATE_CATEGORIES.map((cat) => {
-              const catDef = CATEGORIES.find(c => c.value === cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCat(cat)}
-                  className={`h-14 rounded-xl font-bold text-2xl transition border ${
-                    filterCat === cat
-                      ? "text-primary-foreground border-transparent"
-                      : "bg-muted text-muted-foreground border-border hover:text-foreground"
-                  }`}
-                  style={filterCat === cat ? { background: "var(--gradient-hero)" } : {}}
-                  title={`${catDef?.label ?? cat} (${counts[cat] ?? 0})`}
-                >
-                  {CAT_EMOJI[cat]}
-                </button>
-              );
-            })}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleFixAllTitles}
-            disabled={fixing || loading}
-            className="shrink-0 text-xs"
-            title="Decode HTML entities and clean all template titles at once"
-          >
-            {fixing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-            {fixing ? "Fixing…" : "Fix Titles"}
-          </Button>
+        <div className="grid grid-cols-5 gap-2">
+          {TEMPLATE_CATEGORIES.map((cat) => {
+            const catDef = CATEGORIES.find(c => c.value === cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => setFilterCat(cat)}
+                className={`h-14 rounded-xl font-bold text-2xl transition border ${
+                  filterCat === cat
+                    ? "text-primary-foreground border-transparent"
+                    : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                }`}
+                style={filterCat === cat ? { background: "var(--gradient-hero)" } : {}}
+                title={`${catDef?.label ?? cat} (${counts[cat] ?? 0})`}
+              >
+                {CAT_EMOJI[cat]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -789,15 +776,18 @@ function TemplateGalleryPanel() {
 
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const { profile, loading } = useAuth();
+  const { profile, loading, signOut } = useAuth();
   const nav = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!loading && profile && profile.role !== "admin") nav("/register", { replace: true });
-  }, [profile, loading, nav]);
+    if (!loading && profile && profile.role !== "admin") {
+      // Admin-only web: sign out non-admin users
+      signOut().then(() => nav("/login", { replace: true }));
+    }
+  }, [profile, loading, nav, signOut]);
 
   const refresh = async () => {
     setBusy(true);

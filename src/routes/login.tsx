@@ -36,12 +36,10 @@ function LoginPage() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Owner sign up</TabsTrigger>
+          <TabsList className="grid grid-cols-1 w-full">
+            <TabsTrigger value="signin">Admin Sign In</TabsTrigger>
           </TabsList>
           <TabsContent value="signin"><SignInForm /></TabsContent>
-          <TabsContent value="signup"><SignUpForm /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -82,13 +80,15 @@ function SignInForm() {
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
       </Button>
-      <button
-        type="button"
-        onClick={() => setShowForgot(true)}
-        className="w-full text-sm text-primary hover:underline"
-      >
-        Forgot password?
-      </button>
+      <div className="text-center pt-2">
+        <button
+          type="button"
+          onClick={() => setShowForgot(true)}
+          className="text-base font-bold text-primary hover:text-primary/80 underline"
+        >
+          Forgot password?
+        </button>
+      </div>
     </form>
   );
 }

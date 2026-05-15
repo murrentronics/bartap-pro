@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -89,12 +89,17 @@ export default function AppLayout() {
   }
 
   const navItems = isAdmin
-    ? [{ to: "/admin", label: "Users", icon: Users }]
+    ? [
+        { to: "/admin", label: "Users", icon: Users },
+        { to: "/admin/billing", label: "Billing", icon: DollarSign },
+        { to: "/admin/banking", label: "Banking", icon: Building2 },
+      ]
     : [
         { to: "/register", label: "Cashier", icon: Wine },
         ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
         { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
+        ...(isOwner ? [{ to: "/billing", label: "Billing", icon: CreditCard }] : []),
       ];
 
   return (
