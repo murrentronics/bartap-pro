@@ -11,6 +11,9 @@ import ProductsPage from "@/pages/ProductsPage";
 import WalletPage from "@/pages/WalletPage";
 import CashiersPage from "@/pages/CashiersPage";
 import AdminPage from "@/pages/AdminPage";
+import BillingPage from "@/pages/BillingPage";
+import AdminBankingPage from "@/pages/AdminBankingPage";
+import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 
 // Admin-only guard component
 function AdminOnlyGuard({ children }: { children: React.ReactNode }) {
@@ -54,7 +57,10 @@ export default function App() {
               <Route path="products" element={<ProductsPage />} />
               <Route path="wallet" element={<WalletPage />} />
               <Route path="cashiers" element={<CashiersPage />} />
+              <Route path="billing" element={<BillingPage />} />
               <Route path="admin" element={<AdminPage />} />
+              <Route path="admin/banking" element={<AdminBankingPage />} />
+              <Route path="admin/billing" element={<AdminBillingManagementPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
