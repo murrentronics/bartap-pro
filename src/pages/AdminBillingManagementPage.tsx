@@ -102,9 +102,24 @@ export default function AdminBillingManagementPage() {
         .single();
       
       if (plan) {
+        // Check if this is the first payment or a renewal
+        const { data: previousPayments } = await supabase
+          .from("billing_payments")
+          .select("id")
+          .eq("owner_id", selectedPayment.owner_id)
+          .eq("status", "paid")
+          .order("created_at", { ascending: true });
+        
+        const isFirstPayment = !previousPayments || previousPayments.length === 0;
+        
         const startDate = new Date();
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        
+        // For 2nd payment onwards, subtract one day from the due date
+        if (!isFirstPayment) {
+          endDate.setDate(endDate.getDate() - 1);
+        }
         
         await supabase
           .from("profiles")

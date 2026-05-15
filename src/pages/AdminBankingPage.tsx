@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Building2, Save } from "lucide-react";
 import type { AdminBankDetails } from "@/types/billing";
@@ -13,6 +14,7 @@ import type { AdminBankDetails } from "@/types/billing";
 export default function AdminBankingPage() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [bankDetails, setBankDetails] = useState<Partial<AdminBankDetails>>({
     bank_name: "",
     account_name: "",
@@ -24,7 +26,35 @@ export default function AdminBankingPage() {
 
   useEffect(() => {
     loadBankDetails();
+    loadFeatureFlags();
   }, [profile]);
+
+  const loadFeatureFlags = async () => {
+    const { data } = await supabase
+      .from("feature_flags")
+      .select("enabled")
+      .eq("flag_name", "bank_transfer_enabled")
+      .single();
+    
+    if (data) {
+      setBankTransferEnabled(data.enabled);
+    }
+  };
+
+  const toggleBankTransfer = async (enabled: boolean) => {
+    const { error } = await supabase
+      .from("feature_flags")
+      .update({ enabled, updated_by: profile?.id })
+      .eq("flag_name", "bank_transfer_enabled");
+    
+    if (error) {
+      toast.error("Failed to update setting");
+      return;
+    }
+    
+    setBankTransferEnabled(enabled);
+    toast.success(enabled ? "Bank transfer enabled for users" : "Bank transfer disabled for users");
+  };
 
   const loadBankDetails = async () => {
     if (!profile?.id) return;
@@ -83,6 +113,26 @@ export default function AdminBankingPage() {
           <Building2 className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-black">Banking Details</h1>
         </div>
+
+        <Card className="p-6 border-primary">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold">Bank Transfer Payment Method</h3>
+              <p className="text-sm text-muted-foreground">
+                Enable or disable bank transfer option for users
+              </p>
+            </div>
+            <Switch
+              checked={bankTransferEnabled}
+              onCheckedChange={toggleBankTransfer}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {bankTransferEnabled 
+              ? "✅ Users can now select bank transfer when making payments" 
+              : "🚫 Bank transfer is currently disabled. Only cash payments are available."}
+          </p>
+        </Card>
 
         <Card className="p-6">
           <p className="text-sm text-muted-foreground mb-6">

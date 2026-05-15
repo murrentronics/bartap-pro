@@ -15,13 +15,27 @@ export default function BillingPage() {
   const [bankDetails, setBankDetails] = useState<AdminBankDetails | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | null>(null);
+  const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadPlans();
     loadPayments();
     loadBankDetails();
+    loadFeatureFlags();
   }, []);
+
+  const loadFeatureFlags = async () => {
+    const { data } = await supabase
+      .from("feature_flags")
+      .select("enabled")
+      .eq("flag_name", "bank_transfer_enabled")
+      .single();
+    
+    if (data) {
+      setBankTransferEnabled(data.enabled);
+    }
+  };
 
   const loadPlans = async () => {
     const { data, error } = await supabase
@@ -100,8 +114,24 @@ export default function BillingPage() {
       return;
     }
 
+    // Calculate due date
     const dueDate = new Date();
     dueDate.setMonth(dueDate.getMonth() + plan.duration_months);
+    
+    // For renewals (2nd payment onwards), subtract one day
+    if (isRenewal) {
+      // Check if this is truly a renewal by counting previous paid payments
+      const { data: previousPayments } = await supabase
+        .from("billing_payments")
+        .select("id")
+        .eq("owner_id", profile.id)
+        .eq("status", "paid");
+      
+      // If there's at least one paid payment, this is a renewal
+      if (previousPayments && previousPayments.length > 0) {
+        dueDate.setDate(dueDate.getDate() - 1);
+      }
+    }
 
     const { error } = await supabase
       .from("billing_payments")
@@ -401,10 +431,15 @@ export default function BillingPage() {
                     </p>
                   </button>
 
-                  {/* Bank Transfer Option - Disabled */}
+                  {/* Bank Transfer Option - Enabled/Disabled based on feature flag */}
                   <button
-                    disabled
-                    className="p-6 rounded-xl border-2 border-border bg-muted/30 opacity-50 cursor-not-allowed text-left"
+                    onClick={() => bankTransferEnabled && setPaymentMethod("bank")}
+                    disabled={!bankTransferEnabled}
+                    className={`p-6 rounded-xl border-2 text-left transition ${
+                      bankTransferEnabled 
+                        ? "border-border hover:border-primary cursor-pointer" 
+                        : "border-border bg-muted/30 opacity-50 cursor-not-allowed"
+                    }`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -412,11 +447,15 @@ export default function BillingPage() {
                       </div>
                       <div>
                         <h3 className="text-lg font-bold">Bank Transfer</h3>
-                        <p className="text-xs text-muted-foreground">Coming soon</p>
+                        <p className="text-xs text-muted-foreground">
+                          {bankTransferEnabled ? "Transfer to bank account" : "Coming soon"}
+                        </p>
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Transfer to admin's bank account. Currently unavailable.
+                      {bankTransferEnabled 
+                        ? "Transfer to admin's bank account with reference number." 
+                        : "Transfer to admin's bank account. Currently unavailable."}
                     </p>
                   </button>
                 </div>
