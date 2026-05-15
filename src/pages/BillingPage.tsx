@@ -167,15 +167,23 @@ export default function BillingPage() {
       .eq("id", pendingPayment.id)
       .eq("status", "pending"); // Extra safety check
     
-    setLoading(false);
-    
     if (error) {
+      setLoading(false);
       toast.error("Failed to cancel payment");
       return;
     }
     
     toast.success("Payment cancelled");
-    loadPayments();
+    
+    // Reload payments and wait for it to complete
+    await loadPayments();
+    
+    // Reset any payment method selection states
+    setPaymentMethod(null);
+    setShowRenewalPaymentMethod(false);
+    setSelectedPlan(null);
+    
+    setLoading(false);
   };
 
   const pendingPayment = payments.find(p => p.status === "pending");
