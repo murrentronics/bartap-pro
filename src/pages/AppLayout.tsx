@@ -28,6 +28,11 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
+    // Redirect pending owners to billing page if they try to access other pages
+    // This includes both new pending users AND overdue users set back to pending
+    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
+      nav("/billing", { replace: true });
+    }
   }, [loading, profile, loc.pathname, nav]);
 
   // Close menu on outside click

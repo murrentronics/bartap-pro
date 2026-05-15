@@ -29,11 +29,13 @@ export default function AdminBillingManagementPage() {
   const [selectedPayment, setSelectedPayment] = useState<PaymentWithOwner | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "rejected">("all");
+  const [filter, setFilter] = useState<"pending" | "paid" | "rejected">("pending");
 
   useEffect(() => {
-    loadPayments();
-  }, []);
+    if (profile?.role === "admin") {
+      loadPayments();
+    }
+  }, [profile]);
 
   useEffect(() => {
     filterPayments();
@@ -49,6 +51,7 @@ export default function AdminBillingManagementPage() {
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Failed to load payments:", error);
       toast.error("Failed to load payments");
       return;
     }
@@ -57,11 +60,7 @@ export default function AdminBillingManagementPage() {
   };
 
   const filterPayments = () => {
-    let filtered = payments;
-
-    if (filter !== "all") {
-      filtered = filtered.filter(p => p.status === filter);
-    }
+    let filtered = payments.filter(p => p.status === filter);
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -89,6 +88,38 @@ export default function AdminBillingManagementPage() {
 
     if (status === "paid") {
       updates.payment_date = new Date().toISOString();
+      
+      // Also update the owner's profile status to approved and set subscription dates
+      const { data: plan } = await supabase
+        .from("billing_plans")
+        .select("duration_months")
+        .eq("id", selectedPayment.plan_id)
+        .single();
+      
+      if (plan) {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        
+        await supabase
+          .from("profiles")
+          .update({
+            status: "approved",
+            billing_status: "active",
+            subscription_start_date: startDate.toISOString(),
+            subscription_end_date: endDate.toISOString(),
+          })
+          .eq("id", selectedPayment.owner_id);
+        
+        // Set next due date in payment record
+        updates.next_due_date = endDate.toISOString();
+      }
+    } else if (status === "rejected") {
+      // Set owner status to suspended when payment is rejected
+      await supabase
+        .from("profiles")
+        .update({ status: "suspended" })
+        .eq("id", selectedPayment.owner_id);
     }
 
     const { error } = await supabase
@@ -175,7 +206,7 @@ export default function AdminBillingManagementPage() {
               />
             </div>
             <div className="flex gap-2">
-              {(["all", "pending", "paid", "rejected"] as const).map((f) => (
+              {(["pending", "paid", "rejected"] as const).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}

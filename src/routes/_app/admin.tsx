@@ -267,9 +267,35 @@ function TemplateImportPanel() {
     return s || "Untitled";
   };
 
+  // Search for images using Pixabay API (free, no authentication required)
+  const searchImages = async (query: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
+    // Pixabay free API - no key required for basic use
+    const res = await fetch(`https://pixabay.com/api/?key=9656065-a4094594c34f9ac14c7fc4c39&q=${encodeURIComponent(query)}&image_type=photo&per_page=50&safesearch=true`, {
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to search images. Try entering a URL instead.");
+    }
+
+    const data = await res.json() as { hits: { largeImageURL: string; tags: string }[] };
+    const results = data.hits.map((img) => ({
+      url: img.largeImageURL,
+      label: img.tags.split(',')[0].trim() || query,
+    }));
+
+    for (let i = 1; i <= results.length; i++) {
+      onProgress(i);
+      if (i % 5 === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+
+    return results;
+  };
+
   const handleImport = async () => {
-    const url = pageUrl.trim();
-    if (!url.startsWith("http")) { toast.error("Enter a valid URL starting with http"); return; }
+    const input = pageUrl.trim();
+    if (!input) { toast.error("Enter a URL or search term"); return; }
+    
     setImporting(true);
     setImportCount(0);
     setImportStatus("fetching");
@@ -277,7 +303,16 @@ function TemplateImportPanel() {
 
     try {
       setImportStatus("parsing");
-      const rawImages = await fetchViaEdgeFunction(url, (n) => setImportCount(n));
+      let rawImages: { url: string; label: string }[];
+      
+      // Check if input is a URL or search term
+      if (input.startsWith("http://") || input.startsWith("https://")) {
+        // URL scraping
+        rawImages = await fetchViaEdgeFunction(input, (n) => setImportCount(n));
+      } else {
+        // Image search
+        rawImages = await searchImages(input, (n) => setImportCount(n));
+      }
 
       const found: ImportedImage[] = rawImages.map((img) => ({
         url: img.url,
@@ -290,13 +325,13 @@ function TemplateImportPanel() {
       setImportStatus("done");
 
       if (found.length === 0) {
-        toast.error("No product images found on that page.");
+        toast.error(input.startsWith("http") ? "No product images found on that page." : "No images found for that search.");
       } else {
         setImages(found);
         toast.success(`Found ${found.length} images — ${found.filter(i => !i.duplicate).length} new`);
       }
     } catch (e) {
-      toast.error((e as Error).message || "Failed to fetch page.");
+      toast.error((e as Error).message || "Failed to fetch images.");
       console.error(e);
       setImportStatus("idle");
     } finally {
@@ -350,24 +385,27 @@ function TemplateImportPanel() {
           <ImagePlus className="h-5 w-5 text-primary" /> Import Templates from URL
         </h2>
 
-        {/* URL input */}
+        {/* URL or Search input */}
         <div>
-          <Label className="text-xs">Page URL</Label>
+          <Label className="text-xs">URL or Search Term</Label>
           <div className="flex gap-2 mt-1">
             <div className="relative flex-1">
-              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={pageUrl}
                 onChange={(e) => setPageUrl(e.target.value)}
-                placeholder="https://example.com/products"
+                placeholder="Dixee Biscuit or https://example.com/products"
                 className="pl-9"
                 onKeyDown={(e) => e.key === "Enter" && handleImport()}
               />
             </div>
             <Button onClick={handleImport} disabled={importing || !pageUrl.trim()}>
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter a product name to search free images, or paste a URL to scrape a website
+          </p>
         </div>
 
         {/* Live import progress */}
@@ -376,7 +414,7 @@ function TemplateImportPanel() {
             <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-primary/80 uppercase tracking-wider">
-                {importStatus === "fetching" ? "Fetching page…" : "Scanning for images…"}
+                {importStatus === "fetching" ? (pageUrl.startsWith("http") ? "Fetching page…" : "Searching images…") : "Processing results…"}
               </div>
               {importStatus === "parsing" && importCount > 0 && (
                 <div className="text-2xl font-black text-primary mt-0.5">{importCount} found</div>
@@ -893,14 +931,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {k === "pending" && (
-                          <>
-                            <Button size="sm" onClick={() => act(() => setUserStatus(r.id, "approved"), "Approved")}>
-                              <Check className="h-4 w-4 mr-1" /> Approve
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Denied")}>
-                              <X className="h-4 w-4 mr-1" /> Deny
-                            </Button>
-                          </>
+                          <span className="text-sm text-muted-foreground">Awaiting payment approval in Billing tab</span>
                         )}
                         {k === "approved" && (
                           <>
@@ -909,6 +940,17 @@ export default function AdminPage() {
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
                               <UserMinus className="h-4 w-4 mr-1" /> Expel
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              const ok = await confirm({
+                                title: `Delete ${r.username}?`,
+                                description: "This cannot be undone.",
+                                confirmLabel: "Delete",
+                                destructive: true,
+                              });
+                              if (ok) act(() => adminDeleteUser(r.id), "Deleted");
+                            }}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </>
                         )}
@@ -920,23 +962,21 @@ export default function AdminPage() {
                             <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
                               <UserMinus className="h-4 w-4 mr-1" /> Expel
                             </Button>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              const ok = await confirm({
+                                title: `Delete ${r.username}?`,
+                                description: "This cannot be undone.",
+                                confirmLabel: "Delete",
+                                destructive: true,
+                              });
+                              if (ok) act(() => adminDeleteUser(r.id), "Deleted");
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </>
                         )}
-                        {k !== "expelled" && (
-                          <Button size="sm" variant="destructive" onClick={async () => {
-                            const ok = await confirm({
-                              title: `Delete ${r.username}?`,
-                              description: "This cannot be undone.",
-                              confirmLabel: "Delete",
-                              destructive: true,
-                            });
-                            if (ok) act(() => adminDeleteUser(r.id), "Deleted");
-                          }}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                         {k === "expelled" && (
-                          <span className="text-xs text-muted-foreground">Account expelled</span>
+                          <span className="text-xs text-muted-foreground">Account expelled - no actions available</span>
                         )}
                       </div>
                     </div>

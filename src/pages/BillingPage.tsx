@@ -63,12 +63,31 @@ export default function BillingPage() {
     }
   };
 
-  const createPayment = async () => {
-    if (!selectedPlan || !profile?.id) return;
+  const createPayment = async (isRenewal = false) => {
+    if (!isRenewal && !selectedPlan) return;
+    if (!profile?.id) return;
     
     setLoading(true);
-    const plan = plans.find(p => p.id === selectedPlan);
-    if (!plan) return;
+    
+    let plan: BillingPlan | undefined;
+    
+    if (isRenewal) {
+      // For renewal, use the last paid payment's plan
+      const lastPaid = payments.find(p => p.status === "paid");
+      if (!lastPaid) {
+        toast.error("No previous payment found");
+        setLoading(false);
+        return;
+      }
+      plan = plans.find(p => p.id === lastPaid.plan_id);
+    } else {
+      plan = plans.find(p => p.id === selectedPlan);
+    }
+    
+    if (!plan) {
+      setLoading(false);
+      return;
+    }
 
     // Generate reference number
     const { data: refData, error: refError } = await supabase
@@ -101,7 +120,7 @@ export default function BillingPage() {
       return;
     }
 
-    toast.success("Payment request created");
+    toast.success(isRenewal ? "Renewal payment created - awaiting admin approval" : "Payment request created");
     loadPayments();
   };
 
@@ -111,9 +130,10 @@ export default function BillingPage() {
   };
 
   const pendingPayment = payments.find(p => p.status === "pending");
+  const lastPaidPayment = payments.find(p => p.status === "paid");
   const hasActivePlan = profile?.billing_status === "active";
-
-  return (
+  const nextDueDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
+  const isOverdue = nextDueDate && nextDueDate < new Date();
     <div className="min-h-screen p-6 pb-24">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3 mb-6">
@@ -125,7 +145,17 @@ export default function BillingPage() {
         <Card className="p-6">
           <h2 className="text-xl font-bold mb-4">Subscription Status</h2>
           <div className="flex items-center gap-3">
-            {profile?.status === "pending" ? (
+            {profile?.status === "pending" && profile?.billing_status === "expired" ? (
+              <>
+                <AlertCircle className="h-6 w-6 text-red-500" />
+                <div>
+                  <p className="font-bold text-red-500">Payment Overdue</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your subscription has expired. Click "Mark Paid" below after making payment to restore access.
+                  </p>
+                </div>
+              </>
+            ) : profile?.status === "pending" ? (
               <>
                 <AlertCircle className="h-6 w-6 text-yellow-500" />
                 <div>
@@ -138,12 +168,23 @@ export default function BillingPage() {
             ) : hasActivePlan ? (
               <>
                 <CheckCircle className="h-6 w-6 text-green-500" />
-                <div>
+                <div className="flex-1">
                   <p className="font-bold text-green-500">Active</p>
                   <p className="text-sm text-muted-foreground">
-                    Expires: {profile.subscription_end_date ? new Date(profile.subscription_end_date).toLocaleDateString() : "N/A"}
+                    Next payment due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
                   </p>
                 </div>
+                {/* Show Mark Paid button if no pending payment and has next due date */}
+                {!pendingPayment && nextDueDate && (
+                  <Button
+                    onClick={() => createPayment(true)}
+                    disabled={loading}
+                    variant={isOverdue ? "destructive" : "default"}
+                    className="font-bold"
+                  >
+                    {loading ? "Creating..." : isOverdue ? "Overdue - Mark Paid" : "Mark Paid"}
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -195,28 +236,78 @@ export default function BillingPage() {
               <div className="border-t pt-4">
                 <h3 className="font-bold mb-3">Bank Transfer Details</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center gap-2">
                     <span className="text-muted-foreground">Bank:</span>
-                    <span className="font-bold">{bankDetails.bank_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">{bankDetails.bank_name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => copyToClipboard(bankDetails.bank_name)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center gap-2">
                     <span className="text-muted-foreground">Account Name:</span>
-                    <span className="font-bold">{bankDetails.account_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">{bankDetails.account_name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => copyToClipboard(bankDetails.account_name)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center gap-2">
                     <span className="text-muted-foreground">Account Number:</span>
-                    <span className="font-mono font-bold">{bankDetails.account_number}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold">{bankDetails.account_number}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => copyToClipboard(bankDetails.account_number)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                   {bankDetails.branch && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center gap-2">
                       <span className="text-muted-foreground">Branch:</span>
-                      <span className="font-bold">{bankDetails.branch}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{bankDetails.branch}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => copyToClipboard(bankDetails.branch)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                   {bankDetails.swift_code && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center gap-2">
                       <span className="text-muted-foreground">SWIFT:</span>
-                      <span className="font-mono font-bold">{bankDetails.swift_code}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold">{bankDetails.swift_code}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => copyToClipboard(bankDetails.swift_code)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -231,8 +322,26 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {/* Choose Plan */}
-        {!pendingPayment && (
+        {/* Show Mark Paid button for overdue users who need to renew */}
+        {!pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired" && (
+          <Card className="p-6 border-red-500">
+            <h2 className="text-xl font-bold mb-4 text-red-500">Renew Your Subscription</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your subscription has expired. Make your payment and click the button below to notify admin.
+            </p>
+            <Button
+              onClick={() => createPayment(true)}
+              disabled={loading}
+              variant="destructive"
+              className="w-full h-12 text-base font-bold"
+            >
+              {loading ? "Creating..." : "I've Made Payment - Notify Admin"}
+            </Button>
+          </Card>
+        )}
+
+        {/* Choose Plan - only show for new pending users, not overdue */}
+        {!pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired" && (
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-4">Choose Your Plan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
