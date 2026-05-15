@@ -233,12 +233,56 @@ export default function BillingPage() {
           </div>
         </Card>
 
-        {/* Pending Payment Details */}
-        {pendingPayment && bankDetails && (
+        {/* Pending Payment Details - Cash */}
+        {pendingPayment && pendingPayment.payment_method === "cash" && (
           <Card className="p-6 border-yellow-500">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-500" />
-              Awaiting Payment Confirmation
+              Awaiting Cash Payment Confirmation
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label>Reference Number</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="flex-1 bg-muted px-3 py-2 rounded font-mono text-lg font-bold">
+                    {pendingPayment.reference_number}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(pendingPayment.reference_number)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Provide this reference when paying cash to admin
+                </p>
+              </div>
+
+              <div>
+                <Label>Amount to Pay</Label>
+                <p className="text-2xl font-black text-primary mt-1">
+                  ${pendingPayment.amount.toFixed(2)} TT
+                </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm text-muted-foreground">
+                  💵 Pay cash directly to admin. Your payment is pending admin confirmation.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Pending Payment Details - Bank Transfer */}
+        {pendingPayment && pendingPayment.payment_method === "bank" && bankDetails && (
+          <Card className="p-6 border-yellow-500">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-yellow-500" />
+              Awaiting Bank Transfer Confirmation
             </h2>
             
             <div className="space-y-4">
