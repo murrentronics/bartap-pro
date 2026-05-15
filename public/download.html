@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bartendaz Pro — Download</title>
+  <meta name="description" content="Fast bar POS for owners and cashiers. Manage products, wallets, and staff from your Android device." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #F0A030;
+      --gold-dark: #C0441A;
+      --bg: #0a0602;
+      --card: #140d04;
+      --border: rgba(240,160,48,0.15);
+      --text: #f5f0e8;
+      --muted: #8a7a6a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      background: radial-gradient(ellipse at 30% 0%, rgba(240,160,48,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 100%, rgba(192,68,26,0.10) 0%, transparent 60%);
+      text-align: center;
+    }
+
+    /* Logo */
+    .logo-wrap {
+      margin-bottom: 32px;
+    }
+    .logo-wrap svg { filter: drop-shadow(0 0 24px rgba(240,160,48,0.4)); }
+
+    /* Headline */
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #F0A030 0%, #C0441A 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .tagline {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--muted);
+      max-width: 480px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+
+    /* Main CTA */
+    .cta-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 64px;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 36px;
+      border-radius: 16px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      color: #1a0a02;
+      background: linear-gradient(135deg, #F0A030 0%, #C0441A 100%);
+      box-shadow: 0 8px 32px rgba(240,160,48,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(240,160,48,0.45); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download svg { flex-shrink: 0; }
+
+    .dl-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* Phone mockup + screenshot */
+    .mockup-wrap {
+      position: relative;
+      width: min(280px, 80vw);
+      margin: 0 auto 80px;
+    }
+
+    .phone-frame {
+      width: 100%;
+      border-radius: 36px;
+      border: 2px solid var(--border);
+      background: #0f0a04;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,160,48,0.08);
+      overflow: hidden;
+      aspect-ratio: 9/19;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Placeholder screen if no screenshot */
+    .phone-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+      background: linear-gradient(160deg, #1a0d04 0%, #0a0602 100%);
+    }
+    .phone-placeholder .app-name {
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .phone-placeholder .app-sub {
+      font-size: 0.65rem;
+      letter-spacing: 6px;
+      color: var(--muted);
+    }
+
+    /* Glow ring */
+    .mockup-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -20px;
+      border-radius: 56px;
+      background: radial-gradient(ellipse, rgba(240,160,48,0.12) 0%, transparent 70%);
+      z-index: -1;
+    }
+
+    /* ── FEATURES ── */
+    .features {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 900;
+      margin-bottom: 48px;
+      color: var(--text);
+    }
+    .section-title span {
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: rgba(240,160,48,0.35); transform: translateY(-3px); }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 14px;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── INSTALL STEPS ── */
+    .install {
+      padding: 80px 24px;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.9rem;
+      color: #1a0a02;
+    }
+
+    .step-text h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .step-text p { font-size: 0.825rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── BOTTOM CTA ── */
+    .bottom-cta {
+      padding: 80px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .bottom-cta h2 {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .bottom-cta p {
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 24px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    /* Divider */
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, #F0A030, #C0441A);
+      border-radius: 2px;
+      margin: 0 auto 48px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="logo-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100" height="100">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0A030"/>
+            <stop offset="100%" stop-color="#C0441A"/>
+          </linearGradient>
+          <radialGradient id="g2" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#2E1A08"/>
+            <stop offset="100%" stop-color="#0F0A04"/>
+          </radialGradient>
+        </defs>
+        <circle cx="60" cy="60" r="60" fill="url(#g2)"/>
+        <circle cx="60" cy="60" r="56" fill="none" stroke="#F0A030" stroke-width="1" opacity="0.3"/>
+        <text x="60" y="82" font-family="Georgia,serif" font-size="72" font-weight="900" text-anchor="middle" fill="url(#g1)">B</text>
+        <rect x="70" y="84" width="26" height="10" rx="4" fill="url(#g1)"/>
+        <text x="83" y="92" font-family="Arial,sans-serif" font-size="5" font-weight="800" text-anchor="middle" fill="#1A0A02" letter-spacing="1">PRO</text>
+      </svg>
+    </div>
+
+    <h1>Bartendaz Pro</h1>
+    <p class="tagline">The fast, simple bar POS for owners and cashiers. Manage products, wallets, and staff — all from your Android device.</p>
+
+    <div class="cta-wrap">
+      <a href="https://github.com/murrentronics/bartap-pro/releases/download/bartendaz-pro/bartendaz-pro.apk" class="btn-download" download>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download for Android
+      </a>
+      <span class="dl-note">APK · Android 7.0+</span>
+    </div>
+
+    <!-- Phone mockup -->
+    <div class="mockup-wrap">
+      <div class="phone-frame">
+        <img src="/assets/screenshot-login.png" alt="Bartendaz Pro login screen" class="phone-screen" />
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <h2 class="section-title">Everything your bar <span>needs</span></h2>
+    <div class="divider"></div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🍺</div>
+        <h3>Fast POS</h3>
+        <p>Ring up drinks and snacks in seconds. Built for speed behind the bar.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>Wallet System</h3>
+        <p>Owners and cashiers each have a wallet. Track every transaction in real time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👥</div>
+        <h3>Staff Management</h3>
+        <p>Add cashiers, set permissions, suspend or remove staff instantly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>Product Catalog</h3>
+        <p>Manage your full menu with photos, prices, categories, and stock levels.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Sales Reports</h3>
+        <p>Download PDF reports of your sales and transactions anytime.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Secure & Private</h3>
+        <p>Your data stays in your Supabase account. No third-party access.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL STEPS -->
+  <section class="install">
+    <h2 class="section-title">How to <span>install</span></h2>
+    <div class="divider"></div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <h4>Download the APK</h4>
+          <p>Tap the download button above on your Android device.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <h4>Allow unknown sources</h4>
+          <p>When prompted, tap "Install anyway" or go to Settings → Security → allow installs from this source.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <h4>Open and sign in</h4>
+          <p>Launch Bartendaz Pro and sign in with your owner account or cashier username.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM CTA -->
+  <section class="bottom-cta">
+    <h2>Ready to run your bar smarter?</h2>
+    <p>Download free. No subscription required to get started.</p>
+    <a href="https://github.com/murrentronics/bartap-pro/releases/download/bartendaz-pro/bartendaz-pro.apk" class="btn-download" download>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download Bartendaz Pro
+    </a>
+  </section>
+
+  <footer>
+    &copy; 2026 Bartendaz Pro. All rights reserved.
+  </footer>
+
+</body>
+</html>
