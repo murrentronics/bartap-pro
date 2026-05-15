@@ -28,6 +28,7 @@ fs.writeFileSync(
 </body>
 </html>`
 );
+console.log('✓ Created index.html redirect');
 
 // Copy download.html
 const downloadSrc = path.join(__dirname, '..', 'public', 'download.html');
@@ -40,14 +41,15 @@ if (fs.existsSync(downloadSrc)) {
   console.log('⚠ download.html not found in public/');
 }
 
-// Create _redirects
+// Create _redirects for admin deployment
+// This allows /admin to work while root goes to download
 fs.writeFileSync(
   path.join(distDir, '_redirects'),
   `/admin /admin.html 200
 /admin/* /admin.html 200
 /download /download.html 200
-/* /download.html 200
+/ /download.html 200
 `
 );
 
-console.log('✓ Post-build complete: admin.html, download.html, and redirects configured');
+console.log('✓ Post-build complete: admin.html at /admin, download.html at root');
