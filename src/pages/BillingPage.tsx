@@ -14,6 +14,7 @@ export default function BillingPage() {
   const [payments, setPayments] = useState<BillingPayment[]>([]);
   const [bankDetails, setBankDetails] = useState<AdminBankDetails | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function BillingPage() {
     }
   };
 
-  const createPayment = async (isRenewal = false) => {
+  const createPayment = async (isRenewal = false, method: "cash" | "bank" = "cash") => {
     if (!isRenewal && !selectedPlan) return;
     if (!profile?.id) return;
     
@@ -110,7 +111,8 @@ export default function BillingPage() {
         reference_number: refData,
         amount: plan.amount,
         due_date: dueDate.toISOString(),
-        status: "pending"
+        status: "pending",
+        payment_method: method
       });
 
     setLoading(false);
@@ -120,7 +122,8 @@ export default function BillingPage() {
       return;
     }
 
-    toast.success(isRenewal ? "Renewal payment created - awaiting admin approval" : "Payment request created");
+    toast.success(method === "cash" ? "Cash payment pending - awaiting admin confirmation" : "Bank transfer pending - awaiting admin confirmation");
+    setPaymentMethod(null);
     loadPayments();
   };
 
@@ -344,37 +347,109 @@ export default function BillingPage() {
 
         {/* Choose Plan - only show for new pending users, not overdue */}
         {!pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired" && (
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4">Choose Your Plan</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {plans.map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`p-6 rounded-xl border-2 transition text-left ${
-                    selectedPlan === plan.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <h3 className="text-lg font-bold mb-2">{plan.name}</h3>
-                  <p className="text-3xl font-black text-primary mb-2">
-                    ${plan.amount.toFixed(2)} <span className="text-sm font-normal text-muted-foreground">{plan.currency}</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Billed every {plan.duration_months} months
-                  </p>
-                </button>
-              ))}
-            </div>
-            <Button
-              onClick={createPayment}
-              disabled={!selectedPlan || loading}
-              className="w-full h-12 text-base font-bold"
-            >
-              {loading ? "Creating..." : "Continue to Payment"}
-            </Button>
-          </Card>
+          <>
+            {/* Step 1: Choose Plan */}
+            {!selectedPlan && (
+              <Card className="p-6">
+                <h2 className="text-xl font-bold mb-4">Choose Your Plan</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {plans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      onClick={() => setSelectedPlan(plan.id)}
+                      className="p-6 rounded-xl border-2 border-border hover:border-primary/50 transition text-left"
+                    >
+                      <h3 className="text-lg font-bold mb-2">{plan.name}</h3>
+                      <p className="text-3xl font-black text-primary mb-2">
+                        ${plan.amount.toFixed(2)} <span className="text-sm font-normal text-muted-foreground">{plan.currency}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Billed every {plan.duration_months} months
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Step 2: Choose Payment Method */}
+            {selectedPlan && !paymentMethod && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">Choose Payment Method</h2>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedPlan(null)}>
+                    Change Plan
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Cash Payment Option */}
+                  <button
+                    onClick={() => setPaymentMethod("cash")}
+                    className="p-6 rounded-xl border-2 border-border hover:border-primary transition text-left"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <span className="text-2xl">💵</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">Cash Payment</h3>
+                        <p className="text-xs text-green-500">Instant submission</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Pay cash directly to admin. Your payment will be marked as pending immediately.
+                    </p>
+                  </button>
+
+                  {/* Bank Transfer Option - Disabled */}
+                  <button
+                    disabled
+                    className="p-6 rounded-xl border-2 border-border bg-muted/30 opacity-50 cursor-not-allowed text-left"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <span className="text-2xl">🏦</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">Bank Transfer</h3>
+                        <p className="text-xs text-muted-foreground">Coming soon</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Transfer to admin's bank account. Currently unavailable.
+                    </p>
+                  </button>
+                </div>
+              </Card>
+            )}
+
+            {/* Step 3: Confirm Payment */}
+            {selectedPlan && paymentMethod === "cash" && (
+              <Card className="p-6 border-green-500">
+                <h2 className="text-xl font-bold mb-4 text-green-500">Confirm Cash Payment</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  You've selected to pay <span className="font-bold text-foreground">${plans.find(p => p.id === selectedPlan)?.amount.toFixed(2)} TT</span> in cash.
+                  Click below to notify the admin that you'll be paying in cash.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPaymentMethod(null)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => createPayment(false, "cash")}
+                    disabled={loading}
+                    className="flex-1 h-12 text-base font-bold"
+                  >
+                    {loading ? "Submitting..." : "Confirm Cash Payment"}
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </>
         )}
 
         {/* Payment History */}
