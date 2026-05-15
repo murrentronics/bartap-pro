@@ -102,23 +102,25 @@ export default function AdminBillingManagementPage() {
         .single();
       
       if (plan) {
-        // Check if this is the first payment or a renewal
-        const { data: previousPayments } = await supabase
-          .from("billing_payments")
-          .select("id")
-          .eq("owner_id", selectedPayment.owner_id)
-          .eq("status", "paid")
-          .order("created_at", { ascending: true });
-        
-        const isFirstPayment = !previousPayments || previousPayments.length === 0;
+        // Get owner's current subscription end date
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("subscription_end_date")
+          .eq("id", selectedPayment.owner_id)
+          .single();
         
         const startDate = new Date();
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        let endDate: Date;
         
-        // For 2nd payment onwards, subtract one day from the due date
-        if (!isFirstPayment) {
-          endDate.setDate(endDate.getDate() - 1);
+        // If owner has an existing subscription_end_date, use it as the base
+        if (ownerProfile?.subscription_end_date) {
+          endDate = new Date(ownerProfile.subscription_end_date);
+          // Add the plan duration to the existing end date
+          endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        } else {
+          // First payment - calculate from today
+          endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + plan.duration_months);
         }
         
         await supabase

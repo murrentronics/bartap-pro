@@ -115,22 +115,16 @@ export default function BillingPage() {
     }
 
     // Calculate due date
-    const dueDate = new Date();
-    dueDate.setMonth(dueDate.getMonth() + plan.duration_months);
+    let dueDate: Date;
     
-    // For renewals (2nd payment onwards), subtract one day
-    if (isRenewal) {
-      // Check if this is truly a renewal by counting previous paid payments
-      const { data: previousPayments } = await supabase
-        .from("billing_payments")
-        .select("id")
-        .eq("owner_id", profile.id)
-        .eq("status", "paid");
-      
-      // If there's at least one paid payment, this is a renewal
-      if (previousPayments && previousPayments.length > 0) {
-        dueDate.setDate(dueDate.getDate() - 1);
-      }
+    if (isRenewal && profile.subscription_end_date) {
+      // For renewals, use the existing subscription end date and add duration
+      dueDate = new Date(profile.subscription_end_date);
+      dueDate.setMonth(dueDate.getMonth() + plan.duration_months);
+    } else {
+      // For first payment, calculate from today
+      dueDate = new Date();
+      dueDate.setMonth(dueDate.getMonth() + plan.duration_months);
     }
 
     const { error } = await supabase
