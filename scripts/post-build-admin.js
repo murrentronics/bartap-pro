@@ -3,11 +3,16 @@ const path = require('path');
 
 const distDir = path.join(__dirname, '..', 'dist', 'client');
 
-// Rename index.html to admin.html
-fs.renameSync(
-  path.join(distDir, 'index.html'),
-  path.join(distDir, 'admin.html')
-);
+// Check if index.html exists before renaming
+const indexPath = path.join(distDir, 'index.html');
+const adminPath = path.join(distDir, 'admin.html');
+
+if (fs.existsSync(indexPath)) {
+  fs.renameSync(indexPath, adminPath);
+  console.log('✓ Renamed index.html to admin.html');
+} else {
+  console.log('⚠ index.html not found, skipping rename');
+}
 
 // Create simple index.html that redirects to download
 fs.writeFileSync(
@@ -25,10 +30,15 @@ fs.writeFileSync(
 );
 
 // Copy download.html
-fs.copyFileSync(
-  path.join(__dirname, '..', 'public', 'download.html'),
-  path.join(distDir, 'download.html')
-);
+const downloadSrc = path.join(__dirname, '..', 'public', 'download.html');
+const downloadDest = path.join(distDir, 'download.html');
+
+if (fs.existsSync(downloadSrc)) {
+  fs.copyFileSync(downloadSrc, downloadDest);
+  console.log('✓ Copied download.html');
+} else {
+  console.log('⚠ download.html not found in public/');
+}
 
 // Create _redirects
 fs.writeFileSync(
