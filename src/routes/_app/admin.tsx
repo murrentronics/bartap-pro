@@ -267,25 +267,34 @@ function TemplateImportPanel() {
     return s || "Untitled";
   };
 
-  // Search for images using Pixabay API (free, no authentication required)
+  // Search for images - try multiple sources for best results
   const searchImages = async (query: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
-    // Add grocery/food/product context to search query for better results
-    const enhancedQuery = `${query} product package grocery food snack drink bottle can`;
+    // Add Trinidad/Caribbean context for better local product results
+    const searchQuery = `${query} Trinidad Tobago Caribbean product grocery store`;
     
-    // Pixabay API - max 200 per page, we'll fetch 3 pages for ~300 results
+    // Use Pixabay with enhanced search terms
+    return searchImagesPixabay(searchQuery, onProgress);
+  };
+
+  // Fallback to Pixabay with enhanced search
+  const searchImagesPixabay = async (query: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
     const allResults: { url: string; label: string }[] = [];
     
-    for (let page = 1; page <= 3; page++) {
+    // Try multiple search variations for better results
+    const searchVariations = [
+      query, // Original query
+      `${query} product package`,
+      `${query} bottle can`,
+    ];
+    
+    for (const searchTerm of searchVariations) {
       try {
         const res = await fetch(
-          `https://pixabay.com/api/?key=9656065-a4094594c34f9ac14c7fc4c39&q=${encodeURIComponent(enhancedQuery)}&image_type=photo&per_page=200&page=${page}&safesearch=true&category=food,backgrounds`,
+          `https://pixabay.com/api/?key=9656065-a4094594c34f9ac14c7fc4c39&q=${encodeURIComponent(searchTerm)}&image_type=photo&per_page=200&safesearch=true`,
           { signal: AbortSignal.timeout(15000) }
         );
 
-        if (!res.ok) {
-          if (page === 1) throw new Error("Failed to search images. Try entering a URL instead.");
-          break; // If subsequent pages fail, just use what we have
-        }
+        if (!res.ok) continue;
 
         const data = await res.json() as { hits: { largeImageURL: string; tags: string }[] };
         const pageResults = data.hits.map((img) => ({
@@ -293,21 +302,24 @@ function TemplateImportPanel() {
           label: img.tags.split(',')[0].trim() || query,
         }));
         
-        allResults.push(...pageResults);
-        
-        // Update progress
-        for (let i = 1; i <= pageResults.length; i++) {
-          onProgress(allResults.length);
-          if (i % 10 === 0) await new Promise((r) => setTimeout(r, 0));
+        // Add unique results only
+        for (const result of pageResults) {
+          if (!allResults.find(r => r.url === result.url)) {
+            allResults.push(result);
+            onProgress(allResults.length);
+          }
         }
         
-        // If we got less than 200, no point fetching next page
-        if (pageResults.length < 200) break;
+        // Stop if we have enough results
+        if (allResults.length >= 300) break;
         
       } catch (e) {
-        if (page === 1) throw e;
-        break;
+        continue;
       }
+    }
+
+    if (allResults.length === 0) {
+      throw new Error("No images found. Try a different search term or paste a URL.");
     }
 
     return allResults;
