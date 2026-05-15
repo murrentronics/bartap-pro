@@ -49,7 +49,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<AppLayout />}>
-              <Route index element={<Navigate to="/register" replace />} />
+              <Route index element={<Navigate to="/admin" replace />} />
               <Route path="register" element={<RegisterPage />} />
               <Route path="products" element={<ProductsPage />} />
               <Route path="wallet" element={<WalletPage />} />
