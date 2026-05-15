@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\" && node scripts/post-build-admin.js",
+    "build": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\" && node scripts/post-build-admin.cjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "build:android": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\" && node scripts/post-build-admin.js",
+    "build:android": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\" && node scripts/post-build-admin.cjs",
     "cap:sync": "npm run build:android && npx cap sync android",
     "cap:open": "npx cap open android",
     "android": "npm run cap:sync && npm run cap:open"
