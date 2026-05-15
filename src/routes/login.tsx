@@ -36,12 +36,10 @@ function LoginPage() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Owner sign up</TabsTrigger>
+          <TabsList className="grid grid-cols-1 w-full">
+            <TabsTrigger value="signin">Admin Sign In</TabsTrigger>
           </TabsList>
           <TabsContent value="signin"><SignInForm /></TabsContent>
-          <TabsContent value="signup"><SignUpForm /></TabsContent>
         </Tabs>
       </div>
     </div>
