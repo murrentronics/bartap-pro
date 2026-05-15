@@ -42,6 +42,12 @@ export default function AdminBillingManagementPage() {
   }, [payments, searchTerm, filter]);
 
   const loadPayments = async () => {
+    // First check if we're admin
+    if (!profile?.id || profile.role !== 'admin') {
+      toast.error("Admin access required");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("billing_payments")
       .select(`
@@ -52,7 +58,7 @@ export default function AdminBillingManagementPage() {
 
     if (error) {
       console.error("Failed to load payments:", error);
-      toast.error("Failed to load payments");
+      toast.error(`Failed to load payments: ${error.message}`);
       return;
     }
 
