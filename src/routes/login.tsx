@@ -80,11 +80,11 @@ function SignInForm() {
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
       </Button>
-      <div className="text-center">
+      <div className="text-center pt-2">
         <button
           type="button"
           onClick={() => setShowForgot(true)}
-          className="text-sm font-semibold text-primary hover:underline"
+          className="text-base font-bold text-primary hover:text-primary/80 underline"
         >
           Forgot password?
         </button>
