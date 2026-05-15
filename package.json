@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "build:android": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\"",
+    "build:android": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\" && node scripts/post-build-admin.js",
     "cap:sync": "npm run build:android && npx cap sync android",
     "cap:open": "npx cap open android",
     "android": "npm run cap:sync && npm run cap:open"
