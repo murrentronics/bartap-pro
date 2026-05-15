@@ -246,12 +246,12 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
       {visible.map((t) => (
         <button
           key={t.url}
-          onPointerDown={(e) => { e.preventDefault(); onSelect(t.url, t.label, category); }}
-          className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition"
+          onClick={() => onSelect(t.url, t.label, category)}
+          className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition touch-manipulation"
           style={{ background: "var(--gradient-card)" }}
         >
-          <img src={t.url} alt={t.label} className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent">
+          <img src={t.url} alt={t.label} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent pointer-events-none">
             <div className="text-white text-xs font-bold leading-tight line-clamp-2">{t.label}</div>
           </div>
         </button>
