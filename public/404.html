@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Redirecting...</title>
+  <script>
+    // Check if URL starts with /admin
+    if (window.location.pathname.startsWith('/admin')) {
+      // Redirect to index.html but keep the path for client-side routing
+      window.location.replace('/index.html' + window.location.search + window.location.hash);
+    } else {
+      // Everything else goes to download page
+      window.location.replace('/download.html');
+    }
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html>
