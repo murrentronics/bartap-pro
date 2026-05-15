@@ -1,3 +1,1 @@
-/admin /index.html 200
-/admin/* /index.html 200
-/ /download.html 302
+/* /index.html 200
