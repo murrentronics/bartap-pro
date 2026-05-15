@@ -296,6 +296,204 @@
       border-radius: 2px;
       margin: 0 auto 48px;
     }
+
+    /* ── PRICING ── */
+    .pricing {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .pricing-intro {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 48px;
+      font-size: 1rem;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 700px;
+      margin: 0 auto 32px;
+    }
+
+    .pricing-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+    }
+
+    .pricing-card:hover {
+      border-color: rgba(240,160,48,0.4);
+      transform: translateY(-4px);
+    }
+
+    .pricing-card.featured {
+      border-color: rgba(240,160,48,0.5);
+      box-shadow: 0 8px 32px rgba(240,160,48,0.15);
+    }
+
+    .plan-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: rgba(240,160,48,0.15);
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+
+    .plan-badge.popular {
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      color: #1a0a02;
+    }
+
+    .plan-price {
+      margin-bottom: 16px;
+      line-height: 1;
+    }
+
+    .plan-price .currency {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      vertical-align: top;
+    }
+
+    .plan-price .amount {
+      font-size: 4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .plan-price .period {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .plan-desc {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 28px;
+    }
+
+    .plan-features {
+      list-style: none;
+      text-align: left;
+      margin: 0 auto;
+      max-width: 240px;
+    }
+
+    .plan-features li {
+      padding: 10px 0;
+      font-size: 0.9rem;
+      color: var(--text);
+      border-bottom: 1px solid rgba(240,160,48,0.08);
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .pricing-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 32px;
+      margin-bottom: 48px;
+    }
+
+    /* Support Banner */
+    .support-banner {
+      max-width: 600px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(240,160,48,0.08) 0%, rgba(192,68,26,0.08) 100%);
+      border: 2px solid rgba(240,160,48,0.25);
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+    }
+
+    .support-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .support-content h3 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .support-content > p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+
+    .contact-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .contact-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--card);
+      border: 2px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .contact-btn:hover {
+      border-color: rgba(240,160,48,0.5);
+      transform: translateY(-2px);
+    }
+
+    .contact-btn.whatsapp {
+      background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+      border-color: #25D366;
+      color: white;
+    }
+
+    .contact-btn.whatsapp:hover {
+      box-shadow: 0 4px 16px rgba(37,211,102,0.3);
+    }
+
+    .contact-number {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.5px;
+      margin-top: 12px;
+    }
   </style>
 </head>
 <body>
@@ -383,6 +581,73 @@
     </div>
   </section>
 
+  <!-- PRICING -->
+  <section class="pricing">
+    <h2 class="section-title">Simple <span>pricing</span></h2>
+    <div class="divider"></div>
+    <p class="pricing-intro">Choose the plan that works best for your bar</p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="plan-badge">6 Months</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">300</span>
+          <span class="period">TT</span>
+        </div>
+        <p class="plan-desc">Perfect for trying out the system</p>
+        <ul class="plan-features">
+          <li>✓ Full POS system</li>
+          <li>✓ Unlimited products</li>
+          <li>✓ Unlimited cashiers</li>
+          <li>✓ Sales reports</li>
+          <li>✓ 6 months access</li>
+        </ul>
+      </div>
+      
+      <div class="pricing-card featured">
+        <div class="plan-badge popular">Most Popular</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">500</span>
+          <span class="period">TT</span>
+        </div>
+        <p class="plan-desc">Best value for year-round operation</p>
+        <ul class="plan-features">
+          <li>✓ Full POS system</li>
+          <li>✓ Unlimited products</li>
+          <li>✓ Unlimited cashiers</li>
+          <li>✓ Sales reports</li>
+          <li>✓ 12 months access</li>
+          <li>✓ Save $100 vs 6-month</li>
+        </ul>
+      </div>
+    </div>
+    <p class="pricing-note">Download the app and choose your plan after signing up</p>
+    
+    <div class="support-banner">
+      <div class="support-icon">📞</div>
+      <div class="support-content">
+        <h3>Free Installation & Setup Available</h3>
+        <p>Need help getting started? We'll set up everything for you at no extra cost.</p>
+        <div class="contact-buttons">
+          <a href="tel:+18683850635" class="contact-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            Call
+          </a>
+          <a href="https://wa.me/18683850635" target="_blank" class="contact-btn whatsapp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            WhatsApp
+          </a>
+        </div>
+        <p class="contact-number">+1 868 385-0635</p>
+      </div>
+    </div>
+  </section>
+
   <!-- INSTALL STEPS -->
   <section class="install">
     <h2 class="section-title">How to <span>install</span></h2>
@@ -415,7 +680,7 @@
   <!-- BOTTOM CTA -->
   <section class="bottom-cta">
     <h2>Ready to run your bar smarter?</h2>
-    <p>Download free. No subscription required to get started.</p>
+    <p>Download now and choose your plan after signing up. Starting at $300 TT for 6 months.</p>
     <a href="https://github.com/murrentronics/bartap-pro/releases/download/bartendaz-pro/bartendaz-pro.apk" class="btn-download" download>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
