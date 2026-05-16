@@ -22,4 +22,4 @@ BEGIN
     AND billing_status = 'active'
     AND subscription_end_date < NOW();
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql; 
