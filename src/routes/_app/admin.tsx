@@ -914,21 +914,38 @@ export default function AdminPage() {
           </div>
 
           <Tabs defaultValue="pending">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl">
-              <TabsTrigger value="pending" className="gap-2">
-                Pending
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="pending" className="gap-1 sm:gap-2 relative">
+                <span className="hidden sm:inline">Pending</span>
+                <span className="sm:hidden text-lg">⏳</span>
                 {buckets.pending.length > 0 && (
-                  <Badge variant="destructive" className="rounded-full px-2 py-0 text-xs">{buckets.pending.length}</Badge>
+                  <Badge variant="default" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white">
+                    {buckets.pending.length}
+                  </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="approved" className="gap-2">
-                Approved
+              <TabsTrigger value="approved" className="gap-1 sm:gap-2">
+                <span className="hidden sm:inline">Approved</span>
+                <span className="sm:hidden text-lg">✅</span>
                 {nearExpiryCount > 0 && (
-                  <Badge variant="destructive" className="rounded-full px-2 py-0 text-xs">{nearExpiryCount}</Badge>
+                  <Badge variant="destructive" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center hidden sm:flex">
+                    {nearExpiryCount}
+                  </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="suspended">Suspended</TabsTrigger>
-              <TabsTrigger value="expelled">Expelled</TabsTrigger>
+              <TabsTrigger value="suspended" className="gap-1 sm:gap-2">
+                <span className="hidden sm:inline">Suspended</span>
+                <span className="sm:hidden text-lg">⛔</span>
+                {buckets.suspended.length > 0 && (
+                  <Badge variant="default" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-orange-500 text-white">
+                    {buckets.suspended.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="expelled" className="gap-1 sm:gap-2">
+                <span className="hidden sm:inline">Expelled</span>
+                <span className="sm:hidden text-lg">🚫</span>
+              </TabsTrigger>
             </TabsList>
 
             {(["pending", "approved", "suspended", "expelled"] as const).map((k) => (

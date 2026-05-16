@@ -325,6 +325,7 @@ export default function AdminBillingManagementPage() {
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Add any notes about this payment..."
                         rows={3}
+                        autoFocus={false}
                       />
                     </div>
 
