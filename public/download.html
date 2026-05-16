@@ -103,26 +103,26 @@
     .mockup-wrap {
       position: relative;
       width: 100%;
-      max-width: 600px;
+      max-width: 400px;
       margin: 0 auto 80px;
-      padding: 0 40px;
+      padding: 0;
     }
 
     .carousel-container {
       position: relative;
       width: 100%;
-      overflow: visible;
+      overflow: hidden;
     }
 
     .carousel-track {
       display: flex;
-      gap: 20px;
+      gap: 16px;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      padding: 40px 0;
+      padding: 40px 50px;
       cursor: grab;
     }
 
@@ -135,24 +135,24 @@
     }
 
     .phone-frame {
-      flex: 0 0 300px;
-      width: 300px;
-      border-radius: 12px;
+      flex: 0 0 260px;
+      width: 260px;
+      border-radius: 8px;
       overflow: hidden;
       aspect-ratio: 9/19;
       scroll-snap-align: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       position: relative;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      opacity: 0.6;
-      transform: scale(0.85);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      opacity: 0.5;
+      transform: scale(0.88);
     }
 
     .phone-frame.center {
       opacity: 1;
       transform: scale(1);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
       z-index: 10;
     }
 
@@ -168,7 +168,7 @@
       display: flex;
       gap: 10px;
       justify-content: center;
-      margin-top: 20px;
+      margin-top: 24px;
     }
 
     .carousel-dot {
