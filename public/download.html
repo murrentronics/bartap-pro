@@ -102,27 +102,61 @@
     /* Phone mockup + screenshot */
     .mockup-wrap {
       position: relative;
-      width: min(360px, 85vw);
+      width: 100%;
+      max-width: 500px;
       margin: 0 auto 80px;
+      padding: 0 20px;
     }
 
     .carousel-container {
       position: relative;
       width: 100%;
+      overflow: visible;
+    }
+
+    .carousel-track {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 20px 0;
+      cursor: grab;
+    }
+
+    .carousel-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .carousel-track:active {
+      cursor: grabbing;
     }
 
     .phone-frame {
-      width: 100%;
+      flex: 0 0 280px;
+      width: 280px;
       border-radius: 36px;
       border: 2px solid var(--border);
       background: #0f0a04;
       box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,160,48,0.08);
       overflow: hidden;
       aspect-ratio: 9/19;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      scroll-snap-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
       position: relative;
+    }
+
+    .phone-frame:hover {
+      transform: scale(1.02);
+      box-shadow: 0 36px 90px rgba(0,0,0,0.8), 0 0 0 2px rgba(240,160,48,0.2);
+    }
+
+    .phone-frame.center {
+      transform: scale(1.05);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.9), 0 0 0 2px rgba(240,160,48,0.3);
     }
 
     .phone-screen {
@@ -130,48 +164,7 @@
       height: 100%;
       object-fit: cover;
       display: block;
-    }
-
-    .carousel-nav {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(240,160,48,0.95);
-      border: none;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      z-index: 10;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-
-    .carousel-nav:hover {
-      background: rgba(240,160,48,1);
-      transform: translateY(-50%) scale(1.15);
-      box-shadow: 0 6px 16px rgba(240,160,48,0.4);
-    }
-
-    .carousel-nav:active {
-      transform: translateY(-50%) scale(1.05);
-    }
-
-    .carousel-nav.prev {
-      left: -22px;
-    }
-
-    .carousel-nav.next {
-      right: -22px;
-    }
-
-    .carousel-nav svg {
-      width: 20px;
-      height: 20px;
-      fill: #1a0a02;
+      pointer-events: none;
     }
 
     .carousel-dots {
@@ -218,6 +211,14 @@
       transition: all 0.2s;
       z-index: 10;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .phone-frame:hover .fullscreen-btn,
+    .phone-frame.center .fullscreen-btn {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .fullscreen-btn:hover {
@@ -744,21 +745,8 @@
     <!-- Screenshot Carousel -->
     <div class="mockup-wrap">
       <div class="carousel-container">
-        <div class="phone-frame">
-          <img id="carousel-image" src="/assets/screenshots/screenshot-1.png" alt="Bartendaz Pro screenshot" class="phone-screen" />
-          
-          <!-- Navigation Arrows -->
-          <button class="carousel-nav prev" onclick="prevSlide()" aria-label="Previous screenshot">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <button class="carousel-nav next" onclick="nextSlide()" aria-label="Next screenshot">
-            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-          
-          <!-- Fullscreen Button -->
-          <button class="fullscreen-btn" onclick="openFullscreen()" aria-label="View fullscreen">
-            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-          </button>
+        <div class="carousel-track" id="carousel-track">
+          <!-- Screenshots will be dynamically inserted here -->
         </div>
         
         <!-- Dots Indicator -->
@@ -797,10 +785,39 @@
       ];
       
       let currentSlide = 0;
+      let track;
       
-      // Initialize dots
-      function initDots() {
+      // Initialize carousel
+      function initCarousel() {
+        track = document.getElementById('carousel-track');
         const dotsContainer = document.getElementById('carousel-dots');
+        
+        // Create phone frames
+        screenshots.forEach((src, index) => {
+          const frame = document.createElement('div');
+          frame.className = 'phone-frame' + (index === 0 ? ' center' : '');
+          frame.onclick = () => handleFrameClick(index);
+          
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = `Bartendaz Pro screenshot ${index + 1}`;
+          img.className = 'phone-screen';
+          
+          const fullscreenBtn = document.createElement('button');
+          fullscreenBtn.className = 'fullscreen-btn';
+          fullscreenBtn.onclick = (e) => {
+            e.stopPropagation();
+            openFullscreen(index);
+          };
+          fullscreenBtn.setAttribute('aria-label', 'View fullscreen');
+          fullscreenBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
+          
+          frame.appendChild(img);
+          frame.appendChild(fullscreenBtn);
+          track.appendChild(frame);
+        });
+        
+        // Create dots
         dotsContainer.innerHTML = '';
         screenshots.forEach((_, index) => {
           const dot = document.createElement('button');
@@ -809,35 +826,65 @@
           dot.setAttribute('aria-label', `Go to screenshot ${index + 1}`);
           dotsContainer.appendChild(dot);
         });
+        
+        // Center first slide
+        setTimeout(() => {
+          const firstFrame = track.children[0];
+          if (firstFrame) {
+            firstFrame.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+        }, 100);
+        
+        // Track scroll to update center frame
+        track.addEventListener('scroll', updateCenterFrame);
       }
       
-      function updateCarousel() {
-        document.getElementById('carousel-image').src = screenshots[currentSlide];
-        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
+      function updateCenterFrame() {
+        const frames = track.children;
+        const trackRect = track.getBoundingClientRect();
+        const trackCenter = trackRect.left + trackRect.width / 2;
+        
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+        
+        Array.from(frames).forEach((frame, index) => {
+          const frameRect = frame.getBoundingClientRect();
+          const frameCenter = frameRect.left + frameRect.width / 2;
+          const distance = Math.abs(trackCenter - frameCenter);
+          
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+          }
+          
+          frame.classList.remove('center');
+        });
+        
+        frames[closestIndex].classList.add('center');
+        currentSlide = closestIndex;
         
         // Update dots
         const dots = document.querySelectorAll('.carousel-dot');
         dots.forEach((dot, index) => {
-          dot.classList.toggle('active', index === currentSlide);
+          dot.classList.toggle('active', index === closestIndex);
         });
       }
       
-      function nextSlide() {
-        currentSlide = (currentSlide + 1) % screenshots.length;
-        updateCarousel();
-      }
-      
-      function prevSlide() {
-        currentSlide = (currentSlide - 1 + screenshots.length) % screenshots.length;
-        updateCarousel();
+      function handleFrameClick(index) {
+        goToSlide(index);
       }
       
       function goToSlide(index) {
         currentSlide = index;
-        updateCarousel();
+        const frame = track.children[index];
+        if (frame) {
+          frame.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
       }
       
-      function openFullscreen() {
+      function openFullscreen(index) {
+        if (index !== undefined) currentSlide = index;
+        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
         document.getElementById('fullscreen-modal').classList.add('active');
         document.body.style.overflow = 'hidden';
       }
@@ -851,20 +898,22 @@
       
       function nextSlideFullscreen(event) {
         event.stopPropagation();
-        nextSlide();
+        currentSlide = (currentSlide + 1) % screenshots.length;
+        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
       }
       
       function prevSlideFullscreen(event) {
         event.stopPropagation();
-        prevSlide();
+        currentSlide = (currentSlide - 1 + screenshots.length) % screenshots.length;
+        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
       }
       
       // Keyboard navigation
       document.addEventListener('keydown', (e) => {
         const modal = document.getElementById('fullscreen-modal');
         if (modal.classList.contains('active')) {
-          if (e.key === 'ArrowLeft') prevSlide();
-          if (e.key === 'ArrowRight') nextSlide();
+          if (e.key === 'ArrowLeft') prevSlideFullscreen(e);
+          if (e.key === 'ArrowRight') nextSlideFullscreen(e);
           if (e.key === 'Escape') {
             modal.classList.remove('active');
             document.body.style.overflow = '';
@@ -873,8 +922,7 @@
       });
       
       // Initialize on page load
-      initDots();
-      updateCarousel();
+      initCarousel();
     </script>
   </section>
 
