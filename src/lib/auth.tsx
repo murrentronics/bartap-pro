@@ -10,6 +10,8 @@ export type Profile = {
   parent_id: string | null;
   wallet_balance: number;
   status: UserStatus;
+  phone?: string;
+  address?: string;
 };
 
 type AuthCtx = {

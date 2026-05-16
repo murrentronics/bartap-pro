@@ -18,6 +18,11 @@ export default function BillingPage() {
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRenewalPaymentMethod, setShowRenewalPaymentMethod] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTotal, setHistoryTotal] = useState(0);
+
+  const HISTORY_PAGE_SIZE = 100;
+  const historyTotalPages = Math.max(1, Math.ceil(historyTotal / HISTORY_PAGE_SIZE));
 
   useEffect(() => {
     loadPlans();
@@ -26,7 +31,9 @@ export default function BillingPage() {
     loadFeatureFlags();
   }, []);
 
-  const loadFeatureFlags = async () => {
+  useEffect(() => {
+    if (profile?.id) loadPayments();
+  }, [historyPage]); = async () => {
     const { data } = await supabase
       .from("feature_flags")
       .select("enabled")
@@ -54,11 +61,20 @@ export default function BillingPage() {
   const loadPayments = async () => {
     if (!profile?.id) return;
     
+    // Get total count
+    const { count } = await supabase
+      .from("billing_payments")
+      .select("*", { count: "exact", head: true })
+      .eq("owner_id", profile.id);
+    
+    setHistoryTotal(count || 0);
+
     const { data, error } = await supabase
       .from("billing_payments")
       .select("*")
       .eq("owner_id", profile.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE - 1);
     
     if (error) {
       toast.error("Failed to load payments");
@@ -653,41 +669,68 @@ export default function BillingPage() {
           {payments.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No payments yet</p>
           ) : (
-            <div className="space-y-3">
-              {payments.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-bold">{payment.reference_number}</span>
-                      {payment.status === "paid" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {payment.status === "pending" && <Clock className="h-4 w-4 text-yellow-500" />}
-                      {payment.status === "rejected" && <AlertCircle className="h-4 w-4 text-red-500" />}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(payment.created_at).toLocaleDateString()}
-                    </p>
-                    {payment.next_due_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Next due: {new Date(payment.next_due_date).toLocaleDateString()}
+            <>
+              <div className="space-y-3">
+                {payments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex items-center justify-between p-4 rounded-lg border"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-sm font-bold">{payment.reference_number}</span>
+                        {payment.status === "paid" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        {payment.status === "pending" && <Clock className="h-4 w-4 text-yellow-500" />}
+                        {payment.status === "rejected" && <AlertCircle className="h-4 w-4 text-red-500" />}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(payment.created_at).toLocaleDateString()}
                       </p>
-                    )}
+                      {payment.next_due_date && (
+                        <p className="text-xs text-muted-foreground">
+                          Next due: {new Date(payment.next_due_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">${payment.amount.toFixed(2)} TT</p>
+                      <p className={`text-sm font-bold ${
+                        payment.status === "paid" ? "text-green-500" :
+                        payment.status === "pending" ? "text-yellow-500" :
+                        "text-red-500"
+                      }`}>
+                        {payment.status.toUpperCase()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">${payment.amount.toFixed(2)} TT</p>
-                    <p className={`text-sm font-bold ${
-                      payment.status === "paid" ? "text-green-500" :
-                      payment.status === "pending" ? "text-yellow-500" :
-                      "text-red-500"
-                    }`}>
-                      {payment.status.toUpperCase()}
-                    </p>
-                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {historyTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage === 0}
+                    onClick={() => setHistoryPage(p => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {historyPage + 1} of {historyTotalPages} · {historyTotal} total
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage >= historyTotalPages - 1}
+                    onClick={() => setHistoryPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </Card>
       </div>

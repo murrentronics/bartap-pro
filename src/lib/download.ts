@@ -29,11 +29,19 @@ export async function downloadText(filename: string, content: string): Promise<v
       directory: Directory.Cache,
       encoding: Encoding.UTF8,
     });
-    await Share.share({
-      title: filename,
-      url: result.uri,
-      dialogTitle: "Save or share statement",
-    });
+    try {
+      await Share.share({
+        title: filename,
+        files: [result.uri],
+        dialogTitle: "Save or share statement",
+      });
+    } catch {
+      await Share.share({
+        title: filename,
+        url: result.uri,
+        dialogTitle: "Save or share statement",
+      });
+    }
   } else {
     const blob = new Blob([content], { type: "text/plain" });
     triggerBrowserDownload(blob, filename);
@@ -47,16 +55,40 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
     const Share = await getShare();
     // Strip the data:application/pdf;base64, prefix if present
     const base64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
-    const result = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-    });
-    await Share.share({
-      title: filename,
-      url: result.uri,
-      dialogTitle: "Save or share PDF",
-    });
+    
+    let fileUri: string;
+    try {
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Cache,
+      });
+      fileUri = result.uri;
+    } catch (writeErr) {
+      // Fallback: try Documents directory
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Documents,
+      });
+      fileUri = result.uri;
+    }
+
+    try {
+      // Capacitor Share v5+ uses `files` array
+      await Share.share({
+        title: filename,
+        files: [fileUri],
+        dialogTitle: "Save or share PDF",
+      });
+    } catch {
+      // Fallback for older Capacitor Share versions
+      await Share.share({
+        title: filename,
+        url: fileUri,
+        dialogTitle: "Save or share PDF",
+      });
+    }
   } else {
     const byteChars = atob(pdfBase64.replace(/^data:application\/pdf;base64,/, ""));
     const bytes = new Uint8Array(byteChars.length);

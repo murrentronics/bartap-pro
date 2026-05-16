@@ -30,16 +30,21 @@ export default function AdminBillingManagementPage() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<"pending" | "paid" | "rejected">("pending");
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  
+  const PAGE_SIZE = 100;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   useEffect(() => {
     if (profile?.role === "admin") {
       loadPayments();
     }
-  }, [profile]);
+  }, [profile, filter, page]);
 
   useEffect(() => {
     filterPayments();
-  }, [payments, searchTerm, filter]);
+  }, [payments, searchTerm]);
 
   const loadPayments = async () => {
     // First check if we're admin
@@ -48,13 +53,24 @@ export default function AdminBillingManagementPage() {
       return;
     }
 
+    // Get total count for pagination
+    const { count } = await supabase
+      .from("billing_payments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", filter);
+    
+    setTotalCount(count || 0);
+
+    // Get paginated data
     const { data, error } = await supabase
       .from("billing_payments")
       .select(`
         *,
         profiles:owner_id (username)
       `)
-      .order("created_at", { ascending: false });
+      .eq("status", filter)
+      .order("created_at", { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     if (error) {
       console.error("Failed to load payments:", error);
@@ -66,7 +82,7 @@ export default function AdminBillingManagementPage() {
   };
 
   const filterPayments = () => {
-    let filtered = payments.filter(p => p.status === filter);
+    let filtered = payments;
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -232,7 +248,7 @@ export default function AdminBillingManagementPage() {
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
-                  onClick={() => setFilter(f)}
+                  onClick={() => { setFilter(f); setPage(0); }}
                   className="capitalize"
                 >
                   {f}
@@ -247,8 +263,9 @@ export default function AdminBillingManagementPage() {
           {filteredPayments.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No payments found</p>
           ) : (
-            <div className="space-y-3">
-              {filteredPayments.map((payment) => (
+            <>
+              <div className="space-y-3">
+                {filteredPayments.map((payment) => (
                 <div
                   key={payment.id}
                   className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition cursor-pointer"
@@ -273,7 +290,33 @@ export default function AdminBillingManagementPage() {
                 </div>
               ))}
             </div>
-          )}
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={page === 0} 
+                  onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page + 1} of {totalPages} · {totalCount} total
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={page >= totalPages - 1} 
+                  onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+          }
         </Card>
 
         {/* Payment Details Dialog */}

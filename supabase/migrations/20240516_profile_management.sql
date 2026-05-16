@@ -36,6 +36,28 @@ $$;
 REVOKE ALL ON FUNCTION public.delete_own_account() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_own_account() TO authenticated;
 
--- Add comment for documentation
 COMMENT ON FUNCTION public.delete_own_account() IS 
 'Allows an owner to delete their own account and all associated data. Cashiers and admins cannot use this function.';
+
+-- ============================================================
+-- IMPORTANT: Supabase Auth Email Redirect URL Configuration
+-- ============================================================
+-- After running this migration, you MUST add these URLs to your
+-- Supabase project's allowed redirect URLs:
+--
+-- Go to: Supabase Dashboard > Authentication > URL Configuration
+--
+-- Add ALL of these to "Redirect URLs":
+--   https://bartendaz-pro.pages.dev/#/login
+--   https://bartendaz-pro.pages.dev/#/profile
+--   http://localhost:5173/#/login
+--   http://localhost:5173/#/profile
+--   bartendazpro://reset-password
+--   bartendazpro://email-confirm
+--
+-- Also set "Site URL" to:
+--   https://bartendaz-pro.pages.dev
+--
+-- The app now uses hash-based redirect URLs (/#/login) which
+-- work correctly with the HashRouter used in the app.
+-- ============================================================

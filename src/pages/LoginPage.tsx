@@ -130,17 +130,22 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    
-    // Send the reset email - Supabase will handle checking if the user exists
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin + "/login",
+
+    // Use signInWithOtp which sends a pure 6-digit code — NO redirect link in the email.
+    // shouldCreateUser: false means it won't create a new account if email doesn't exist.
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        shouldCreateUser: false,
+      },
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
-    } else {
-      // Always show success message for security (don't reveal if email exists)
+      // Don't reveal if email exists — show generic message
       toast.success("If an account exists with this email, you'll receive a 6-digit code");
+      setStep("otp");
+    } else {
+      toast.success("Check your email for the 6-digit code");
       setStep("otp");
     }
   };
@@ -152,14 +157,15 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
       return;
     }
     setBusy(true);
+    // Verify the OTP — this signs the user in so they can then update their password
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token: otp,
-      type: "recovery",
+      type: "email",
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error("Invalid or expired code. Try again.");
     } else {
       toast.success("Code verified");
       setStep("password");
@@ -293,18 +299,26 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
 function SignUpForm() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    // No emailRedirectTo — Supabase is configured to use OTP (6-digit code)
+    // for email confirmation, so no redirect link is sent in the email.
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password: pw,
       options: {
-        data: { username: username.trim(), role: "owner" },
-        emailRedirectTo: window.location.origin,
+        data: {
+          username: username.trim(),
+          role: "owner",
+          phone: phone.trim(),
+          address: address.trim(),
+        },
       },
     });
     setBusy(false);
@@ -319,13 +333,14 @@ function SignUpForm() {
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
     >
       <div>
-        <Label htmlFor="signup-username">Bar / Owner Username</Label>
+        <Label htmlFor="signup-username">Business Name</Label>
         <Input
           id="signup-username"
           name="username"
-          autoComplete="username"
+          autoComplete="organization"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          placeholder="My Bar & Grill"
           required
           minLength={3}
         />
@@ -339,6 +354,32 @@ function SignUpForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="owner@mybar.com"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="signup-phone">Phone Number</Label>
+        <Input
+          id="signup-phone"
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="+1 868 555 1234"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="signup-address">Business Address</Label>
+        <Input
+          id="signup-address"
+          name="address"
+          autoComplete="street-address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="123 Main St, Port of Spain"
           required
         />
       </div>
