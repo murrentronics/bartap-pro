@@ -615,12 +615,12 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-red-600/80 hover:bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
+          className="absolute top-1.5 right-1.5 h-7 w-7 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition shadow-lg"
           title="Delete template"
         >
           {deleting
-            ? <Loader2 className="h-3 w-3 animate-spin text-white" />
-            : <Trash2 className="h-3 w-3 text-white" />}
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
+            : <Trash2 className="h-3.5 w-3.5 text-white" />}
         </button>
       </div>
 
