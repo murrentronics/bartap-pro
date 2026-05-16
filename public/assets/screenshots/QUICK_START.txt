@@ -1,0 +1,43 @@
+╔══════════════════════════════════════════════════════════════╗
+║          📸 SCREENSHOT CAROUSEL - QUICK START 📸             ║
+╚══════════════════════════════════════════════════════════════╝
+
+📂 YOU ARE HERE: public/assets/screenshots/
+
+🎯 TO ADD YOUR SCREENSHOTS:
+
+   1. Take 5 screenshots of your app (phone screen ratio 9:19)
+   
+   2. Name them EXACTLY as:
+      • screenshot-1.png
+      • screenshot-2.png
+      • screenshot-3.png
+      • screenshot-4.png
+      • screenshot-5.png
+   
+   3. Drop them in THIS folder (replace the existing ones)
+   
+   4. Done! The carousel will automatically show them
+
+✨ FEATURES:
+   • Previous/Next arrows
+   • Dot indicators
+   • Fullscreen view (click the expand button)
+   • Keyboard navigation (arrow keys)
+   • Click outside to close fullscreen
+
+📖 For detailed instructions, see:
+   • README.md (in this folder)
+   • SCREENSHOT_CAROUSEL_GUIDE.md (in project root)
+
+🚀 CURRENT STATUS:
+   ✅ Carousel is set up and working
+   ✅ 5 placeholder screenshots ready
+   ⏳ Replace placeholders with your actual screenshots
+
+💡 TIP: Show your best features!
+   1. Login screen
+   2. POS/Bar screen
+   3. Products page
+   4. Wallet page
+   5. Reports/Analytics
