@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -174,6 +174,7 @@ export default function AppLayout() {
         { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
         ...(isOwner ? [{ to: "/billing", label: "Billing", icon: CreditCard }] : []),
+        ...(isOwner ? [{ to: "/profile", label: "Profile", icon: UserCircle }] : []),
       ];
 
   return (
@@ -221,7 +222,7 @@ export default function AppLayout() {
                     <Link
                       key={it.to}
                       to={it.to}
-                      className={`flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 last:border-0 ${
+                      className={`flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 ${
                         active ? "text-primary" : "text-foreground hover:bg-muted/50"
                       }`}
                     >
@@ -233,7 +234,7 @@ export default function AppLayout() {
                 {/* Logout last */}
                 <button
                   onClick={() => { signOut(); nav("/login"); }}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition"
+                  className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
                   <X className="h-5 w-5 shrink-0" />
                   Logout / Salir

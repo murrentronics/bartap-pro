@@ -131,18 +131,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     e.preventDefault();
     setBusy(true);
     
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("email", email.trim())
-      .single();
-    
-    if (profileError || !profile) {
-      setBusy(false);
-      toast.error("No account found with this email");
-      return;
-    }
-    
+    // Send the reset email - Supabase will handle checking if the user exists
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: window.location.origin + "/login",
     });
@@ -150,7 +139,8 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Check your email for the 6-digit code");
+      // Always show success message for security (don't reveal if email exists)
+      toast.success("If an account exists with this email, you'll receive a 6-digit code");
       setStep("otp");
     }
   };
