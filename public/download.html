@@ -99,13 +99,13 @@
       color: var(--muted);
     }
 
-    /* Phone mockup + screenshot */
+    /* Screenshot carousel - flat card stack style */
     .mockup-wrap {
       position: relative;
       width: 100%;
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto 80px;
-      padding: 0 20px;
+      padding: 0 40px;
     }
 
     .carousel-container {
@@ -116,13 +116,13 @@
 
     .carousel-track {
       display: flex;
-      gap: 16px;
+      gap: 20px;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      padding: 20px 0;
+      padding: 40px 0;
       cursor: grab;
     }
 
@@ -135,28 +135,25 @@
     }
 
     .phone-frame {
-      flex: 0 0 280px;
-      width: 280px;
-      border-radius: 36px;
-      border: 2px solid var(--border);
-      background: #0f0a04;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(240,160,48,0.08);
+      flex: 0 0 300px;
+      width: 300px;
+      border-radius: 12px;
       overflow: hidden;
       aspect-ratio: 9/19;
       scroll-snap-align: center;
-      transition: transform 0.3s, box-shadow 0.3s;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       position: relative;
-    }
-
-    .phone-frame:hover {
-      transform: scale(1.02);
-      box-shadow: 0 36px 90px rgba(0,0,0,0.8), 0 0 0 2px rgba(240,160,48,0.2);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      opacity: 0.6;
+      transform: scale(0.85);
     }
 
     .phone-frame.center {
-      transform: scale(1.05);
-      box-shadow: 0 40px 100px rgba(0,0,0,0.9), 0 0 0 2px rgba(240,160,48,0.3);
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      z-index: 10;
     }
 
     .phone-screen {
@@ -197,13 +194,13 @@
 
     .fullscreen-btn {
       position: absolute;
-      bottom: 12px;
-      right: 12px;
+      bottom: 16px;
+      right: 16px;
       background: rgba(240,160,48,0.95);
       border: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -215,7 +212,6 @@
       pointer-events: none;
     }
 
-    .phone-frame:hover .fullscreen-btn,
     .phone-frame.center .fullscreen-btn {
       opacity: 1;
       pointer-events: auto;
@@ -223,17 +219,13 @@
 
     .fullscreen-btn:hover {
       background: rgba(240,160,48,1);
-      transform: scale(1.15);
+      transform: scale(1.1);
       box-shadow: 0 6px 16px rgba(240,160,48,0.4);
     }
 
-    .fullscreen-btn:active {
-      transform: scale(1.05);
-    }
-
     .fullscreen-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       fill: #1a0a02;
     }
 
@@ -786,6 +778,7 @@
       
       let currentSlide = 0;
       let track;
+      let isScrolling = false;
       
       // Initialize carousel
       function initCarousel() {
@@ -796,7 +789,8 @@
         screenshots.forEach((src, index) => {
           const frame = document.createElement('div');
           frame.className = 'phone-frame' + (index === 0 ? ' center' : '');
-          frame.onclick = () => handleFrameClick(index);
+          frame.dataset.index = index;
+          frame.onclick = () => goToSlide(index);
           
           const img = document.createElement('img');
           img.src = src;
@@ -829,17 +823,24 @@
         
         // Center first slide
         setTimeout(() => {
-          const firstFrame = track.children[0];
-          if (firstFrame) {
-            firstFrame.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          }
+          goToSlide(0);
         }, 100);
         
-        // Track scroll to update center frame
-        track.addEventListener('scroll', updateCenterFrame);
+        // Track scroll with debounce
+        let scrollTimeout;
+        track.addEventListener('scroll', () => {
+          isScrolling = true;
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            isScrolling = false;
+            updateCenterFrame();
+          }, 150);
+        });
       }
       
       function updateCenterFrame() {
+        if (isScrolling) return;
+        
         const frames = track.children;
         const trackRect = track.getBoundingClientRect();
         const trackCenter = trackRect.left + trackRect.width / 2;
@@ -870,15 +871,22 @@
         });
       }
       
-      function handleFrameClick(index) {
-        goToSlide(index);
-      }
-      
       function goToSlide(index) {
         currentSlide = index;
         const frame = track.children[index];
         if (frame) {
+          // Remove center class from all
+          Array.from(track.children).forEach(f => f.classList.remove('center'));
+          // Add to target
+          frame.classList.add('center');
+          // Scroll to center
           frame.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          
+          // Update dots immediately
+          const dots = document.querySelectorAll('.carousel-dot');
+          dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+          });
         }
       }
       
