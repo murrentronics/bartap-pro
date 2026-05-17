@@ -217,9 +217,15 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
               id="otp-code"
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                setOtp(text);
+              }}
               placeholder="123456"
               className="text-center text-2xl font-bold tracking-widest"
               required

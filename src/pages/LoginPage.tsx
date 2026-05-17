@@ -12,12 +12,18 @@ import { Wine } from "lucide-react";
 export default function LoginPage() {
   const { session, profile, loading } = useAuth();
   const nav = useNavigate();
+  // Track if forgot-password flow is open so we don't auto-redirect
+  // when the OTP verification temporarily signs the user in
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
+    // Don't redirect while the forgot-password flow is active —
+    // verifyOtp signs the user in but we need to stay on the password step
+    if (forgotOpen) return;
     if (!loading && session && profile) {
       nav(profile.role === "admin" ? "/admin" : "/register", { replace: true });
     }
-  }, [session, profile, loading, nav]);
+  }, [session, profile, loading, nav, forgotOpen]);
 
   return (
     <div
@@ -42,7 +48,7 @@ export default function LoginPage() {
             <TabsTrigger value="signup">Owner sign up</TabsTrigger>
           </TabsList>
           <TabsContent value="signin">
-            <SignInForm />
+            <SignInForm onForgotChange={setForgotOpen} />
           </TabsContent>
           <TabsContent value="signup">
             <SignUpForm />
@@ -53,11 +59,16 @@ export default function LoginPage() {
   );
 }
 
-function SignInForm() {
+function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => void }) {
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+
+  const setForgot = (val: boolean) => {
+    setShowForgot(val);
+    onForgotChange(val);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,9 +81,8 @@ function SignInForm() {
   };
 
   if (showForgot) {
-    return <ForgotPasswordFlow onBack={() => setShowForgot(false)} />;
+    return <ForgotPasswordFlow onBack={() => setForgot(false)} />;
   }
-
   return (
     <form
       onSubmit={submit}
@@ -109,7 +119,7 @@ function SignInForm() {
       <div className="text-center pt-2">
         <button
           type="button"
-          onClick={() => setShowForgot(true)}
+          onClick={() => setForgot(true)}
           className="text-base font-bold text-primary hover:text-primary/80 underline"
         >
           Forgot password?
@@ -126,38 +136,47 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [busy, setBusy] = useState(false);
+  // Hold the session we get after OTP verify so we can update password
+  const [recoverySession, setRecoverySession] = useState(false);
+
+  // Listen for the PASSWORD_RECOVERY or SIGNED_IN event after OTP verify.
+  // When it fires we are on the password step — block the normal redirect
+  // by tracking that we're in recovery mode.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" && step === "otp") {
+        // OTP verified and user is now signed in — go to password step
+        setRecoverySession(true);
+        setStep("password");
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [step]);
 
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-
-    // Use signInWithOtp which sends a pure 6-digit code — NO redirect link in the email.
-    // shouldCreateUser: false means it won't create a new account if email doesn't exist.
+    // signInWithOtp sends a pure 6-digit code — no redirect link in the email
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: {
-        shouldCreateUser: false,
-      },
+      options: { shouldCreateUser: false },
     });
     setBusy(false);
+    // Always advance to OTP step regardless — don't reveal if email exists
     if (error) {
-      // Don't reveal if email exists — show generic message
       toast.success("If an account exists with this email, you'll receive a 6-digit code");
-      setStep("otp");
     } else {
       toast.success("Check your email for the 6-digit code");
-      setStep("otp");
     }
+    setStep("otp");
   };
 
   const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length !== 6) {
-      toast.error("Enter the 6-digit code");
-      return;
-    }
+    if (otp.length !== 6) { toast.error("Enter the 6-digit code"); return; }
     setBusy(true);
-    // Verify the OTP — this signs the user in so they can then update their password
+    // verifyOtp with type "email" signs the user in — the onAuthStateChange
+    // listener above catches SIGNED_IN and moves to the password step
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token: otp,
@@ -166,29 +185,24 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     setBusy(false);
     if (error) {
       toast.error("Invalid or expired code. Try again.");
-    } else {
-      toast.success("Code verified");
-      setStep("password");
     }
+    // On success the auth listener handles the step transition
   };
 
   const updatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPw !== confirmPw) {
-      toast.error("Passwords don't match");
-      return;
-    }
-    if (newPw.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
+    if (newPw !== confirmPw) { toast.error("Passwords don't match"); return; }
+    if (newPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: newPw });
     setBusy(false);
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Password updated successfully");
+      toast.success("Password updated — please sign in");
+      // Sign out so they land back on the login form cleanly
+      await supabase.auth.signOut();
+      setRecoverySession(false);
       onBack();
     }
   };
@@ -238,9 +252,15 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
               id="otp-code"
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                setOtp(text);
+              }}
               placeholder="123456"
               className="text-center text-2xl font-bold tracking-widest"
               required

@@ -369,8 +369,20 @@ function TemplateImportPanel() {
               <Input
                 value={pageUrl}
                 onChange={(e) => setPageUrl(e.target.value)}
+                onPaste={(e) => {
+                  // Explicitly handle paste so Android clipboard works reliably
+                  const text = e.clipboardData.getData("text");
+                  if (text) {
+                    e.preventDefault();
+                    setPageUrl(text.trim());
+                  }
+                }}
                 placeholder="https://example.com/products"
                 className="pl-9"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 onKeyDown={(e) => e.key === "Enter" && handleImport()}
               />
             </div>

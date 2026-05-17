@@ -285,9 +285,15 @@ export default function ProfilePage() {
                   id="email-otp"
                   type="text"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
                   maxLength={6}
                   value={emailOtp}
                   onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                    setEmailOtp(text);
+                  }}
                   placeholder="123456"
                   className="text-center text-2xl font-bold tracking-widest"
                   required
