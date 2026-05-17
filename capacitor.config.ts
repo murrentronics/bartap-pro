@@ -14,6 +14,7 @@ const config: CapacitorConfig = {
     Camera: {},
     Filesystem: {},
     Share: {},
+    Browser: {},
   },
   android: {
     backgroundColor: "#000000",

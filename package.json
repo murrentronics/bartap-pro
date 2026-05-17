@@ -11,12 +11,13 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "build:android": "vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\"",
-    "cap:sync": "npm run build:android && npx cap sync android",
+    "cap:sync": "node scripts/bump-version.cjs && npm run build:android && npx cap sync android",
     "cap:open": "npx cap open android",
     "android": "npm run cap:sync && npm run cap:open"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.3",
+    "@capacitor/browser": "8.0.3",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^8.3.3",
     "@capacitor/core": "^8.3.3",

@@ -1,8 +1,10 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SplashScreen } from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
+import { useAppUpdate } from "@/lib/useAppUpdate";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 import LoginPage from "@/pages/LoginPage";
 import AppLayout from "@/pages/AppLayout";
@@ -16,19 +18,11 @@ import AdminBankingPage from "@/pages/AdminBankingPage";
 import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 import ProfilePage from "@/pages/ProfilePage";
 
-export default function App() {
-  const [splashDone, setSplashDone] = useState(false);
-
-  // Register service worker for PWA/Android install support
-  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {/* ignore */});
-    });
-  }
+function AppWithUpdateCheck() {
+  const { update, dismiss } = useAppUpdate();
 
   return (
-    <AuthProvider>
-      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+    <>
       <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -47,7 +41,29 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </HashRouter>
+
+      {/* Update banner — shown on top of everything when a new APK is available */}
+      {update && <UpdateBanner update={update} onDismiss={dismiss} />}
+
       <Toaster richColors position="top-center" />
+    </>
+  );
+}
+
+export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
+  // Register service worker for PWA/Android install support
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {/* ignore */});
+    });
+  }
+
+  return (
+    <AuthProvider>
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      <AppWithUpdateCheck />
     </AuthProvider>
   );
 }
