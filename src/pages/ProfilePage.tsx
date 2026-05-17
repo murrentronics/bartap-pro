@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { PhoneInput } from "@/components/PhoneInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -222,12 +223,11 @@ export default function ProfilePage() {
             </div>
             <div>
               <Label htmlFor="phone">Phone Number</Label>
-              <Input
+              <PhoneInput
                 id="phone"
-                type="tel"
+                name="phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 868 555 1234"
+                onChange={setPhone}
                 required
               />
             </div>

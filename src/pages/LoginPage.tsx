@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wine } from "lucide-react";
+import { PhoneInput } from "@/components/PhoneInput";
 
 export default function LoginPage() {
   const { session, profile, loading } = useAuth();
@@ -378,14 +379,11 @@ function SignUpForm() {
       </div>
       <div>
         <Label htmlFor="signup-phone">Phone Number</Label>
-        <Input
+        <PhoneInput
           id="signup-phone"
           name="phone"
-          type="tel"
-          autoComplete="tel"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+1 868 555 1234"
+          onChange={setPhone}
           required
         />
       </div>
