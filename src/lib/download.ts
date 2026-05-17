@@ -55,7 +55,12 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
     const Share = await getShare();
     // Strip the data:application/pdf;base64, prefix if present
     const base64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
-    
+
+    // Validate base64 is not empty
+    if (!base64 || base64.length < 10) {
+      throw new Error("PDF generation produced empty output");
+    }
+
     let fileUri: string;
     try {
       const result = await Filesystem.writeFile({
@@ -64,7 +69,7 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
         directory: Directory.Cache,
       });
       fileUri = result.uri;
-    } catch (writeErr) {
+    } catch {
       // Fallback: try Documents directory
       const result = await Filesystem.writeFile({
         path: filename,

@@ -33,7 +33,9 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (profile?.id) loadPayments();
-  }, [historyPage]); = async () => {
+  }, [historyPage]);
+
+  const loadFeatureFlags = async () => {
     const { data } = await supabase
       .from("feature_flags")
       .select("enabled")

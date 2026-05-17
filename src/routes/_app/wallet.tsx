@@ -264,7 +264,11 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
     });
 
     const filename = "owner-statement-" + ownerName + "-" + month.replace(/\s/g, "-") + ".pdf";
-    await downloadPdf(filename, doc.output("datauristring"));
+    try {
+      await downloadPdf(filename, doc.output("datauristring"));
+    } catch (err: any) {
+      toast.error("Download failed: " + (err?.message ?? "unknown error"));
+    }
   };
 
   return (

@@ -316,7 +316,7 @@ export default function AdminBillingManagementPage() {
               </div>
             )}
           </>
-          }
+          )}
         </Card>
 
         {/* Payment Details Dialog */}
