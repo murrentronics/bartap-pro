@@ -283,19 +283,17 @@ export default function ProfilePage() {
                 <Label htmlFor="email-otp">6-Digit Code</Label>
                 <Input
                   id="email-otp"
-                  type="text"
+                  type="number"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={6}
+                  pattern="[0-9]*"
                   value={emailOtp}
-                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                    setEmailOtp(text);
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setEmailOtp(val);
                   }}
                   placeholder="123456"
-                  className="text-center text-2xl font-bold tracking-widest"
+                  className="text-center text-2xl font-bold tracking-widest [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
               </div>
