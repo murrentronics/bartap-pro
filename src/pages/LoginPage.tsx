@@ -251,7 +251,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
             <Label htmlFor="otp-code">6-Digit Code</Label>
             <Input
               id="otp-code"
-              type="number"
+              type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]*"
@@ -261,7 +261,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
                 setOtp(val);
               }}
               placeholder="123456"
-              className="text-center text-2xl font-bold tracking-widest [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="text-center text-2xl font-bold tracking-widest"
               required
             />
           </div>

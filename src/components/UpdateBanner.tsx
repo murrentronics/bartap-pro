@@ -26,15 +26,19 @@ export function UpdateBanner({ update, onDismiss }: Props) {
     setDownloading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        // Use Capacitor Browser to open the APK download URL
-        // The Android system will handle the APK install prompt
+        // Open the download page in the system browser — Android will handle
+        // the APK download and install prompt natively
         const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url: update.apkUrl });
+        await Browser.open({
+          url: update.apkUrl,
+          presentationStyle: "fullscreen",
+          toolbarColor: "#0a0a0a",
+        });
       } else {
         window.open(update.apkUrl, "_blank");
       }
     } catch {
-      // Fallback if Browser plugin not available
+      // Fallback
       window.open(update.apkUrl, "_blank");
     } finally {
       setDownloading(false);

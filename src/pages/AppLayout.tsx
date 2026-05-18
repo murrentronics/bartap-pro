@@ -171,8 +171,8 @@ export default function AppLayout() {
     : [
         { to: "/register", label: "Bar", icon: Wine },
         ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
-        { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
+        { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/billing", label: "Billing", icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile", label: "Profile", icon: UserCircle }] : []),
       ];
