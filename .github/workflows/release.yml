@@ -111,7 +111,7 @@ jobs:
           echo "Found APK: $APK"
           mv "$APK" android/app/build/outputs/apk/release/bartendaz-pro.apk
 
-      # ── 14. Create / update GitHub Release ───────────────────────────────
+      # ── 16. Create / update GitHub Release ───────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -120,5 +120,7 @@ jobs:
           body: "Bartendaz Pro ${{ steps.version.outputs.TAG }}"
           files: android/app/build/outputs/apk/release/bartendaz-pro.apk
           make_latest: true
+          prerelease: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
