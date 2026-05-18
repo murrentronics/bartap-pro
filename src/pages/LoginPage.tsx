@@ -140,7 +140,47 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   // Hold the session we get after OTP verify so we can update password
   const [recoverySession, setRecoverySession] = useState(false);
 
-  // Listen for the PASSWORD_RECOVERY or SIGNED_IN event after OTP verify.
+  // Auto-read clipboard when OTP step appears
+  useEffect(() => {
+    if (step !== "otp") return;
+
+    const tryPaste = async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          const { Clipboard } = await import("@capacitor/clipboard");
+          const { value } = await Clipboard.read();
+          const digits = (value ?? "").replace(/\D/g, "").slice(0, 6);
+          if (digits.length === 6) {
+            setOtp(digits);
+            toast.success("Code pasted from clipboard");
+          }
+        } else if (navigator.clipboard?.readText) {
+          const text = await navigator.clipboard.readText();
+          const digits = text.replace(/\D/g, "").slice(0, 6);
+          if (digits.length === 6) {
+            setOtp(digits);
+            toast.success("Code pasted from clipboard");
+          }
+        }
+      } catch {
+        // Clipboard read denied — user types manually
+      }
+    };
+
+    // Try immediately when step changes to otp
+    tryPaste();
+
+    // Also try when app comes back into focus (user switched to email app)
+    const onFocus = () => tryPaste();
+    const onVisible = () => { if (document.visibilityState === "visible") tryPaste(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [step]);
   // When it fires we are on the password step — block the normal redirect
   // by tracking that we're in recovery mode.
   useEffect(() => {
@@ -249,21 +289,52 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
           </div>
           <div>
             <Label htmlFor="otp-code">6-Digit Code</Label>
-            <Input
-              id="otp-code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]*"
-              value={otp}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setOtp(val);
-              }}
-              placeholder="123456"
-              className="text-center text-2xl font-bold tracking-widest"
-              required
-            />
+            <div className="flex gap-2 mt-1">
+              <Input
+                id="otp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                value={otp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setOtp(val);
+                }}
+                placeholder="123456"
+                className="text-center text-2xl font-bold tracking-widest flex-1"
+                required
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 h-10 px-3 text-xs font-bold"
+                onClick={async () => {
+                  try {
+                    const { Capacitor } = await import("@capacitor/core");
+                    let text = "";
+                    if (Capacitor.isNativePlatform()) {
+                      const { Clipboard } = await import("@capacitor/clipboard");
+                      const { value } = await Clipboard.read();
+                      text = value ?? "";
+                    } else if (navigator.clipboard?.readText) {
+                      text = await navigator.clipboard.readText();
+                    }
+                    const digits = text.replace(/\D/g, "").slice(0, 6);
+                    if (digits.length === 6) {
+                      setOtp(digits);
+                      toast.success("Code pasted");
+                    } else {
+                      toast.error("No 6-digit code found in clipboard");
+                    }
+                  } catch {
+                    toast.error("Could not read clipboard");
+                  }
+                }}
+              >
+                Paste
+              </Button>
+            </div>
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
             {busy ? "Verifying..." : "Verify code"}
