@@ -96,7 +96,7 @@ jobs:
 
       # ── 14. Build release APK ─────────────────────────────────────────────
       - name: Build release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
+        run: ./gradlew assembleRelease --no-daemon
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -104,11 +104,12 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
-      # ── 13. Rename APK ────────────────────────────────────────────────────
+      # ── 15. Find and rename APK ───────────────────────────────────────────
       - name: Rename APK
         run: |
-          mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/bartendaz-pro.apk
+          APK=$(find android/app/build/outputs/apk/release/ -name "*.apk" | head -1)
+          echo "Found APK: $APK"
+          mv "$APK" android/app/build/outputs/apk/release/bartendaz-pro.apk
 
       # ── 14. Create / update GitHub Release ───────────────────────────────
       - name: Create GitHub Release
