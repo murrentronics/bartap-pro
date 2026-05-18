@@ -70,9 +70,9 @@ jobs:
               android: { backgroundColor: '#000000', captureInput: true, webContentsDebuggingEnabled: false }
             };
             fs.writeFileSync('android/app/src/main/assets/capacitor.config.json', JSON.stringify(cfg, null, 2));
-            fs.writeFileSync('android/app/src/main/assets/capacitor.plugins.json', JSON.stringify([], null, 2));
-            console.log('Capacitor config files written');
+            console.log('capacitor.config.json written');
           "
+          # capacitor.plugins.json is committed in the repo — already copied above, do not overwrite
 
       # ── 9. Fix gradle.properties for CI (remove local Android Studio path) ─
       - name: Fix gradle.properties for CI
