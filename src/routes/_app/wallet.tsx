@@ -5,6 +5,7 @@ import { Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight, ArrowDownLeft
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 type Order = {
   id: string;
@@ -217,59 +218,77 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
     );
 
   const handleDownload = async (month: string) => {
-    if (downloadingMonth) return; // prevent double-tap
+    if (downloadingMonth) return;
     setDownloadingMonth(month);
     try {
       const monthRecords = getRecordsForMonth(month);
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const lm = 15;
-      let y = 20;
 
-      const ownerName = profile.username ?? "owner";
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.text("Bartendaz Pro", lm, y); y += 8;
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text("Owner Wallet Statement", lm, y); y += 6;
-      doc.text("Period: " + month, lm, y); y += 6;
-      doc.text("Generated: " + new Date().toLocaleString(), lm, y); y += 10;
+      const businessName = profile.username ?? "Owner";
+      const generated = new Date().toLocaleString();
 
-      doc.setDrawColor(180, 120, 40);
-      doc.line(lm, y, 195, y); y += 6;
+      // Draw header on page 1 and get starting Y
+      let y = await drawHeader(doc, businessName, "Wallet Statement", month, generated);
 
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
 
       monthRecords.forEach((rec) => {
-        if (y > 270) { doc.addPage(); y = 20; }
+        // New page if near bottom
+        if (y > CONTENT_BOTTOM) {
+          doc.addPage();
+          y = 20;
+        }
         if (rec.kind === "order") {
           const o = rec.data;
-          doc.text(new Date(o.created_at).toLocaleString(), lm, y);
-          doc.text("$" + Number(o.total).toFixed(2), 175, y, { align: "right" });
+          // Date + amount on same line
+          doc.setFont("helvetica", "bold");
+          doc.text(new Date(o.created_at).toLocaleString(), LM, y);
+          doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
           y += 5;
+          // Items
+          doc.setFont("helvetica", "normal");
           const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
-          doc.text(wrapped, lm, y);
+          doc.text(wrapped, LM, y);
           y += wrapped.length * 4.5 + 1;
-          doc.text("  Paid $" + Number(o.paid).toFixed(2) + "  Change $" + Number(o.change_given).toFixed(2), lm, y);
-          y += 7;
+          // Paid / change
+          doc.setTextColor(100, 100, 100);
+          doc.text("  Paid $" + Number(o.paid).toFixed(2) + "   Change $" + Number(o.change_given).toFixed(2), LM, y);
+          doc.setTextColor(0, 0, 0);
+          y += 4;
+          // Row spacer
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.1);
+          doc.line(LM, y, RM, y);
+          y += 4;
         } else {
           const tx = rec.data;
           const isReset = tx.type === "wallet_reset";
           const label = tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier");
           const sign = isReset ? "-" : "+";
-          doc.text(new Date(tx.created_at).toLocaleString(), lm, y);
-          doc.text(label, lm + 55, y);
-          doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), 175, y, { align: "right" });
-          y += 7;
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(isReset ? 200 : 40, isReset ? 80 : 140, isReset ? 40 : 80);
+          doc.text(new Date(tx.created_at).toLocaleString(), LM, y);
+          doc.text(label, LM + 55, y);
+          doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0);
+          doc.setFont("helvetica", "normal");
+          y += 4;
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.1);
+          doc.line(LM, y, RM, y);
+          y += 4;
         }
       });
 
-      const filename = "owner-statement-" + ownerName + "-" + month.replace(/\s/g, "-") + ".pdf";
+      // Stamp footers on all pages
+      addFootersToAllPages(doc);
+
+      const filename = "wallet-statement-" + businessName + "-" + month.replace(/\s/g, "-") + ".pdf";
       await downloadPdf(filename, doc.output("datauristring"));
-      toast.success("PDF ready — check your share sheet");
+      toast.success("PDF saved to Downloads folder");
     } catch (err: any) {
       console.error("PDF download error:", err);
       toast.error("Download failed: " + (err?.message ?? "unknown error"));

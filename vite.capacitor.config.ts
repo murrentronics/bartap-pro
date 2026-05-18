@@ -12,13 +12,19 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), tsconfigPaths()],
   root: ".",
   build: {
+    // Increase chunk size warning limit — large bundles are expected for a mobile app
+    chunkSizeWarningLimit: 3000,
     rollupOptions: {
       input: path.resolve(__dirname, "index.capacitor.html"),
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-pdf": ["jspdf"],
+        manualChunks(id) {
+          // Bundle all lucide icons into one chunk to avoid processing 1000+ individual files
+          if (id.includes("lucide-react")) return "vendor-icons";
+          if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/") || id.includes("node_modules/react-router-dom")) return "vendor-react";
+          if (id.includes("node_modules/@supabase")) return "vendor-supabase";
+          if (id.includes("node_modules/jspdf")) return "vendor-pdf";
+          if (id.includes("node_modules/@radix-ui")) return "vendor-radix";
+          if (id.includes("node_modules/@tanstack")) return "vendor-tanstack";
         },
       },
     },

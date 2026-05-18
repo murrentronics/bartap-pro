@@ -16,6 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 type Cashier = { id: string; username: string; wallet_balance: number };
 
@@ -43,11 +44,12 @@ type CashierFlatRecord =
   | { kind: "order"; data: Order; ts: number }
   | { kind: "tx"; data: WalletTx; ts: number };
 
-function CashierStatement({ cashier, onClose }: { cashier: Cashier; onClose: () => void }) {
+function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; ownerName: string; onClose: () => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -89,58 +91,75 @@ function CashierStatement({ cashier, onClose }: { cashier: Cashier; onClose: () 
     );
 
   const handleDownload = async (month: string) => {
-    const monthRecords = getRecordsForMonth(month);
-
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const lm = 15;
-    let y = 20;
-
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Bartendaz Pro", lm, y); y += 8;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text("Cashier Statement", lm, y); y += 6;
-    doc.text("Cashier: " + cashier.username, lm, y); y += 6;
-    doc.text("Period: " + month, lm, y); y += 6;
-    doc.text("Generated: " + new Date().toLocaleString(), lm, y); y += 10;
-
-    doc.setDrawColor(180, 120, 40);
-    doc.line(lm, y, 195, y); y += 6;
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-
-    monthRecords.forEach((rec) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      if (rec.kind === "order") {
-        const o = rec.data;
-        doc.text(new Date(o.created_at).toLocaleString(), lm, y);
-        doc.text("$" + Number(o.total).toFixed(2), 175, y, { align: "right" });
-        y += 5;
-        const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
-        const wrapped = doc.splitTextToSize("  " + items, 155);
-        doc.text(wrapped, lm, y);
-        y += wrapped.length * 4.5 + 1;
-        doc.text("  Paid $" + Number(o.paid).toFixed(2) + "  Change $" + Number(o.change_given).toFixed(2), lm, y);
-        y += 7;
-      } else {
-        const tx = rec.data;
-        doc.setTextColor(40, 160, 80);
-        doc.text(new Date(tx.created_at).toLocaleString(), lm, y);
-        doc.text(tx.note ?? "Cleared to owner", lm + 55, y);
-        doc.text("-$" + Math.abs(Number(tx.amount)).toFixed(2), 175, y, { align: "right" });
-        doc.setTextColor(0, 0, 0);
-        y += 7;
-      }
-    });
-
-    const filename = "statement-" + cashier.username + "-" + month.replace(/\s/g, "-") + ".pdf";
+    if (downloadingMonth) return;
+    setDownloadingMonth(month);
     try {
+      const monthRecords = getRecordsForMonth(month);
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+      const generated = new Date().toLocaleString();
+      let y = await drawHeader(doc, ownerName, "Cashier Statement", month, generated);
+
+      // Cashier sub-line
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Statement for cashier: " + cashier.username, LM, y);
+      y += 6;
+      doc.setTextColor(0, 0, 0);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+
+      monthRecords.forEach((rec) => {
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        if (rec.kind === "order") {
+          const o = rec.data;
+          doc.setFont("helvetica", "bold");
+          doc.text(new Date(o.created_at).toLocaleString(), LM, y);
+          doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
+          y += 5;
+          doc.setFont("helvetica", "normal");
+          const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
+          const wrapped = doc.splitTextToSize("  " + items, 155);
+          doc.text(wrapped, LM, y);
+          y += wrapped.length * 4.5 + 1;
+          doc.setTextColor(100, 100, 100);
+          doc.text("  Paid $" + Number(o.paid).toFixed(2) + "   Change $" + Number(o.change_given).toFixed(2), LM, y);
+          doc.setTextColor(0, 0, 0);
+          y += 4;
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.1);
+          doc.line(LM, y, RM, y);
+          y += 4;
+        } else {
+          const tx = rec.data;
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(40, 140, 80);
+          doc.text(new Date(tx.created_at).toLocaleString(), LM, y);
+          doc.text(tx.note ?? "Cleared to owner", LM + 55, y);
+          doc.text("-$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0);
+          doc.setFont("helvetica", "normal");
+          y += 4;
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.1);
+          doc.line(LM, y, RM, y);
+          y += 4;
+        }
+      });
+
+      addFootersToAllPages(doc);
+
+      const filename = "cashier-statement-" + cashier.username + "-" + month.replace(/\s/g, "-") + ".pdf";
       await downloadPdf(filename, doc.output("datauristring"));
+      toast.success("PDF saved to Downloads folder");
     } catch (err: any) {
+      console.error("PDF download error:", err);
       toast.error("Download failed: " + (err?.message ?? "unknown error"));
+    } finally {
+      setDownloadingMonth(null);
     }
   };
 
@@ -203,9 +222,14 @@ function CashierStatement({ cashier, onClose }: { cashier: Cashier; onClose: () 
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs gap-1"
+                          type="button"
+                          disabled={downloadingMonth === month}
                           onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
                         >
-                          <Download className="h-3 w-3" /> PDF
+                          {downloadingMonth === month
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Download className="h-3 w-3" />}
+                          {downloadingMonth === month ? "…" : "PDF"}
                         </Button>
                         <ChevronRight
                           className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`}
@@ -478,7 +502,11 @@ export default function CashiersPage() {
       </Tabs>
 
       {statementCashier && (
-        <CashierStatement cashier={statementCashier} onClose={() => setStatementCashier(null)} />
+        <CashierStatement
+          cashier={statementCashier}
+          ownerName={profile.username}
+          onClose={() => setStatementCashier(null)}
+        />
       )}
       </div>
     </div>
