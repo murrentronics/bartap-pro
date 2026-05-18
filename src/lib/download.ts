@@ -86,13 +86,21 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
         files: [fileUri],
         dialogTitle: "Save or share PDF",
       });
-    } catch {
-      // Fallback for older Capacitor Share versions
-      await Share.share({
-        title: filename,
-        url: fileUri,
-        dialogTitle: "Save or share PDF",
-      });
+    } catch (shareErr: any) {
+      // User dismissed the share sheet — not a real error
+      const msg = shareErr?.message ?? "";
+      if (!msg.includes("cancel") && !msg.includes("dismiss") && !msg.includes("Share canceled")) {
+        // Fallback for older Capacitor Share versions
+        try {
+          await Share.share({
+            title: filename,
+            url: fileUri,
+            dialogTitle: "Save or share PDF",
+          });
+        } catch {
+          // Share sheet dismissed or unavailable — file is still saved to cache
+        }
+      }
     }
   } else {
     const byteChars = atob(pdfBase64.replace(/^data:application\/pdf;base64,/, ""));

@@ -175,6 +175,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -216,58 +217,64 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
     );
 
   const handleDownload = async (month: string) => {
-    const monthRecords = getRecordsForMonth(month);
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const lm = 15;
-    let y = 20;
-
-    const ownerName = profile.username ?? "owner";
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Bartendaz Pro", lm, y); y += 8;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text("Owner Wallet Statement", lm, y); y += 6;
-    doc.text("Period: " + month, lm, y); y += 6;
-    doc.text("Generated: " + new Date().toLocaleString(), lm, y); y += 10;
-
-    doc.setDrawColor(180, 120, 40);
-    doc.line(lm, y, 195, y); y += 6;
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-
-    monthRecords.forEach((rec) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      if (rec.kind === "order") {
-        const o = rec.data;
-        doc.text(new Date(o.created_at).toLocaleString(), lm, y);
-        doc.text("$" + Number(o.total).toFixed(2), 175, y, { align: "right" });
-        y += 5;
-        const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
-        const wrapped = doc.splitTextToSize("  " + items, 155);
-        doc.text(wrapped, lm, y);
-        y += wrapped.length * 4.5 + 1;
-        doc.text("  Paid $" + Number(o.paid).toFixed(2) + "  Change $" + Number(o.change_given).toFixed(2), lm, y);
-        y += 7;
-      } else {
-        const tx = rec.data;
-        const isReset = tx.type === "wallet_reset";
-        const label = tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier");
-        const sign = isReset ? "-" : "+";
-        doc.text(new Date(tx.created_at).toLocaleString(), lm, y);
-        doc.text(label, lm + 55, y);
-        doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), 175, y, { align: "right" });
-        y += 7;
-      }
-    });
-
-    const filename = "owner-statement-" + ownerName + "-" + month.replace(/\s/g, "-") + ".pdf";
+    if (downloadingMonth) return; // prevent double-tap
+    setDownloadingMonth(month);
     try {
+      const monthRecords = getRecordsForMonth(month);
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const lm = 15;
+      let y = 20;
+
+      const ownerName = profile.username ?? "owner";
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("Bartendaz Pro", lm, y); y += 8;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Owner Wallet Statement", lm, y); y += 6;
+      doc.text("Period: " + month, lm, y); y += 6;
+      doc.text("Generated: " + new Date().toLocaleString(), lm, y); y += 10;
+
+      doc.setDrawColor(180, 120, 40);
+      doc.line(lm, y, 195, y); y += 6;
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+
+      monthRecords.forEach((rec) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        if (rec.kind === "order") {
+          const o = rec.data;
+          doc.text(new Date(o.created_at).toLocaleString(), lm, y);
+          doc.text("$" + Number(o.total).toFixed(2), 175, y, { align: "right" });
+          y += 5;
+          const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
+          const wrapped = doc.splitTextToSize("  " + items, 155);
+          doc.text(wrapped, lm, y);
+          y += wrapped.length * 4.5 + 1;
+          doc.text("  Paid $" + Number(o.paid).toFixed(2) + "  Change $" + Number(o.change_given).toFixed(2), lm, y);
+          y += 7;
+        } else {
+          const tx = rec.data;
+          const isReset = tx.type === "wallet_reset";
+          const label = tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier");
+          const sign = isReset ? "-" : "+";
+          doc.text(new Date(tx.created_at).toLocaleString(), lm, y);
+          doc.text(label, lm + 55, y);
+          doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), 175, y, { align: "right" });
+          y += 7;
+        }
+      });
+
+      const filename = "owner-statement-" + ownerName + "-" + month.replace(/\s/g, "-") + ".pdf";
       await downloadPdf(filename, doc.output("datauristring"));
+      toast.success("PDF ready — check your share sheet");
     } catch (err: any) {
+      console.error("PDF download error:", err);
       toast.error("Download failed: " + (err?.message ?? "unknown error"));
+    } finally {
+      setDownloadingMonth(null);
     }
   };
 
@@ -324,9 +331,14 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs gap-1"
+                          type="button"
+                          disabled={downloadingMonth === month}
                           onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
                         >
-                          <Download className="h-3 w-3" /> PDF
+                          {downloadingMonth === month
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Download className="h-3 w-3" />}
+                          {downloadingMonth === month ? "…" : "PDF"}
                         </Button>
                         <ChevronRight
                           className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`}
