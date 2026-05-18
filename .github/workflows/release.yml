@@ -35,7 +35,9 @@ jobs:
 
       # ── 5. Build web bundle for Capacitor ─────────────────────────────────
       - name: Build Android web bundle
-        run: npx cross-env NODE_OPTIONS="--max-old-space-size=4096" vite build --config vite.capacitor.config.ts
+        run: |
+          rm -rf dist/client
+          npx cross-env NODE_OPTIONS="--max-old-space-size=4096" vite build --config vite.capacitor.config.ts
 
       # ── 6. Copy capacitor HTML as index.html ──────────────────────────────
       - name: Fix index.html for Capacitor
