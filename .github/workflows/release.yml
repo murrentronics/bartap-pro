@@ -14,11 +14,11 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 2. Java setup ──────────────────────────────────────────────────────
-      - name: Setup Java 17
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       # ── 3. Node setup ──────────────────────────────────────────────────────
       - name: Setup Node.js
