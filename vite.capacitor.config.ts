@@ -11,23 +11,27 @@ const externalSupabasePublishableKey =
 export default defineConfig({
   plugins: [react(), tailwindcss(), tsconfigPaths()],
   root: ".",
-  // Pre-bundle lucide-react as one unit so Rollup doesn't process 1000+ icon files individually
-  optimizeDeps: {
-    include: ["lucide-react"],
-  },
   build: {
     chunkSizeWarningLimit: 3000,
     rollupOptions: {
       input: path.resolve(__dirname, "index.capacitor.html"),
       output: {
         manualChunks(id) {
+          // Force ALL lucide files into one chunk — prevents processing 1000+ individual icon files
           if (id.includes("lucide-react")) return "vendor-icons";
           if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/") || id.includes("node_modules/react-router-dom")) return "vendor-react";
           if (id.includes("node_modules/@supabase")) return "vendor-supabase";
           if (id.includes("node_modules/jspdf")) return "vendor-pdf";
           if (id.includes("node_modules/@radix-ui")) return "vendor-radix";
           if (id.includes("node_modules/@tanstack")) return "vendor-tanstack";
+          if (id.includes("node_modules/@capacitor")) return "vendor-capacitor";
         },
+      },
+      // Tell Rollup to treat lucide-react as a single external-like module
+      // so it doesn't walk into every individual icon file
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
       },
     },
     outDir: "dist/client",
