@@ -51,8 +51,26 @@ jobs:
       #    (avoids cap sync which requires Android SDK on the runner)
       - name: Copy web assets to Android
         run: |
-          rm -rf android/app/src/main/assets/public
-          cp -r dist/client android/app/src/main/assets/public
+          mkdir -p android/app/src/main/assets/public
+          rm -rf android/app/src/main/assets/public/*
+          cp -r dist/client/. android/app/src/main/assets/public/
+          # Write capacitor.config.json (gitignored, must be generated)
+          node -e "
+            const fs = require('fs');
+            const cfg = {
+              appId: 'com.bartendaz.pro',
+              appName: 'Bartendaz Pro',
+              webDir: 'dist/client',
+              plugins: {
+                SplashScreen: { launchShowDuration: 0, launchAutoHide: true, showSpinner: false, backgroundColor: '#000000' },
+                Camera: {}, Filesystem: {}, Share: {}, Browser: {}, FileOpener: {}
+              },
+              android: { backgroundColor: '#000000', captureInput: true, webContentsDebuggingEnabled: false }
+            };
+            fs.writeFileSync('android/app/src/main/assets/capacitor.config.json', JSON.stringify(cfg, null, 2));
+            fs.writeFileSync('android/app/src/main/assets/capacitor.plugins.json', JSON.stringify([], null, 2));
+            console.log('Capacitor config files written');
+          "
 
       # ── 9. Fix gradle.properties for CI (remove local Android Studio path) ─
       - name: Fix gradle.properties for CI
