@@ -140,38 +140,33 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   // Hold the session we get after OTP verify so we can update password
   const [recoverySession, setRecoverySession] = useState(false);
 
-  // Auto-read clipboard when OTP step appears
+  // Auto-read clipboard only when app regains focus (user switched to email to copy code)
+  // Does NOT auto-paste on mount — avoids filling stale codes from clipboard history
   useEffect(() => {
     if (step !== "otp") return;
 
     const tryPaste = async () => {
       try {
         const { Capacitor } = await import("@capacitor/core");
+        let text = "";
         if (Capacitor.isNativePlatform()) {
           const { Clipboard } = await import("@capacitor/clipboard");
           const { value } = await Clipboard.read();
-          const digits = (value ?? "").replace(/\D/g, "").slice(0, 6);
-          if (digits.length === 6) {
-            setOtp(digits);
-            toast.success("Code pasted from clipboard");
-          }
+          text = value ?? "";
         } else if (navigator.clipboard?.readText) {
-          const text = await navigator.clipboard.readText();
-          const digits = text.replace(/\D/g, "").slice(0, 6);
-          if (digits.length === 6) {
-            setOtp(digits);
-            toast.success("Code pasted from clipboard");
-          }
+          text = await navigator.clipboard.readText();
+        }
+        const digits = text.replace(/\D/g, "").slice(0, 6);
+        if (digits.length === 6) {
+          setOtp(digits);
+          toast.success("Code pasted from clipboard");
         }
       } catch {
-        // Clipboard read denied — user types manually
+        // Clipboard read denied — user types or taps Paste manually
       }
     };
 
-    // Try immediately when step changes to otp
-    tryPaste();
-
-    // Also try when app comes back into focus (user switched to email app)
+    // Only trigger when app comes back into focus — not on mount
     const onFocus = () => tryPaste();
     const onVisible = () => { if (document.visibilityState === "visible") tryPaste(); };
     window.addEventListener("focus", onFocus);
