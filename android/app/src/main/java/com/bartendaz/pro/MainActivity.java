@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -17,6 +18,12 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(PdfDownloadPlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Clear WebView cache on every launch so updated APKs always load fresh JS
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().clearCache(true);
+        }
+
         setupImmersiveMode();
     }
 
