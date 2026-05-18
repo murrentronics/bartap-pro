@@ -1,0 +1,86 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 2. Node setup ──────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── 3. Install JS deps ─────────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 4. Build web bundle for Capacitor ─────────────────────────────────
+      - name: Build Android web bundle
+        run: npm run build:android
+        env:
+          VITE_APP_VERSION: ${{ env.VITE_APP_VERSION }}
+
+      # ── 5. Read version from .env ──────────────────────────────────────────
+      - name: Read app version
+        id: version
+        run: |
+          VERSION=$(grep 'VITE_APP_VERSION' .env | sed 's/VITE_APP_VERSION="\(.*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      # ── 6. Java setup ──────────────────────────────────────────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ── 7. Capacitor sync ──────────────────────────────────────────────────
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      # ── 8. Remove local Java path from gradle.properties ──────────────────
+      - name: Fix gradle.properties for CI
+        run: sed -i '/org.gradle.java.home/d' android/gradle.properties
+
+      # ── 9. Decode keystore ─────────────────────────────────────────────────
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/bartendaz.jks
+
+      # ── 10. Build release APK ──────────────────────────────────────────────
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # ── 11. Rename APK ─────────────────────────────────────────────────────
+      - name: Rename APK
+        run: |
+          mv android/app/build/outputs/apk/release/app-release.apk \
+             android/app/build/outputs/apk/release/bartendaz-pro.apk
+
+      # ── 12. Create / update GitHub Release ────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: ${{ steps.version.outputs.TAG }}
+          body: "Bartendaz Pro ${{ steps.version.outputs.TAG }}"
+          files: android/app/build/outputs/apk/release/bartendaz-pro.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
