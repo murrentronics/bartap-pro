@@ -84,6 +84,16 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      # ── 11a. Install Android SDK 36 ───────────────────────────────────────
+      - name: Install Android SDK 36
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-36" \
+            "build-tools;35.0.0" 2>/dev/null || \
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-36" \
+            "build-tools;34.0.0"
+
       # ── 12. Build release APK ─────────────────────────────────────────────
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
@@ -92,6 +102,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
       # ── 13. Rename APK ────────────────────────────────────────────────────
       - name: Rename APK
