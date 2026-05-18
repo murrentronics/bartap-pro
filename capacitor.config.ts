@@ -15,6 +15,7 @@ const config: CapacitorConfig = {
     Filesystem: {},
     Share: {},
     Browser: {},
+    FileOpener: {},
   },
   android: {
     backgroundColor: "#000000",

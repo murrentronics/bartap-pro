@@ -15,6 +15,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PdfDownloadPlugin.class);
         super.onCreate(savedInstanceState);
         setupImmersiveMode();
     }

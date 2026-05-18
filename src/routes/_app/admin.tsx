@@ -189,6 +189,53 @@ function TemplateImportPanel() {
   const [saving, setSaving] = useState(false);
   const [images, setImages] = useState<ImportedImage[]>([]);
   const [existingUrls, setExistingUrls] = useState<Set<string>>(new Set());
+  const [clipboardText, setClipboardText] = useState<string>("");
+
+  // Check clipboard content — runs on mount and whenever app regains focus
+  const checkClipboard = async () => {
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const { Clipboard } = await import("@capacitor/clipboard");
+        const { value } = await Clipboard.read();
+        setClipboardText(value?.trim() ?? "");
+      } else if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        setClipboardText(text?.trim() ?? "");
+      }
+    } catch {
+      setClipboardText("");
+    }
+  };
+
+  useEffect(() => {
+    checkClipboard();
+    const onFocus = () => checkClipboard();
+    const onVisible = () => { if (document.visibilityState === "visible") checkClipboard(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  // Paste from clipboard into the URL field
+  const pasteFromClipboard = async () => {
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const { Clipboard } = await import("@capacitor/clipboard");
+        const { value } = await Clipboard.read();
+        if (value) { setPageUrl(value.trim()); setClipboardText(value.trim()); }
+      } else if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text) { setPageUrl(text.trim()); setClipboardText(text.trim()); }
+      }
+    } catch {
+      toast.error("Could not read clipboard");
+    }
+  };
 
   // Load existing template URLs to detect duplicates
   useEffect(() => {
@@ -369,13 +416,17 @@ function TemplateImportPanel() {
               <Input
                 value={pageUrl}
                 onChange={(e) => setPageUrl(e.target.value)}
-                onPaste={(e) => {
-                  // Explicitly handle paste so Android clipboard works reliably
-                  const text = e.clipboardData.getData("text");
+                onPaste={async (e) => {
+                  // Try native clipboard data first
+                  const text = e.clipboardData?.getData("text");
                   if (text) {
                     e.preventDefault();
                     setPageUrl(text.trim());
+                    return;
                   }
+                  // Fallback: Capacitor clipboard (Android WebView often has empty clipboardData)
+                  e.preventDefault();
+                  await pasteFromClipboard();
                 }}
                 placeholder="https://example.com/products"
                 className="pl-9"
@@ -386,6 +437,17 @@ function TemplateImportPanel() {
                 onKeyDown={(e) => e.key === "Enter" && handleImport()}
               />
             </div>
+            {/* Explicit Paste button for Android users — only enabled when clipboard has content */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={pasteFromClipboard}
+              disabled={!clipboardText}
+              className="shrink-0 px-3"
+              title={clipboardText ? `Paste: ${clipboardText.slice(0, 40)}${clipboardText.length > 40 ? "…" : ""}` : "Nothing copied"}
+            >
+              <LinkIcon className="h-4 w-4" />
+            </Button>
             <Button onClick={handleImport} disabled={importing || !pageUrl.trim()}>
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
             </Button>

@@ -101,21 +101,82 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
       const generated = new Date().toLocaleString();
       let y = await drawHeader(doc, ownerName, "Cashier Statement", month, generated);
 
-      // Cashier sub-line
+      // ── Calculate summary figures ──────────────────────────────────────────
+      const orders = monthRecords.filter((r) => r.kind === "order");
+      const txs    = monthRecords.filter((r) => r.kind === "tx");
+      const totalSales   = orders.reduce((s, r) => s + Number((r.data as Order).total), 0);
+      const totalCleared = txs.reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
+      const orderCount   = orders.length;
+
+      // ── Cashier sub-line ──────────────────────────────────────────────────
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
       doc.text("Statement for cashier: " + cashier.username, LM, y);
-      y += 6;
+      y += 7;
       doc.setTextColor(0, 0, 0);
+
+      // ── Summary box ───────────────────────────────────────────────────────
+      const boxW = RM - LM;
+      const boxH = 24;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, boxW, boxH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, boxW, boxH, 2, 2, "S");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 70, 10);
+      doc.text("PERIOD SUMMARY", LM + 3, y + 5);
+
+      const cols = [
+        { label: "Total Orders",    value: String(orderCount) },
+        { label: "Total Sales",     value: "$" + totalSales.toFixed(2) },
+        { label: "Total Cleared",   value: "$" + totalCleared.toFixed(2) },
+        { label: "Net Outstanding", value: "$" + (totalSales - totalCleared).toFixed(2) },
+      ];
+      const colW = boxW / cols.length;
+      cols.forEach((col, i) => {
+        const cx = LM + i * colW + colW / 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(col.label, cx, y + 12, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        const net = totalSales - totalCleared;
+        if (col.label === "Net Outstanding") {
+          doc.setTextColor(net <= 0 ? 40 : 180, net <= 0 ? 140 : 60, 40);
+        } else {
+          doc.setTextColor(30, 30, 30);
+        }
+        doc.text(col.value, cx, y + 20, { align: "center" });
+      });
+
+      doc.setTextColor(0, 0, 0);
+      y += boxH + 5;
+
+      // ── Column headers ────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(130, 130, 130);
+      doc.text("DATE / ITEMS", LM, y);
+      doc.text("AMOUNT", RM, y, { align: "right" });
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(LM, y, RM, y);
+      y += 4;
 
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
 
       monthRecords.forEach((rec) => {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         if (rec.kind === "order") {
-          const o = rec.data;
+          const o = rec.data as Order;
           doc.setFont("helvetica", "bold");
           doc.text(new Date(o.created_at).toLocaleString(), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
@@ -134,7 +195,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
           doc.line(LM, y, RM, y);
           y += 4;
         } else {
-          const tx = rec.data;
+          const tx = rec.data as WalletTx;
           doc.setFont("helvetica", "bold");
           doc.setTextColor(40, 140, 80);
           doc.text(new Date(tx.created_at).toLocaleString(), LM, y);

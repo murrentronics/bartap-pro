@@ -228,43 +228,108 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       const businessName = profile.username ?? "Owner";
       const generated = new Date().toLocaleString();
 
-      // Draw header on page 1 and get starting Y
+      // ── Calculate summary figures ──────────────────────────────────────────
+      const orders = monthRecords.filter((r) => r.kind === "order");
+      const txs    = monthRecords.filter((r) => r.kind === "tx");
+
+      const totalSales    = orders.reduce((s, r) => s + Number((r.data as Order).total), 0);
+      const totalCleared  = txs
+        .filter((r) => (r.data as WalletTx).type === "transfer_in")
+        .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
+      const totalResets   = txs
+        .filter((r) => (r.data as WalletTx).type === "wallet_reset")
+        .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
+      // Opening balance = total sales for the period (before any clears/resets)
+      // Closing balance = what remains after clears and resets
+      const openingBalance = totalSales;
+      const closingBalance = totalSales - totalCleared - totalResets;
+
+      // Draw header and get starting Y
       let y = await drawHeader(doc, businessName, "Wallet Statement", month, generated);
+
+      // ── Summary box ───────────────────────────────────────────────────────
+      const boxX = LM;
+      const boxW = RM - LM;
+      const boxH = 28;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "S");
+
+      // Summary title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 70, 10);
+      doc.text("PERIOD SUMMARY", boxX + 3, y + 5);
+
+      // Four columns: Opening Balance | Total Sales | Total Cleared | Closing Balance
+      const cols = [
+        { label: "Opening Balance", value: "$" + openingBalance.toFixed(2) },
+        { label: "Total Cleared",   value: "$" + totalCleared.toFixed(2) },
+        { label: "Total Resets",    value: "$" + totalResets.toFixed(2) },
+        { label: "Closing Balance", value: "$" + closingBalance.toFixed(2) },
+      ];
+      const colW = boxW / cols.length;
+      cols.forEach((col, i) => {
+        const cx = boxX + i * colW + colW / 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(col.label, cx, y + 13, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        // Closing balance green if positive, red if negative
+        if (col.label === "Closing Balance") {
+          doc.setTextColor(closingBalance >= 0 ? 40 : 180, closingBalance >= 0 ? 140 : 40, 40);
+        } else {
+          doc.setTextColor(30, 30, 30);
+        }
+        doc.text(col.value, cx, y + 21, { align: "center" });
+      });
+
+      doc.setTextColor(0, 0, 0);
+      y += boxH + 5;
+
+      // ── Column headers ────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(130, 130, 130);
+      doc.text("DATE / ITEMS", LM, y);
+      doc.text("AMOUNT", RM, y, { align: "right" });
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(LM, y, RM, y);
+      y += 4;
 
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
 
       monthRecords.forEach((rec) => {
-        // New page if near bottom
-        if (y > CONTENT_BOTTOM) {
-          doc.addPage();
-          y = 20;
-        }
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         if (rec.kind === "order") {
-          const o = rec.data;
-          // Date + amount on same line
+          const o = rec.data as Order;
           doc.setFont("helvetica", "bold");
           doc.text(new Date(o.created_at).toLocaleString(), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
           y += 5;
-          // Items
           doc.setFont("helvetica", "normal");
           const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
           doc.text(wrapped, LM, y);
           y += wrapped.length * 4.5 + 1;
-          // Paid / change
           doc.setTextColor(100, 100, 100);
           doc.text("  Paid $" + Number(o.paid).toFixed(2) + "   Change $" + Number(o.change_given).toFixed(2), LM, y);
           doc.setTextColor(0, 0, 0);
           y += 4;
-          // Row spacer
           doc.setDrawColor(220, 220, 220);
           doc.setLineWidth(0.1);
           doc.line(LM, y, RM, y);
           y += 4;
         } else {
-          const tx = rec.data;
+          const tx = rec.data as WalletTx;
           const isReset = tx.type === "wallet_reset";
           const label = tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier");
           const sign = isReset ? "-" : "+";
@@ -283,7 +348,6 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         }
       });
 
-      // Stamp footers on all pages
       addFootersToAllPages(doc);
 
       const filename = "wallet-statement-" + businessName + "-" + month.replace(/\s/g, "-") + ".pdf";

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth, usernameToEmail } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wine } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -90,6 +91,108 @@ function SignInForm() {
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * OtpInput — a 6-box digit input that works correctly on Android WebView.
+ *
+ * Uses type="text" (not "number") to avoid Android paste blocking.
+ * Auto-reads clipboard when the app comes back into focus (Capacitor).
+ * Handles paste events directly so pasting a 6-digit code fills all boxes.
+ */
+function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Auto-read clipboard when app regains focus (user copied code from email)
+  useEffect(() => {
+    const tryReadClipboard = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const { Clipboard } = await import("@capacitor/clipboard");
+          const { value: text } = await Clipboard.read();
+          const digits = (text ?? "").replace(/\D/g, "").slice(0, 6);
+          if (digits.length === 6) {
+            onChange(digits);
+            toast.success("Code pasted from clipboard");
+          }
+        } else if (navigator.clipboard?.readText) {
+          const text = await navigator.clipboard.readText();
+          const digits = text.replace(/\D/g, "").slice(0, 6);
+          if (digits.length === 6) {
+            onChange(digits);
+            toast.success("Code pasted from clipboard");
+          }
+        }
+      } catch {
+        // Clipboard read denied — user will type manually
+      }
+    };
+
+    // Read clipboard when component mounts (user may have already copied)
+    tryReadClipboard();
+
+    // Also read when app comes back into focus
+    const onFocus = () => tryReadClipboard();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") tryReadClipboard();
+    });
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const digits = value.padEnd(6, "").split("").slice(0, 6);
+
+  const handleChange = (i: number, char: string) => {
+    const d = char.replace(/\D/g, "").slice(-1);
+    const next = digits.map((v, idx) => (idx === i ? d : v)).join("").replace(/ /g, "");
+    onChange(next);
+    if (d && i < 5) inputsRef.current[i + 1]?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted) {
+      onChange(pasted);
+      // Focus last filled box
+      const lastIdx = Math.min(pasted.length - 1, 5);
+      inputsRef.current[lastIdx]?.focus();
+    }
+  };
+
+  const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace") {
+      if (digits[i]) {
+        const next = digits.map((v, idx) => (idx === i ? "" : v)).join("");
+        onChange(next);
+      } else if (i > 0) {
+        inputsRef.current[i - 1]?.focus();
+        const next = digits.map((v, idx) => (idx === i - 1 ? "" : v)).join("");
+        onChange(next);
+      }
+    }
+  };
+
+  return (
+    <div className="flex gap-2 justify-center mt-1">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => { inputsRef.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          autoComplete={i === 0 ? "one-time-code" : "off"}
+          maxLength={1}
+          value={d === " " ? "" : d}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onPaste={handlePaste}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+          className="w-11 h-14 text-center text-2xl font-black rounded-xl border-2 border-border bg-muted/30 focus:border-primary focus:outline-none transition"
+        />
+      ))}
+    </div>
   );
 }
 
@@ -213,21 +316,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
           </div>
           <div>
             <Label htmlFor="otp-code">6-Digit Code</Label>
-            <Input
-              id="otp-code"
-              type="number"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]*"
-              value={otp}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setOtp(val);
-              }}
-              placeholder="123456"
-              className="text-center text-2xl font-bold tracking-widest [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              required
-            />
+            <OtpInput value={otp} onChange={setOtp} />
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
             {busy ? "Verifying..." : "Verify code"}

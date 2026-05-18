@@ -10,12 +10,13 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "build:android": "cross-env NODE_OPTIONS=--max-old-space-size=6144 vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\"",
+    "build:android": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192 --max-semi-space-size=128\" vite build --config vite.capacitor.config.ts && node -e \"require('fs').copyFileSync('dist/client/index.capacitor.html','dist/client/index.html')\"",
     "cap:sync": "node scripts/bump-version.cjs && npm run build:android && npx cap sync android",
     "cap:open": "npx cap open android",
     "android": "npm run cap:sync && npm run cap:open"
   },
   "dependencies": {
+    "@capacitor-community/file-opener": "^8.0.0",
     "@capacitor/android": "^8.3.3",
     "@capacitor/browser": "8.0.3",
     "@capacitor/camera": "^8.2.0",

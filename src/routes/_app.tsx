@@ -83,8 +83,8 @@ function AppLayout() {
     : [
         { to: "/register", label: "Cashier", icon: Wine },
         ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
-        { to: "/wallet", label: "Wallet", icon: Wallet },
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
+        { to: "/wallet", label: "Wallet", icon: Wallet },
       ];
 
   return (
