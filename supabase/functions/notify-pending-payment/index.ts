@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { SmtpClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,8 +15,6 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-
-    // Called via Supabase Database Webhook on INSERT to billing_payments
     const record = body.record ?? body;
 
     if (!record || record.status !== "pending") {
@@ -51,28 +48,19 @@ serve(async (req) => {
       timeStyle: "short",
     });
 
-    // SMTP credentials from secrets
-    const smtpHost = Deno.env.get("SMTP_HOSTNAME") ?? "";
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") ?? "465");
-    const smtpUser = Deno.env.get("SMTP_USERNAME") ?? "";
-    const smtpPass = Deno.env.get("SMTP_PASSWORD") ?? "";
-    const smtpFrom = Deno.env.get("SMTP_FROM")     ?? smtpUser;
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.error("SMTP secrets not configured");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY not set");
       return new Response(
-        JSON.stringify({ error: "SMTP not configured. Set SMTP_HOSTNAME, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM secrets." }),
+        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const subject = `💳 New Pending Payment — ${ownerName} ($${amount} TT)`;
 
     const htmlBody = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
         <h2 style="color:#1a1a1a;margin-bottom:4px;">💳 New Pending Payment</h2>
         <p style="color:#666;margin-top:0;">A new billing payment is awaiting your approval on Bartendaz Pro.</p>
-
         <table style="width:100%;border-collapse:collapse;margin:24px 0;background:#f9f9f9;border-radius:8px;overflow:hidden;">
           <tr>
             <td style="padding:12px 16px;font-weight:bold;color:#555;width:40%;">Owner</td>
@@ -99,40 +87,44 @@ serve(async (req) => {
             <td style="padding:12px 16px;color:#1a1a1a;">${createdAt}</td>
           </tr>
         </table>
-
         <p style="color:#666;font-size:14px;">
-          Log in to the Bartendaz Pro admin panel and go to <strong>Billing Management → Pending</strong> to approve or reject this payment.
+          Log in to Bartendaz Pro admin → <strong>Billing Management → Pending</strong> to approve or reject.
         </p>
-
         <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
         <p style="color:#aaa;font-size:12px;">Bartendaz Pro · Automated notification</p>
       </div>
     `;
 
-    // Connect via SMTP (port 465 = TLS, port 587 = STARTTLS — Deno blocks 587, use 465)
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: smtpHost,
-      port: smtpPort,
-      username: smtpUser,
-      password: smtpPass,
+    const emailRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Bartendaz Pro <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `💳 New Pending Payment — ${ownerName} ($${amount} TT)`,
+        html: htmlBody,
+      }),
     });
 
-    await client.send({
-      from: smtpFrom,
-      to: ADMIN_EMAIL,
-      subject,
-      html: htmlBody,
-    });
+    const emailData = await emailRes.json();
 
-    await client.close();
+    if (!emailRes.ok) {
+      console.error("Resend error:", JSON.stringify(emailData));
+      return new Response(
+        JSON.stringify({ error: emailData }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    console.log(`Email sent to ${ADMIN_EMAIL} for payment ${reference}`);
-
+    console.log("Email sent:", emailData.id);
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, emailId: emailData.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (err) {
     console.error("Error:", err);
     return new Response(

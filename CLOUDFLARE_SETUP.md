@@ -13,7 +13,7 @@ Go to your Cloudflare Pages dashboard:
 5. Add these variables for **Production**:
 
 ```
-VITE_SUPABASE_URL = https://ydemoubnyaokumunhkzl.supabase.co
+VITE_SUPABASE_URL = https://vavfsgbrfpvolskscolf.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkZW1vdWJueWFva3VtdW5oa3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODMwNjgsImV4cCI6MjA5Mzk1OTA2OH0.2lNyBC5o_Z630TJ8FeIC-PpstfFUoVhPaZwjjpqZvFc
 ```
 
@@ -25,7 +25,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ
 
 Go to your Supabase dashboard:
 1. Go to https://supabase.com/dashboard
-2. Select your project: **ydemoubnyaokumunhkzl**
+2. Select your project: **vavfsgbrfpvolskscolf**
 3. Go to **Authentication** → **URL Configuration**
 4. Add these URLs to **Redirect URLs**:
    - `https://bartendaz-admin.pages.dev`
