@@ -28,6 +28,8 @@ type Row = {
   status: "pending" | "approved" | "suspended" | "expelled";
   wallet_balance: number;
   created_at: string;
+  phone: string | null;
+  address: string | null;
 };
 
 type SubPayment = {
@@ -939,7 +941,12 @@ export default function AdminPage() {
   const buckets = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const filtered = needle
-      ? rows.filter((r) => r.username.toLowerCase().includes(needle) || r.email.toLowerCase().includes(needle))
+      ? rows.filter((r) =>
+          r.username.toLowerCase().includes(needle) ||
+          r.email.toLowerCase().includes(needle) ||
+          (r.phone ?? "").toLowerCase().includes(needle) ||
+          (r.address ?? "").toLowerCase().includes(needle)
+        )
       : rows;
     return {
       pending: filtered.filter((r) => r.status === "pending"),
@@ -1030,9 +1037,34 @@ export default function AdminPage() {
                 {buckets[k].map((r) => (
                   <div key={r.id} className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-1">
                         <div className="font-semibold">{r.username}</div>
-                        <div className="text-xs text-muted-foreground truncate">{r.email}</div>
+                        {r.email && (
+                          <a
+                            href={`mailto:${r.email}`}
+                            className="text-xs text-primary hover:underline truncate block"
+                            title={`Email ${r.username}`}
+                          >
+                            ✉ {r.email}
+                          </a>
+                        )}
+                        {r.phone && (
+                          <a
+                            href={`tel:${r.phone}`}
+                            className="text-xs text-muted-foreground hover:text-foreground truncate block"
+                            title={`Call ${r.username}`}
+                          >
+                            📞 {r.phone}
+                          </a>
+                        )}
+                        {r.address && (
+                          <div className="text-xs text-muted-foreground">
+                            📍 {r.address}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          Joined {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {k === "pending" && (

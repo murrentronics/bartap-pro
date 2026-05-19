@@ -11,6 +11,8 @@ export type AdminProfileRow = {
   wallet_balance: number;
   created_at: string;
   parent_id: string | null;
+  phone: string | null;
+  address: string | null;
 };
 
 export async function listAllProfiles(): Promise<AdminProfileRow[]> {
