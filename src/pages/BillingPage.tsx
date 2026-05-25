@@ -209,6 +209,8 @@ export default function BillingPage() {
   const hasActivePlan = profile?.billing_status === "active";
   const nextDueDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const isOverdue = nextDueDate && nextDueDate < new Date();
+  const daysUntilDue = nextDueDate ? Math.ceil((nextDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+  const canPayFee = !!isOverdue || (daysUntilDue !== null && daysUntilDue <= 7);
 
   return (
     <div className="min-h-screen p-6 pb-24">
@@ -253,14 +255,21 @@ export default function BillingPage() {
                 </div>
                 {/* Show Pay Fee button if no pending payment and has next due date */}
                 {!pendingPayment && nextDueDate && !showRenewalPaymentMethod && (
-                  <Button
-                    onClick={() => setShowRenewalPaymentMethod(true)}
-                    disabled={loading}
-                    variant={isOverdue ? "destructive" : "default"}
-                    className="font-bold"
-                  >
-                    {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    <Button
+                      onClick={() => setShowRenewalPaymentMethod(true)}
+                      disabled={loading || !canPayFee}
+                      variant={isOverdue ? "destructive" : "default"}
+                      className="font-bold"
+                    >
+                      {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
+                    </Button>
+                    {!canPayFee && daysUntilDue !== null && (
+                      <p className="text-xs text-muted-foreground">
+                        Available {daysUntilDue - 7} day{daysUntilDue - 7 === 1 ? "" : "s"} before due date
+                      </p>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
