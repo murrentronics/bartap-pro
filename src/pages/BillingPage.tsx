@@ -255,14 +255,21 @@ export default function BillingPage() {
                 </div>
                 {/* Show Pay Fee button if no pending payment and has next due date */}
                 {!pendingPayment && nextDueDate && !showRenewalPaymentMethod && (
-                  <Button
-                    onClick={() => setShowRenewalPaymentMethod(true)}
-                    disabled={loading}
-                    variant={isOverdue ? "destructive" : "default"}
-                    className="font-bold"
-                  >
-                    {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    <Button
+                      onClick={() => setShowRenewalPaymentMethod(true)}
+                      disabled={loading || !canPayFee}
+                      variant={isOverdue ? "destructive" : "default"}
+                      className="font-bold"
+                    >
+                      {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
+                    </Button>
+                    {!canPayFee && daysUntilDue !== null && (
+                      <p className="text-xs text-muted-foreground">
+                        Available {daysUntilDue - 7} day{daysUntilDue - 7 === 1 ? "" : "s"} before due date
+                      </p>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
