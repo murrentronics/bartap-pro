@@ -77,15 +77,10 @@ public class PdfDownloadPlugin extends Plugin {
             destFos.write(pdfBytes);
             destFos.close();
 
-            // Tell DownloadManager about the file so it shows the notification
-            DownloadManager.Request request = new DownloadManager.Request(Uri.fromFile(destFile));
-            request.setTitle(filename);
-            request.setDescription("Bartendaz Pro statement");
-            request.setNotificationVisibility(
-                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-            );
-            request.setDestinationUri(Uri.fromFile(destFile));
-            request.setMimeType("application/pdf");
+            // Note: DownloadManager.Request only accepts http(s) URIs, so we
+            // skip building one here and rely on addCompletedDownload below
+            // to register the file and show the completion notification.
+
 
             // Re-scan the file so it appears in Downloads app
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
