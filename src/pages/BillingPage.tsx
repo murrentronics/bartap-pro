@@ -209,6 +209,8 @@ export default function BillingPage() {
   const hasActivePlan = profile?.billing_status === "active";
   const nextDueDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const isOverdue = nextDueDate && nextDueDate < new Date();
+  const daysUntilDue = nextDueDate ? Math.ceil((nextDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+  const canPayFee = !!isOverdue || (daysUntilDue !== null && daysUntilDue <= 7);
 
   return (
     <div className="min-h-screen p-6 pb-24">
