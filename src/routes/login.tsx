@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wine } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { friendlyError } from "@/lib/network-error";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -59,7 +60,7 @@ function SignInForm() {
     const email = id.includes("@") ? id.trim() : usernameToEmail(id);
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else toast.success("Welcome back");
   };
   
@@ -226,7 +227,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
     } else {
       toast.success("Check your email for the 6-digit code");
       setStep("otp");
@@ -247,7 +248,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
     } else {
       toast.success("Code verified");
       setStep("password");
@@ -268,7 +269,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     const { error } = await supabase.auth.updateUser({ password: newPw });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
     } else {
       toast.success("Password updated successfully");
       onBack();

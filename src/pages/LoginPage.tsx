@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wine } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
+import { friendlyError } from "@/lib/network-error";
 
 export default function LoginPage() {
   const { session, profile, loading } = useAuth();
@@ -77,7 +78,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
     const email = id.includes("@") ? id.trim() : usernameToEmail(id);
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else toast.success("Welcome back");
   };
 
@@ -233,7 +234,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
     const { error } = await supabase.auth.updateUser({ password: newPw });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
     } else {
       toast.success("Password updated — please sign in");
       // Sign out so they land back on the login form cleanly
@@ -407,7 +408,7 @@ function SignUpForm() {
       },
     });
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else toast.success("Account created — signing you in");
   };
 
