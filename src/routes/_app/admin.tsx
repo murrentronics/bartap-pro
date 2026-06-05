@@ -371,11 +371,29 @@ function TemplateImportPanel() {
     if (toSave.length === 0) { toast.error("No images selected"); return; }
     setSaving(true);
 
-    const rows = toSave.map((i) => ({
-      url: i.url,
-      label: i.label,
-      category: i.category,
-      source_url: pageUrl.trim(),
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+    // Download and store each image in Supabase storage so broken source URLs can't affect us
+    const rows = await Promise.all(toSave.map(async (i) => {
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/cache-template-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}`, "apikey": supabaseKey },
+          body: JSON.stringify({ url: i.url }),
+          signal: AbortSignal.timeout(20000),
+        });
+        const json = await res.json() as { storedUrl?: string; error?: string };
+        return {
+          url: json.storedUrl ?? i.url, // fall back to original if caching failed
+          label: i.label,
+          category: i.category,
+          source_url: pageUrl.trim(),
+        };
+      } catch {
+        // Network error — fall back to original URL
+        return { url: i.url, label: i.label, category: i.category, source_url: pageUrl.trim() };
+      }
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -527,7 +545,7 @@ function TemplateImportPanel() {
                 onClick={handleSave}
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : `Save ${selectedCount}`}
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Caching images…</> : `Save ${selectedCount}`}
               </Button>
             </div>
           </div>
