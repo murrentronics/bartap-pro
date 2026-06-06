@@ -56,14 +56,16 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
-  const [lastMainTab, setLastMainTab] = useState("playlist"); // default to playlist on first open
-  const [showYTFullscreen, setShowYTFullscreen] = useState(false); // controls View B independently
+  const [lastMainTab, setLastMainTab] = useState("playlist");
+
+  // showYTFullscreen is driven by yt.ytFullscreen from context
+  // so AppLayout can see it and show/hide the iframe accordingly
+  const showYTFullscreen    = yt.ytFullscreen;
+  const setShowYTFullscreen = yt.setYtFullscreen;
+
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
-
-  // Only playResult() sets showYTFullscreen = true.
-  // Exit sets it to false. No effect needed — videoId staying set is fine.
 
   // ── Keep screen awake the entire time this page is open ──────────────────
   useEffect(() => {

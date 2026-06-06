@@ -69,6 +69,10 @@ type YouTubeCtx = {
   isPlaylist:   boolean;
   setVideoId:   (id: string | null, playlist?: boolean) => void;
 
+  // Controls whether the iframe is visible (fullscreen) or hidden behind the page
+  ytFullscreen:    boolean;
+  setYtFullscreen: (v: boolean) => void;
+
   query:        string;
   setQuery:     (q: string) => void;
   results:      YTResult[];
@@ -95,6 +99,7 @@ const Ctx = createContext<YouTubeCtx | null>(null);
 export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [videoId,          setVideoIdRaw    ] = useState<string | null>(null);
   const [isPlaylist,       setIsPlaylist    ] = useState(false);
+  const [ytFullscreen,     setYtFullscreen  ] = useState(false);
   const [query,            setQuery         ] = useState("");
   const [results,          setResults       ] = useState<YTResult[]>([]);
   const [searching,        setSearching     ] = useState(false);
@@ -134,7 +139,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const setVideoId = useCallback((id: string | null, playlist = false) => {
     setVideoIdRaw(id);
     setIsPlaylist(playlist);
-    if (!id) setNowPlayingTitle("");
+    if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); }
   }, []);
 
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
@@ -211,6 +216,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       videoId, isPlaylist, setVideoId,
+      ytFullscreen, setYtFullscreen,
       query, setQuery,
       results, searching, searchError, search,
       searchesRemaining, searchResetTime,

@@ -242,13 +242,12 @@ export default function AppLayout() {
           style={{
             position: "fixed",
             top: "calc(44px + env(safe-area-inset-top, 0px))",
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: 0, right: 0, bottom: 0,
             zIndex: 35,
             background: "#000",
-            visibility: isOnMusic ? "visible" : "hidden",
-            pointerEvents: isOnMusic ? "auto" : "none",
+            // Visible ONLY when fullscreen mode is active
+            visibility: yt.ytFullscreen ? "visible" : "hidden",
+            pointerEvents: yt.ytFullscreen ? "auto" : "none",
           }}
         >
           <iframe
