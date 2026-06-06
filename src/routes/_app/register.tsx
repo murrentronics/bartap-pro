@@ -397,6 +397,7 @@ export default function RegisterPage() {
             setCashOpen(false);
             setSaleResult({ paid: paidAmt, change: changeAmt });
             refreshProfile();
+            fetchOpenedBottles();
           }}
         />
       )}
@@ -412,83 +413,105 @@ export default function RegisterPage() {
       {/* ── Shot Modal ──────────────────────────────────────────────────── */}
       {shotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); }}>
+          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setNewBottlePrice(""); }}>
           <div
-            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl pb-safe"
+            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-black">🥃 Add Shot</span>
-              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); }}
+              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setNewBottlePrice(""); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="px-5 pb-6 space-y-3">
-              {/* Step 1 — select from open bottles or open new */}
+            <div className="px-5 pb-5 space-y-3">
               {!openNewMode ? (
                 <>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select Liquor</p>
 
                   {openedBottles.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Currently open:</p>
-                      {openedBottles.map((b) => (
-                        <button
-                          key={b.id}
-                          onClick={() => { setShotBottleId(b.id); setShotPrice(String(b.shot_price)); }}
-                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition active:scale-[0.98] ${
-                            shotBottleId === b.id
-                              ? "border-primary"
-                              : "border-border"
-                          }`}
-                          style={shotBottleId === b.id ? { background: "rgba(var(--primary-rgb,251 146 60)/0.12)" } : { background: "var(--muted)" }}
-                        >
-                          <span className="font-bold text-sm">{b.product_name}</span>
-                          <span className="text-xs text-muted-foreground">{b.shots_sold} shots · ${Number(b.revenue).toFixed(2)}</span>
-                        </button>
-                      ))}
+                      <p className="text-xs text-muted-foreground font-semibold">Currently open:</p>
+                      {openedBottles.map((b) => {
+                        const prod = products.find(p => p.id === b.product_id);
+                        const selected = shotBottleId === b.id;
+                        return (
+                          <button
+                            key={b.id}
+                            onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); }}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-xl border transition active:scale-[0.98] text-left"
+                            style={selected
+                              ? { background: "var(--gradient-hero)", borderColor: "var(--primary)" }
+                              : { background: "var(--muted)", borderColor: "transparent" }}
+                          >
+                            <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-black/30 flex items-center justify-center">
+                              {prod?.image_url
+                                ? <img src={prod.image_url} alt="" className="h-full w-full object-cover"
+                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                : <span className="text-2xl">🍾</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className={`font-bold text-sm leading-tight truncate ${selected ? "text-white" : ""}`}>{b.product_name}</div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`text-xs font-black ${selected ? "text-white" : "text-primary"}`}>${Number(b.revenue).toFixed(2)} made</span>
+                              </div>
+                            </div>
+                            {selected && <span className="text-white text-lg shrink-0">✓</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
 
                   <button
-                    onClick={() => setOpenNewMode(true)}
+                    onClick={() => { setOpenNewMode(true); setNewBottlePrice(""); }}
                     className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
                     style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
                   >
                     + Open New Bottle
                   </button>
 
+                  {/* Numpad — only shown after a bottle is selected */}
                   {shotBottleId && (
-                    <div className="space-y-2 pt-1">
-                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                      <Input
-                        value={shotPrice}
-                        onChange={(e) => setShotPrice(e.target.value)}
-                        onFocus={() => setNativeInputFocused(true)}
-                        onBlur={() => setNativeInputFocused(false)}
-                        placeholder="0.00"
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        className="h-10 text-sm"
-                      />
-                      <button
-                        onClick={addShot}
-                        disabled={!shotPrice || parseFloat(shotPrice) <= 0}
-                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                        style={{ background: "var(--gradient-hero)" }}
-                      >
-                        + Add to Order
-                      </button>
+                  <div className="space-y-2 pt-1">
+                    <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+                    <div className="h-12 rounded-xl border border-border flex items-center justify-center"
+                      style={{ background: "var(--muted)" }}>
+                      <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>
+                        ${shotPrice || "0.00"}
+                      </span>
                     </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                        <button key={k} type="button"
+                          onClick={() => {
+                            if (k === "⌫") { setShotPrice(v => v.slice(0,-1)); return; }
+                            if (k === ".") { if (!shotPrice.includes(".")) setShotPrice(v => v + "."); return; }
+                            const dotIdx = shotPrice.indexOf(".");
+                            if (dotIdx !== -1 && shotPrice.length - dotIdx > 2) return;
+                            setShotPrice(v => v === "0" ? k : v + k);
+                          }}
+                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                            k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"
+                          }`}
+                        >{k}</button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={addShot}
+                      disabled={!shotBottleId || !shotPrice || parseFloat(shotPrice) <= 0}
+                      className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                      style={{ background: "var(--gradient-hero)" }}
+                    >
+                      + Add to Order
+                    </button>
+                  </div>
                   )}
                 </>
               ) : (
-                /* Step 2 — open a new bottle */
                 <>
                   <div className="flex items-center gap-2 mb-1">
                     <button onClick={() => setOpenNewMode(false)} className="text-muted-foreground hover:text-foreground transition">
@@ -501,40 +524,66 @@ export default function RegisterPage() {
                     <p className="text-sm text-muted-foreground text-center py-6">No liquor in stock. Add some on the Items page.</p>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Pick from liquor inventory:</p>
-                      <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border p-1" style={{ background: "var(--muted)" }}>
-                        {liquorProducts.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => setNewBottleProductId(p.id)}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition active:scale-[0.98] ${
-                              newBottleProductId === p.id ? "text-primary-foreground" : ""
-                            }`}
-                            style={newBottleProductId === p.id ? { background: "var(--gradient-hero)" } : {}}
-                          >
-                            <span className="font-bold text-sm">{p.name}</span>
-                            <span className="text-xs opacity-70">{p.stock_qty} in stock</span>
-                          </button>
-                        ))}
+                      <p className="text-xs text-muted-foreground font-semibold">Pick from liquor inventory:</p>
+                      <div className="max-h-44 overflow-y-auto space-y-1.5 rounded-xl border border-border p-1.5" style={{ background: "var(--background)" }}>
+                        {liquorProducts.map((p) => {
+                          const selected = newBottleProductId === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => setNewBottleProductId(p.id)}
+                              className={`w-full flex items-center gap-3 p-2 rounded-lg transition active:scale-[0.98] text-left border ${
+                                selected ? "border-primary" : "border-transparent"
+                              }`}
+                              style={selected ? { background: "rgba(var(--primary-rgb,251 146 60)/0.12)" } : { background: "var(--muted)" }}
+                            >
+                              {/* Product image or emoji */}
+                              <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-black/30 flex items-center justify-center">
+                                {p.image_url
+                                  ? <img src={p.image_url} alt="" className="h-full w-full object-cover"
+                                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                  : <span className="text-xl">🍾</span>}
+                              </div>
+                              {/* Text */}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-sm leading-tight truncate">{p.name}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">{p.stock_qty} in stock</div>
+                              </div>
+                              {selected && <span className="text-primary text-lg shrink-0">✓</span>}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                      <Input
-                        value={newBottlePrice}
-                        onChange={(e) => setNewBottlePrice(e.target.value)}
-                        onFocus={() => setNativeInputFocused(true)}
-                        onBlur={() => setNativeInputFocused(false)}
-                        placeholder="0.00"
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        className="h-10 text-sm"
-                      />
+                      {/* Price display — read-only, no native keyboard */}
+                      <div className="h-12 rounded-xl border border-border flex items-center justify-center"
+                        style={{ background: "var(--muted)" }}>
+                        <span className={`text-2xl font-black ${newBottlePrice ? "text-foreground" : "text-muted-foreground"}`}>
+                          ${newBottlePrice || "0.00"}
+                        </span>
+                      </div>
+                      {/* Inline numpad */}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                          <button key={k} type="button"
+                            onClick={() => {
+                              if (k === "⌫") { setNewBottlePrice(v => v.slice(0,-1)); return; }
+                              if (k === ".") { if (!newBottlePrice.includes(".")) setNewBottlePrice(v => v + "."); return; }
+                              const dotIdx = newBottlePrice.indexOf(".");
+                              if (dotIdx !== -1 && newBottlePrice.length - dotIdx > 2) return;
+                              setNewBottlePrice(v => v === "0" ? k : v + k);
+                            }}
+                            className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                              k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"
+                            }`}
+                          >{k}</button>
+                        ))}
+                      </div>
 
                       <button
                         onClick={handleOpenNewBottle}
-                        disabled={!newBottleProductId || !newBottlePrice || bottleBusy}
+                        disabled={!newBottleProductId || !newBottlePrice || parseFloat(newBottlePrice) <= 0 || bottleBusy}
                         className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
                         style={{ background: "var(--gradient-hero)" }}
                       >
@@ -570,32 +619,43 @@ export default function RegisterPage() {
               {openedBottles.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">No bottles currently open.</div>
               ) : (
-                openedBottles.map((b) => (
+                openedBottles.map((b) => {
+                  const prod = products.find(p => p.id === b.product_id);
+                  return (
                   <div key={b.id}
-                    className="rounded-2xl border border-border p-4 space-y-3"
+                    className="rounded-2xl border border-border overflow-hidden"
                     style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.06)" }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-black text-base">{b.product_name}</div>
+                    {/* Image + info row */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-black/30 flex items-center justify-center">
+                        {prod?.image_url
+                          ? <img src={prod.image_url} alt="" className="h-full w-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                          : <span className="text-3xl">🍾</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-sm leading-tight truncate">{b.product_name}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                           Opened {new Date(b.opened_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-primary font-black text-lg">${Number(b.revenue).toFixed(2)}</div>
-                        <div className="text-xs text-muted-foreground">{b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">{b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}</span>
+                          <span className="text-xs font-black text-primary">${Number(b.revenue).toFixed(2)} made</span>
+                        </div>
                       </div>
                     </div>
+                    {/* Finish button */}
                     <button
                       onClick={() => handleFinishBottle(b.id)}
                       disabled={bottleBusy}
-                      className="w-full h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                      className="w-full h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2 rounded-none"
                       style={{ background: "linear-gradient(135deg,#dc2626,#991b1b)" }}
                     >
                       {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✓ Bottle Finished / Empty"}
                     </button>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -743,11 +803,12 @@ function CashOverlay({
     // 3. Record shots against their opened bottles
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
     for (const shot of shotItems) {
-      await supabase.rpc("record_shot", {
+      const { error: shotErr } = await supabase.rpc("record_shot", {
         p_bottle_id: (shot as any)._bottle_id,
         p_qty:       shot.qty,
         p_revenue:   shot.qty * Number(shot.price),
       });
+      if (shotErr) console.warn("record_shot failed:", shotErr.message);
     }
 
     setBusy(false);
