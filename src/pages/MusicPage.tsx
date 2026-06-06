@@ -57,6 +57,8 @@ export default function MusicPage() {
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
   const [lastMainTab, setLastMainTab] = useState("youtube");
+  // Remember last played YouTube video so Resume works after Exit
+  const lastYtRef = useRef<{ id: string; playlist: boolean; title: string } | null>(null);
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
@@ -330,10 +332,56 @@ export default function MusicPage() {
   // VIEW A — Local player + Playlist / Files / YouTube search
   // Normal scrollable page. No fixed positioning.
   // ─────────────────────────────────────────────────────────────────────────
+  const onYouTubeTab = lastMainTab === "youtube";
+
   return (
     <div className="-mx-3 -mt-3" style={{ background: "#000", minHeight: "calc(100vh - 44px)" }}>
 
-      {/* ── Compact player strip ─────────────────────────────────────── */}
+      {/* ── Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ── */}
+      {onYouTubeTab ? (
+        /* YouTube mini now-playing strip */
+        <div
+          className="px-4 py-3"
+          style={{
+            background: "linear-gradient(180deg, #1a0808 0%, #0d0a0a 100%)",
+            borderBottom: "1px solid rgba(239,68,68,0.2)",
+          }}
+        >
+          {yt.nowPlayingTitle ? (
+            <div className="flex items-center gap-3">
+              {/* Animated bars */}
+              <div className="flex items-end gap-px h-6 shrink-0">
+                {[0,1,2,3,4].map(b => (
+                  <div key={b} className="w-1 rounded-full bg-red-400"
+                    style={{
+                      height: "100%",
+                      animation: `musicBar ${0.35+b*0.1}s ease-in-out infinite alternate`,
+                      animationDelay: `${b*0.07}s`,
+                    }} />
+                ))}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
+                <p className="text-red-400/60 text-[10px] mt-0.5">YouTube playing in background</p>
+              </div>
+              {/* Tap to go back to fullscreen */}
+              <button
+                onClick={() => yt.setVideoId(yt.videoId ?? null, yt.isPlaylist)}
+                className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                style={{ background: "rgba(239,68,68,0.6)" }}
+              >
+                ▶ Resume
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-2 gap-2 text-white/30">
+              <Youtube className="h-4 w-4" />
+              <span className="text-xs">No video playing</span>
+            </div>
+          )}
+        </div>
+      ) : (
+      /* ── Compact MP3 player strip ── */
       <div
         className="relative px-4 pt-3 pb-3"
         style={{
@@ -410,10 +458,11 @@ export default function MusicPage() {
           </button>
         </div>
       </div>
+      )} {/* end MP3 player / YouTube mini-player conditional */}
 
       {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
       <div style={{ background: "#0d1117" }}>
-        <Tabs defaultValue={lastMainTab}>
+        <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)}>
           <TabsList className="grid grid-cols-3 mx-3 mt-2"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <TabsTrigger value="playlist" className="gap-1.5 data-[state=active]:text-blue-300">
