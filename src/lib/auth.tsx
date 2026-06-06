@@ -12,6 +12,9 @@ export type Profile = {
   status: UserStatus;
   phone?: string;
   address?: string;
+  music_addon?: boolean;
+  billing_status?: string;
+  subscription_end_date?: string;
 };
 
 type AuthCtx = {

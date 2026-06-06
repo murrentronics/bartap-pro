@@ -17,6 +17,7 @@ import BillingPage from "@/pages/BillingPage";
 import AdminBankingPage from "@/pages/AdminBankingPage";
 import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 import ProfilePage from "@/pages/ProfilePage";
+import MusicPage from "@/pages/MusicPage";
 
 function AppWithUpdateCheck() {
   const { update, dismiss } = useAppUpdate();
@@ -34,6 +35,7 @@ function AppWithUpdateCheck() {
             <Route path="cashiers" element={<CashiersPage />} />
             <Route path="billing" element={<BillingPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="music" element={<MusicPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />

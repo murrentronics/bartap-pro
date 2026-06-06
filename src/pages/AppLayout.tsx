@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -194,6 +194,21 @@ export default function AppLayout() {
             </div>
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
+
+          {/* Center: Music / Bar toggle — only for owners with music_addon */}
+          {isOwner && (profile as any).music_addon && (
+            <Link
+              to={loc.pathname === "/music" ? "/register" : "/music"}
+              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95"
+              style={{ background: "var(--gradient-hero)" }}
+              title={loc.pathname === "/music" ? "Back to Bar" : "Open Music Player"}
+            >
+              {loc.pathname === "/music"
+                ? <Wine className="h-4 w-4 text-primary-foreground" />
+                : <Music2 className="h-4 w-4 text-primary-foreground" />
+              }
+            </Link>
+          )}
 
           {/* Right side: username + hamburger menu */}
           <div className="flex items-center gap-2" ref={menuRef}>

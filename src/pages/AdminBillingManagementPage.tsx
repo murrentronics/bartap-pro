@@ -113,7 +113,7 @@ export default function AdminBillingManagementPage() {
       // Also update the owner's profile status to approved and set subscription dates
       const { data: plan } = await supabase
         .from("billing_plans")
-        .select("duration_months")
+        .select("duration_months, name")
         .eq("id", selectedPayment.plan_id)
         .single();
       
@@ -121,7 +121,7 @@ export default function AdminBillingManagementPage() {
         // Get owner's current subscription end date
         const { data: ownerProfile } = await supabase
           .from("profiles")
-          .select("subscription_end_date")
+          .select("subscription_end_date, billing_status")
           .eq("id", selectedPayment.owner_id)
           .single();
         
@@ -130,7 +130,6 @@ export default function AdminBillingManagementPage() {
         
         // Only extend from existing end date if subscription is currently active
         // and the end date is in the future (genuine renewal).
-        // Otherwise always calculate from today (first payment or lapsed account).
         const isActiveRenewal =
           ownerProfile?.subscription_end_date &&
           ownerProfile?.billing_status === "active" &&
@@ -140,19 +139,32 @@ export default function AdminBillingManagementPage() {
           endDate = new Date(ownerProfile.subscription_end_date!);
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
         } else {
-          // First payment or lapsed — start fresh from today
           endDate = new Date();
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        }
+
+        // Check if this is a music addon plan
+        const isMusicAddon = (plan.name as string).toLowerCase().includes("music");
+
+        const profileUpdate: Record<string, unknown> = {
+          billing_status: "active",
+          subscription_start_date: startDate.toISOString(),
+          subscription_end_date: endDate.toISOString(),
+        };
+
+        // Only set status to approved for base plans, not addon-only payments
+        if (!isMusicAddon) {
+          profileUpdate.status = "approved";
+        }
+
+        // Grant music addon if applicable
+        if (isMusicAddon) {
+          profileUpdate.music_addon = true;
         }
         
         await supabase
           .from("profiles")
-          .update({
-            status: "approved",
-            billing_status: "active",
-            subscription_start_date: startDate.toISOString(),
-            subscription_end_date: endDate.toISOString(),
-          })
+          .update(profileUpdate)
           .eq("id", selectedPayment.owner_id);
         
         // Set next due date in payment record
