@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useMusicPlayer } from "@/lib/MusicPlayerContext";
 import { useYouTube } from "@/lib/YouTubeContext";
-import { YouTubeOverlay } from "@/lib/YouTubeOverlay";
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music2, Youtube, FolderOpen, ListMusic,
@@ -70,9 +71,17 @@ export default function MusicPage() {
 
   const playResult = async (item: { id: string; kind: string; title: string }) => {
     yt.setNowPlayingTitle(item.title);
-    // Open the native YouTube overlay and search for this video by title
-    // The overlay already has m.youtube.com loaded — just show it
-    await YouTubeOverlay.show();
+    // Build the YouTube URL for this video or playlist
+    const ytUrl = item.kind === "youtube#playlist"
+      ? `https://www.youtube.com/playlist?list=${item.id}`
+      : `https://www.youtube.com/watch?v=${item.id}`;
+
+    if (Capacitor.isNativePlatform()) {
+      // Opens as a dismissible sheet — user swipes down to return to app
+      await Browser.open({ url: ytUrl, presentationStyle: "popover" });
+    } else {
+      window.open(ytUrl, "_blank");
+    }
   };
 
   const PlayModeIcon = () => {

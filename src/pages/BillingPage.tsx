@@ -323,71 +323,137 @@ export default function BillingPage() {
               </>
             ) : hasActivePlan ? (
               <>
-                <CheckCircle className="h-6 w-6 text-green-500" />
-                <div className="flex-1">
-                  <p className="font-bold text-green-500">Active</p>
+                <div className="flex-1 space-y-3">
+                  {/* Status line */}
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                    <span className="font-bold text-green-500">Active</span>
+                  </div>
+
+                  {/* Plan breakdown — base plan + music addon as separate lines */}
                   {(() => {
-                    const activePlan = lastPaidPayment ? plans.find(p => p.id === lastPaidPayment.plan_id) : null;
-                    return activePlan ? (
-                      <p className="text-sm font-semibold text-foreground mt-0.5">
-                        {activePlan.name} — <span className="text-primary">${activePlan.amount.toFixed(2)} TT</span>
-                      </p>
-                    ) : null;
+                    const paidPayments = payments.filter(p => p.status === "paid");
+
+                    // Find the base plan payment (not music-related)
+                    const basePlanPayment = paidPayments.find(p => {
+                      const plan = plans.find(pl => pl.id === p.plan_id);
+                      return plan && !plan.name.toLowerCase().includes("music");
+                    });
+
+                    // Find a separate music addon/upgrade payment if it exists
+                    const musicPayment = paidPayments.find(p => {
+                      const plan = plans.find(pl => pl.id === p.plan_id);
+                      return plan && plan.name.toLowerCase().includes("music");
+                    });
+
+                    const basePlan = basePlanPayment ? plans.find(pl => pl.id === basePlanPayment.plan_id) : null;
+                    const musicPlan = musicPayment ? plans.find(pl => pl.id === musicPayment.plan_id) : null;
+
+                    // If music was bought same day as base plan — show combined total
+                    const sameDayMusic = basePlanPayment && musicPayment &&
+                      new Date(basePlanPayment.created_at).toDateString() === new Date(musicPayment.created_at).toDateString();
+
+                    if (sameDayMusic && basePlan && musicPlan) {
+                      const total = (basePlan.amount + musicPayment!.amount);
+                      return (
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{basePlan.name}</span>
+                            <span className="font-semibold">${basePlan.amount.toFixed(2)} TT</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1"><Music2 className="h-3 w-3 text-primary" /> Music Player</span>
+                            <span className="font-semibold">${musicPayment!.amount.toFixed(2)} TT</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-2 font-bold">
+                            <span>Total</span>
+                            <span className="text-primary">${total.toFixed(2)} TT</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Separate dates — show lines individually
+                    return (
+                      <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        {basePlan && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{basePlan.name}</span>
+                            <span className="font-semibold">${basePlan.amount.toFixed(2)} TT</span>
+                          </div>
+                        )}
+                        {musicPlan && hasMusicAddon && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1"><Music2 className="h-3 w-3 text-primary" /> Music Player</span>
+                            <span className="font-semibold">${musicPayment!.amount.toFixed(2)} TT</span>
+                          </div>
+                        )}
+                        {!basePlan && lastPaidPayment && (() => {
+                          const plan = plans.find(p => p.id === lastPaidPayment.plan_id);
+                          return plan ? (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">{plan.name}</span>
+                              <span className="font-semibold">${plan.amount.toFixed(2)} TT</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    );
                   })()}
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Next due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
-                  </p>
-                  {hasMusicAddon && (
-                    <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
-                      🎵 Music Player included
-                    </p>
+
+                  {/* Next due date */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Next due</span>
+                    <span className={`font-semibold ${isOverdue ? "text-red-400" : daysUntilDue !== null && daysUntilDue <= 7 ? "text-yellow-400" : "text-foreground"}`}>
+                      {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
+                      {daysUntilDue !== null && daysUntilDue <= 30 && daysUntilDue > 0 && (
+                        <span className="text-muted-foreground font-normal ml-1">({daysUntilDue}d)</span>
+                      )}
+                      {isOverdue && <span className="text-red-400 ml-1">Overdue</span>}
+                    </span>
+                  </div>
+
+                  {/* Action buttons — stacked for mobile */}
+                  {!pendingPayment && !showRenewalPaymentMethod && !showMusicUpgrade && !showUpgradePlan && (
+                    <div className="space-y-2 pt-1">
+                      {nextDueDate && (
+                        <Button
+                          onClick={() => setShowRenewalPaymentMethod(true)}
+                          disabled={loading || !canPayFee}
+                          variant={isOverdue ? "destructive" : "default"}
+                          className="w-full font-bold"
+                        >
+                          {isOverdue ? "⚠️ Overdue — Pay Now" : "Pay Renewal Fee"}
+                        </Button>
+                      )}
+                      {canPayFee && isOnSixMonth && annualBasePlan && (
+                        <Button
+                          onClick={() => setShowUpgradePlan(true)}
+                          disabled={loading}
+                          variant="outline"
+                          className="w-full font-bold gap-1.5"
+                        >
+                          <ArrowUpCircle className="h-4 w-4" /> Upgrade to Annual Plan
+                        </Button>
+                      )}
+                      {!hasMusicAddon && musicUpgradePlan && (
+                        <Button
+                          onClick={() => setShowMusicUpgrade(true)}
+                          disabled={loading}
+                          variant="outline"
+                          className="w-full font-bold gap-1.5"
+                        >
+                          <Music2 className="h-4 w-4" /> Add Music Player — ${proratedMusicAmount.toFixed(0)} TT
+                        </Button>
+                      )}
+                      {!canPayFee && daysUntilDue !== null && daysUntilDue > 7 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Renewal available {daysUntilDue - 7} days before due date
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
-                {!pendingPayment && !showRenewalPaymentMethod && !showMusicUpgrade && !showUpgradePlan && (
-                  <div className="flex flex-col items-end gap-2">
-                    {/* Pay Fee — only when close to due or overdue */}
-                    {nextDueDate && (
-                      <Button
-                        onClick={() => setShowRenewalPaymentMethod(true)}
-                        disabled={loading || !canPayFee}
-                        variant={isOverdue ? "destructive" : "default"}
-                        size="sm"
-                        className="font-bold"
-                      >
-                        {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
-                      </Button>
-                    )}
-                    {/* Upgrade plan — only when canPayFee */}
-                    {canPayFee && isOnSixMonth && annualBasePlan && (
-                      <Button
-                        onClick={() => setShowUpgradePlan(true)}
-                        disabled={loading}
-                        variant="outline"
-                        size="sm"
-                        className="font-bold gap-1"
-                      >
-                        <ArrowUpCircle className="h-3.5 w-3.5" /> Upgrade to Annual
-                      </Button>
-                    )}
-                    {/* Music addon upgrade — always available for non-music subscribers */}
-                    {!hasMusicAddon && musicUpgradePlan && (
-                      <Button
-                        onClick={() => setShowMusicUpgrade(true)}
-                        disabled={loading}
-                        variant="outline"
-                        size="sm"
-                        className="font-bold gap-1"
-                      >
-                        <Music2 className="h-3.5 w-3.5" /> Add Music — ${proratedMusicAmount.toFixed(0)} TT
-                      </Button>
-                    )}
-                    {!canPayFee && daysUntilDue !== null && daysUntilDue > 7 && (
-                      <p className="text-xs text-muted-foreground text-right">
-                        Pay Fee available in {daysUntilDue - 7}d
-                      </p>
-                    )}
-                  </div>
-                )}
               </>
             ) : (
               <>
@@ -988,70 +1054,58 @@ export default function BillingPage() {
         )}
 
         {/* Payment History */}
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">Payment History</h2>
+        <Card className="p-4">
+          <h2 className="text-lg font-bold mb-3">Payment History</h2>
           {payments.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No payments yet</p>
+            <p className="text-muted-foreground text-center py-8 text-sm">No payments yet</p>
           ) : (
             <>
-              <div className="space-y-3">
-                {payments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between p-4 rounded-lg border"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-bold">{payment.reference_number}</span>
-                        {payment.status === "paid" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                        {payment.status === "pending" && <Clock className="h-4 w-4 text-yellow-500" />}
-                        {payment.status === "rejected" && <AlertCircle className="h-4 w-4 text-red-500" />}
+              <div className="space-y-2">
+                {payments.map((payment) => {
+                  const plan = plans.find(p => p.id === payment.plan_id);
+                  return (
+                    <div key={payment.id} className="rounded-xl border p-3 space-y-2">
+                      {/* Top row: plan name + amount */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{plan?.name ?? "Plan"}</p>
+                          <p className="font-mono text-xs text-muted-foreground mt-0.5">{payment.reference_number}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-black text-base">${payment.amount.toFixed(2)} TT</p>
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                            {payment.status === "paid"    && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+                            {payment.status === "pending" && <Clock       className="h-3.5 w-3.5 text-yellow-500" />}
+                            {payment.status === "rejected"&& <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
+                            <span className={`text-xs font-bold ${
+                              payment.status === "paid"     ? "text-green-500" :
+                              payment.status === "pending"  ? "text-yellow-500" :
+                              "text-red-500"
+                            }`}>{payment.status.toUpperCase()}</span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(payment.created_at).toLocaleDateString()}
-                      </p>
-                      {payment.next_due_date && (
-                        <p className="text-xs text-muted-foreground">
-                          Next due: {new Date(payment.next_due_date).toLocaleDateString()}
-                        </p>
-                      )}
+                      {/* Bottom row: dates */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2">
+                        <span>Paid: {new Date(payment.created_at).toLocaleDateString()}</span>
+                        {payment.next_due_date && (
+                          <span>Next due: {new Date(payment.next_due_date).toLocaleDateString()}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">${payment.amount.toFixed(2)} TT</p>
-                      <p className={`text-sm font-bold ${
-                        payment.status === "paid" ? "text-green-500" :
-                        payment.status === "pending" ? "text-yellow-500" :
-                        "text-red-500"
-                      }`}>
-                        {payment.status.toUpperCase()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* Pagination */}
               {historyTotalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={historyPage === 0}
-                    onClick={() => setHistoryPage(p => p - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {historyPage + 1} of {historyTotalPages} · {historyTotal} total
+                <div className="flex items-center justify-between mt-4 pt-3 border-t">
+                  <Button variant="outline" size="sm" disabled={historyPage === 0}
+                    onClick={() => setHistoryPage(p => p - 1)}>Previous</Button>
+                  <span className="text-xs text-muted-foreground">
+                    {historyPage + 1} / {historyTotalPages}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={historyPage >= historyTotalPages - 1}
-                    onClick={() => setHistoryPage(p => p + 1)}
-                  >
-                    Next
-                  </Button>
+                  <Button variant="outline" size="sm" disabled={historyPage >= historyTotalPages - 1}
+                    onClick={() => setHistoryPage(p => p + 1)}>Next</Button>
                 </div>
               )}
             </>
