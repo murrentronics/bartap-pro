@@ -11,6 +11,11 @@ import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
 
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number };
 type CartItem = Product & { qty: number };
+type OpenedBottle = {
+  id: string; owner_id: string; product_id: string; product_name: string;
+  shot_price: number; shots_sold: number; revenue: number;
+  opened_at: string; finished_at: string | null; status: string;
+};
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
@@ -105,24 +110,116 @@ export default function RegisterPage() {
 
   const removeItem = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
 
-  // ── Open Bottle Shot ────────────────────────────────────────────────────
-  const [shotOpen,  setShotOpen ] = useState(false);
-  const [shotName,  setShotName ] = useState("");
-  const [shotPrice, setShotPrice] = useState("");
+  // ── Opened Bottles state ────────────────────────────────────────────────
+  const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
+  const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
+  const [shotModalOpen, setShotModalOpen]       = useState(false);
+  const [shotBottleId, setShotBottleId]         = useState<string>(""); // selected open bottle id
+  const [shotPrice, setShotPrice]               = useState("");
+  const [openNewMode, setOpenNewMode]           = useState(false);   // true = picking a new bottle from products
+  const [newBottleProductId, setNewBottleProductId] = useState<string>("");
+  const [newBottlePrice, setNewBottlePrice]     = useState("");
+  const [bottleBusy, setBottleBusy]             = useState(false);
 
+  const liquorProducts = useMemo(
+    () => products.filter((p) => (p.category || "beers") === "liquor" && (p.stock_qty ?? 0) > 0),
+    [products]
+  );
+
+  const fetchOpenedBottles = useCallback(async () => {
+    const id = ownerIdRef.current;
+    if (!id) return;
+    const { data } = await supabase
+      .from("opened_bottles")
+      .select("*")
+      .eq("owner_id", id)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false });
+    setOpenedBottles((data ?? []) as OpenedBottle[]);
+  }, []);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    fetchOpenedBottles();
+    const ch = supabase
+      .channel(`opened-bottles-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${ownerId}` },
+        () => fetchOpenedBottles()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, fetchOpenedBottles]);
+
+  /** Open a new bottle — deducts 1 stock, creates opened_bottles row */
+  const handleOpenNewBottle = async () => {
+    if (!newBottleProductId || !newBottlePrice) return;
+    setBottleBusy(true);
+    const id = ownerIdRef.current;
+    if (!id) { setBottleBusy(false); return; }
+    const { error } = await supabase.rpc("open_bottle", {
+      p_owner_id: id,
+      p_product_id: newBottleProductId,
+      p_shot_price: parseFloat(newBottlePrice),
+    });
+    setBottleBusy(false);
+    if (error) { toast.error(error.message); return; }
+    await fetchOpenedBottles();
+    await fetchProducts();
+    // Auto-select the newly opened bottle
+    const { data } = await supabase
+      .from("opened_bottles")
+      .select("id")
+      .eq("owner_id", id)
+      .eq("product_id", newBottleProductId)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false })
+      .limit(1);
+    if (data?.[0]) setShotBottleId(data[0].id);
+    setOpenNewMode(false);
+    setNewBottleProductId("");
+    setNewBottlePrice("");
+  };
+
+  /** Add a shot to the cart from an open bottle */
   const addShot = () => {
-    const price = parseFloat(shotPrice);
-    if (!shotName.trim() || isNaN(price) || price <= 0) {
-      toast.error("Enter a liquor name and valid price");
+    const bottle = openedBottles.find((b) => b.id === shotBottleId);
+    const price  = parseFloat(shotPrice || String(bottle?.shot_price ?? ""));
+    if (!bottle || isNaN(price) || price <= 0) {
+      toast.error("Select a bottle and set a price");
       return;
     }
-    const id = `shot-${Date.now()}`;
-    setCart(c => [...c, {
-      id, name: `Shot: ${shotName.trim()}`,
-      price, image_url: null, category: "liquor", qty: 1,
-    }]);
-    setShotName(""); setShotPrice(""); setShotOpen(false);
+    const id = `shot-${bottle.id}-${Date.now()}`;
+    setCart((c) => [...c, {
+      id,
+      name: `Shot: ${bottle.product_name}`,
+      price,
+      image_url: null,
+      category: "liquor",
+      qty: 1,
+      // stash bottle id so we can record revenue on order confirm
+      _bottle_id: bottle.id,
+    } as CartItem & { _bottle_id: string }]);
+    setShotModalOpen(false);
+    setShotBottleId("");
+    setShotPrice("");
   };
+
+  /** Finish a bottle — marks done and records final wallet tx */
+  const handleFinishBottle = async (bottleId: string) => {
+    if (!profile) return;
+    setBottleBusy(true);
+    const { error } = await supabase.rpc("finish_bottle", {
+      p_bottle_id:  bottleId,
+      p_cashier_id: profile.id,
+    });
+    setBottleBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Bottle marked finished — revenue recorded");
+    await fetchOpenedBottles();
+    refreshProfile();
+  };
+
+
 
   return (
     <>
@@ -156,65 +253,31 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            {/* ── Shot from Open Bottle — liquor tab only ── */}
+            {/* ── Opened Bottles + Shot buttons — liquor tab only ── */}
             {category === "liquor" && (
-              <div className="mb-3">
-                {!shotOpen ? (
-                  <button
-                    onClick={() => setShotOpen(true)}
-                    className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
-                    style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
-                  >
-                    🥃 Shot from Open Bottle
-                  </button>
-                ) : (
-                  <div className="rounded-2xl border p-4 space-y-3"
-                    style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.07)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.3)" }}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-sm flex items-center gap-2">🥃 Open Bottle Shot</span>
-                      <button onClick={() => { setShotOpen(false); setShotName(""); setShotPrice(""); }}
-                        className="text-muted-foreground hover:text-foreground transition p-1">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Liquor Name</label>
-                        <Input
-                          value={shotName}
-                          onChange={e => setShotName(e.target.value)}
-                          onFocus={() => setNativeInputFocused(true)}
-                          onBlur={() => setNativeInputFocused(false)}
-                          placeholder="e.g. Hennessy"
-                          className="h-10 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Price ($)</label>
-                        <Input
-                          value={shotPrice}
-                          onChange={e => setShotPrice(e.target.value)}
-                          onFocus={() => setNativeInputFocused(true)}
-                          onBlur={() => setNativeInputFocused(false)}
-                          placeholder="0.00"
-                          type="number"
-                          inputMode="decimal"
-                          min="0"
-                          step="0.01"
-                          className="h-10 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      onClick={addShot}
-                      disabled={!shotName.trim() || !shotPrice}
-                      className="w-full h-10 rounded-xl font-bold text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                      style={{ background: "var(--gradient-hero)" }}
-                    >
-                      + Add to Order
-                    </button>
-                  </div>
-                )}
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {/* Opened Bottles button */}
+                <button
+                  onClick={() => setBottlesModalOpen(true)}
+                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border relative"
+                  style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
+                >
+                  🍾 Opened Bottles
+                  {openedBottles.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {openedBottles.length}
+                    </span>
+                  )}
+                </button>
+                {/* Shot button */}
+                <button
+                  onClick={() => setShotModalOpen(true)}
+                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
+                  style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
+                >
+                  🥃 Shot
+                </button>
               </div>
             )}
 
@@ -344,6 +407,199 @@ export default function RegisterPage() {
           change={saleResult.change}
           onOk={() => setSaleResult(null)}
         />
+      )}
+
+      {/* ── Shot Modal ──────────────────────────────────────────────────── */}
+      {shotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); }}>
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl pb-safe"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-black">🥃 Add Shot</span>
+              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); }}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-5 pb-6 space-y-3">
+              {/* Step 1 — select from open bottles or open new */}
+              {!openNewMode ? (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select Liquor</p>
+
+                  {openedBottles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Currently open:</p>
+                      {openedBottles.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => { setShotBottleId(b.id); setShotPrice(String(b.shot_price)); }}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition active:scale-[0.98] ${
+                            shotBottleId === b.id
+                              ? "border-primary"
+                              : "border-border"
+                          }`}
+                          style={shotBottleId === b.id ? { background: "rgba(var(--primary-rgb,251 146 60)/0.12)" } : { background: "var(--muted)" }}
+                        >
+                          <span className="font-bold text-sm">{b.product_name}</span>
+                          <span className="text-xs text-muted-foreground">{b.shots_sold} shots · ${Number(b.revenue).toFixed(2)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setOpenNewMode(true)}
+                    className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
+                    style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+                  >
+                    + Open New Bottle
+                  </button>
+
+                  {shotBottleId && (
+                    <div className="space-y-2 pt-1">
+                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+                      <Input
+                        value={shotPrice}
+                        onChange={(e) => setShotPrice(e.target.value)}
+                        onFocus={() => setNativeInputFocused(true)}
+                        onBlur={() => setNativeInputFocused(false)}
+                        placeholder="0.00"
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        className="h-10 text-sm"
+                      />
+                      <button
+                        onClick={addShot}
+                        disabled={!shotPrice || parseFloat(shotPrice) <= 0}
+                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                        style={{ background: "var(--gradient-hero)" }}
+                      >
+                        + Add to Order
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Step 2 — open a new bottle */
+                <>
+                  <div className="flex items-center gap-2 mb-1">
+                    <button onClick={() => setOpenNewMode(false)} className="text-muted-foreground hover:text-foreground transition">
+                      <X className="h-4 w-4" />
+                    </button>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Open New Bottle</p>
+                  </div>
+
+                  {liquorProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No liquor in stock. Add some on the Items page.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Pick from liquor inventory:</p>
+                      <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border p-1" style={{ background: "var(--muted)" }}>
+                        {liquorProducts.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => setNewBottleProductId(p.id)}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition active:scale-[0.98] ${
+                              newBottleProductId === p.id ? "text-primary-foreground" : ""
+                            }`}
+                            style={newBottleProductId === p.id ? { background: "var(--gradient-hero)" } : {}}
+                          >
+                            <span className="font-bold text-sm">{p.name}</span>
+                            <span className="text-xs opacity-70">{p.stock_qty} in stock</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+                      <Input
+                        value={newBottlePrice}
+                        onChange={(e) => setNewBottlePrice(e.target.value)}
+                        onFocus={() => setNativeInputFocused(true)}
+                        onBlur={() => setNativeInputFocused(false)}
+                        placeholder="0.00"
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        className="h-10 text-sm"
+                      />
+
+                      <button
+                        onClick={handleOpenNewBottle}
+                        disabled={!newBottleProductId || !newBottlePrice || bottleBusy}
+                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                        style={{ background: "var(--gradient-hero)" }}
+                      >
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bottle & Select"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Opened Bottles Modal ────────────────────────────────────────── */}
+      {bottlesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setBottlesModalOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl pb-safe"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-black">🍾 Opened Bottles</span>
+              <button onClick={() => setBottlesModalOpen(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-5 pb-6 space-y-3 max-h-[70vh] overflow-y-auto">
+              {openedBottles.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">No bottles currently open.</div>
+              ) : (
+                openedBottles.map((b) => (
+                  <div key={b.id}
+                    className="rounded-2xl border border-border p-4 space-y-3"
+                    style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.06)" }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-black text-base">{b.product_name}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Opened {new Date(b.opened_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-primary font-black text-lg">${Number(b.revenue).toFixed(2)}</div>
+                        <div className="text-xs text-muted-foreground">{b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleFinishBottle(b.id)}
+                      disabled={bottleBusy}
+                      className="w-full h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg,#dc2626,#991b1b)" }}
+                    >
+                      {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✓ Bottle Finished / Empty"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Search text display — sits right on top of keyboard */}
@@ -481,8 +737,17 @@ function CashOverlay({
       p_items: cart.map((c) => ({ id: c.id, qty: c.qty })),
     });
     if (stockErr) {
-      // Non-fatal: order is already saved, just log it
       console.warn("Stock decrement failed:", stockErr.message);
+    }
+
+    // 3. Record shots against their opened bottles
+    const shotItems = cart.filter((c) => (c as any)._bottle_id);
+    for (const shot of shotItems) {
+      await supabase.rpc("record_shot", {
+        p_bottle_id: (shot as any)._bottle_id,
+        p_qty:       shot.qty,
+        p_revenue:   shot.qty * Number(shot.price),
+      });
     }
 
     setBusy(false);

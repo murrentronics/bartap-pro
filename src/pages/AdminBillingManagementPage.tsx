@@ -145,28 +145,14 @@ export default function AdminBillingManagementPage() {
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
         }
 
-        // Check if this is a music addon plan or music upgrade plan
-        const isMusicPlan = (plan.name as string).toLowerCase().includes("music");
-        const isMusicUpgrade = (plan.name as string).toLowerCase().includes("music upgrade");
-
+        // All plans include music — always grant it on approval
         const profileUpdate: Record<string, unknown> = {
           status: "approved",
           billing_status: "active",
+          music_addon: true,
+          subscription_start_date: startDate.toISOString(),
+          subscription_end_date: endDate.toISOString(),
         };
-
-        // Only update subscription dates for non-upgrade payments
-        if (!isMusicUpgrade) {
-          profileUpdate.subscription_start_date = startDate.toISOString();
-          profileUpdate.subscription_end_date = endDate.toISOString();
-        }
-
-        // Grant music addon for any music plan, remove it if notes say so
-        if (isMusicPlan) {
-          profileUpdate.music_addon = true;
-        }
-        if (selectedPayment.notes === "remove_music_addon") {
-          profileUpdate.music_addon = false;
-        }
         
         await supabase
           .from("profiles")

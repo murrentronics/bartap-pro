@@ -382,80 +382,85 @@ export default function ProductsPage() {
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => (
-              <div
-                key={p.id}
-                className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-border"
-                style={{ background: "var(--gradient-card)" }}
-              >
-                {p.image_url && (
-                  <img
-                    src={p.image_url}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                  />
-                )}
-                <div className="absolute inset-0 flex items-center justify-center text-4xl -z-0">
-                  {categoryIcon(p.category ?? "drinks")}
-                </div>
+              <div key={p.id} className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
 
-                {/* Out-of-stock overlay — covers only the middle (image area), not the bottom bar */}
-                {(p.stock_qty ?? 0) === 0 && (
-                  <div className="absolute inset-x-0 top-10 bottom-10 z-[5] flex items-center justify-center bg-red-950/70 backdrop-blur-[1px] pointer-events-none">
-                    <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                      <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                {/* ── Image area ── */}
+                <div className="aspect-[3/4] relative w-full">
+                  {p.image_url && (
+                    <img
+                      src={p.image_url}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center text-4xl -z-0">
+                    {categoryIcon(p.category ?? "drinks")}
+                  </div>
+
+                  {/* Out-of-stock overlay */}
+                  {(p.stock_qty ?? 0) === 0 && (
+                    <div className="absolute inset-x-0 top-10 bottom-10 z-[5] flex items-center justify-center bg-red-950/70 backdrop-blur-[1px] pointer-events-none">
+                      <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                        <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stock controls */}
+                  <div className="absolute top-0 inset-x-0 flex items-center justify-between px-1.5 pt-1.5 gap-1 z-10">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateStock(p.id, -1); }}
+                      className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-600/80 active:scale-90 transition text-white shadow shrink-0"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
+                      className="flex-1 h-7 rounded-full flex items-center justify-center bg-black/70 hover:bg-black/90 active:scale-95 transition shadow"
+                    >
+                      <span className="text-xs font-black text-white leading-none">{p.stock_qty ?? 0}</span>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateStock(p.id, 1); }}
+                      className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-green-600/80 active:scale-90 transition text-white shadow shrink-0"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {/* Price + delete on image bottom */}
+                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 bg-gradient-to-t from-black/80 to-transparent z-10">
+                    <div className="flex justify-between items-center">
+                      <span className="text-primary font-black text-sm">${Number(p.price).toFixed(2)}</span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button className="p-1 rounded text-white/70 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {p.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={async () => {
+                              await supabase.from("products").delete().eq("id", p.id);
+                              load();
+                            }}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                )}
-
-                {/* Stock controls */}
-                <div className="absolute top-0 inset-x-0 flex items-center justify-between px-1.5 pt-1.5 gap-1 z-10">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); updateStock(p.id, -1); }}
-                    className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-600/80 active:scale-90 transition text-white shadow shrink-0"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
-                    className="flex-1 h-7 rounded-full flex items-center justify-center bg-black/70 hover:bg-black/90 active:scale-95 transition shadow"
-                  >
-                    <span className="text-xs font-black text-white leading-none">{p.stock_qty ?? 0}</span>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); updateStock(p.id, 1); }}
-                    className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-green-600/80 active:scale-90 transition text-white shadow shrink-0"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
                 </div>
 
-                <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent">
-                  <div className="font-bold text-sm text-white truncate">{p.name}</div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-primary font-black">${Number(p.price).toFixed(2)}</span>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button className="p-1 rounded text-white/70 hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete {p.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={async () => {
-                            await supabase.from("products").delete().eq("id", p.id);
-                            load();
-                          }}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                {/* ── Title below image ── */}
+                <div className="px-1.5 py-1.5" style={{ background: "var(--gradient-hero)" }}>
+                  <div className="font-bold text-[11px] text-white truncate leading-tight">{p.name}</div>
                 </div>
+
               </div>
             ))}
           </div>

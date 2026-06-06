@@ -95,7 +95,7 @@ export default function MusicPage() {
   }, []);
 
   useEffect(() => {
-    if (profile && (profile.role !== "owner" || !(profile as any).music_addon)) {
+    if (profile && profile.role !== "owner") {
       nav("/register", { replace: true });
     }
   }, [profile, nav]);
@@ -175,23 +175,48 @@ export default function MusicPage() {
             The center video area and play/pause button remain fully tappable. */}
         {!searchOpen && (
           <>
-            {/* Top bar: title, CC, settings — covers ~top 60px */}
+            {/* ── TOP COVER: replaces YouTube title/channel/icons bar ────────
+                Solid black, shows our own now-playing info so it looks clean.
+                Blocks ALL taps on the YouTube title link and top chrome.     */}
             <div style={{
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
-              left: 0, right: 0, height: 62,
-              zIndex: 36, background: "transparent", pointerEvents: "auto",
-            }} />
-            {/* Bottom corners only: YT logo (left ~80px) + fullscreen (right ~60px)
-                Progress bar in the center remains fully interactive */}
+              left: 0, right: 0, height: 68,
+              zIndex: 36, background: "#000", pointerEvents: "auto",
+              display: "flex", alignItems: "center", gap: 12, padding: "0 16px",
+            }}>
+              {/* Animated bars */}
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 20, flexShrink: 0 }}>
+                {[0,1,2,3].map((b) => (
+                  <div key={b} style={{
+                    width: 3, borderRadius: 2, background: "#ef4444",
+                    height: "100%",
+                    animation: `musicBar ${0.35 + b * 0.12}s ease-in-out infinite alternate`,
+                    animationDelay: `${b * 0.08}s`,
+                  }} />
+                ))}
+              </div>
+              {/* Track title */}
+              <span style={{
+                color: "#fff", fontSize: 13, fontWeight: 800,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+              }}>
+                {yt.nowPlayingTitle || "Playing…"}
+              </span>
+            </div>
+
+            {/* ── BOTTOM-RIGHT COVER: fullscreen button ─────────────────────
+                Extends wide/tall enough to fully bury the fullscreen toggle. */}
             <div style={{
               position: "fixed",
-              bottom: 56, left: 0, width: 96, height: 56,
+              bottom: 56, right: 0, width: 100, height: 64,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
+
+            {/* ── BOTTOM-LEFT COVER: YouTube logo / watch-on-YT link ────── */}
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 72, height: 56,
+              bottom: 56, left: 0, width: 110, height: 64,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>

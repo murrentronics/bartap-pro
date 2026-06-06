@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useYouTube } from "@/lib/YouTubeContext";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Music2 } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -68,7 +68,7 @@ export default function AppLayout() {
   const isAdmin    = profile.role === "admin";
   const isPending  = !isAdmin && profile.status === "pending";
   const isSuspended = !isAdmin && profile.status === "suspended";
-  const hasMusic   = isOwner && !!(profile as any).music_addon;
+  const hasMusic   = isOwner;
   const isOnMusic  = loc.pathname === "/music";
 
   if (!isAdmin && profile.status === "expelled") {
@@ -176,22 +176,16 @@ export default function AppLayout() {
           {hasMusic && (
             <Link
               to={isOnMusic ? "/register" : "/music"}
-              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95"
+              className="h-8 px-3 rounded-lg flex items-center justify-center font-black text-xs transition active:scale-95 text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
               title={isOnMusic ? "Back to Bar" : "Open Music Player"}
             >
-              {isOnMusic
-                ? <Wine   className="h-4 w-4 text-primary-foreground" />
-                : <Music2 className="h-4 w-4 text-primary-foreground" />
-              }
+              {isOnMusic ? "Bar" : "Music"}
             </Link>
           )}
 
-          {/* Username + hamburger */}
+          {/* Hamburger — no username in header on mobile */}
           <div className="flex items-center gap-2" ref={menuRef}>
-            <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
-              {profile.username}
-            </span>
             <button
               onClick={() => setMenuOpen((o) => !o)}
               className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
@@ -206,6 +200,11 @@ export default function AppLayout() {
                 className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
                 style={{ background: "var(--gradient-card)" }}
               >
+                {/* Owner name — small, at the top of the menu */}
+                <div className="px-4 py-2.5 border-b border-border/50">
+                  <span className="text-[11px] font-semibold text-muted-foreground truncate block">{profile.username}</span>
+                </div>
+
                 {navItems.map((it) => {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;

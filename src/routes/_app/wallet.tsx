@@ -526,12 +526,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         setLoading(false);
       });
 
-    // transfer_in (cleared from cashier) + wallet_reset records
+    // transfer_in (cleared from cashier) + wallet_reset + bottle_finished records
     supabase
       .from("wallet_transactions")
       .select("*")
       .eq("profile_id", profile.id)
-      .in("type", ["transfer_in", "wallet_reset"])
+      .in("type", ["transfer_in", "wallet_reset", "bottle_finished"])
       .order("created_at", { ascending: false })
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
   };
@@ -627,7 +627,34 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             {flatRecords.map((rec) => {
               if (rec.kind === "tx") {
                 const tx = rec.data;
-                const isReset = tx.type === "wallet_reset";
+                const isReset    = tx.type === "wallet_reset";
+                const isBottle   = tx.type === "bottle_finished";
+
+                if (isBottle) {
+                  // Note format: "Open bottle sold out: NAME | Bottle price: $X | Shots revenue: $Y"
+                  const noteParts = (tx.note ?? "").split(" | ");
+                  const title     = noteParts[0] ?? tx.note ?? "Bottle closed";
+                  const sub1      = noteParts[1] ?? "";
+                  const sub2      = noteParts[2] ?? "";
+                  return (
+                    <div
+                      key={tx.id}
+                      className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
+                      style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}
+                    >
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-amber-500/20 border-amber-500/30 text-lg">
+                        🍾
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</div>
+                        <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
+                        {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
+                        {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={tx.id}
