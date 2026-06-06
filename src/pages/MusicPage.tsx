@@ -98,11 +98,19 @@ export default function MusicPage() {
     yt.search(searchInput);
   };
 
-  const playResult = (item: { id: string; kind: string; title: string }) => {
-    // Hard-stop local MP3 — clears audio src so only one source plays at a time
+  const playResult = (item: { id: string; kind: string; title: string; channel?: string; thumbnail?: string }) => {
+    // Hard-stop local MP3
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
     yt.setNowPlayingTitle(item.title);
+    // Save to history — free replays, no API cost
+    yt.addToHistory({
+      id:        item.id,
+      kind:      item.kind,
+      title:     item.title,
+      channel:   item.channel   ?? "",
+      thumbnail: item.thumbnail ?? "",
+    });
     setSearchOpen(false);
   };
 
@@ -143,25 +151,24 @@ export default function MusicPage() {
             }}
           >
             {/* Search input row */}
-            <div className="flex gap-2 px-3 pt-3 pb-2 shrink-0">
+            <div className="flex gap-2 px-3 pt-3 pb-1 shrink-0">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400/70 pointer-events-none" />
                 <Input
                   autoFocus
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  onKeyDown={e => e.key === "Enter" && yt.searchesRemaining > 0 && handleSearch()}
                   placeholder="Search songs, artists…"
                   className="pl-9 text-sm bg-black/60 border-red-500/40 text-white placeholder:text-white/30 h-10 rounded-xl"
                 />
               </div>
               <button onClick={handleSearch}
-                disabled={!searchInput.trim() || yt.searching}
+                disabled={!searchInput.trim() || yt.searching || yt.searchesRemaining === 0}
                 className="h-10 px-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0"
                 style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
                 {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </button>
-              {/* Close results, go back to footer */}
               <button
                 onClick={() => { yt.setQuery(""); setSearchOpen(false); }}
                 className="h-10 px-3 rounded-xl text-white/60 hover:text-white transition shrink-0"
@@ -169,6 +176,22 @@ export default function MusicPage() {
               >
                 <X className="h-4 w-4" />
               </button>
+            </div>
+            {/* Quota bar */}
+            <div className="flex items-center justify-between px-4 pb-2 shrink-0">
+              <span className="text-xs">
+                {yt.searchesRemaining > 0
+                  ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span><span className="text-white/30"> searches left</span></>
+                  : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
+                }
+              </span>
+              <div className="h-1 w-20 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${(yt.searchesRemaining / 100) * 100}%`,
+                    background: yt.searchesRemaining <= 10 ? "#eab308" : "#22c55e",
+                  }} />
+              </div>
             </div>
 
             {/* Results list */}
@@ -206,6 +229,31 @@ export default function MusicPage() {
                       {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
                     </button>
                   ))}
+                </div>
+              )}
+              {/* History shown when no search results yet */}
+              {!yt.searching && yt.results.length === 0 && yt.history.length > 0 && (
+                <div>
+                  <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Recently Played</p>
+                  <div className="space-y-1">
+                    {yt.history.map(item => (
+                      <button key={item.id + item.playedAt}
+                        onClick={() => { playResult(item); setSearchOpen(false); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
+                        style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <div className="h-10 w-16 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                          {item.thumbnail
+                            ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-4 w-4 text-red-400/50" /></div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
+                          <p className="text-white/40 text-[10px] truncate">{item.channel}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -442,24 +490,42 @@ export default function MusicPage() {
           {/* YouTube search */}
           <TabsContent value="youtube" className="px-3 pb-8 mt-2">
             <div className="space-y-3">
-              {/* Search bar */}
+              {/* Search bar + quota counter */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400/70 pointer-events-none" />
                   <Input
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleSearch()}
+                    onKeyDown={e => e.key === "Enter" && yt.searchesRemaining > 0 && handleSearch()}
                     placeholder="Search songs, artists…"
                     className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
                 <button onClick={handleSearch}
-                  disabled={!searchInput.trim() || yt.searching}
+                  disabled={!searchInput.trim() || yt.searching || yt.searchesRemaining === 0}
                   className="h-11 px-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0 flex items-center gap-1.5"
                   style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
                   {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </button>
+              </div>
+
+              {/* Quota counter */}
+              <div className="flex items-center justify-between px-1">
+                <span className="text-white/30 text-xs">
+                  {yt.searchesRemaining > 0
+                    ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span> searches left today</>
+                    : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
+                  }
+                </span>
+                {/* Progress bar */}
+                <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${(yt.searchesRemaining / 100) * 100}%`,
+                      background: yt.searchesRemaining <= 10 ? "#eab308" : yt.searchesRemaining <= 25 ? "#f97316" : "#22c55e",
+                    }} />
+                </div>
               </div>
 
               {/* Quick play */}
@@ -473,6 +539,41 @@ export default function MusicPage() {
                         className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
                         style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                         {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Play history — free replays, no API call */}
+              {!yt.searching && yt.results.length === 0 && yt.history.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
+                    <button onClick={yt.clearHistory} className="text-white/20 hover:text-white/50 text-xs transition">
+                      Clear
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {yt.history.map(item => (
+                      <button key={item.id + item.playedAt}
+                        onClick={() => playResult(item)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
+                        style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <div className="h-10 w-16 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                          {item.thumbnail
+                            ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-4 w-4 text-red-400/50" /></div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-xs font-bold line-clamp-1 leading-tight">{item.title}</p>
+                          <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); yt.removeFromHistory(item.id); }}
+                          className="text-white/20 hover:text-white/50 p-1 transition shrink-0">
+                          <X className="h-3 w-3" />
+                        </button>
                       </button>
                     ))}
                   </div>
