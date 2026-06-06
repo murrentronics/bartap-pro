@@ -19,6 +19,7 @@ import type { BillingPayment } from "@/types/billing";
 
 type PaymentWithOwner = BillingPayment & {
   profiles: { username: string } | null;
+  billing_plans: { name: string } | null;
 };
 
 export default function AdminBillingManagementPage() {
@@ -66,7 +67,8 @@ export default function AdminBillingManagementPage() {
       .from("billing_payments")
       .select(`
         *,
-        profiles:owner_id (username)
+        profiles:owner_id (username),
+        billing_plans:plan_id (name)
       `)
       .eq("status", filter)
       .order("created_at", { ascending: false })
@@ -299,6 +301,9 @@ export default function AdminBillingManagementPage() {
                       <span className="font-mono text-sm font-bold">{payment.reference_number}</span>
                     </div>
                     <p className="text-sm font-bold">{payment.profiles?.username || "Unknown"}</p>
+                    <p className="text-xs text-primary font-semibold mt-0.5">
+                      {payment.billing_plans?.name || "Unknown Plan"}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Created: {new Date(payment.created_at).toLocaleString()}
                     </p>
@@ -358,6 +363,11 @@ export default function AdminBillingManagementPage() {
                 <div>
                   <Label>Owner</Label>
                   <p className="font-bold">{selectedPayment.profiles?.username}</p>
+                </div>
+
+                <div>
+                  <Label>Plan</Label>
+                  <p className="font-bold text-primary">{selectedPayment.billing_plans?.name || "Unknown Plan"}</p>
                 </div>
 
                 <div>

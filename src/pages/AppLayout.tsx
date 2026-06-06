@@ -98,12 +98,6 @@ export default function AppLayout() {
         >
           <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div
-                className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: "var(--gradient-hero)" }}
-              >
-                <Wine className="h-3.5 w-3.5 text-primary-foreground" />
-              </div>
               <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
             </div>
             <div className="flex items-center gap-2" ref={menuRef}>
@@ -186,12 +180,6 @@ export default function AppLayout() {
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div
-              className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "var(--gradient-hero)" }}
-            >
-              <Wine className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 

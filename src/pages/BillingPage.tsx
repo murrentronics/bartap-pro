@@ -242,21 +242,36 @@ export default function BillingPage() {
     ? musicUpgradePlans.find(p => p.duration_months === 12)
     : musicUpgradePlans.find(p => p.duration_months === 6);
 
-  const createUpgradePayment = async (upgradePlan: BillingPlan, method: "cash" | "bank", removeMusic = false) => {
+  // Pro-rate the music upgrade: charge only for remaining days on current subscription
+  const totalPlanDays = (currentPlanDuration ?? 6) * 30; // approximate days in plan
+  const remainingDays = nextDueDate
+    ? Math.max(1, Math.ceil((nextDueDate.getTime() - Date.now()) / 86400000))
+    : totalPlanDays;
+  const proratedMusicAmount = musicUpgradePlan
+    ? Math.ceil((musicUpgradePlan.amount / totalPlanDays) * remainingDays * 100) / 100
+    : 0;
+
+  const createUpgradePayment = async (upgradePlan: BillingPlan, method: "cash" | "bank", removeMusic = false, overrideAmount?: number) => {
     if (!profile?.id) return;
     setLoading(true);
 
     const { data: refData, error: refError } = await supabase.rpc("generate_payment_reference");
     if (refError) { toast.error("Failed to generate reference"); setLoading(false); return; }
 
-    const dueDate = new Date();
-    dueDate.setMonth(dueDate.getMonth() + upgradePlan.duration_months);
+    // For music upgrades: use existing subscription end date so billing stays aligned
+    // For plan upgrades: calculate fresh from today
+    const isMusicUpgrade = upgradePlan.name.toLowerCase().includes("music upgrade");
+    const dueDate = isMusicUpgrade && nextDueDate
+      ? nextDueDate
+      : (() => { const d = new Date(); d.setMonth(d.getMonth() + upgradePlan.duration_months); return d; })();
+
+    const amount = overrideAmount ?? upgradePlan.amount;
 
     const { error } = await supabase.from("billing_payments").insert({
       owner_id: profile.id,
       plan_id: upgradePlan.id,
       reference_number: refData,
-      amount: upgradePlan.amount,
+      amount,
       due_date: dueDate.toISOString(),
       status: "pending",
       payment_method: method,
@@ -311,12 +326,20 @@ export default function BillingPage() {
                 <CheckCircle className="h-6 w-6 text-green-500" />
                 <div className="flex-1">
                   <p className="font-bold text-green-500">Active</p>
-                  <p className="text-sm text-muted-foreground">
-                    Next payment due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
+                  {(() => {
+                    const activePlan = lastPaidPayment ? plans.find(p => p.id === lastPaidPayment.plan_id) : null;
+                    return activePlan ? (
+                      <p className="text-sm font-semibold text-foreground mt-0.5">
+                        {activePlan.name} — <span className="text-primary">${activePlan.amount.toFixed(2)} TT</span>
+                      </p>
+                    ) : null;
+                  })()}
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Next due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
                   </p>
                   {hasMusicAddon && (
                     <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
-                      <Music2 className="h-3 w-3" /> Music Player included
+                      🎵 Music Player included
                     </p>
                   )}
                 </div>
@@ -355,7 +378,7 @@ export default function BillingPage() {
                         size="sm"
                         className="font-bold gap-1"
                       >
-                        <Music2 className="h-3.5 w-3.5" /> Add Music — ${musicUpgradePlan.amount.toFixed(0)} TT
+                        <Music2 className="h-3.5 w-3.5" /> Add Music — ${proratedMusicAmount.toFixed(0)} TT
                       </Button>
                     )}
                     {!canPayFee && daysUntilDue !== null && daysUntilDue > 7 && (
@@ -665,10 +688,32 @@ export default function BillingPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Unlock the in-app music player with YouTube search and local file support.
             </p>
-            <div className="flex items-center justify-between mb-5 p-3 rounded-xl bg-primary/10 border border-primary/30">
-              <span className="font-bold">Music Player Add-on</span>
-              <span className="text-xl font-black text-primary">${musicUpgradePlan.amount.toFixed(2)} TT</span>
+
+            {/* Pro-rated breakdown */}
+            <div className="rounded-xl p-3 mb-4 space-y-2" style={{ background: "rgba(var(--primary-rgb),0.06)", border: "1px solid rgba(var(--primary-rgb),0.2)" }}>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Full music addon price</span>
+                <span className="font-semibold">${musicUpgradePlan.amount.toFixed(2)} TT</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Days remaining on plan</span>
+                <span className="font-semibold">{remainingDays} days</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Daily rate</span>
+                <span className="font-semibold">${(musicUpgradePlan.amount / totalPlanDays).toFixed(2)} TT/day</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 mt-1">
+                <span className="font-bold">Pro-rated amount due now</span>
+                <span className="text-lg font-black text-primary">${proratedMusicAmount.toFixed(2)} TT</span>
+              </div>
+              {nextDueDate && (
+                <p className="text-xs text-muted-foreground">
+                  Full price renews together with your base plan on {nextDueDate.toLocaleDateString()}
+                </p>
+              )}
             </div>
+
             {!upgradeMethod ? (
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setUpgradeMethod("cash")}
@@ -688,8 +733,8 @@ export default function BillingPage() {
             ) : (
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setUpgradeMethod(null)} className="flex-1">Back</Button>
-                <Button onClick={() => createUpgradePayment(musicUpgradePlan, upgradeMethod)} disabled={loading} className="flex-1 font-bold">
-                  {loading ? "Submitting..." : `Confirm ${upgradeMethod === "cash" ? "Cash" : "Bank"} Payment`}
+                <Button onClick={() => createUpgradePayment(musicUpgradePlan, upgradeMethod, false, proratedMusicAmount)} disabled={loading} className="flex-1 font-bold">
+                  {loading ? "Submitting..." : `Confirm — $${proratedMusicAmount.toFixed(2)} TT`}
                 </Button>
               </div>
             )}
