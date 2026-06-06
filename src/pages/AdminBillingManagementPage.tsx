@@ -147,17 +147,13 @@ export default function AdminBillingManagementPage() {
         const isMusicAddon = (plan.name as string).toLowerCase().includes("music");
 
         const profileUpdate: Record<string, unknown> = {
+          status: "approved",
           billing_status: "active",
           subscription_start_date: startDate.toISOString(),
           subscription_end_date: endDate.toISOString(),
         };
 
-        // Only set status to approved for base plans, not addon-only payments
-        if (!isMusicAddon) {
-          profileUpdate.status = "approved";
-        }
-
-        // Grant music addon if applicable
+        // Grant music addon if this is a music plan
         if (isMusicAddon) {
           profileUpdate.music_addon = true;
         }

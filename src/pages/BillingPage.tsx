@@ -107,7 +107,6 @@ export default function BillingPage() {
     let plan: BillingPlan | undefined;
     
     if (isRenewal) {
-      // For renewal, use the last paid payment's plan
       const lastPaid = payments.find(p => p.status === "paid");
       if (!lastPaid) {
         toast.error("No previous payment found");
@@ -116,7 +115,13 @@ export default function BillingPage() {
       }
       plan = plans.find(p => p.id === lastPaid.plan_id);
     } else {
-      plan = plans.find(p => p.id === selectedPlan);
+      const basePlan = plans.find(p => p.id === selectedPlan);
+      if (musicAddon) {
+        // Swap to the music addon plan with matching duration — it's the all-inclusive price
+        plan = musicAddonPlans.find(p => p.duration_months === basePlan?.duration_months);
+      } else {
+        plan = basePlan;
+      }
     }
     
     if (!plan) {
@@ -164,26 +169,6 @@ export default function BillingPage() {
     if (error) {
       toast.error("Failed to create payment");
       return;
-    }
-
-    // If music addon was selected, create a second payment for the addon plan
-    if (!isRenewal && musicAddon) {
-      // Find the music addon plan with matching duration
-      const addonPlan = musicAddonPlans.find(p => p.duration_months === plan.duration_months);
-      if (addonPlan) {
-        const { data: addonRef, error: addonRefError } = await supabase.rpc("generate_payment_reference");
-        if (!addonRefError && addonRef) {
-          await supabase.from("billing_payments").insert({
-            owner_id: profile.id,
-            plan_id: addonPlan.id,
-            reference_number: addonRef,
-            amount: addonPlan.amount,
-            due_date: dueDate.toISOString(),
-            status: "pending",
-            payment_method: method,
-          });
-        }
-      }
     }
 
     toast.success(method === "cash" ? "Cash payment pending - awaiting admin confirmation" : "Bank transfer pending - awaiting admin confirmation");
@@ -615,7 +600,6 @@ export default function BillingPage() {
             {selectedPlan && !paymentMethod && (() => {
               const base = basePlans.find(p => p.id === selectedPlan)!;
               const addon = musicAddonPlans.find(p => p.duration_months === base?.duration_months);
-              const total = (base?.amount ?? 0) + (musicAddon && addon ? addon.amount : 0);
               return (
                 <Card className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
@@ -648,7 +632,8 @@ export default function BillingPage() {
                           In-app music player with YouTube & local file support
                         </p>
                         <p className="text-primary font-black mt-1">
-                          +${addon.amount.toFixed(2)} TT / {addon.duration_months} months
+                          {addon.duration_months === 12 ? "Annual plan with music: " : "6-month plan with music: "}
+                          ${addon.amount.toFixed(2)} TT
                         </p>
                       </div>
                       <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
@@ -662,7 +647,9 @@ export default function BillingPage() {
                   {/* Total */}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <span className="text-muted-foreground font-semibold">Total</span>
-                    <span className="text-2xl font-black text-primary">${total.toFixed(2)} TT</span>
+                    <span className="text-2xl font-black text-primary">
+                      ${(musicAddon && addon ? addon.amount : base?.amount ?? 0).toFixed(2)} TT
+                    </span>
                   </div>
 
                   {/* Continue to payment method */}
@@ -708,23 +695,24 @@ export default function BillingPage() {
                 <h2 className="text-xl font-bold mb-4 text-green-500">Confirm Cash Payment</h2>
                 {(() => {
                   const base = basePlans.find(p => p.id === selectedPlan);
-                  const addon = musicAddonPlans.find(p => p.duration_months === base?.duration_months);
-                  const total = (base?.amount ?? 0) + (musicAddon && addon ? addon.amount : 0);
+                  const finalPlan = musicAddon
+                    ? musicAddonPlans.find(p => p.duration_months === base?.duration_months)
+                    : base;
                   return (
                     <div className="space-y-3 mb-4">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{base?.name}</span>
-                        <span className="font-bold">${base?.amount.toFixed(2)} TT</span>
+                        <span className="text-muted-foreground">{finalPlan?.name}</span>
+                        <span className="font-bold">${finalPlan?.amount.toFixed(2)} TT</span>
                       </div>
-                      {musicAddon && addon && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">🎵 Music Add-on</span>
-                          <span className="font-bold">+${addon.amount.toFixed(2)} TT</span>
+                      {musicAddon && (
+                        <div className="flex items-center gap-2 text-xs text-primary">
+                          <span>🎵</span>
+                          <span>Music Player included</span>
                         </div>
                       )}
                       <div className="flex justify-between border-t pt-2">
                         <span className="font-bold">Total</span>
-                        <span className="text-xl font-black text-primary">${total.toFixed(2)} TT</span>
+                        <span className="text-xl font-black text-primary">${finalPlan?.amount.toFixed(2)} TT</span>
                       </div>
                     </div>
                   );
