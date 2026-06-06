@@ -104,6 +104,25 @@ export default function RegisterPage() {
 
   const removeItem = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
 
+  // ── Open Bottle Shot ────────────────────────────────────────────────────
+  const [shotOpen,  setShotOpen ] = useState(false);
+  const [shotName,  setShotName ] = useState("");
+  const [shotPrice, setShotPrice] = useState("");
+
+  const addShot = () => {
+    const price = parseFloat(shotPrice);
+    if (!shotName.trim() || isNaN(price) || price <= 0) {
+      toast.error("Enter a liquor name and valid price");
+      return;
+    }
+    const id = `shot-${Date.now()}`;
+    setCart(c => [...c, {
+      id, name: `Shot: ${shotName.trim()}`,
+      price, image_url: null, category: "liquor", qty: 1,
+    }]);
+    setShotName(""); setShotPrice(""); setShotOpen(false);
+  };
+
   return (
     <>
       {/* Sticky category tabs — sits below the app header */}
@@ -134,11 +153,71 @@ export default function RegisterPage() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
-          </div>
         ) : (
+          <>
+            {/* ── Shot from Open Bottle — liquor tab only ── */}
+            {category === "liquor" && (
+              <div className="mb-3">
+                {!shotOpen ? (
+                  <button
+                    onClick={() => setShotOpen(true)}
+                    className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
+                    style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
+                  >
+                    🥃 Shot from Open Bottle
+                  </button>
+                ) : (
+                  <div className="rounded-2xl border p-4 space-y-3"
+                    style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.07)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.3)" }}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-sm flex items-center gap-2">🥃 Open Bottle Shot</span>
+                      <button onClick={() => { setShotOpen(false); setShotName(""); setShotPrice(""); }}
+                        className="text-muted-foreground hover:text-foreground transition p-1">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Liquor Name</label>
+                        <Input
+                          value={shotName}
+                          onChange={e => setShotName(e.target.value)}
+                          placeholder="e.g. Hennessy"
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Price ($)</label>
+                        <Input
+                          value={shotPrice}
+                          onChange={e => setShotPrice(e.target.value)}
+                          placeholder="0.00"
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.01"
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={addShot}
+                      disabled={!shotName.trim() || !shotPrice}
+                      className="w-full h-10 rounded-xl font-bold text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                      style={{ background: "var(--gradient-hero)" }}
+                    >
+                      + Add to Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {filtered.length === 0 && !loading ? (
+              <div className="text-center py-20 text-muted-foreground">
+                {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
+              </div>
+            ) : (
           <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
@@ -211,6 +290,8 @@ export default function RegisterPage() {
               );
             })}
           </div>
+            )}
+          </>
         )}
       </div>
 
@@ -419,6 +500,8 @@ function CashOverlay({
                     <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                       {i.image_url ? (
                         <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                      ) : i.id.startsWith("shot-") ? (
+                        <span className="text-xl">🥃</span>
                       ) : (
                         <span className="text-lg">{categoryIcon(i.category ?? "drinks")}</span>
                       )}

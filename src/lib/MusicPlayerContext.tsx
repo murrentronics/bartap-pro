@@ -53,7 +53,7 @@ function restore(): { playlist: Track[]; index: number; mode: PlayMode } {
     );
 
     return {
-      playlist: persistent,
+      playlist: persistent.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" })),
       index:    isNaN(idx) ? -1 : Math.min(idx, persistent.length - 1),
       mode,
     };
@@ -123,7 +123,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
     audio.addEventListener("loadedmetadata", () => setDuration(audio.duration));
     audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("error",  () => { toast.error("Playback error"); setPlayerState("idle"); });
+    audio.addEventListener("error", () => {
+      // Suppress error toast when src was cleared intentionally (stopPlayback)
+      if (audio.dataset.intentionalStop === "1") {
+        delete audio.dataset.intentionalStop;
+        return;
+      }
+      toast.error("Playback error");
+      setPlayerState("idle");
+    });
 
     return () => { audio.pause(); audio.src = ""; stopTimer(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,6 +249,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const stopPlayback = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    // Set flag before clearing src so the error listener doesn't fire a toast
+    audio.dataset.intentionalStop = "1";
     audio.pause();
     audio.src = "";
     stopTimer();
@@ -347,18 +357,19 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
 
     setPlaylist(p => {
-      // Restore lost tracks by matching title, add new ones
       const updated = [...p];
       let added = 0;
       for (const t of newTracks) {
         const existing = updated.findIndex(e => e.title === t.title && e.type === "local");
         if (existing !== -1) {
-          updated[existing] = t; // restore with new URI
+          updated[existing] = t;
         } else {
           updated.push(t);
           added++;
         }
       }
+      // Keep playlist in alphabetical order by title
+      updated.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
       toast.success(`${added > 0 ? `${added} added` : ""}${added > 0 && newTracks.length - added > 0 ? ", " : ""}${newTracks.length - added > 0 ? `${newTracks.length - added} restored` : ""}`);
       return updated;
     });

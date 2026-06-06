@@ -55,6 +55,8 @@ export default function MusicPage() {
   const yt           = useYouTube();
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
+  const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
+  const [lastMainTab, setLastMainTab] = useState("youtube");
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
@@ -134,6 +136,21 @@ export default function MusicPage() {
   if (ytActive) {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
+
+        {/* Transparent tap-blocker — covers YouTube's title/CC/settings row
+            so tapping those controls doesn't open the external YouTube app  */}
+        {!searchOpen && (
+          <div
+            style={{
+              position: "fixed",
+              top: "calc(44px + env(safe-area-inset-top, 0px))",
+              left: 0, right: 0,
+              height: 72, // covers title + icon row at top of player
+              zIndex: 36,
+              background: "transparent",
+            }}
+          />
+        )}
 
         {/* Search panel — slides in over the iframe when searchOpen */}
         {searchOpen ? (
@@ -270,7 +287,7 @@ export default function MusicPage() {
               backdropFilter: "blur(8px)",
             }}
           >
-            <div className="flex items-center gap-3 px-3 h-12">
+            <div className="flex items-center gap-3 px-3 h-14">
               {/* Animated bars */}
               <div className="flex items-end gap-px h-4 shrink-0">
                 {[0,1,2,3].map(b => (
@@ -280,18 +297,21 @@ export default function MusicPage() {
               </div>
               {/* Track title */}
               <span className="text-white text-xs font-bold truncate flex-1">{yt.nowPlayingTitle || "YouTube playing"}</span>
-              {/* Search button — opens keyboard + results */}
+              {/* Search button */}
               <button
                 onClick={() => { setSearchInput(""); setSearchOpen(true); }}
-                className="h-8 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(239,68,68,0.7)" }}
               >
                 <Search className="h-3.5 w-3.5" /> Search
               </button>
-              {/* Stop */}
-              <button onClick={() => yt.setVideoId(null)}
-                className="text-white/40 hover:text-white/70 p-1 transition shrink-0">
-                <X className="h-4 w-4" />
+              {/* Red Exit button */}
+              <button
+                onClick={() => { yt.setVideoId(null); setLastMainTab("youtube"); }}
+                className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                style={{ background: "rgba(180,0,0,0.85)" }}
+              >
+                <X className="h-3.5 w-3.5" /> Exit
               </button>
             </div>
             <style>{`
@@ -393,7 +413,7 @@ export default function MusicPage() {
 
       {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
       <div style={{ background: "#0d1117" }}>
-        <Tabs defaultValue="playlist">
+        <Tabs defaultValue={lastMainTab}>
           <TabsList className="grid grid-cols-3 mx-3 mt-2"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <TabsTrigger value="playlist" className="gap-1.5 data-[state=active]:text-blue-300">
@@ -487,22 +507,29 @@ export default function MusicPage() {
             </div>
           </TabsContent>
 
-          {/* YouTube search */}
+          {/* YouTube — search + sub-tabs */}
           <TabsContent value="youtube" className="px-3 pb-8 mt-2">
             <div className="space-y-3">
-              {/* Search bar + quota counter */}
+
+              {/* Search bar */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400/70 pointer-events-none" />
                   <Input
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && yt.searchesRemaining > 0 && handleSearch()}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && yt.searchesRemaining > 0) {
+                        handleSearch();
+                        setYtSubTab("results");
+                      }
+                    }}
                     placeholder="Search songs, artists…"
                     className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
-                <button onClick={handleSearch}
+                <button
+                  onClick={() => { handleSearch(); setYtSubTab("results"); }}
                   disabled={!searchInput.trim() || yt.searching || yt.searchesRemaining === 0}
                   className="h-11 px-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0 flex items-center gap-1.5"
                   style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
@@ -510,7 +537,7 @@ export default function MusicPage() {
                 </button>
               </div>
 
-              {/* Quota counter */}
+              {/* Quota */}
               <div className="flex items-center justify-between px-1">
                 <span className="text-white/30 text-xs">
                   {yt.searchesRemaining > 0
@@ -518,7 +545,6 @@ export default function MusicPage() {
                     : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
                   }
                 </span>
-                {/* Progress bar */}
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
@@ -528,108 +554,131 @@ export default function MusicPage() {
                 </div>
               </div>
 
-              {/* Quick play */}
-              {!yt.searching && yt.results.length === 0 && (
-                <div>
-                  <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Quick Play</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {QUICK_SEARCHES.map(({ label, q }) => (
-                      <button key={q}
-                        onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); }}
-                        className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
-                        style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Sub-tabs: Results | History */}
+              <div className="flex gap-1 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.05)" }}>
+                <button
+                  onClick={() => setYtSubTab("results")}
+                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "results" ? "text-white" : "text-white/40 hover:text-white/70"}`}
+                  style={ytSubTab === "results" ? { background: "rgba(239,68,68,0.7)" } : {}}
+                >
+                  Results {yt.results.length > 0 && `(${yt.results.length})`}
+                </button>
+                <button
+                  onClick={() => setYtSubTab("history")}
+                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "history" ? "text-white" : "text-white/40 hover:text-white/70"}`}
+                  style={ytSubTab === "history" ? { background: "rgba(239,68,68,0.7)" } : {}}
+                >
+                  History {yt.history.length > 0 && `(${yt.history.length})`}
+                </button>
+              </div>
 
-              {/* Play history — free replays, no API call */}
-              {!yt.searching && yt.results.length === 0 && yt.history.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
-                    <button onClick={yt.clearHistory} className="text-white/20 hover:text-white/50 text-xs transition">
-                      Clear
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    {yt.history.map(item => (
-                      <button key={item.id + item.playedAt}
-                        onClick={() => playResult(item)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
-                        style={{ background: "rgba(255,255,255,0.04)" }}>
-                        <div className="h-10 w-16 rounded-lg overflow-hidden shrink-0 bg-black/40">
-                          {item.thumbnail
-                            ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-4 w-4 text-red-400/50" /></div>
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-xs font-bold line-clamp-1 leading-tight">{item.title}</p>
-                          <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
-                        </div>
-                        <button onClick={e => { e.stopPropagation(); yt.removeFromHistory(item.id); }}
-                          className="text-white/20 hover:text-white/50 p-1 transition shrink-0">
-                          <X className="h-3 w-3" />
+              {/* ── Results sub-tab ── */}
+              {ytSubTab === "results" && (
+                <>
+                  {yt.searching && (
+                    <div className="flex items-center justify-center py-10 gap-3 text-white/40">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="text-sm">Searching…</span>
+                    </div>
+                  )}
+                  {yt.searchError && !yt.searching && (
+                    <div className="rounded-xl p-4 text-center"
+                      style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                      <p className="text-red-400 text-sm font-bold">Search unavailable</p>
+                      <p className="text-white/50 text-xs mt-1">{yt.searchError}</p>
+                    </div>
+                  )}
+                  {!yt.searching && yt.results.length === 0 && !yt.searchError && (
+                    <div>
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Quick Play</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {QUICK_SEARCHES.map(({ label, q }) => (
+                          <button key={q}
+                            onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); setYtSubTab("results"); }}
+                            className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
+                            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!yt.searching && yt.results.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
+                          Results for "{yt.query}"
+                        </p>
+                        <button onClick={() => { yt.setQuery(""); setSearchInput(""); }}
+                          className="text-white/30 hover:text-white/60 transition">
+                          <X className="h-3.5 w-3.5" />
                         </button>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {yt.searching && (
-                <div className="flex items-center justify-center py-10 gap-3 text-white/40">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">Searching…</span>
-                </div>
-              )}
-
-              {yt.searchError && !yt.searching && (
-                <div className="rounded-xl p-4 text-center"
-                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                  <p className="text-red-400 text-sm font-bold">Search unavailable</p>
-                  <p className="text-white/50 text-xs mt-1">{yt.searchError}</p>
-                </div>
-              )}
-
-              {!yt.searching && yt.results.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
-                      Results for "{yt.query}"
-                    </p>
-                    <button onClick={() => { yt.setQuery(""); setSearchInput(""); }}
-                      className="text-white/30 hover:text-white/60 transition">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  {yt.results.map(item => (
-                    <button key={item.id} onClick={() => playResult(item)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
-                        yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
-                      }`}
-                      style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
-                      <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
-                        {item.thumbnail
-                          ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center">
-                              <Youtube className="h-5 w-5 text-red-400/50" />
-                            </div>
-                        }
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
-                        <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                      {yt.results.map(item => (
+                        <button key={item.id} onClick={() => playResult(item)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
+                            yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
+                          }`}
+                          style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
+                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                            {item.thumbnail
+                              ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
+                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                          </div>
+                          {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── History sub-tab ── */}
+              {ytSubTab === "history" && (
+                <>
+                  {yt.history.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-white/30 gap-2">
+                      <Youtube className="h-8 w-8" />
+                      <p className="text-sm">No history yet</p>
+                      <p className="text-xs">Played videos appear here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
+                        <button onClick={yt.clearHistory} className="text-white/20 hover:text-white/50 text-xs transition">
+                          Clear all
+                        </button>
                       </div>
-                      {item.kind === "youtube#playlist" && (
-                        <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                      {yt.history.map(item => (
+                        <button key={item.id + item.playedAt}
+                          onClick={() => playResult(item)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
+                          style={{ background: "rgba(255,255,255,0.04)" }}>
+                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                            {item.thumbnail
+                              ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
+                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); yt.removeFromHistory(item.id); }}
+                            className="text-white/20 hover:text-white/50 p-1.5 transition shrink-0">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
