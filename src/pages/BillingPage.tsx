@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CreditCard, CheckCircle, Clock, AlertCircle, Copy } from "lucide-react";
+import { CreditCard, CheckCircle, Clock, AlertCircle, Copy, Music2, ArrowUpCircle } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
 export default function BillingPage() {
@@ -19,6 +19,9 @@ export default function BillingPage() {
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRenewalPaymentMethod, setShowRenewalPaymentMethod] = useState(false);
+  const [showUpgradePlan, setShowUpgradePlan] = useState(false);
+  const [showMusicUpgrade, setShowMusicUpgrade] = useState(false);
+  const [upgradeMethod, setUpgradeMethod] = useState<"cash" | "bank" | null>(null);
   const [historyPage, setHistoryPage] = useState(0);
   const [historyTotal, setHistoryTotal] = useState(0);
 
@@ -221,7 +224,52 @@ export default function BillingPage() {
 
   // Separate base plans from music addon plans
   const basePlans = plans.filter(p => !p.name.toLowerCase().includes("music"));
-  const musicAddonPlans = plans.filter(p => p.name.toLowerCase().includes("music"));
+  const musicAddonPlans = plans.filter(p => p.name.toLowerCase().includes("music addon"));
+  const musicUpgradePlans = plans.filter(p => p.name.toLowerCase().includes("music upgrade"));
+  const annualBasePlan = basePlans.find(p => p.duration_months === 12);
+
+  // Determine current active plan duration from last paid payment
+  const currentPlanDuration = lastPaidPayment
+    ? plans.find(p => p.id === lastPaidPayment.plan_id)?.duration_months ?? null
+    : null;
+  const hasMusicAddon = !!(profile as any)?.music_addon;
+  const isOnAnnual = currentPlanDuration === 12;
+  const isOnSixMonth = currentPlanDuration === 6;
+
+  // Music upgrade cost depends on current plan
+  const musicUpgradePlan = isOnAnnual
+    ? musicUpgradePlans.find(p => p.duration_months === 12)
+    : musicUpgradePlans.find(p => p.duration_months === 6);
+
+  const createUpgradePayment = async (upgradePlan: BillingPlan, method: "cash" | "bank") => {
+    if (!profile?.id) return;
+    setLoading(true);
+
+    const { data: refData, error: refError } = await supabase.rpc("generate_payment_reference");
+    if (refError) { toast.error("Failed to generate reference"); setLoading(false); return; }
+
+    const dueDate = new Date();
+    dueDate.setMonth(dueDate.getMonth() + upgradePlan.duration_months);
+
+    const { error } = await supabase.from("billing_payments").insert({
+      owner_id: profile.id,
+      plan_id: upgradePlan.id,
+      reference_number: refData,
+      amount: upgradePlan.amount,
+      due_date: dueDate.toISOString(),
+      status: "pending",
+      payment_method: method,
+    });
+
+    setLoading(false);
+    if (error) { toast.error("Failed to create payment"); return; }
+
+    toast.success("Upgrade payment pending — awaiting admin confirmation");
+    setShowMusicUpgrade(false);
+    setShowUpgradePlan(false);
+    setUpgradeMethod(null);
+    loadPayments();
+  };
 
   return (
     <div className="min-h-screen p-6 pb-24">
@@ -263,21 +311,53 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">
                     Next payment due: {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
                   </p>
+                  {hasMusicAddon && (
+                    <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                      <Music2 className="h-3 w-3" /> Music Player included
+                    </p>
+                  )}
                 </div>
-                {/* Show Pay Fee button if no pending payment and has next due date */}
-                {!pendingPayment && nextDueDate && !showRenewalPaymentMethod && (
-                  <div className="flex flex-col items-end gap-1">
-                    <Button
-                      onClick={() => setShowRenewalPaymentMethod(true)}
-                      disabled={loading || !canPayFee}
-                      variant={isOverdue ? "destructive" : "default"}
-                      className="font-bold"
-                    >
-                      {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
-                    </Button>
-                    {!canPayFee && daysUntilDue !== null && (
-                      <p className="text-xs text-muted-foreground">
-                        Available {daysUntilDue - 7} day{daysUntilDue - 7 === 1 ? "" : "s"} before due date
+                {!pendingPayment && !showRenewalPaymentMethod && !showMusicUpgrade && !showUpgradePlan && (
+                  <div className="flex flex-col items-end gap-2">
+                    {/* Pay Fee — only when close to due or overdue */}
+                    {nextDueDate && (
+                      <Button
+                        onClick={() => setShowRenewalPaymentMethod(true)}
+                        disabled={loading || !canPayFee}
+                        variant={isOverdue ? "destructive" : "default"}
+                        size="sm"
+                        className="font-bold"
+                      >
+                        {isOverdue ? "Overdue - Pay Fee" : "Pay Fee"}
+                      </Button>
+                    )}
+                    {/* Upgrade plan — only when canPayFee */}
+                    {canPayFee && isOnSixMonth && annualBasePlan && (
+                      <Button
+                        onClick={() => setShowUpgradePlan(true)}
+                        disabled={loading}
+                        variant="outline"
+                        size="sm"
+                        className="font-bold gap-1"
+                      >
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> Upgrade to Annual
+                      </Button>
+                    )}
+                    {/* Music addon upgrade — always available for non-music subscribers */}
+                    {!hasMusicAddon && musicUpgradePlan && (
+                      <Button
+                        onClick={() => setShowMusicUpgrade(true)}
+                        disabled={loading}
+                        variant="outline"
+                        size="sm"
+                        className="font-bold gap-1"
+                      >
+                        <Music2 className="h-3.5 w-3.5" /> Add Music — ${musicUpgradePlan.amount.toFixed(0)} TT
+                      </Button>
+                    )}
+                    {!canPayFee && daysUntilDue !== null && daysUntilDue > 7 && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        Pay Fee available in {daysUntilDue - 7}d
                       </p>
                     )}
                   </div>
@@ -566,6 +646,94 @@ export default function BillingPage() {
             >
               Pay Fee
             </Button>
+          </Card>
+        )}
+
+        {/* ── Music Upgrade Card — active users without music ──────────── */}
+        {showMusicUpgrade && !pendingPayment && hasActivePlan && !hasMusicAddon && musicUpgradePlan && (
+          <Card className="p-6 border-primary">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Music2 className="h-5 w-5 text-primary" /> Add Music Player
+              </h2>
+              <button onClick={() => { setShowMusicUpgrade(false); setUpgradeMethod(null); }}
+                className="text-sm text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Unlock the in-app music player with YouTube search and local file support.
+            </p>
+            <div className="flex items-center justify-between mb-5 p-3 rounded-xl bg-primary/10 border border-primary/30">
+              <span className="font-bold">Music Player Add-on</span>
+              <span className="text-xl font-black text-primary">${musicUpgradePlan.amount.toFixed(2)} TT</span>
+            </div>
+            {!upgradeMethod ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setUpgradeMethod("cash")}
+                  className="p-4 rounded-xl border-2 border-border hover:border-primary transition text-left">
+                  <span className="text-2xl block mb-1">💵</span>
+                  <p className="font-bold text-sm">Cash</p>
+                  <p className="text-xs text-muted-foreground">Pay admin directly</p>
+                </button>
+                <button onClick={() => bankTransferEnabled && setUpgradeMethod("bank")}
+                  disabled={!bankTransferEnabled}
+                  className={`p-4 rounded-xl border-2 text-left transition ${bankTransferEnabled ? "border-border hover:border-primary" : "border-border opacity-50 cursor-not-allowed"}`}>
+                  <span className="text-2xl block mb-1">🏦</span>
+                  <p className="font-bold text-sm">Bank Transfer</p>
+                  <p className="text-xs text-muted-foreground">{bankTransferEnabled ? "Transfer to bank" : "Coming soon"}</p>
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setUpgradeMethod(null)} className="flex-1">Back</Button>
+                <Button onClick={() => createUpgradePayment(musicUpgradePlan, upgradeMethod)} disabled={loading} className="flex-1 font-bold">
+                  {loading ? "Submitting..." : `Confirm ${upgradeMethod === "cash" ? "Cash" : "Bank"} Payment`}
+                </Button>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* ── Plan Upgrade Card — 6mo → annual, only when canPayFee ────── */}
+        {showUpgradePlan && !pendingPayment && hasActivePlan && isOnSixMonth && annualBasePlan && (
+          <Card className="p-6 border-primary">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <ArrowUpCircle className="h-5 w-5 text-primary" /> Upgrade to Annual
+              </h2>
+              <button onClick={() => { setShowUpgradePlan(false); setUpgradeMethod(null); }}
+                className="text-sm text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Switch to the annual plan and save. Your new subscription will start from today.
+            </p>
+            <div className="flex items-center justify-between mb-5 p-3 rounded-xl bg-primary/10 border border-primary/30">
+              <span className="font-bold">Annual Plan</span>
+              <span className="text-xl font-black text-primary">${annualBasePlan.amount.toFixed(2)} TT / year</span>
+            </div>
+            {!upgradeMethod ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setUpgradeMethod("cash")}
+                  className="p-4 rounded-xl border-2 border-border hover:border-primary transition text-left">
+                  <span className="text-2xl block mb-1">💵</span>
+                  <p className="font-bold text-sm">Cash</p>
+                  <p className="text-xs text-muted-foreground">Pay admin directly</p>
+                </button>
+                <button onClick={() => bankTransferEnabled && setUpgradeMethod("bank")}
+                  disabled={!bankTransferEnabled}
+                  className={`p-4 rounded-xl border-2 text-left transition ${bankTransferEnabled ? "border-border hover:border-primary" : "border-border opacity-50 cursor-not-allowed"}`}>
+                  <span className="text-2xl block mb-1">🏦</span>
+                  <p className="font-bold text-sm">Bank Transfer</p>
+                  <p className="text-xs text-muted-foreground">{bankTransferEnabled ? "Transfer to bank" : "Coming soon"}</p>
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setUpgradeMethod(null)} className="flex-1">Back</Button>
+                <Button onClick={() => createUpgradePayment(annualBasePlan, upgradeMethod)} disabled={loading} className="flex-1 font-bold">
+                  {loading ? "Submitting..." : `Confirm ${upgradeMethod === "cash" ? "Cash" : "Bank"} Payment`}
+                </Button>
+              </div>
+            )}
           </Card>
         )}
 

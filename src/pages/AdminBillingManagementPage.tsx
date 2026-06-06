@@ -143,18 +143,23 @@ export default function AdminBillingManagementPage() {
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
         }
 
-        // Check if this is a music addon plan
-        const isMusicAddon = (plan.name as string).toLowerCase().includes("music");
+        // Check if this is a music addon plan or music upgrade plan
+        const isMusicPlan = (plan.name as string).toLowerCase().includes("music");
+        const isMusicUpgrade = (plan.name as string).toLowerCase().includes("music upgrade");
 
         const profileUpdate: Record<string, unknown> = {
           status: "approved",
           billing_status: "active",
-          subscription_start_date: startDate.toISOString(),
-          subscription_end_date: endDate.toISOString(),
         };
 
-        // Grant music addon if this is a music plan
-        if (isMusicAddon) {
+        // Only update subscription dates for non-upgrade payments
+        if (!isMusicUpgrade) {
+          profileUpdate.subscription_start_date = startDate.toISOString();
+          profileUpdate.subscription_end_date = endDate.toISOString();
+        }
+
+        // Grant music addon for any music plan
+        if (isMusicPlan) {
           profileUpdate.music_addon = true;
         }
         
