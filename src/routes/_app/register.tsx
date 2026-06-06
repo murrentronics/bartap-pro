@@ -21,7 +21,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
   const [saleResult, setSaleResult] = useState<{ paid: number; change: number } | null>(null);
-  const [kbHeight, setKbHeight] = useState(120); // keyboard height in px, updated on mount
+  const [kbHeight, setKbHeight] = useState(120);
+  const [nativeInputFocused, setNativeInputFocused] = useState(false);
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
@@ -182,6 +183,8 @@ export default function RegisterPage() {
                         <Input
                           value={shotName}
                           onChange={e => setShotName(e.target.value)}
+                          onFocus={() => setNativeInputFocused(true)}
+                          onBlur={() => setNativeInputFocused(false)}
                           placeholder="e.g. Hennessy"
                           className="h-10 text-sm"
                         />
@@ -191,6 +194,8 @@ export default function RegisterPage() {
                         <Input
                           value={shotPrice}
                           onChange={e => setShotPrice(e.target.value)}
+                          onFocus={() => setNativeInputFocused(true)}
+                          onBlur={() => setNativeInputFocused(false)}
                           placeholder="0.00"
                           type="number"
                           inputMode="decimal"
@@ -359,8 +364,8 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* Permanent on-screen keyboard — above footer nav */}
-      <OnScreenKeyboard searchText={search} onKey={(k) => {
+      {/* Permanent on-screen keyboard — hidden when native input has focus */}
+      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused} onKey={(k) => {
         if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
         if (k === "SPACE") { setSearch((s) => s + " "); return; }
         setSearch((s) => s + k.toLowerCase());
@@ -376,10 +381,11 @@ const ROWS = [
   ["Z","X","C","V","B","N","M","⌫"],
 ];
 
-function OnScreenKeyboard({ onKey, onHeightChange, searchText }: { 
+function OnScreenKeyboard({ onKey, onHeightChange, searchText, hidden }: { 
   onKey: (k: string) => void; 
   onHeightChange?: (h: number) => void;
   searchText: string;
+  hidden?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
