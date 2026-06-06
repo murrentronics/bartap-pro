@@ -71,22 +71,26 @@ export default function MusicPage() {
 
   // ── Keep screen awake the entire time this page is open ──────────────────
   useEffect(() => {
-    let sentinel: any = null;
     const acquire = async () => {
       try {
-        if ("wakeLock" in navigator) {
-          sentinel = await (navigator as any).wakeLock.request("screen");
-          wakeLockRef.current = sentinel;
+        // Release any existing lock before requesting a new one
+        if (wakeLockRef.current) {
+          await wakeLockRef.current.release().catch(() => {});
+          wakeLockRef.current = null;
         }
-      } catch { /* device doesn't support it */ }
+        if ("wakeLock" in navigator) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+        }
+      } catch { /* device doesn't support it or request was denied */ }
     };
     acquire();
-    // Re-acquire if page becomes visible again (e.g. after tab switch)
+    // Re-acquire whenever the page becomes visible (Android kills the lock on screen-off)
     const onVisible = () => { if (document.visibilityState === "visible") acquire(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
-      sentinel?.release().catch(() => {});
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
     };
   }, []);
 
