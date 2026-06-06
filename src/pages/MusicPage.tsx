@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Capacitor } from "@capacitor/core";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Track = {
@@ -312,19 +311,11 @@ export default function MusicPage() {
     seekTo(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
   };
 
-  // ── YouTube browser open ──────────────────────────────────────────────────
-  const openYouTube = async (url: string) => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const { Browser } = await import("@capacitor/browser");
-        // popover keeps the app header visible so user can tap Bar button to go back
-        await Browser.open({ url, presentationStyle: "popover", toolbarColor: "#0d1117" });
-      } else {
-        window.open(url, "_blank");
-      }
-    } catch {
-      window.open(url, "_blank");
-    }
+  // ── YouTube browser open — use system browser for background audio ──────
+  const openYouTube = (url: string) => {
+    // "_system" opens in Chrome on Android — audio keeps playing when user
+    // switches back to Bartendaz. Android back button returns to the app.
+    window.open(url, "_system");
   };
 
   // ── Play mode icon ────────────────────────────────────────────────────────
@@ -552,9 +543,10 @@ export default function MusicPage() {
                 style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}>
                 <p className="text-blue-300 font-bold text-xs uppercase tracking-wider">How it works</p>
                 <div className="space-y-1.5 text-blue-200/70 text-xs leading-relaxed">
-                  <p>🎵 Opens as an overlay — your app header stays visible at the top so you can tap the bar icon to switch back anytime.</p>
-                  <p>🔊 Play music, then close the overlay — audio continues in the background.</p>
-                  <p>🔄 Reopen YouTube from this tab to change tracks without stopping audio.</p>
+                  <p>🎵 Opens YouTube in Chrome using your existing Google account — no separate login needed.</p>
+                  <p>🔊 Search and play any song, mix or playlist. Audio keeps running in the background.</p>
+                  <p>📱 Press the Android back button or switch apps to return to Bartendaz — music keeps playing.</p>
+                  <p>🔄 Come back to this tab anytime to open a different track without stopping audio.</p>
                 </div>
               </div>
 
