@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(PdfDownloadPlugin.class);
+        registerPlugin(YouTubeOverlayPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Clear WebView cache on every launch so updated APKs always load fresh JS

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { YouTubeOverlay } from "@/lib/YouTubeOverlay";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +11,29 @@ export default function AppLayout() {
   const loc = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [ytOverlayVisible, setYtOverlayVisible] = useState(false);
+  const ytInitRef = useRef(false);
+
+  // These depend on profile so are computed after profile is available
+  const isOwner = profile?.role === "owner";
+  const hasMusic = isOwner && !!(profile as any)?.music_addon;
+
+  const handleMusicToggle = useCallback(async () => {
+    if (!hasMusic) return;
+
+    if (!ytInitRef.current) {
+      ytInitRef.current = true;
+      await YouTubeOverlay.init();
+    }
+
+    if (ytOverlayVisible) {
+      await YouTubeOverlay.hide();
+      setYtOverlayVisible(false);
+    } else {
+      await YouTubeOverlay.show();
+      setYtOverlayVisible(true);
+    }
+  }, [hasMusic, ytOverlayVisible]);
 
   useEffect(() => {
     if (!loading && !session) nav("/login", { replace: true });
@@ -57,7 +81,6 @@ export default function AppLayout() {
     );
   }
 
-  const isOwner = profile.role === "owner";
   const isAdmin = profile.role === "admin";
   const isPending = !isAdmin && profile.status === "pending";
   const isSuspended = !isAdmin && profile.status === "suspended";
@@ -183,19 +206,25 @@ export default function AppLayout() {
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Center: Music / Bar toggle — only for owners with music_addon */}
-          {isOwner && (profile as any).music_addon && (
-            <Link
-              to={loc.pathname === "/music" ? "/register" : "/music"}
-              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95"
+          {/* Music toggle — always visible for owners with music addon.
+              Shows/hides the native YouTube WebView overlay.
+              Audio keeps playing when hidden. */}
+          {hasMusic && (
+            <button
+              onClick={handleMusicToggle}
+              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95 relative"
               style={{ background: "var(--gradient-hero)" }}
-              title={loc.pathname === "/music" ? "Back to Bar" : "Open Music Player"}
+              title={ytOverlayVisible ? "Hide YouTube (music keeps playing)" : "Open YouTube Music"}
             >
-              {loc.pathname === "/music"
-                ? <Wine className="h-4 w-4 text-primary-foreground" />
-                : <Music2 className="h-4 w-4 text-primary-foreground" />
-              }
-            </Link>
+              <Music2 className="h-4 w-4 text-primary-foreground" />
+              {/* Pulsing dot when music is playing in background */}
+              {!ytOverlayVisible && ytInitRef.current && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
+                  style={{ animation: "pulse 2s infinite" }}
+                />
+              )}
+            </button>
           )}
 
           {/* Right side: username + hamburger menu */}
@@ -248,7 +277,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-3">
+      <main className="max-w-2xl mx-auto px-3 py-3" style={{ position: "relative", zIndex: 1 }}>
         <Outlet />
       </main>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import {
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import {
   Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2,
   ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
+  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
@@ -995,10 +996,14 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="users">
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="import">Import</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="youtube" className="gap-1">
+            <Youtube className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">YouTube</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4 mt-4">
@@ -1154,7 +1159,331 @@ export default function AdminPage() {
         <TabsContent value="templates" className="mt-4">
           <TemplateGalleryPanel />
         </TabsContent>
+
+        <TabsContent value="youtube" className="mt-4">
+          <YouTubeAdminPanel />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── YouTube Admin Panel ──────────────────────────────────────────────────────
+
+type YtKeySlot = {
+  slot: number;
+  label: string;
+  enabled: boolean;
+  daily_limit: number;
+  used_today: number;
+  exhausted: boolean;
+  last_used_at: string | null;
+  reset_at: string | null;
+};
+
+type YtStats = {
+  searches_today: number;
+  successful_today: number;
+  failed_today: number;
+  quota_used_today: number;
+  quota_remaining: number;
+  active_keys: number;
+  total_keys: number;
+  unique_users_today: number;
+};
+
+type YtRecentSearch = {
+  id: string;
+  query: string;
+  type: string;
+  key_slot: number | null;
+  success: boolean;
+  error_code: string | null;
+  created_at: string;
+};
+
+function YouTubeAdminPanel() {
+  const [keys,    setKeys   ] = useState<YtKeySlot[]>([]);
+  const [stats,   setStats  ] = useState<YtStats | null>(null);
+  const [recent,  setRecent ] = useState<YtRecentSearch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving ] = useState<number | null>(null); // slot being saved
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [keysRes, statsRes, recentRes] = await Promise.all([
+        supabase.from("youtube_api_keys").select("*").order("slot"),
+        supabase.rpc("get_youtube_daily_stats").single(),
+        supabase
+          .from("youtube_search_log")
+          .select("id, query, type, key_slot, success, error_code, created_at")
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
+      if (keysRes.data)    setKeys(keysRes.data as YtKeySlot[]);
+      if (statsRes.data)   setStats(statsRes.data as YtStats);
+      if (recentRes.data)  setRecent(recentRes.data as YtRecentSearch[]);
+    } catch (e) {
+      toast.error("Failed to load YouTube stats");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toggleSlot = async (slot: number, enabled: boolean) => {
+    setSaving(slot);
+    const { error } = await supabase
+      .from("youtube_api_keys")
+      .update({ enabled })
+      .eq("slot", slot);
+    if (error) toast.error(error.message);
+    else { toast.success(`Slot ${slot} ${enabled ? "enabled" : "disabled"}`); await load(); }
+    setSaving(null);
+  };
+
+  const updateLabel = async (slot: number, label: string) => {
+    setSaving(slot);
+    const { error } = await supabase
+      .from("youtube_api_keys")
+      .update({ label })
+      .eq("slot", slot);
+    if (error) toast.error(error.message);
+    else await load();
+    setSaving(null);
+  };
+
+  const resetCounts = async () => {
+    const ok = await confirm({
+      title: "Reset all key counts?",
+      description: "This manually resets the daily search counters for all keys. Use only if the daily cron hasn't run yet.",
+      confirmLabel: "Reset",
+    });
+    if (!ok) return;
+    const { error } = await supabase.rpc("reset_youtube_key_counts");
+    if (error) toast.error(error.message);
+    else { toast.success("Counters reset"); await load(); }
+  };
+
+  const totalCapacity = keys.filter(k => k.enabled).reduce((s, k) => s + k.daily_limit, 0);
+  const totalUsed     = stats?.quota_used_today ?? 0;
+  const pctUsed       = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Daily Summary ────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-red-400" />
+            Today's Usage
+          </h2>
+          <Button size="sm" variant="outline" onClick={load} className="gap-1.5 h-8 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+        </div>
+
+        {/* Big stat cards */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="rounded-xl p-4 border border-border bg-card space-y-1">
+            <p className="text-xs text-muted-foreground font-medium">Searches Today</p>
+            <p className="text-3xl font-black">{stats?.searches_today ?? 0}</p>
+            <p className="text-xs text-muted-foreground">
+              {stats?.unique_users_today ?? 0} user{stats?.unique_users_today !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="rounded-xl p-4 border border-border bg-card space-y-1">
+            <p className="text-xs text-muted-foreground font-medium">Quota Remaining</p>
+            <p className="text-3xl font-black text-green-400">
+              {(stats?.quota_remaining ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              of {totalCapacity.toLocaleString()} total
+            </p>
+          </div>
+        </div>
+
+        {/* Overall progress bar */}
+        <div className="rounded-xl p-4 border border-border bg-card space-y-2">
+          <div className="flex items-center justify-between text-xs font-medium">
+            <span className="text-muted-foreground">Daily quota used</span>
+            <span className={pctUsed > 85 ? "text-red-400" : pctUsed > 60 ? "text-yellow-400" : "text-green-400"}>
+              {pctUsed.toFixed(1)}%
+            </span>
+          </div>
+          <div className="h-3 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(pctUsed, 100)}%`,
+                background: pctUsed > 85 ? "#ef4444" : pctUsed > 60 ? "#eab308" : "#22c55e",
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>{totalUsed.toLocaleString()} used</span>
+            <span>
+              <span className="text-green-400">{stats?.successful_today ?? 0} ok</span>
+              {(stats?.failed_today ?? 0) > 0 && (
+                <span className="text-red-400 ml-2">{stats?.failed_today} failed</span>
+              )}
+            </span>
+            <span>{stats?.active_keys ?? 0}/{stats?.total_keys ?? 0} keys active</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Key Pool ─────────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-base flex items-center gap-2">
+            <Key className="h-4 w-4 text-yellow-400" />
+            API Key Pool
+          </h2>
+          <Button size="sm" variant="outline" onClick={resetCounts} className="gap-1.5 h-8 text-xs text-orange-400 border-orange-400/30">
+            <RefreshCw className="h-3.5 w-3.5" /> Reset Counts
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Keys are stored as Supabase secrets <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> … <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_10</code>. Enable each slot once the secret is set.
+        </p>
+
+        <div className="space-y-2">
+          {keys.map(key => {
+            const pct = key.daily_limit > 0 ? (key.used_today / key.daily_limit) * 100 : 0;
+            return (
+              <div key={key.slot}
+                className={`rounded-xl border p-3 space-y-2 transition ${
+                  key.exhausted ? "border-red-500/30 bg-red-500/5"
+                  : key.enabled  ? "border-green-500/20 bg-green-500/5"
+                  : "border-border bg-card"
+                }`}>
+                <div className="flex items-center gap-3">
+                  {/* Slot number */}
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 ${
+                    key.exhausted ? "bg-red-500/20 text-red-400"
+                    : key.enabled  ? "bg-green-500/20 text-green-400"
+                    : "bg-muted text-muted-foreground"
+                  }`}>
+                    {key.slot}
+                  </div>
+
+                  {/* Label (editable) */}
+                  <Input
+                    defaultValue={key.label}
+                    onBlur={e => { if (e.target.value !== key.label) updateLabel(key.slot, e.target.value); }}
+                    placeholder={`Key Slot ${key.slot}`}
+                    className="h-7 text-xs flex-1 bg-transparent border-muted"
+                  />
+
+                  {/* Status badge */}
+                  {key.exhausted && (
+                    <Badge variant="destructive" className="text-[10px] shrink-0">Exhausted</Badge>
+                  )}
+
+                  {/* Enable/disable toggle */}
+                  <button
+                    onClick={() => toggleSlot(key.slot, !key.enabled)}
+                    disabled={saving === key.slot}
+                    className={`h-7 px-3 rounded-lg text-xs font-bold transition shrink-0 ${
+                      key.enabled
+                        ? "bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400"
+                        : "bg-muted text-muted-foreground hover:bg-green-500/20 hover:text-green-400"
+                    }`}
+                  >
+                    {saving === key.slot
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : key.enabled ? "On" : "Off"
+                    }
+                  </button>
+                </div>
+
+                {/* Usage bar — only show when enabled */}
+                {key.enabled && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(pct, 100)}%`,
+                          background: key.exhausted ? "#ef4444" : pct > 80 ? "#eab308" : "#22c55e",
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>{key.used_today.toLocaleString()} / {key.daily_limit.toLocaleString()}</span>
+                      <span>{pct.toFixed(1)}%</span>
+                      {key.last_used_at && (
+                        <span>Last: {new Date(key.last_used_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Recent Searches ───────────────────────────────────────────────── */}
+      {recent.length > 0 && (
+        <div>
+          <h2 className="font-black text-base flex items-center gap-2 mb-3">
+            <Search className="h-4 w-4 text-blue-400" />
+            Recent Searches
+          </h2>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="divide-y divide-border">
+              {recent.map(s => (
+                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                  {s.success
+                    ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                    : <XCircle     className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                  }
+                  <span className="flex-1 text-xs text-foreground truncate">{s.query}</span>
+                  {s.key_slot && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      Key {s.key_slot}
+                    </span>
+                  )}
+                  {s.error_code && (
+                    <span className="text-[10px] text-red-400 shrink-0">{s.error_code}</span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Setup Guide ──────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-2">
+        <p className="text-yellow-400 text-sm font-black flex items-center gap-2">
+          <Zap className="h-4 w-4" /> Setup Checklist
+        </p>
+        <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+          <li>Get a free YouTube Data API v3 key from <span className="text-primary">console.cloud.google.com</span></li>
+          <li>Run: <code className="bg-muted px-1 rounded">supabase secrets set YOUTUBE_API_KEY_1=AIzaSy...</code></li>
+          <li>Repeat for each key (up to YOUTUBE_API_KEY_10)</li>
+          <li>Toggle each slot <span className="text-green-400 font-bold">On</span> in the table above</li>
+          <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy youtube-search</code></li>
+          <li>Set up daily cron: <code className="bg-muted px-1 rounded">SELECT cron.schedule('reset-youtube-keys', '0 0 * * *', 'SELECT public.reset_youtube_key_counts()')</code></li>
+        </ol>
+      </div>
     </div>
   );
 }

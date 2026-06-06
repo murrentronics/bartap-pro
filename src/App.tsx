@@ -18,6 +18,8 @@ import AdminBankingPage from "@/pages/AdminBankingPage";
 import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 import ProfilePage from "@/pages/ProfilePage";
 import MusicPage from "@/pages/MusicPage";
+import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
+import { YouTubeProvider } from "@/lib/YouTubeContext";
 
 function AppWithUpdateCheck() {
   const { update, dismiss } = useAppUpdate();
@@ -65,7 +67,11 @@ export default function App() {
   return (
     <AuthProvider>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      <AppWithUpdateCheck />
+      <MusicPlayerProvider>
+        <YouTubeProvider>
+          <AppWithUpdateCheck />
+        </YouTubeProvider>
+      </MusicPlayerProvider>
     </AuthProvider>
   );
 }
