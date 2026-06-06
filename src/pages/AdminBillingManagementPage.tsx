@@ -158,9 +158,12 @@ export default function AdminBillingManagementPage() {
           profileUpdate.subscription_end_date = endDate.toISOString();
         }
 
-        // Grant music addon for any music plan
+        // Grant music addon for any music plan, remove it if notes say so
         if (isMusicPlan) {
           profileUpdate.music_addon = true;
+        }
+        if (selectedPayment.notes === "remove_music_addon") {
+          profileUpdate.music_addon = false;
         }
         
         await supabase
