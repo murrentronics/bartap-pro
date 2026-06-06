@@ -1,11 +1,9 @@
 /**
- * Shared context for the persistent in-app YouTube player.
- * The iframe lives in AppLayout (never unmounts — audio keeps playing on navigation).
- * MusicPage reads/sets the video ID and search results via this context.
- *
- * NOTE: With the native YouTubeOverlay approach, videoId/search are no longer
- * used for playback — the native WebView handles that. This context is kept
- * for the MusicPage local-file player state only.
+ * Shared YouTube context.
+ * - videoId / setVideoId — drives the persistent iframe in AppLayout
+ * - search — calls the edge function to get results
+ * The iframe is mounted once in AppLayout and never unmounts.
+ * visibility:hidden when not on /music keeps audio playing on navigation.
  */
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
@@ -18,7 +16,12 @@ export type YTResult = {
 };
 
 type YouTubeCtx = {
-  // Search state (used only if API key is configured)
+  // Active video/playlist driving the iframe
+  videoId:      string | null;
+  isPlaylist:   boolean;
+  setVideoId:   (id: string | null, playlist?: boolean) => void;
+
+  // Search
   query:        string;
   setQuery:     (q: string) => void;
   results:      YTResult[];
@@ -26,19 +29,27 @@ type YouTubeCtx = {
   searchError:  string | null;
   search:       (q: string) => Promise<void>;
 
-  // Now-playing title shown in the header indicator
-  nowPlayingTitle: string;
+  // Now-playing label
+  nowPlayingTitle:    string;
   setNowPlayingTitle: (t: string) => void;
 };
 
 const Ctx = createContext<YouTubeCtx | null>(null);
 
 export function YouTubeProvider({ children }: { children: ReactNode }) {
-  const [query,           setQuery          ] = useState("");
-  const [results,         setResults        ] = useState<YTResult[]>([]);
-  const [searching,       setSearching      ] = useState(false);
-  const [searchError,     setSearchError    ] = useState<string | null>(null);
-  const [nowPlayingTitle, setNowPlayingTitle ] = useState("");
+  const [videoId,          setVideoIdRaw     ] = useState<string | null>(null);
+  const [isPlaylist,       setIsPlaylist     ] = useState(false);
+  const [query,            setQuery          ] = useState("");
+  const [results,          setResults        ] = useState<YTResult[]>([]);
+  const [searching,        setSearching      ] = useState(false);
+  const [searchError,      setSearchError    ] = useState<string | null>(null);
+  const [nowPlayingTitle,  setNowPlayingTitle ] = useState("");
+
+  const setVideoId = useCallback((id: string | null, playlist = false) => {
+    setVideoIdRaw(id);
+    setIsPlaylist(playlist);
+    if (!id) setNowPlayingTitle("");
+  }, []);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) return;
@@ -52,18 +63,10 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     try {
       const url = `${projectUrl}/functions/v1/youtube-search?q=${encodeURIComponent(q)}&type=video&maxResults=15`;
       const res  = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${anonKey}`,
-          "Content-Type":  "application/json",
-        },
+        headers: { "Authorization": `Bearer ${anonKey}`, "Content-Type": "application/json" },
       });
       const json = await res.json();
-
-      if (!res.ok || json.error) {
-        setSearchError(json.error ?? "Search failed");
-        return;
-      }
-
+      if (!res.ok || json.error) { setSearchError(json.error ?? "Search failed"); return; }
       setResults(json.items ?? []);
     } catch {
       setSearchError("Could not reach search service");
@@ -74,6 +77,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
+      videoId, isPlaylist, setVideoId,
       query, setQuery,
       results, searching, searchError, search,
       nowPlayingTitle, setNowPlayingTitle,

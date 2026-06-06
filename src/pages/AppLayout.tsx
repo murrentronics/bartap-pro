@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { useYouTube } from "@/lib/YouTubeContext";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +11,7 @@ export default function AppLayout() {
   const loc = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const yt = useYouTube();
 
   useEffect(() => {
     if (!loading && !session) nav("/login", { replace: true });
@@ -153,7 +155,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen">
       <header
-        className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-border"
+        className="sticky top-0 z-50 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
@@ -229,6 +231,84 @@ export default function AppLayout() {
       <main className="max-w-2xl mx-auto px-3 py-3">
         <Outlet />
       </main>
+
+      {/* ── Persistent YouTube iframe ─────────────────────────────────────────
+          Mounted once, never destroyed. Sits fixed below the header.
+          On /music: fully visible, fills screen below header.
+          On other pages: visibility:hidden — invisible but audio keeps playing.
+          Header is z-50 so it always shows on top.                          */}
+      {hasMusic && yt.videoId && (
+        <div
+          style={{
+            position: "fixed",
+            top: "calc(44px + env(safe-area-inset-top, 0px))",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 35,
+            background: "#000",
+            visibility: isOnMusic ? "visible" : "hidden",
+            pointerEvents: isOnMusic ? "auto" : "none",
+          }}
+        >
+          <iframe
+            src={
+              yt.isPlaylist
+                ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1`
+                : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`
+            }
+            allow="autoplay; fullscreen; encrypted-media"
+            allowFullScreen
+            style={{ width: "100%", height: "100%", border: "none" }}
+            title="YouTube Player"
+          />
+        </div>
+      )}
+
+      {/* ── Mini now-playing bar — shown on non-music pages when YT is active ── */}
+      {hasMusic && yt.videoId && !isOnMusic && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 40,
+            background: "rgba(0,0,0,0.92)",
+            borderTop: "1px solid rgba(239,68,68,0.3)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div className="max-w-2xl mx-auto px-3 h-12 flex items-center gap-3">
+            <div className="flex items-end gap-px h-4 shrink-0">
+              {[0,1,2,3].map(b => (
+                <div key={b} className="w-0.5 rounded-full bg-red-400"
+                  style={{ height: "100%", animation: `miniBar ${0.35 + b * 0.12}s ease-in-out infinite alternate`, animationDelay: `${b * 0.08}s` }} />
+              ))}
+            </div>
+            <span className="text-white text-xs font-bold truncate flex-1">
+              {yt.nowPlayingTitle || "YouTube playing"}
+            </span>
+            <Link
+              to="/music"
+              className="text-xs font-bold px-3 h-7 rounded-lg flex items-center gap-1 shrink-0 text-white"
+              style={{ background: "rgba(239,68,68,0.8)" }}
+            >
+              <Music2 className="h-3 w-3" /> Open
+            </Link>
+            <button onClick={() => yt.setVideoId(null)}
+              className="text-white/50 hover:text-white/80 transition p-1 shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <style>{`
+            @keyframes miniBar {
+              from { transform: scaleY(0.3); }
+              to   { transform: scaleY(1); }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
