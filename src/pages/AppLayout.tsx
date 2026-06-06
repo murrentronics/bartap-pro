@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { YouTubeOverlay } from "@/lib/YouTubeOverlay";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -11,29 +10,6 @@ export default function AppLayout() {
   const loc = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [ytOverlayVisible, setYtOverlayVisible] = useState(false);
-  const ytInitRef = useRef(false);
-
-  // These depend on profile so are computed after profile is available
-  const isOwner = profile?.role === "owner";
-  const hasMusic = isOwner && !!(profile as any)?.music_addon;
-
-  const handleMusicToggle = useCallback(async () => {
-    if (!hasMusic) return;
-
-    if (!ytInitRef.current) {
-      ytInitRef.current = true;
-      await YouTubeOverlay.init();
-    }
-
-    if (ytOverlayVisible) {
-      await YouTubeOverlay.hide();
-      setYtOverlayVisible(false);
-    } else {
-      await YouTubeOverlay.show();
-      setYtOverlayVisible(true);
-    }
-  }, [hasMusic, ytOverlayVisible]);
 
   useEffect(() => {
     if (!loading && !session) nav("/login", { replace: true });
@@ -52,8 +28,6 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
-    // Redirect pending owners to billing page if they try to access other pages
-    // This includes both new pending users AND overdue users set back to pending
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
@@ -81,11 +55,13 @@ export default function AppLayout() {
     );
   }
 
-  const isAdmin = profile.role === "admin";
-  const isPending = !isAdmin && profile.status === "pending";
+  const isOwner    = profile.role === "owner";
+  const isAdmin    = profile.role === "admin";
+  const isPending  = !isAdmin && profile.status === "pending";
   const isSuspended = !isAdmin && profile.status === "suspended";
+  const hasMusic   = isOwner && !!(profile as any).music_addon;
+  const isOnMusic  = loc.pathname === "/music";
 
-  // Expelled users get full screen block
   if (!isAdmin && profile.status === "expelled") {
     return (
       <FullScreenStatus
@@ -97,7 +73,6 @@ export default function AppLayout() {
     );
   }
 
-  // Suspended users: show full screen on all pages except billing
   if (isSuspended && loc.pathname !== "/billing") {
     return (
       <FullScreenStatus
@@ -110,9 +85,7 @@ export default function AppLayout() {
     );
   }
 
-  // Pending users: show pending message on all pages except billing
-  const showPendingBlock = isPending && loc.pathname !== "/billing";
-  if (showPendingBlock) {
+  if (isPending && loc.pathname !== "/billing") {
     return (
       <div className="min-h-screen">
         <header
@@ -120,13 +93,9 @@ export default function AppLayout() {
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
           <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
-            </div>
+            <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
             <div className="flex items-center gap-2" ref={menuRef}>
-              <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
-                {profile.username}
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">{profile.username}</span>
               <button
                 onClick={() => setMenuOpen((o) => !o)}
                 className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
@@ -136,23 +105,14 @@ export default function AppLayout() {
                 Menu
               </button>
               {menuOpen && (
-                <div
-                  className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
-                  style={{ background: "var(--gradient-card)" }}
-                >
-                  <Link
-                    to="/billing"
-                    className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary"
-                  >
-                    <CreditCard className="h-5 w-5 shrink-0" />
-                    Billing
+                <div className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
+                  style={{ background: "var(--gradient-card)" }}>
+                  <Link to="/billing" className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary">
+                    <CreditCard className="h-5 w-5 shrink-0" /> Billing
                   </Link>
-                  <button
-                    onClick={() => { signOut(); nav("/login"); }}
-                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition"
-                  >
-                    <X className="h-5 w-5 shrink-0" />
-                    Logout / Salir
+                  <button onClick={() => { signOut(); nav("/login"); }}
+                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition">
+                    <X className="h-5 w-5 shrink-0" /> Logout / Salir
                   </button>
                 </div>
               )}
@@ -166,12 +126,8 @@ export default function AppLayout() {
                 <ShieldAlert className="h-10 w-10 text-yellow-500" />
               </div>
               <h1 className="text-3xl font-black">Account Pending</h1>
-              <p className="text-muted-foreground">
-                Your account is awaiting admin approval. Please complete your billing setup to activate your account.
-              </p>
-              <Button onClick={() => nav("/billing")} size="lg">
-                Go to Billing
-              </Button>
+              <p className="text-muted-foreground">Your account is awaiting admin approval. Please complete your billing setup to activate your account.</p>
+              <Button onClick={() => nav("/billing")} size="lg">Go to Billing</Button>
             </div>
           </div>
         </main>
@@ -181,17 +137,17 @@ export default function AppLayout() {
 
   const navItems = isAdmin
     ? [
-        { to: "/admin", label: "Users", icon: Users },
-        { to: "/admin/billing", label: "Billing", icon: DollarSign },
-        { to: "/admin/banking", label: "Banking", icon: Building2 },
+        { to: "/admin",          label: "Users",   icon: Users },
+        { to: "/admin/billing",  label: "Billing", icon: DollarSign },
+        { to: "/admin/banking",  label: "Banking", icon: Building2 },
       ]
     : [
-        { to: "/register", label: "Bar", icon: Wine },
-        ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
-        { to: "/wallet", label: "Wallet", icon: Wallet },
-        ...(isOwner ? [{ to: "/billing", label: "Billing", icon: CreditCard }] : []),
-        ...(isOwner ? [{ to: "/profile", label: "Profile", icon: UserCircle }] : []),
+        { to: "/register", label: "Bar",      icon: Wine },
+        ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
+        { to: "/wallet",   label: "Wallet",   icon: Wallet },
+        ...(isOwner ? [{ to: "/billing",  label: "Billing",  icon: CreditCard }] : []),
+        ...(isOwner ? [{ to: "/profile",  label: "Profile",  icon: UserCircle }] : []),
       ];
 
   return (
@@ -201,33 +157,28 @@ export default function AppLayout() {
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
+
           {/* Logo */}
           <div className="flex items-center gap-2">
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Music toggle — always visible for owners with music addon.
-              Shows/hides the native YouTube WebView overlay.
-              Audio keeps playing when hidden. */}
+          {/* Music / Bar toggle — always visible for owners with music addon */}
           {hasMusic && (
-            <button
-              onClick={handleMusicToggle}
-              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95 relative"
+            <Link
+              to={isOnMusic ? "/register" : "/music"}
+              className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-95"
               style={{ background: "var(--gradient-hero)" }}
-              title={ytOverlayVisible ? "Hide YouTube (music keeps playing)" : "Open YouTube Music"}
+              title={isOnMusic ? "Back to Bar" : "Open Music Player"}
             >
-              <Music2 className="h-4 w-4 text-primary-foreground" />
-              {/* Pulsing dot when music is playing in background */}
-              {!ytOverlayVisible && ytInitRef.current && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
-                  style={{ animation: "pulse 2s infinite" }}
-                />
-              )}
-            </button>
+              {isOnMusic
+                ? <Wine   className="h-4 w-4 text-primary-foreground" />
+                : <Music2 className="h-4 w-4 text-primary-foreground" />
+              }
+            </Link>
           )}
 
-          {/* Right side: username + hamburger menu */}
+          {/* Username + hamburger */}
           <div className="flex items-center gap-2" ref={menuRef}>
             <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
               {profile.username}
@@ -241,7 +192,6 @@ export default function AppLayout() {
               Menu
             </button>
 
-            {/* Dropdown */}
             {menuOpen && (
               <div
                 className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
@@ -263,7 +213,6 @@ export default function AppLayout() {
                     </Link>
                   );
                 })}
-                {/* Logout last */}
                 <button
                   onClick={() => { signOut(); nav("/login"); }}
                   className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition border-t border-border/50"
@@ -277,7 +226,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-3" style={{ position: "relative", zIndex: 1 }}>
+      <main className="max-w-2xl mx-auto px-3 py-3">
         <Outlet />
       </main>
     </div>
@@ -285,11 +234,7 @@ export default function AppLayout() {
 }
 
 function FullScreenStatus({
-  icon: Icon,
-  title,
-  message,
-  onSignOut,
-  showBillingButton,
+  icon: Icon, title, message, onSignOut, showBillingButton,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -298,10 +243,8 @@ function FullScreenStatus({
   showBillingButton?: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-6"
-      style={{ background: "radial-gradient(circle at 50% 0%, oklch(0.25 0.05 30) 0%, oklch(0.12 0.02 30) 70%)" }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style={{ background: "radial-gradient(circle at 50% 0%, oklch(0.25 0.05 30) 0%, oklch(0.12 0.02 30) 70%)" }}>
       <div className="max-w-md text-center space-y-6">
         <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20 border border-destructive/40">
           <Icon className="h-10 w-10 text-destructive" />
@@ -309,9 +252,7 @@ function FullScreenStatus({
         <h1 className="text-3xl font-black">{title}</h1>
         <p className="text-muted-foreground">{message}</p>
         <div className="flex gap-3 justify-center">
-          {showBillingButton && (
-            <Button onClick={showBillingButton}>Go to Billing</Button>
-          )}
+          {showBillingButton && <Button onClick={showBillingButton}>Go to Billing</Button>}
           <Button variant="outline" onClick={onSignOut}>Sign out</Button>
         </div>
       </div>
