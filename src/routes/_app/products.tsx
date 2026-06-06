@@ -268,7 +268,15 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
           className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition touch-manipulation"
           style={{ background: "var(--gradient-card)" }}
         >
-          <img src={t.url} alt={t.label} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+          <div className="absolute inset-0 flex items-center justify-center text-4xl">
+            {categoryIcon(category)}
+          </div>
+          <img
+            src={t.url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
           <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent pointer-events-none">
             <div className="text-white text-xs font-bold leading-tight line-clamp-2">{t.label}</div>
           </div>
@@ -379,11 +387,17 @@ export default function ProductsPage() {
                 className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-border"
                 style={{ background: "var(--gradient-card)" }}
               >
-                {p.image_url
-                  ? <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
-                  : <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                      {categoryIcon(p.category ?? "drinks")}
-                    </div>}
+                {p.image_url && (
+                  <img
+                    src={p.image_url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center text-4xl -z-0">
+                  {categoryIcon(p.category ?? "drinks")}
+                </div>
 
                 {/* Out-of-stock overlay — covers only the middle (image area), not the bottom bar */}
                 {(p.stock_qty ?? 0) === 0 && (

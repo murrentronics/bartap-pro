@@ -182,13 +182,13 @@ export default function MusicPage() {
                 Progress bar in the center remains fully interactive */}
             <div style={{
               position: "fixed",
-              bottom: 56, left: 0, width: 80, height: 50,
-              zIndex: 36, background: "transparent", pointerEvents: "auto",
+              bottom: 56, left: 0, width: 96, height: 56,
+              zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 60, height: 50,
-              zIndex: 36, background: "transparent", pointerEvents: "auto",
+              bottom: 56, right: 0, width: 72, height: 56,
+              zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>
         )}
