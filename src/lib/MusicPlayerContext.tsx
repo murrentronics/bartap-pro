@@ -42,9 +42,19 @@ function restore(): { playlist: Track[]; index: number; mode: PlayMode } {
     const raw   = localStorage.getItem(LS_PLAYLIST);
     const idx   = parseInt(localStorage.getItem(LS_INDEX) ?? "-1", 10);
     const mode  = (localStorage.getItem(LS_MODE) ?? "normal") as PlayMode;
+    const all   = raw ? (JSON.parse(raw) as Track[]) : [];
+
+    // Blob URIs are session-only — they die on app restart/navigation.
+    // Keep only tracks with persistent URIs (file:// saved by Filesystem).
+    const persistent = all.filter(t =>
+      t.type !== "local" ||          // keep youtube type as-is
+      t.uri.startsWith("file://") || // native Filesystem URI — valid
+      t.uri.startsWith("_capacitor_") // already converted
+    );
+
     return {
-      playlist: raw ? (JSON.parse(raw) as Track[]) : [],
-      index:    isNaN(idx) ? -1 : idx,
+      playlist: persistent,
+      index:    isNaN(idx) ? -1 : Math.min(idx, persistent.length - 1),
       mode,
     };
   } catch {
@@ -160,17 +170,25 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   // ── Resolve URI to something the Audio element can play ─────────────────
   async function resolveUri(track: Track): Promise<string> {
     if (!Capacitor.isNativePlatform()) return track.uri;
-    if (track.uri.startsWith("capacitor://") || track.uri.startsWith("_capacitor_")) {
-      // Convert Capacitor filesystem URI to a web-accessible URL
-      const { Filesystem, Directory } = await import("@capacitor/filesystem");
-      const result = await Filesystem.getUri({
-        path:      track.uri.replace(/^.*\/music\//, "music/"),
-        directory: Directory.Documents,
-      });
-      return Capacitor.convertFileSrc(result.uri);
+
+    const uri = track.uri;
+
+    // Already a blob — use as-is (web session only)
+    if (uri.startsWith("blob:")) return uri;
+
+    // Already converted to a Capacitor web URL
+    if (uri.startsWith("_capacitor_") || uri.startsWith("capacitor://")) {
+      return uri;
     }
-    // Already a blob or http URI
-    return track.uri;
+
+    // Native file:// URI from Filesystem.writeFile/getUri
+    // convertFileSrc maps it to the WebView's internal scheme so it can load it
+    if (uri.startsWith("file://")) {
+      return Capacitor.convertFileSrc(uri);
+    }
+
+    // http(s) — streaming URL, use directly
+    return uri;
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -298,13 +316,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             recursive: true,
           });
 
-          const { uri } = await Filesystem.getUri({ path: safeName, directory: Directory.Documents });
+          // Get the canonical file:// URI — this is what we store and later pass to convertFileSrc
+          const { uri } = await Filesystem.getUri({
+            path:      safeName,
+            directory: Directory.Documents,
+          });
 
           newTracks.push({ id: Math.random().toString(36).slice(2), title, uri, type: "local" });
         } catch (e) {
           console.error("Failed to save file:", e);
-          // Fallback to blob URI (won't survive navigation on native but better than nothing)
-          newTracks.push({ id: Math.random().toString(36).slice(2), title, uri: URL.createObjectURL(file), type: "local" });
+          toast.error(`Could not save ${file.name}`);
         }
       } else {
         // Web — blob URI works fine (session only, same as before)

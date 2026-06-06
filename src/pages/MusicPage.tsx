@@ -347,7 +347,6 @@ export default function MusicPage() {
                   style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
                   <p className="text-red-400 text-sm font-bold">Search unavailable</p>
                   <p className="text-white/50 text-xs">{yt.searchError}</p>
-                  <p className="text-white/30 text-xs">Make sure YOUTUBE_API_KEY is set in Supabase secrets.</p>
                 </div>
               )}
 
