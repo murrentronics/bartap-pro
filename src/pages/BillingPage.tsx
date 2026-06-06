@@ -218,7 +218,21 @@ export default function BillingPage() {
   const pendingPayment = payments.find(p => p.status === "pending");
   const lastPaidPayment = payments.find(p => p.status === "paid");
   const hasActivePlan = profile?.billing_status === "active";
-  const nextDueDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
+
+  // Next due date = base plan's next_due_date (not music upgrade's date)
+  // This ensures music addon bought mid-plan doesn't change the renewal date.
+  const basePlanPaymentForDue = payments.find(p => {
+    if (p.status !== "paid") return false;
+    const plan = plans.find(pl => pl.id === p.plan_id);
+    return plan && !plan.name.toLowerCase().includes("music");
+  });
+  // Fall back to profile date if we can't find a base plan payment
+  const nextDueDate = basePlanPaymentForDue?.next_due_date
+    ? new Date(basePlanPaymentForDue.next_due_date)
+    : profile?.subscription_end_date
+    ? new Date(profile.subscription_end_date)
+    : null;
+
   const isOverdue = nextDueDate && nextDueDate < new Date();
   const daysUntilDue = nextDueDate ? Math.ceil((nextDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
   const canPayFee = !!isOverdue || (daysUntilDue !== null && daysUntilDue <= 7);

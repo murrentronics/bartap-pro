@@ -76,6 +76,7 @@ type MusicCtx = {
 
   playTrack:      (index: number) => void;
   togglePlay:     () => void;
+  stopPlayback:   () => void;          // hard stop — clears src, resets state
   playNext:       () => void;
   playPrev:       () => void;
   seekTo:         (ratio: number) => void;
@@ -237,6 +238,18 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerState, playTrack]);
 
+  const stopPlayback = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.src = "";
+    stopTimer();
+    setPlayerState("idle");
+    setProgress(0);
+    setElapsed(0);
+    setDuration(0);
+  }, []);
+
   const playNext = useCallback(() => {
     const pl = playlistRef.current;
     if (!pl.length) return;
@@ -383,7 +396,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       playlist, currentIndex, playerState, progress, elapsed, duration,
       muted, playMode, currentTrack,
-      playTrack, togglePlay, playNext, playPrev, seekTo,
+      playTrack, togglePlay, stopPlayback, playNext, playPrev, seekTo,
       toggleMute, cyclePlayMode, addFiles, removeTrack, clearPlaylist,
     }}>
       {children}

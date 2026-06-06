@@ -1,3 +1,22 @@
+/**
+ * MusicPage
+ *
+ * Two views controlled by `ytActive` (a video ID is set in YouTubeContext):
+ *
+ * VIEW A — Local player  (ytActive = false)
+ *   Compact player strip at top + scrollable Playlist / Files tabs
+ *   Normal page flow, no fixed positioning, no overflow issues
+ *   YouTube tab shows search — tapping a result sets videoId → switches to View B
+ *
+ * VIEW B — YouTube fullscreen  (ytActive = true)
+ *   The iframe is rendered in AppLayout fixed below the header (z-35)
+ *   This page renders ONLY a thin "← Back" bar (z-36) at the very top of its area
+ *   Everything else is transparent so the iframe fills the screen
+ *   User taps ← Back → clears videoId → back to View A (audio stops)
+ *
+ * Screen never sleeps while this page is mounted (WakeLock API).
+ */
+
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
@@ -31,33 +50,35 @@ const QUICK_SEARCHES = [
 
 export default function MusicPage() {
   const { profile } = useAuth();
-  const nav = useNavigate();
-  const player = useMusicPlayer();
-  const yt = useYouTube();
+  const nav          = useNavigate();
+  const player       = useMusicPlayer();
+  const yt           = useYouTube();
   const [searchInput, setSearchInput] = useState(yt.query);
+  const [searchOpen, setSearchOpen]   = useState(false);
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const wakeLockRef    = useRef<WakeLockSentinel | null>(null);
+  const wakeLockRef    = useRef<any>(null);
 
-  // Acquire wake lock while audio is playing so screen-off doesn't kill it
+  // ── Keep screen awake the entire time this page is open ──────────────────
   useEffect(() => {
+    let sentinel: any = null;
     const acquire = async () => {
-      if ("wakeLock" in navigator && player.playerState === "playing") {
-        try {
-          wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
-        } catch { /* ignore — not supported on all devices */ }
-      }
+      try {
+        if ("wakeLock" in navigator) {
+          sentinel = await (navigator as any).wakeLock.request("screen");
+          wakeLockRef.current = sentinel;
+        }
+      } catch { /* device doesn't support it */ }
     };
-    const release = async () => {
-      if (wakeLockRef.current) {
-        try { await wakeLockRef.current.release(); } catch { /* ignore */ }
-        wakeLockRef.current = null;
-      }
+    acquire();
+    // Re-acquire if page becomes visible again (e.g. after tab switch)
+    const onVisible = () => { if (document.visibilityState === "visible") acquire(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      sentinel?.release().catch(() => {});
     };
-    if (player.playerState === "playing") { acquire(); }
-    else { release(); }
-    return () => { release(); };
-  }, [player.playerState]);
+  }, []);
 
   useEffect(() => {
     if (profile && (profile.role !== "owner" || !(profile as any).music_addon)) {
@@ -78,9 +99,11 @@ export default function MusicPage() {
   };
 
   const playResult = (item: { id: string; kind: string; title: string }) => {
+    // Hard-stop local MP3 — clears audio src so only one source plays at a time
+    player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
     yt.setNowPlayingTitle(item.title);
-    // iframe in AppLayout auto-loads — no external browser
+    setSearchOpen(false);
   };
 
   const PlayModeIcon = () => {
@@ -89,141 +112,242 @@ export default function MusicPage() {
     return <Repeat className="h-4 w-4" />;
   };
 
-  const bars = Array.from({ length: 18 });
+  const bars = Array.from({ length: 14 });
   if (!profile || profile.role !== "owner") return null;
 
   const ytActive = !!yt.videoId;
 
-  // When YouTube is active:
-  //   - This page is transparent so the iframe (fixed, z-35 in AppLayout) shows through
-  //   - The tabs panel is fixed to the bottom as a dark overlay (z-36)
-  //   - The header is z-50, always visible on top
-  // When no YouTube:
-  //   - Normal dark layout with local player + tabs
+  // ─────────────────────────────────────────────────────────────────────────
+  // VIEW B — YouTube fullscreen
+  // Page is transparent; iframe (AppLayout, z-35) fills the screen below header.
+  // Footer bar at bottom: shows now playing + search icon.
+  // Tap search → search panel slides up over the iframe.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (ytActive) {
+    return (
+      <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
-  return (
-    <div
-      className="flex flex-col -mx-3 -mt-3"
-      style={{
-        minHeight: "calc(100vh - 44px)",
-        background: ytActive ? "transparent" : "#000",
-      }}
-    >
-      {/* ── LOCAL AUDIO PLAYER — only shown when no YouTube video active ── */}
-      {!ytActive && (
-        <div
-          className="relative flex flex-col items-center px-4 pt-3 pb-3 overflow-hidden"
-          style={{
-            minHeight: "38vh",
-            background: "linear-gradient(180deg, #0a0a2e 0%, #0d1117 70%, #000 100%)",
-            borderBottom: "1px solid rgba(59,130,246,0.2)",
-          }}
-        >
-          {/* Glow */}
+        {/* Search panel — slides in over the iframe when searchOpen */}
+        {searchOpen ? (
           <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-28 rounded-full blur-3xl opacity-25 pointer-events-none"
-            style={{ background: "radial-gradient(circle, #3b82f6 0%, #1d4ed8 50%, transparent 100%)" }}
-          />
-
-          {/* Visualizer */}
-          <div className="flex items-end justify-center gap-0.5 h-10 w-full mt-1 relative z-10">
-            {bars.map((_, i) => (
-              <div key={i} className="rounded-full w-1.5"
-                style={{
-                  background: "linear-gradient(to top, #3b82f6, #93c5fd)",
-                  height: "15%",
-                  animation: player.playerState === "playing"
-                    ? `musicBar ${0.45 + i * 0.04}s ease-in-out infinite alternate` : "none",
-                  animationDelay: `${i * 0.035}s`,
-                  opacity: player.playerState === "playing" ? 0.75 + (i % 4) * 0.06 : 0.2,
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Track info */}
-          <div className="text-center w-full px-4 py-2 relative z-10">
-            <div className="text-white font-black text-sm leading-tight line-clamp-1">
-              {player.currentTrack?.title ?? "No track selected"}
+            style={{
+              position: "fixed",
+              left: 0, right: 0, bottom: 0,
+              zIndex: 36,
+              maxHeight: "70vh",
+              background: "rgba(10,10,20,0.97)",
+              borderTop: "1px solid rgba(239,68,68,0.25)",
+              backdropFilter: "blur(12px)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Search input row */}
+            <div className="flex gap-2 px-3 pt-3 pb-2 shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400/70 pointer-events-none" />
+                <Input
+                  autoFocus
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  placeholder="Search songs, artists…"
+                  className="pl-9 text-sm bg-black/60 border-red-500/40 text-white placeholder:text-white/30 h-10 rounded-xl"
+                />
+              </div>
+              <button onClick={handleSearch}
+                disabled={!searchInput.trim() || yt.searching}
+                className="h-10 px-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0"
+                style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
+                {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </button>
+              {/* Close results, go back to footer */}
+              <button
+                onClick={() => { yt.setQuery(""); setSearchOpen(false); }}
+                className="h-10 px-3 rounded-xl text-white/60 hover:text-white transition shrink-0"
+                style={{ background: "rgba(255,255,255,0.06)" }}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            {player.currentTrack?.artist && (
-              <div className="text-blue-300/70 text-xs mt-0.5 line-clamp-1">{player.currentTrack.artist}</div>
-            )}
-          </div>
 
-          {/* Progress */}
-          <div className="w-full px-2 relative z-10">
-            <div
-              ref={progressBarRef}
-              onClick={handleProgressClick}
-              className="w-full h-1.5 rounded-full cursor-pointer mb-1 relative overflow-hidden"
-              style={{ background: "rgba(59,130,246,0.2)" }}
-            >
-              <div
-                className="absolute left-0 top-0 h-full rounded-full"
-                style={{ width: `${player.progress * 100}%`, background: "linear-gradient(to right, #3b82f6, #93c5fd)" }}
-              />
+            {/* Results list */}
+            <div className="overflow-y-auto px-3 pb-4 flex-1">
+              {yt.searching && (
+                <div className="flex items-center justify-center py-10 gap-3 text-white/40">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm">Searching…</span>
+                </div>
+              )}
+              {yt.searchError && !yt.searching && (
+                <div className="rounded-xl p-4 text-center"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <p className="text-red-400 text-sm font-bold">Search unavailable</p>
+                  <p className="text-white/50 text-xs mt-1">{yt.searchError}</p>
+                </div>
+              )}
+              {!yt.searching && yt.results.length > 0 && (
+                <div className="space-y-1">
+                  {yt.results.map(item => (
+                    <button key={item.id}
+                      onClick={() => { playResult(item); setSearchOpen(false); yt.setQuery(""); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
+                      style={{ background: "rgba(255,255,255,0.04)" }}>
+                      <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                        {item.thumbnail
+                          ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
+                        <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                      </div>
+                      {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex justify-between text-[10px] text-blue-300/50">
-              <span>{formatTime(player.elapsed)}</span>
-              <span>{formatTime(player.duration)}</span>
+          </div>
+        ) : (
+          /* ── Minimised footer — track playing, search icon ── */
+          <div
+            style={{
+              position: "fixed",
+              left: 0, right: 0, bottom: 0,
+              zIndex: 36,
+              background: "rgba(0,0,0,0.82)",
+              borderTop: "1px solid rgba(239,68,68,0.2)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <div className="flex items-center gap-3 px-3 h-12">
+              {/* Animated bars */}
+              <div className="flex items-end gap-px h-4 shrink-0">
+                {[0,1,2,3].map(b => (
+                  <div key={b} className="w-0.5 rounded-full bg-red-400"
+                    style={{ height: "100%", animation: `musicBar ${0.35+b*0.12}s ease-in-out infinite alternate`, animationDelay: `${b*0.08}s` }} />
+                ))}
+              </div>
+              {/* Track title */}
+              <span className="text-white text-xs font-bold truncate flex-1">{yt.nowPlayingTitle || "YouTube playing"}</span>
+              {/* Search button — opens keyboard + results */}
+              <button
+                onClick={() => { setSearchInput(""); setSearchOpen(true); }}
+                className="h-8 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                style={{ background: "rgba(239,68,68,0.7)" }}
+              >
+                <Search className="h-3.5 w-3.5" /> Search
+              </button>
+              {/* Stop */}
+              <button onClick={() => yt.setVideoId(null)}
+                className="text-white/40 hover:text-white/70 p-1 transition shrink-0">
+                <X className="h-4 w-4" />
+              </button>
             </div>
+            <style>{`
+              @keyframes musicBar {
+                from { transform: scaleY(0.3); }
+                to   { transform: scaleY(1); }
+              }
+            `}</style>
           </div>
+        )}
+      </div>
+    );
+  }
 
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-5 mt-1 relative z-10">
-            <button
-              onClick={player.cyclePlayMode}
-              className={`transition active:scale-90 ${player.playMode !== "normal" ? "text-blue-400" : "text-blue-200/40 hover:text-blue-200/70"}`}
-            >
-              <PlayModeIcon />
-            </button>
-            <button onClick={player.playPrev} className="text-blue-200/70 hover:text-white active:scale-90 transition">
-              <SkipBack className="h-6 w-6" />
-            </button>
-            <button
-              onClick={player.togglePlay}
-              className="h-12 w-12 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg"
-              style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", boxShadow: "0 0 20px rgba(59,130,246,0.5)" }}
-            >
-              {player.playerState === "loading"
-                ? <Loader2 className="h-5 w-5 text-white animate-spin" />
-                : player.playerState === "playing"
-                ? <Pause className="h-5 w-5 text-white" />
-                : <Play  className="h-5 w-5 text-white ml-0.5" />}
-            </button>
-            <button onClick={player.playNext} className="text-blue-200/70 hover:text-white active:scale-90 transition">
-              <SkipForward className="h-6 w-6" />
-            </button>
-            <button onClick={player.toggleMute} className="text-blue-200/40 hover:text-blue-200/70 active:scale-90 transition">
-              {player.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-      )}
+  // ─────────────────────────────────────────────────────────────────────────
+  // VIEW A — Local player + Playlist / Files / YouTube search
+  // Normal scrollable page. No fixed positioning.
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="-mx-3 -mt-3" style={{ background: "#000", minHeight: "calc(100vh - 44px)" }}>
 
-      {/* ── TABS PANEL ──────────────────────────────────────────────────────
-          When YouTube active: fixed overlay at the bottom, above the iframe.
-          When local player: normal flow beneath the player.               */}
+      {/* ── Compact player strip ─────────────────────────────────────── */}
       <div
-        className="flex-1 flex flex-col"
-        style={ytActive ? {
-          position: "fixed",
-          left: 0, right: 0, bottom: 0,
-          zIndex: 36,
-          maxHeight: "52vh",
-          background: "rgba(10,10,20,0.97)",
-          borderTop: "1px solid rgba(59,130,246,0.25)",
-          backdropFilter: "blur(12px)",
-        } : {
-          background: "#0d1117",
+        className="relative px-4 pt-3 pb-3"
+        style={{
+          background: "linear-gradient(180deg, #0a0a2e 0%, #0d1117 100%)",
+          borderBottom: "1px solid rgba(59,130,246,0.2)",
         }}
       >
-        <Tabs defaultValue={ytActive ? "youtube" : "playlist"} className="flex flex-col h-full">
-          <TabsList
-            className="grid grid-cols-3 mx-3 mt-2 shrink-0"
-            style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}
-          >
+        {/* Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 rounded-full blur-3xl opacity-20 pointer-events-none"
+          style={{ background: "radial-gradient(circle, #3b82f6 0%, #1d4ed8 100%)" }} />
+
+        {/* Visualizer bars */}
+        <div className="flex items-end justify-center gap-0.5 h-6 w-full relative z-10 mb-2">
+          {bars.map((_, i) => (
+            <div key={i} className="rounded-full w-1.5"
+              style={{
+                background: "linear-gradient(to top, #3b82f6, #93c5fd)",
+                height: "40%",
+                animation: player.playerState === "playing"
+                  ? `musicBar ${0.45 + i * 0.05}s ease-in-out infinite alternate` : "none",
+                animationDelay: `${i * 0.04}s`,
+                opacity: player.playerState === "playing" ? 0.8 : 0.2,
+              }} />
+          ))}
+        </div>
+
+        {/* Track name */}
+        <div className="text-center relative z-10 mb-2">
+          <div className="text-white font-black text-sm leading-tight truncate px-4">
+            {player.currentTrack?.title ?? "No track selected"}
+          </div>
+          {player.currentTrack?.artist && (
+            <div className="text-blue-300/60 text-xs mt-0.5 truncate px-4">{player.currentTrack.artist}</div>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative z-10 mb-1.5">
+          <div ref={progressBarRef} onClick={handleProgressClick}
+            className="w-full h-1.5 rounded-full cursor-pointer relative overflow-hidden"
+            style={{ background: "rgba(59,130,246,0.2)" }}>
+            <div className="absolute left-0 top-0 h-full rounded-full transition-all"
+              style={{ width: `${player.progress * 100}%`, background: "linear-gradient(to right, #3b82f6, #93c5fd)" }} />
+          </div>
+          <div className="flex justify-between text-[10px] text-blue-300/40 mt-0.5">
+            <span>{formatTime(player.elapsed)}</span>
+            <span>{formatTime(player.duration)}</span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center justify-center gap-5 relative z-10">
+          <button onClick={player.cyclePlayMode}
+            className={`transition active:scale-90 ${player.playMode !== "normal" ? "text-blue-400" : "text-blue-200/30"}`}>
+            <PlayModeIcon />
+          </button>
+          <button onClick={player.playPrev} className="text-blue-200/70 hover:text-white active:scale-90 transition">
+            <SkipBack className="h-6 w-6" />
+          </button>
+          <button onClick={player.togglePlay}
+            className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition"
+            style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", boxShadow: "0 0 16px rgba(59,130,246,0.45)" }}>
+            {player.playerState === "loading"
+              ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+              : player.playerState === "playing"
+              ? <Pause className="h-5 w-5 text-white" />
+              : <Play  className="h-5 w-5 text-white ml-0.5" />}
+          </button>
+          <button onClick={player.playNext} className="text-blue-200/70 hover:text-white active:scale-90 transition">
+            <SkipForward className="h-6 w-6" />
+          </button>
+          <button onClick={player.toggleMute} className="text-blue-200/30 hover:text-blue-200/70 active:scale-90 transition">
+            {player.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
+      <div style={{ background: "#0d1117" }}>
+        <Tabs defaultValue="playlist">
+          <TabsList className="grid grid-cols-3 mx-3 mt-2"
+            style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <TabsTrigger value="playlist" className="gap-1.5 data-[state=active]:text-blue-300">
               <ListMusic className="h-3.5 w-3.5" /> Playlist
             </TabsTrigger>
@@ -235,53 +359,24 @@ export default function MusicPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Playlist ─────────────────────────────────────────────── */}
-          <TabsContent value="playlist" className="flex-1 overflow-y-auto px-3 pb-24 mt-2">
-            {/* Mini controls bar — shown when a track is loaded (playing or paused) */}
-            {player.currentTrack && !ytActive && (
-              <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-xl"
-                style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs font-bold truncate">{player.currentTrack.title}</p>
-                  <p className="text-blue-300/60 text-[10px]">
-                    {player.playerState === "playing" ? "Playing" : player.playerState === "paused" ? "Paused" : "Loading…"}
-                  </p>
-                </div>
-                <button onClick={player.playPrev} className="text-blue-300/60 hover:text-white transition p-1">
-                  <SkipBack className="h-5 w-5" />
-                </button>
-                <button onClick={player.togglePlay}
-                  className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
-                  style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)" }}>
-                  {player.playerState === "loading"
-                    ? <Loader2 className="h-4 w-4 text-white animate-spin" />
-                    : player.playerState === "playing"
-                    ? <Pause className="h-4 w-4 text-white" />
-                    : <Play  className="h-4 w-4 text-white ml-0.5" />}
-                </button>
-                <button onClick={player.playNext} className="text-blue-300/60 hover:text-white transition p-1">
-                  <SkipForward className="h-5 w-5" />
-                </button>
-              </div>
-            )}
+          {/* Playlist */}
+          <TabsContent value="playlist" className="px-3 pb-8 mt-2">
             {player.playlist.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-blue-300/40 gap-2">
+              <div className="flex flex-col items-center justify-center py-16 text-blue-300/40 gap-2">
                 <Music2 className="h-10 w-10" />
                 <p className="text-sm">Playlist is empty</p>
-                <p className="text-xs text-center opacity-70">Add files from Files tab</p>
+                <p className="text-xs opacity-70">Add files from the Files tab</p>
               </div>
             ) : (
               <div className="space-y-1">
                 {player.playlist.map((track, i) => (
-                  <div
-                    key={track.id}
-                    onClick={() => player.playTrack(i)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition active:scale-[0.98] border ${
+                  <div key={track.id} onClick={() => { if (yt.videoId) yt.setVideoId(null); player.playTrack(i); }}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer active:scale-[0.98] transition border ${
                       i === player.currentIndex ? "border-blue-500/50" : "border-transparent"
                     }`}
-                    style={{ background: i === player.currentIndex ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.03)" }}
-                  >
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(59,130,246,0.2)" }}>
+                    style={{ background: i === player.currentIndex ? "rgba(59,130,246,0.15)" : "rgba(255,255,255,0.03)" }}>
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(59,130,246,0.2)" }}>
                       <Music2 className="h-4 w-4 text-blue-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -296,10 +391,8 @@ export default function MusicPage() {
                         ))}
                       </div>
                     )}
-                    <button
-                      onClick={e => { e.stopPropagation(); player.removeTrack(i); }}
-                      className="text-red-400/50 hover:text-red-400 p-1 transition shrink-0"
-                    >
+                    <button onClick={e => { e.stopPropagation(); player.removeTrack(i); }}
+                      className="text-red-400/40 hover:text-red-400 p-1 transition shrink-0">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -308,14 +401,12 @@ export default function MusicPage() {
             )}
           </TabsContent>
 
-          {/* ── Files ────────────────────────────────────────────────── */}
-          <TabsContent value="files" className="flex-1 overflow-y-auto px-3 pb-6 mt-2">
+          {/* Files */}
+          <TabsContent value="files" className="px-3 pb-8 mt-2">
             <div className="space-y-4">
-              <div
-                className="rounded-2xl p-6 flex flex-col items-center gap-3 border-2 border-dashed cursor-pointer active:scale-[0.98] transition"
+              <div className="rounded-2xl p-6 flex flex-col items-center gap-3 border-2 border-dashed cursor-pointer active:scale-[0.98] transition"
                 style={{ borderColor: "rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.05)" }}
-                onClick={() => fileInputRef.current?.click()}
-              >
+                onClick={() => fileInputRef.current?.click()}>
                 <div className="h-14 w-14 rounded-2xl flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.3), rgba(29,78,216,0.3))" }}>
                   <FolderOpen className="h-7 w-7 text-blue-400" />
@@ -325,14 +416,8 @@ export default function MusicPage() {
                   <p className="text-blue-300/60 text-xs mt-1">MP3, M4A, OGG, FLAC, WAV</p>
                 </div>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                multiple
-                className="hidden"
-                onChange={e => { player.addFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }}
-              />
+              <input ref={fileInputRef} type="file" accept="audio/*" multiple className="hidden"
+                onChange={e => { player.addFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
               {player.playlist.filter(t => t.type === "local").length > 0 && (
                 <div>
                   <p className="text-blue-300/60 text-xs font-bold uppercase tracking-wider mb-2">
@@ -340,12 +425,10 @@ export default function MusicPage() {
                   </p>
                   <div className="space-y-1">
                     {player.playlist.filter(t => t.type === "local").map(track => (
-                      <div
-                        key={track.id}
-                        onClick={() => player.playTrack(player.playlist.indexOf(track))}
+                      <div key={track.id}
+                        onClick={() => { if (yt.videoId) yt.setVideoId(null); player.playTrack(player.playlist.indexOf(track)); }}
                         className="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer"
-                        style={{ background: "rgba(59,130,246,0.07)" }}
-                      >
+                        style={{ background: "rgba(59,130,246,0.07)" }}>
                         <Music2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                         <span className="text-white text-xs truncate flex-1">{track.title}</span>
                       </div>
@@ -356,10 +439,10 @@ export default function MusicPage() {
             </div>
           </TabsContent>
 
-          {/* ── YouTube ──────────────────────────────────────────────── */}
-          <TabsContent value="youtube" className="flex-1 overflow-y-auto px-3 pb-6 mt-2">
+          {/* YouTube search */}
+          <TabsContent value="youtube" className="px-3 pb-8 mt-2">
             <div className="space-y-3">
-              {/* Search */}
+              {/* Search bar */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400/70 pointer-events-none" />
@@ -371,36 +454,13 @@ export default function MusicPage() {
                     className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
-                <button
-                  onClick={handleSearch}
+                <button onClick={handleSearch}
                   disabled={!searchInput.trim() || yt.searching}
                   className="h-11 px-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0 flex items-center gap-1.5"
-                  style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}
-                >
+                  style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
                   {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </button>
               </div>
-
-              {/* Now playing */}
-              {yt.nowPlayingTitle && (
-                <div
-                  className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
-                  style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)" }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex items-end gap-px h-4 shrink-0">
-                      {[0,1,2,3].map(b => (
-                        <div key={b} className="w-0.5 rounded-full bg-red-400"
-                          style={{ height: "100%", animation: `musicBar ${0.35+b*0.12}s ease-in-out infinite alternate`, animationDelay: `${b*0.08}s` }} />
-                      ))}
-                    </div>
-                    <span className="text-white text-xs font-bold truncate">{yt.nowPlayingTitle}</span>
-                  </div>
-                  <button onClick={() => yt.setVideoId(null)} className="text-red-400/70 hover:text-red-400 transition shrink-0 p-1">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
 
               {/* Quick play */}
               {!yt.searching && yt.results.length === 0 && (
@@ -408,12 +468,10 @@ export default function MusicPage() {
                   <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Quick Play</p>
                   <div className="grid grid-cols-2 gap-2">
                     {QUICK_SEARCHES.map(({ label, q }) => (
-                      <button
-                        key={q}
+                      <button key={q}
                         onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); }}
                         className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
-                        style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
-                      >
+                        style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                         {label}
                       </button>
                     ))}
@@ -429,7 +487,8 @@ export default function MusicPage() {
               )}
 
               {yt.searchError && !yt.searching && (
-                <div className="rounded-xl p-4 text-center" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <div className="rounded-xl p-4 text-center"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
                   <p className="text-red-400 text-sm font-bold">Search unavailable</p>
                   <p className="text-white/50 text-xs mt-1">{yt.searchError}</p>
                 </div>
@@ -438,31 +497,35 @@ export default function MusicPage() {
               {!yt.searching && yt.results.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Results for "{yt.query}"</p>
-                    <button onClick={() => { yt.setQuery(""); setSearchInput(""); }} className="text-white/30 hover:text-white/60 transition">
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
+                      Results for "{yt.query}"
+                    </p>
+                    <button onClick={() => { yt.setQuery(""); setSearchInput(""); }}
+                      className="text-white/30 hover:text-white/60 transition">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   {yt.results.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => playResult(item)}
+                    <button key={item.id} onClick={() => playResult(item)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
                         yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
                       }`}
-                      style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}
-                    >
+                      style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
                       <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
                         {item.thumbnail
                           ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
+                          : <div className="w-full h-full flex items-center justify-center">
+                              <Youtube className="h-5 w-5 text-red-400/50" />
+                            </div>
                         }
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
                         <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
                       </div>
-                      {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
+                      {item.kind === "youtube#playlist" && (
+                        <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />
+                      )}
                     </button>
                   ))}
                 </div>
