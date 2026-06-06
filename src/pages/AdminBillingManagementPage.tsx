@@ -128,13 +128,19 @@ export default function AdminBillingManagementPage() {
         const startDate = new Date();
         let endDate: Date;
         
-        // If owner has an existing subscription_end_date, use it as the base
-        if (ownerProfile?.subscription_end_date) {
-          endDate = new Date(ownerProfile.subscription_end_date);
-          // Add the plan duration to the existing end date
+        // Only extend from existing end date if subscription is currently active
+        // and the end date is in the future (genuine renewal).
+        // Otherwise always calculate from today (first payment or lapsed account).
+        const isActiveRenewal =
+          ownerProfile?.subscription_end_date &&
+          ownerProfile?.billing_status === "active" &&
+          new Date(ownerProfile.subscription_end_date) > startDate;
+
+        if (isActiveRenewal) {
+          endDate = new Date(ownerProfile.subscription_end_date!);
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
         } else {
-          // First payment - calculate from today
+          // First payment or lapsed — start fresh from today
           endDate = new Date();
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
         }
