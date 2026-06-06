@@ -14,6 +14,7 @@ export default function BillingPage() {
   const [payments, setPayments] = useState<BillingPayment[]>([]);
   const [bankDetails, setBankDetails] = useState<AdminBankDetails | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [musicAddon, setMusicAddon] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | null>(null);
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -165,8 +166,29 @@ export default function BillingPage() {
       return;
     }
 
+    // If music addon was selected, create a second payment for the addon plan
+    if (!isRenewal && musicAddon) {
+      // Find the music addon plan with matching duration
+      const addonPlan = musicAddonPlans.find(p => p.duration_months === plan.duration_months);
+      if (addonPlan) {
+        const { data: addonRef, error: addonRefError } = await supabase.rpc("generate_payment_reference");
+        if (!addonRefError && addonRef) {
+          await supabase.from("billing_payments").insert({
+            owner_id: profile.id,
+            plan_id: addonPlan.id,
+            reference_number: addonRef,
+            amount: addonPlan.amount,
+            due_date: dueDate.toISOString(),
+            status: "pending",
+            payment_method: method,
+          });
+        }
+      }
+    }
+
     toast.success(method === "cash" ? "Cash payment pending - awaiting admin confirmation" : "Bank transfer pending - awaiting admin confirmation");
     setPaymentMethod(null);
+    setMusicAddon(false);
     loadPayments();
   };
 
@@ -211,6 +233,10 @@ export default function BillingPage() {
   const isOverdue = nextDueDate && nextDueDate < new Date();
   const daysUntilDue = nextDueDate ? Math.ceil((nextDueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
   const canPayFee = !!isOverdue || (daysUntilDue !== null && daysUntilDue <= 7);
+
+  // Separate base plans from music addon plans
+  const basePlans = plans.filter(p => !p.name.toLowerCase().includes("music"));
+  const musicAddonPlans = plans.filter(p => p.name.toLowerCase().includes("music"));
 
   return (
     <div className="min-h-screen p-6 pb-24">
@@ -566,7 +592,7 @@ export default function BillingPage() {
               <Card className="p-6">
                 <h2 className="text-xl font-bold mb-4">Choose Your Plan</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {plans.map((plan) => (
+                  {basePlans.map((plan) => (
                     <button
                       key={plan.id}
                       onClick={() => setSelectedPlan(plan.id)}
@@ -585,87 +611,127 @@ export default function BillingPage() {
               </Card>
             )}
 
-            {/* Step 2: Choose Payment Method */}
-            {selectedPlan && !paymentMethod && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">Choose Payment Method</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedPlan(null)}>
-                    Change Plan
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Cash Payment Option */}
-                  <button
-                    onClick={() => setPaymentMethod("cash")}
-                    className="p-6 rounded-xl border-2 border-border hover:border-primary transition text-left"
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <span className="text-2xl">💵</span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold">Cash Payment</h3>
-                        <p className="text-xs text-green-500">Instant submission</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Pay cash directly to admin. Your payment will be marked as pending immediately.
-                    </p>
-                  </button>
+            {/* Step 1b: Music Addon toggle — shown after base plan is picked */}
+            {selectedPlan && !paymentMethod && (() => {
+              const base = basePlans.find(p => p.id === selectedPlan)!;
+              const addon = musicAddonPlans.find(p => p.duration_months === base?.duration_months);
+              const total = (base?.amount ?? 0) + (musicAddon && addon ? addon.amount : 0);
+              return (
+                <Card className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold">Add-ons</h2>
+                    <button onClick={() => { setSelectedPlan(null); setMusicAddon(false); }}
+                      className="text-sm text-muted-foreground hover:text-foreground">
+                      ← Change plan
+                    </button>
+                  </div>
 
-                  {/* Bank Transfer Option - Enabled/Disabled based on feature flag */}
-                  <button
-                    onClick={() => bankTransferEnabled && setPaymentMethod("bank")}
-                    disabled={!bankTransferEnabled}
-                    className={`p-6 rounded-xl border-2 text-left transition ${
-                      bankTransferEnabled 
-                        ? "border-border hover:border-primary cursor-pointer" 
-                        : "border-border bg-muted/30 opacity-50 cursor-not-allowed"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <span className="text-2xl">🏦</span>
+                  {/* Music addon toggle */}
+                  {addon && (
+                    <button
+                      onClick={() => setMusicAddon(v => !v)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition text-left ${
+                        musicAddon ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
+                        musicAddon ? "bg-primary" : "bg-muted"
+                      }`}>
+                        <span className="text-2xl">🎵</span>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold">Bank Transfer</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {bankTransferEnabled ? "Transfer to bank account" : "Coming soon"}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold">Music Player Add-on</p>
+                          {musicAddon && <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">Added</span>}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          In-app music player with YouTube & local file support
+                        </p>
+                        <p className="text-primary font-black mt-1">
+                          +${addon.amount.toFixed(2)} TT / {addon.duration_months} months
                         </p>
                       </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {bankTransferEnabled 
-                        ? "Transfer to admin's bank account with reference number." 
-                        : "Transfer to admin's bank account. Currently unavailable."}
-                    </p>
-                  </button>
-                </div>
-              </Card>
-            )}
+                      <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        musicAddon ? "bg-primary border-primary" : "border-muted-foreground"
+                      }`}>
+                        {musicAddon && <span className="text-primary-foreground text-xs font-black">✓</span>}
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-muted-foreground font-semibold">Total</span>
+                    <span className="text-2xl font-black text-primary">${total.toFixed(2)} TT</span>
+                  </div>
+
+                  {/* Continue to payment method */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <button
+                      onClick={() => setPaymentMethod("cash")}
+                      className="p-5 rounded-xl border-2 border-border hover:border-primary transition text-left"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-2xl">💵</span>
+                        <div>
+                          <p className="font-bold">Cash Payment</p>
+                          <p className="text-xs text-green-500">Instant submission</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pay cash directly to admin</p>
+                    </button>
+
+                    <button
+                      onClick={() => bankTransferEnabled && setPaymentMethod("bank")}
+                      disabled={!bankTransferEnabled}
+                      className={`p-5 rounded-xl border-2 text-left transition ${
+                        bankTransferEnabled ? "border-border hover:border-primary cursor-pointer" : "border-border bg-muted/30 opacity-50 cursor-not-allowed"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-2xl">🏦</span>
+                        <div>
+                          <p className="font-bold">Bank Transfer</p>
+                          <p className="text-xs text-muted-foreground">{bankTransferEnabled ? "Transfer to bank account" : "Coming soon"}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{bankTransferEnabled ? "Transfer with reference number" : "Currently unavailable"}</p>
+                    </button>
+                  </div>
+                </Card>
+              );
+            })()}
 
             {/* Step 3: Confirm Payment */}
             {selectedPlan && paymentMethod === "cash" && (
               <Card className="p-6 border-green-500">
                 <h2 className="text-xl font-bold mb-4 text-green-500">Confirm Cash Payment</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  You've selected to pay <span className="font-bold text-foreground">${plans.find(p => p.id === selectedPlan)?.amount.toFixed(2)} TT</span> in cash.
-                  Click below to notify the admin that you'll be paying in cash.
-                </p>
+                {(() => {
+                  const base = basePlans.find(p => p.id === selectedPlan);
+                  const addon = musicAddonPlans.find(p => p.duration_months === base?.duration_months);
+                  const total = (base?.amount ?? 0) + (musicAddon && addon ? addon.amount : 0);
+                  return (
+                    <div className="space-y-3 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{base?.name}</span>
+                        <span className="font-bold">${base?.amount.toFixed(2)} TT</span>
+                      </div>
+                      {musicAddon && addon && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">🎵 Music Add-on</span>
+                          <span className="font-bold">+${addon.amount.toFixed(2)} TT</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-bold">Total</span>
+                        <span className="text-xl font-black text-primary">${total.toFixed(2)} TT</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPaymentMethod(null)}
-                    className="flex-1"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={() => createPayment(false, "cash")}
-                    disabled={loading}
-                    className="flex-1 h-12 text-base font-bold"
-                  >
+                  <Button variant="outline" onClick={() => setPaymentMethod(null)} className="flex-1">Back</Button>
+                  <Button onClick={() => createPayment(false, "cash")} disabled={loading} className="flex-1 h-12 text-base font-bold">
                     {loading ? "Submitting..." : "Confirm Cash Payment"}
                   </Button>
                 </div>

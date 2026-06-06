@@ -4,10 +4,9 @@ import { useAuth } from "@/lib/auth";
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music2, Youtube, FolderOpen, ListMusic, ChevronUp, ChevronDown,
-  Loader2, X, Search,
+  Loader2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
@@ -35,14 +34,6 @@ function formatTime(secs: number): string {
 function randomId() {
   return Math.random().toString(36).slice(2);
 }
-
-// ─── YouTube search result type ───────────────────────────────────────────────
-type YTResult = {
-  id: string;
-  title: string;
-  channel: string;
-  thumbnail: string;
-};
 
 // ─── MusicPage ────────────────────────────────────────────────────────────────
 export default function MusicPage() {
@@ -72,9 +63,6 @@ export default function MusicPage() {
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── YouTube state ──
-  const [ytQuery, setYtQuery] = useState("");
-  const [ytResults, setYtResults] = useState<YTResult[]>([]);
-  const [ytSearching, setYtSearching] = useState(false);
   const [ytVideoId, setYtVideoId] = useState<string | null>(null);
   const ytFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -300,6 +288,7 @@ export default function MusicPage() {
   };
 
   const [ytInput, setYtInput] = useState("");
+  void ytInput; void setYtInput; // kept for potential future use
 
   // ── Open YouTube in Capacitor Browser (background playback) ──────────────
   const openYouTubeInBrowser = async (videoId: string) => {
@@ -599,72 +588,90 @@ export default function MusicPage() {
           {/* ── YouTube tab ────────────────────────────────────────────────── */}
           <TabsContent value="youtube" className="flex-1 overflow-y-auto px-3 pb-8 mt-2">
             <div className="space-y-4">
-              {/* Add by URL */}
-              <div className="rounded-2xl p-4 space-y-3"
-                style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                <div className="flex items-center gap-2">
-                  <Youtube className="h-5 w-5 text-red-400" />
-                  <span className="text-white font-bold text-sm">Add YouTube Video</span>
+
+              {/* Main launch card */}
+              <div
+                className="rounded-2xl p-6 flex flex-col items-center gap-4 cursor-pointer active:scale-[0.98] transition"
+                style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(0,0,0,0.6))", border: "1px solid rgba(239,68,68,0.3)" }}
+                onClick={async () => {
+                  try {
+                    if (Capacitor.isNativePlatform()) {
+                      const { Browser } = await import("@capacitor/browser");
+                      await Browser.open({
+                        url: "https://m.youtube.com",
+                        presentationStyle: "popover",
+                        toolbarColor: "#0d1117",
+                      });
+                    } else {
+                      window.open("https://m.youtube.com", "_blank");
+                    }
+                  } catch {
+                    window.open("https://m.youtube.com", "_blank");
+                  }
+                }}
+              >
+                <div className="h-16 w-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)", boxShadow: "0 0 30px rgba(239,68,68,0.4)" }}>
+                  <Youtube className="h-9 w-9 text-white" />
                 </div>
-                <p className="text-blue-300/60 text-xs">
-                  Paste a YouTube URL or video ID. Tap "Open in browser" on a playing track to use YouTube with background audio.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={ytInput}
-                    onChange={e => setYtInput(e.target.value)}
-                    placeholder="https://youtube.com/watch?v=... or video ID"
-                    className="flex-1 text-xs bg-black/40 border-red-500/30 text-white placeholder:text-blue-300/40"
-                    onKeyDown={e => { if (e.key === "Enter") { addYouTubeUrl(ytInput); setYtInput(""); } }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => { addYouTubeUrl(ytInput); setYtInput(""); }}
-                    disabled={!ytInput.trim()}
-                    style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}
-                  >
-                    Add
-                  </Button>
+                <div className="text-center">
+                  <p className="text-white font-black text-lg">Open YouTube</p>
+                  <p className="text-red-300/70 text-sm mt-1">Search any song, artist or playlist</p>
+                </div>
+                <div className="rounded-xl px-4 py-2 text-white font-bold text-sm"
+                  style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
+                  Launch YouTube →
                 </div>
               </div>
 
-              {/* Background audio note */}
-              <div className="rounded-xl px-3 py-2.5 flex gap-2 items-start"
-                style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
-                <Music2 className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-blue-200/80 text-xs leading-relaxed">
-                  For continuous background playback (screen off / switching to bar), tap <strong>"Open in browser"</strong> on the playing track. The Capacitor browser keeps audio running in the background.
-                </p>
+              {/* How it works */}
+              <div className="rounded-xl p-4 space-y-2"
+                style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                <p className="text-blue-300 font-bold text-xs uppercase tracking-wider">How it works</p>
+                <div className="space-y-2 text-blue-200/70 text-xs leading-relaxed">
+                  <p>🎵 Opens YouTube in an overlay using your device's existing Google account — no separate login needed.</p>
+                  <p>🔊 Search any song, artist, playlist or mix and hit play.</p>
+                  <p>📱 Close the overlay to return to the bar — audio keeps playing in the background.</p>
+                  <p>🔄 Tap the YouTube tab again to reopen and control playback.</p>
+                </div>
               </div>
 
-              {/* YouTube tracks in playlist */}
-              {playlist.filter(t => t.type === "youtube").length > 0 && (
-                <div>
-                  <p className="text-red-300/60 text-xs font-bold uppercase tracking-wider mb-2">
-                    YouTube tracks in playlist ({playlist.filter(t => t.type === "youtube").length})
-                  </p>
-                  <div className="space-y-1">
-                    {playlist.filter(t => t.type === "youtube").map(track => {
-                      const idx = playlist.indexOf(track);
-                      return (
-                        <div key={track.id}
-                          onClick={() => playTrack(idx)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer active:scale-[0.98]"
-                          style={{ background: "rgba(239,68,68,0.07)" }}>
-                          <Youtube className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                          <span className="text-white text-xs truncate flex-1">{track.title}</span>
-                          <button
-                            onClick={e => { e.stopPropagation(); openYouTubeInBrowser(track.uri); }}
-                            className="text-blue-400/70 text-[10px] underline shrink-0"
-                          >
-                            Open
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+              {/* Quick launch shortcuts */}
+              <div>
+                <p className="text-blue-300/60 text-xs font-bold uppercase tracking-wider mb-2">Quick searches</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "🎶 Top Hits", q: "top hits 2024 playlist" },
+                    { label: "🍹 Bar Vibes", q: "bar music playlist" },
+                    { label: "🔥 Soca Mix", q: "soca mix 2024" },
+                    { label: "😌 R&B Chill", q: "rnb chill mix" },
+                    { label: "🎸 Classics", q: "classic rock hits" },
+                    { label: "💃 Dancehall", q: "dancehall mix 2024" },
+                  ].map(({ label, q }) => (
+                    <button
+                      key={q}
+                      onClick={async () => {
+                        const url = `https://m.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+                        try {
+                          if (Capacitor.isNativePlatform()) {
+                            const { Browser } = await import("@capacitor/browser");
+                            await Browser.open({ url, presentationStyle: "popover", toolbarColor: "#0d1117" });
+                          } else {
+                            window.open(url, "_blank");
+                          }
+                        } catch {
+                          window.open(url, "_blank");
+                        }
+                      }}
+                      className="px-3 py-2.5 rounded-xl text-xs font-bold text-white text-left active:scale-95 transition"
+                      style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+
             </div>
           </TabsContent>
         </Tabs>
