@@ -62,9 +62,14 @@ export default function MusicPage() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
 
-  // When a video starts playing, switch to fullscreen view automatically
+  // When a NEW video is selected, go fullscreen automatically
+  // (but NOT when returning from Exit — videoId is still set then)
+  const prevVideoIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (yt.videoId) setShowYTFullscreen(true);
+    if (yt.videoId && yt.videoId !== prevVideoIdRef.current) {
+      setShowYTFullscreen(true);
+    }
+    prevVideoIdRef.current = yt.videoId;
   }, [yt.videoId]);
 
   // ── Keep screen awake the entire time this page is open ──────────────────
