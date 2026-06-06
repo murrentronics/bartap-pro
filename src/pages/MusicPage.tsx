@@ -62,15 +62,8 @@ export default function MusicPage() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
 
-  // When a NEW video is selected, go fullscreen automatically
-  // (but NOT when returning from Exit — videoId is still set then)
-  const prevVideoIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (yt.videoId && yt.videoId !== prevVideoIdRef.current) {
-      setShowYTFullscreen(true);
-    }
-    prevVideoIdRef.current = yt.videoId;
-  }, [yt.videoId]);
+  // Only playResult() sets showYTFullscreen = true.
+  // Exit sets it to false. No effect needed — videoId staying set is fine.
 
   // ── Keep screen awake the entire time this page is open ──────────────────
   useEffect(() => {
@@ -145,19 +138,51 @@ export default function MusicPage() {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
-        {/* Transparent tap-blocker — covers YouTube's title/CC/settings row
-            so tapping those controls doesn't open the external YouTube app  */}
+        {/* Full-screen tap interceptor — covers the entire iframe so NO
+            YouTube UI elements (logo, title, settings, "Watch on YouTube")
+            are directly tappable. Tapping anywhere toggles play/pause via
+            postMessage to the iframe. The search panel sits above this (z-37). */}
         {!searchOpen && (
-          <div
-            style={{
-              position: "fixed",
-              top: "calc(44px + env(safe-area-inset-top, 0px))",
-              left: 0, right: 0,
-              height: 72, // covers title + icon row at top of player
-              zIndex: 36,
-              background: "transparent",
-            }}
-          />
+          <>
+            <div
+              onClick={() => {
+                const iframe = document.getElementById("yt-iframe") as HTMLIFrameElement | null;
+                if (iframe?.contentWindow) {
+                  iframe.contentWindow.postMessage('{"event":"command","func":"togglePlay","args":""}', '*');
+                }
+              }}
+              style={{
+                position: "fixed",
+                top: "calc(44px + env(safe-area-inset-top, 0px))",
+                left: 0, right: 0,
+                bottom: 56,
+                zIndex: 36,
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            />
+            {/* Tap-to-play hint — small icon in center so user knows it's interactive */}
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 37,
+                pointerEvents: "none",
+                opacity: 0.35,
+              }}
+            >
+              <div style={{
+                width: 52, height: 52, borderRadius: "50%",
+                background: "rgba(0,0,0,0.6)",
+                border: "2px solid rgba(255,255,255,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Play className="h-6 w-6 text-white ml-1" />
+              </div>
+            </div>
+          </>
         )}
 
         {/* Search panel — slides in over the iframe when searchOpen */}
