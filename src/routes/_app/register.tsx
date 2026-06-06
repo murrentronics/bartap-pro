@@ -395,6 +395,18 @@ function OnScreenKeyboard({ onKey, onHeightChange, searchText, hidden }: {
     }
   });
 
+  // When a native input is focused, hide the app keyboard entirely
+  // Report height 0 so the layout doesn't reserve space for it
+  if (hidden) {
+    return (
+      <div
+        ref={ref}
+        className="fixed bottom-0 inset-x-0 z-[25]"
+        style={{ height: 0, overflow: "hidden" }}
+      />
+    );
+  }
+
   return (
     <div
       ref={ref}

@@ -56,12 +56,16 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
-  const [lastMainTab, setLastMainTab] = useState("youtube");
-  // Remember last played YouTube video so Resume works after Exit
-  const lastYtRef = useRef<{ id: string; playlist: boolean; title: string } | null>(null);
+  const [lastMainTab, setLastMainTab] = useState("playlist"); // default to playlist on first open
+  const [showYTFullscreen, setShowYTFullscreen] = useState(false); // controls View B independently
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
+
+  // When a video starts playing, switch to fullscreen view automatically
+  useEffect(() => {
+    if (yt.videoId) setShowYTFullscreen(true);
+  }, [yt.videoId]);
 
   // ── Keep screen awake the entire time this page is open ──────────────────
   useEffect(() => {
@@ -107,7 +111,6 @@ export default function MusicPage() {
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
     yt.setNowPlayingTitle(item.title);
-    // Save to history — free replays, no API cost
     yt.addToHistory({
       id:        item.id,
       kind:      item.kind,
@@ -115,6 +118,7 @@ export default function MusicPage() {
       channel:   item.channel   ?? "",
       thumbnail: item.thumbnail ?? "",
     });
+    setShowYTFullscreen(true); // go to fullscreen View B
     setSearchOpen(false);
   };
 
@@ -127,15 +131,12 @@ export default function MusicPage() {
   const bars = Array.from({ length: 14 });
   if (!profile || profile.role !== "owner") return null;
 
-  const ytActive = !!yt.videoId;
+  const ytActive = !!yt.videoId; // video is loaded in iframe (may or may not be fullscreen)
 
   // ─────────────────────────────────────────────────────────────────────────
-  // VIEW B — YouTube fullscreen
-  // Page is transparent; iframe (AppLayout, z-35) fills the screen below header.
-  // Footer bar at bottom: shows now playing + search icon.
-  // Tap search → search panel slides up over the iframe.
+  // VIEW B — YouTube fullscreen (only when showYTFullscreen is true)
   // ─────────────────────────────────────────────────────────────────────────
-  if (ytActive) {
+  if (showYTFullscreen && yt.videoId) {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
@@ -307,9 +308,12 @@ export default function MusicPage() {
               >
                 <Search className="h-3.5 w-3.5" /> Search
               </button>
-              {/* Red Exit button */}
+              {/* Red Exit button — hides fullscreen, music keeps playing */}
               <button
-                onClick={() => { yt.setVideoId(null); setLastMainTab("youtube"); }}
+                onClick={() => {
+                  setShowYTFullscreen(false);
+                  setLastMainTab("youtube");
+                }}
                 className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(180,0,0,0.85)" }}
               >
@@ -330,7 +334,6 @@ export default function MusicPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   // VIEW A — Local player + Playlist / Files / YouTube search
-  // Normal scrollable page. No fixed positioning.
   // ─────────────────────────────────────────────────────────────────────────
   const onYouTubeTab = lastMainTab === "youtube";
 
@@ -366,7 +369,7 @@ export default function MusicPage() {
               </div>
               {/* Tap to go back to fullscreen */}
               <button
-                onClick={() => yt.setVideoId(yt.videoId ?? null, yt.isPlaylist)}
+                onClick={() => setShowYTFullscreen(true)}
                 className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(239,68,68,0.6)" }}
               >

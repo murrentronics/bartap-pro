@@ -31,7 +31,7 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (newQty: number) => void;
 }) {
-  const [value, setValue] = useState(String(currentQty));
+  const [value, setValue] = useState("0");
   const [busy, setBusy] = useState(false);
 
   const handleKey = (k: string) => {
@@ -43,16 +43,18 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
     });
   };
 
+  const addAmount = Number(value);
+  const newTotal  = currentQty + addAmount;
+
   const save = async () => {
     setBusy(true);
-    const newQty = Number(value);
     const { error } = await supabase
       .from("products")
-      .update({ stock_qty: newQty })
+      .update({ stock_qty: newTotal })
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    onSaved(newQty);
+    onSaved(newTotal);
     onClose();
   };
 
@@ -64,14 +66,30 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <span className="text-base font-black">Set Stock Qty</span>
+          <span className="text-base font-black">Add Stock</span>
           <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="mx-5 mb-4 h-14 rounded-2xl border border-border bg-muted/30 flex items-center justify-center">
+
+        {/* Current qty display */}
+        <div className="mx-5 mb-2 px-4 py-2 rounded-xl bg-muted/30 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground font-medium">Current stock</span>
+          <span className="text-2xl font-black text-foreground">{currentQty}</span>
+        </div>
+
+        {/* Add amount input */}
+        <div className="mx-5 mb-1 h-14 rounded-2xl border border-border bg-muted/30 flex items-center justify-center">
+          <span className="text-xs text-muted-foreground mr-2">+ Add</span>
           <span className="text-4xl font-black text-primary">{value}</span>
         </div>
+
+        {/* New total preview */}
+        <div className="mx-5 mb-3 flex items-center justify-between px-2">
+          <span className="text-xs text-muted-foreground">New total after adding</span>
+          <span className="text-lg font-black text-green-400">{newTotal}</span>
+        </div>
+
         <div className="px-5 pb-5 space-y-2">
           <div className="grid grid-cols-3 gap-2">
             {["1","2","3","4","5","6","7","8","9","C","0","⌫"].map((k) => (
@@ -89,11 +107,11 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
           </div>
           <button
             onClick={save}
-            disabled={busy}
+            disabled={busy || addAmount === 0}
             className="w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
             style={{ background: "var(--gradient-hero)" }}
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Done"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Done — set to ${newTotal}`}
           </button>
         </div>
       </div>
