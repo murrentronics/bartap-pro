@@ -56,7 +56,9 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
-  const [lastMainTab, setLastMainTab] = useState("playlist");
+  // Use context-persisted tab so returning to /music lands on same tab
+  const lastMainTab    = yt.lastMusicTab;
+  const setLastMainTab = yt.setLastMusicTab;
 
   // showYTFullscreen is driven by yt.ytFullscreen from context
   // so AppLayout can see it and show/hide the iframe accordingly
@@ -128,6 +130,27 @@ export default function MusicPage() {
     return <Repeat className="h-4 w-4" />;
   };
 
+  // ── Listen for YouTube video ended → auto-play next from history ──────
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        // YouTube sends: { event: "onStateChange", info: 0 } when video ends
+        if (data?.event === "onStateChange" && data?.info === 0 && showYTFullscreen) {
+          // Find current in history and play next
+          const idx = yt.history.findIndex(h => h.id === yt.videoId);
+          const next = yt.history[idx + 1];
+          if (next) {
+            playResult(next);
+          }
+        }
+      } catch { /* ignore non-JSON messages */ }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showYTFullscreen, yt.videoId, yt.history]);
+
   const bars = Array.from({ length: 14 });
   if (!profile || profile.role !== "owner") return null;
 
@@ -140,50 +163,33 @@ export default function MusicPage() {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
-        {/* Full-screen tap interceptor — covers the entire iframe so NO
-            YouTube UI elements (logo, title, settings, "Watch on YouTube")
-            are directly tappable. Tapping anywhere toggles play/pause via
-            postMessage to the iframe. The search panel sits above this (z-37). */}
+        {/* No overlay — YouTube native controls are fully accessible */}
+
+        {/* ── Pixel covers over YouTube chrome buttons only ──────────────────
+            These transparent divs sit exactly over the YouTube UI buttons
+            that would open external apps or trigger unwanted actions.
+            The center video area and play/pause button remain fully tappable. */}
         {!searchOpen && (
           <>
-            <div
-              onClick={() => {
-                const iframe = document.getElementById("yt-iframe") as HTMLIFrameElement | null;
-                if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage('{"event":"command","func":"togglePlay","args":""}', '*');
-                }
-              }}
-              style={{
-                position: "fixed",
-                top: "calc(44px + env(safe-area-inset-top, 0px))",
-                left: 0, right: 0,
-                bottom: 56,
-                zIndex: 36,
-                background: "transparent",
-                cursor: "pointer",
-              }}
-            />
-            {/* Tap-to-play hint — small icon in center so user knows it's interactive */}
-            <div
-              style={{
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 37,
-                pointerEvents: "none",
-                opacity: 0.35,
-              }}
-            >
-              <div style={{
-                width: 52, height: 52, borderRadius: "50%",
-                background: "rgba(0,0,0,0.6)",
-                border: "2px solid rgba(255,255,255,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Play className="h-6 w-6 text-white ml-1" />
-              </div>
-            </div>
+            {/* Top bar: title, CC, settings — covers ~top 60px */}
+            <div style={{
+              position: "fixed",
+              top: "calc(44px + env(safe-area-inset-top, 0px))",
+              left: 0, right: 0, height: 62,
+              zIndex: 36, background: "transparent", pointerEvents: "auto",
+            }} />
+            {/* Bottom corners only: YT logo (left ~80px) + fullscreen (right ~60px)
+                Progress bar in the center remains fully interactive */}
+            <div style={{
+              position: "fixed",
+              bottom: 56, left: 0, width: 80, height: 50,
+              zIndex: 36, background: "transparent", pointerEvents: "auto",
+            }} />
+            <div style={{
+              position: "fixed",
+              bottom: 56, right: 0, width: 60, height: 50,
+              zIndex: 36, background: "transparent", pointerEvents: "auto",
+            }} />
           </>
         )}
 
@@ -263,7 +269,7 @@ export default function MusicPage() {
               )}
               {!yt.searching && yt.results.length > 0 && (
                 <div className="space-y-1">
-                  {yt.results.map(item => (
+                  {yt.results.slice(1).map(item => (
                     <button key={item.id}
                       onClick={() => { playResult(item); setSearchOpen(false); yt.setQuery(""); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
@@ -698,7 +704,7 @@ export default function MusicPage() {
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      {yt.results.map(item => (
+                      {yt.results.slice(1).map(item => (
                         <button key={item.id} onClick={() => playResult(item)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
                             yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"

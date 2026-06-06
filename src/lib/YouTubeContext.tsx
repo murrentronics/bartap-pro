@@ -92,6 +92,10 @@ type YouTubeCtx = {
 
   nowPlayingTitle:    string;
   setNowPlayingTitle: (t: string) => void;
+
+  // Last active music tab — persists across navigation
+  lastMusicTab:    string;
+  setLastMusicTab: (tab: string) => void;
 };
 
 const Ctx = createContext<YouTubeCtx | null>(null);
@@ -105,6 +109,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [searching,        setSearching     ] = useState(false);
   const [searchError,      setSearchError   ] = useState<string | null>(null);
   const [nowPlayingTitle,  setNowPlayingTitle] = useState("");
+  const [lastMusicTab,     setLastMusicTab   ] = useState("playlist");
   const [quota,            setQuota         ] = useState(loadQuota);
   const [history,          setHistoryState  ] = useState<YTHistoryItem[]>(loadHistory);
 
@@ -222,6 +227,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       searchesRemaining, searchResetTime,
       history, addToHistory, clearHistory, removeFromHistory,
       nowPlayingTitle, setNowPlayingTitle,
+      lastMusicTab, setLastMusicTab,
     }}>
       {children}
     </Ctx.Provider>

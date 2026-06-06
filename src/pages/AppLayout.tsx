@@ -49,6 +49,13 @@ export default function AppLayout() {
   // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
 
+  // Hide YouTube fullscreen when navigating away from /music
+  useEffect(() => {
+    if (loc.pathname !== "/music" && yt.ytFullscreen) {
+      yt.setYtFullscreen(false);
+    }
+  }, [loc.pathname]);
+
   if (loading || !session || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -261,6 +268,13 @@ export default function AppLayout() {
             allowFullScreen
             style={{ width: "100%", height: "100%", border: "none" }}
             title="YouTube Player"
+            onLoad={(e) => {
+              // Tell the iframe to send state change events back via postMessage
+              const iframe = e.currentTarget as HTMLIFrameElement;
+              iframe.contentWindow?.postMessage(
+                JSON.stringify({ event: "listening" }), "*"
+              );
+            }}
           />
         </div>
       )}
