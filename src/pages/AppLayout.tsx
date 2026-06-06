@@ -254,8 +254,8 @@ export default function AppLayout() {
           <iframe
             src={
               yt.isPlaylist
-                ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1`
-                : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`
+                ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=0`
+                : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=0`
             }
             allow="autoplay; fullscreen; encrypted-media"
             allowFullScreen
@@ -265,50 +265,6 @@ export default function AppLayout() {
         </div>
       )}
 
-      {/* ── Mini now-playing bar — shown on non-music pages when YT is active ── */}
-      {hasMusic && yt.videoId && !isOnMusic && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 40,
-            background: "rgba(0,0,0,0.92)",
-            borderTop: "1px solid rgba(239,68,68,0.3)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <div className="max-w-2xl mx-auto px-3 h-12 flex items-center gap-3">
-            <div className="flex items-end gap-px h-4 shrink-0">
-              {[0,1,2,3].map(b => (
-                <div key={b} className="w-0.5 rounded-full bg-red-400"
-                  style={{ height: "100%", animation: `miniBar ${0.35 + b * 0.12}s ease-in-out infinite alternate`, animationDelay: `${b * 0.08}s` }} />
-              ))}
-            </div>
-            <span className="text-white text-xs font-bold truncate flex-1">
-              {yt.nowPlayingTitle || "YouTube playing"}
-            </span>
-            <Link
-              to="/music"
-              className="text-xs font-bold px-3 h-7 rounded-lg flex items-center gap-1 shrink-0 text-white"
-              style={{ background: "rgba(239,68,68,0.8)" }}
-            >
-              <Music2 className="h-3 w-3" /> Open
-            </Link>
-            <button onClick={() => yt.setVideoId(null)}
-              className="text-white/50 hover:text-white/80 transition p-1 shrink-0">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <style>{`
-            @keyframes miniBar {
-              from { transform: scaleY(0.3); }
-              to   { transform: scaleY(1); }
-            }
-          `}</style>
-        </div>
-      )}
     </div>
   );
 }

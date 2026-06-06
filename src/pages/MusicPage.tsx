@@ -37,6 +37,27 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const wakeLockRef    = useRef<WakeLockSentinel | null>(null);
+
+  // Acquire wake lock while audio is playing so screen-off doesn't kill it
+  useEffect(() => {
+    const acquire = async () => {
+      if ("wakeLock" in navigator && player.playerState === "playing") {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+        } catch { /* ignore — not supported on all devices */ }
+      }
+    };
+    const release = async () => {
+      if (wakeLockRef.current) {
+        try { await wakeLockRef.current.release(); } catch { /* ignore */ }
+        wakeLockRef.current = null;
+      }
+    };
+    if (player.playerState === "playing") { acquire(); }
+    else { release(); }
+    return () => { release(); };
+  }, [player.playerState]);
 
   useEffect(() => {
     if (profile && (profile.role !== "owner" || !(profile as any).music_addon)) {
@@ -215,7 +236,34 @@ export default function MusicPage() {
           </TabsList>
 
           {/* ── Playlist ─────────────────────────────────────────────── */}
-          <TabsContent value="playlist" className="flex-1 overflow-y-auto px-3 pb-6 mt-2">
+          <TabsContent value="playlist" className="flex-1 overflow-y-auto px-3 pb-24 mt-2">
+            {/* Mini controls bar — shown when a track is loaded (playing or paused) */}
+            {player.currentTrack && !ytActive && (
+              <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-xl"
+                style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)" }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-bold truncate">{player.currentTrack.title}</p>
+                  <p className="text-blue-300/60 text-[10px]">
+                    {player.playerState === "playing" ? "Playing" : player.playerState === "paused" ? "Paused" : "Loading…"}
+                  </p>
+                </div>
+                <button onClick={player.playPrev} className="text-blue-300/60 hover:text-white transition p-1">
+                  <SkipBack className="h-5 w-5" />
+                </button>
+                <button onClick={player.togglePlay}
+                  className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)" }}>
+                  {player.playerState === "loading"
+                    ? <Loader2 className="h-4 w-4 text-white animate-spin" />
+                    : player.playerState === "playing"
+                    ? <Pause className="h-4 w-4 text-white" />
+                    : <Play  className="h-4 w-4 text-white ml-0.5" />}
+                </button>
+                <button onClick={player.playNext} className="text-blue-300/60 hover:text-white transition p-1">
+                  <SkipForward className="h-5 w-5" />
+                </button>
+              </div>
+            )}
             {player.playlist.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-blue-300/40 gap-2">
                 <Music2 className="h-10 w-10" />

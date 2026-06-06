@@ -50,5 +50,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <!-- Android 13+ granular media permissions -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Keep CPU/audio alive when screen turns off -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
 </manifest>
