@@ -560,7 +560,6 @@ export default function RegisterPage() {
 
       {/* ── Shot Step 2: Price entry — inline on the page below the buttons ── */}
       {shotStep === "price" && shotBottleId && (() => {
-        const prod = bottle ? products.find(p => p.id === bottle.product_id) : null;
         return (
           <div className="mb-3 rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
             {/* Header */}
