@@ -100,7 +100,10 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
     // Get current session once on mount
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) loadQuota(data.session.user.id);
+      if (data.session?.user) {
+        ownerIdRef.current = data.session.user.id;  // set immediately, before async
+        loadQuota(data.session.user.id);
+      }
     });
 
     // Re-load when user signs in/out
