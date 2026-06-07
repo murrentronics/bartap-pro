@@ -114,8 +114,10 @@ export default function RegisterPage() {
   const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
   const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
   const [shotModalOpen, setShotModalOpen]       = useState(false);
-  const [shotBottleId, setShotBottleId]         = useState<string>(""); // selected open bottle id
+  const [shotStep, setShotStep]                 = useState<"select" | "price">("select");
+  const [shotBottleId, setShotBottleId]         = useState<string>("");
   const [shotPrice, setShotPrice]               = useState("");
+  const selectedBottleRef                       = useRef<HTMLDivElement>(null);
   const [openNewMode, setOpenNewMode]           = useState(false);   // true = picking a new bottle from products
   const [newBottleProductId, setNewBottleProductId] = useState<string>("");
   const [newBottlePrice, setNewBottlePrice]     = useState("");
@@ -175,7 +177,8 @@ export default function RegisterPage() {
       .order("opened_at", { ascending: false })
       .limit(1);
     if (data?.[0]) setShotBottleId(data[0].id);
-    setShotPrice(newBottlePrice); // carry the shot price over so Add to Order is ready
+    setShotPrice(newBottlePrice);
+    setShotStep("price");
     setOpenNewMode(false);
     setNewBottleProductId("");
     setNewBottlePrice("");
@@ -184,7 +187,7 @@ export default function RegisterPage() {
   /** Add a shot to the cart from an open bottle */
   const addShot = () => {
     const bottle = openedBottles.find((b) => b.id === shotBottleId);
-    const price  = parseFloat(shotPrice || String(bottle?.shot_price ?? ""));
+    const price  = parseFloat(shotPrice);
     if (!bottle || isNaN(price) || price <= 0) {
       toast.error("Select a bottle and set a price");
       return;
@@ -197,15 +200,33 @@ export default function RegisterPage() {
       image_url: null,
       category: "liquor",
       qty: 1,
-      // stash bottle id so we can record revenue on order confirm
       _bottle_id: bottle.id,
     } as CartItem & { _bottle_id: string }]);
     setShotModalOpen(false);
+    setShotStep("select");
     setShotBottleId("");
     setShotPrice("");
   };
 
-  /** Finish a bottle — marks done and records final wallet tx */
+  // Scroll to selected bottle when entering price step
+  useEffect(() => {
+    if (shotStep === "price" && selectedBottleRef.current) {
+      setTimeout(() => {
+        selectedBottleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    }
+  }, [shotStep, shotBottleId]);
+  /** Cancel an open bottle — only if 0 shots sold, restores 1 stock */
+  const handleCancelBottle = async (bottleId: string) => {
+    setBottleBusy(true);
+    const { error } = await supabase.rpc("cancel_bottle", { p_bottle_id: bottleId });
+    setBottleBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Bottle cancelled — stock restored");
+    await fetchOpenedBottles();
+    await fetchProducts();
+  };
+
   const handleFinishBottle = async (bottleId: string) => {
     if (!profile) return;
     setBottleBusy(true);
@@ -424,27 +445,186 @@ export default function RegisterPage() {
         />
       )}
 
-      {/* ── Shot Modal ──────────────────────────────────────────────────── */}
-      {shotModalOpen && (
+      {/* ── Shot Modal — Step 1: Select Liquor (3-column card grid) ──── */}
+      {shotModalOpen && shotStep === "select" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); }}>
-          <div
-            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+          onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); }}>
+          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">🥃 Add Shot</span>
-              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); }}
+              <span className="text-base font-black">🥃 Select Liquor</span>
+              <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
+            <div className="px-4 pb-5 space-y-4 max-h-[75vh] overflow-y-auto">
 
-            <div className="px-5 pb-5 space-y-3">
-              {!openNewMode ? (
-                <>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select Liquor</p>
+              {/* Currently open — 3-col card grid */}
+              {openedBottles.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {openedBottles.map((b) => {
+                      const prod = products.find(p => p.id === b.product_id);
+                      return (
+                        <button key={b.id}
+                          onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); }}
+                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition">
+                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
+                            {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
+                          </div>
+                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
+                            <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Open new bottle — 3-col card grid from liquor inventory */}
+              {liquorProducts.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Open New Bottle</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {liquorProducts.map((p) => {
+                      const sel = newBottleProductId === p.id;
+                      return (
+                        <button key={p.id}
+                          onClick={() => setNewBottleProductId(sel ? "" : p.id)}
+                          className="flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
+                          style={{ borderColor: sel ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
+                          <div className="aspect-[3/4] relative w-full">
+                            {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>🍾</div>
+                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
+                            {sel && <div className="absolute inset-0 flex items-center justify-center bg-primary/20 text-2xl">✓</div>}
+                          </div>
+                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {newBottleProductId && (
+                    <div className="mt-3 space-y-2">
+                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+                      <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                        <span className={`text-2xl font-black ${newBottlePrice ? "text-foreground" : "text-muted-foreground"}`}>${newBottlePrice || "0.00"}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                          <button key={k} type="button"
+                            onClick={() => {
+                              if (k === "⌫") { setNewBottlePrice(v => v.slice(0,-1)); return; }
+                              if (k === ".") { if (!newBottlePrice.includes(".")) setNewBottlePrice(v => v + "."); return; }
+                              const dotIdx = newBottlePrice.indexOf(".");
+                              if (dotIdx !== -1 && newBottlePrice.length - dotIdx > 2) return;
+                              setNewBottlePrice(v => v === "0" ? k : v + k);
+                            }}
+                            className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                          >{k}</button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleOpenNewBottle}
+                        disabled={!newBottlePrice || parseFloat(newBottlePrice) <= 0 || bottleBusy}
+                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                        style={{ background: "var(--gradient-hero)" }}
+                      >
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bottle & Select"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Shot Step 2: Price entry — inline on the page below the buttons ── */}
+      {shotStep === "price" && shotBottleId && (() => {
+        const bottle = openedBottles.find(b => b.id === shotBottleId);
+        const prod = bottle ? products.find(p => p.id === bottle.product_id) : null;
+        return (
+          <div className="mb-3 rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <span className="font-black text-sm">🥃 Add Shot</span>
+              <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <X className="h-3.5 w-3.5" /> Change
+              </button>
+            </div>
+
+            {/* 3-col card grid — all open bottles, selected one highlighted */}
+            <div className="px-3 pb-2">
+              <div className="grid grid-cols-3 gap-2">
+                {openedBottles.map((b) => {
+                  const bProd = products.find(p => p.id === b.product_id);
+                  const isSelected = b.id === shotBottleId;
+                  return (
+                    <div key={b.id} ref={isSelected ? selectedBottleRef : null}>
+                      <button
+                        onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); }}
+                        className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
+                        style={{ borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
+                        <div className="aspect-[3/4] relative w-full">
+                          {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                          <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
+                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-2xl" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.25)" }}>✓</div>}
+                        </div>
+                        <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                          <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
+                          <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Numpad */}
+            <div className="px-3 pb-3 space-y-2 border-t border-border/40 pt-3">
+              <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+              <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                  <button key={k} type="button"
+                    onClick={() => {
+                      if (k === "⌫") { setShotPrice(v => v.slice(0,-1)); return; }
+                      if (k === ".") { if (!shotPrice.includes(".")) setShotPrice(v => v + "."); return; }
+                      const dotIdx = shotPrice.indexOf(".");
+                      if (dotIdx !== -1 && shotPrice.length - dotIdx > 2) return;
+                      setShotPrice(v => v === "0" ? k : v + k);
+                    }}
+                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                  >{k}</button>
+                ))}
+              </div>
+              <button
+                onClick={addShot}
+                disabled={!shotPrice || parseFloat(shotPrice) <= 0}
+                className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                + Add to Order
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
                   {openedBottles.length > 0 && (
                     <div className="space-y-2">
@@ -479,138 +659,6 @@ export default function RegisterPage() {
                       })}
                     </div>
                   )}
-
-                  <button
-                    onClick={() => { setOpenNewMode(true); setNewBottlePrice(""); }}
-                    className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
-                    style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
-                  >
-                    + Open New Bottle
-                  </button>
-
-                  {/* Numpad — only shown after a bottle is selected */}
-                  {shotBottleId && (
-                  <div className="space-y-2 pt-1">
-                    <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                    <div className="h-12 rounded-xl border border-border flex items-center justify-center"
-                      style={{ background: "var(--muted)" }}>
-                      <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>
-                        ${shotPrice || "0.00"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                        <button key={k} type="button"
-                          onClick={() => {
-                            if (k === "⌫") { setShotPrice(v => v.slice(0,-1)); return; }
-                            if (k === ".") { if (!shotPrice.includes(".")) setShotPrice(v => v + "."); return; }
-                            const dotIdx = shotPrice.indexOf(".");
-                            if (dotIdx !== -1 && shotPrice.length - dotIdx > 2) return;
-                            setShotPrice(v => v === "0" ? k : v + k);
-                          }}
-                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
-                            k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"
-                          }`}
-                        >{k}</button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={addShot}
-                      disabled={!shotBottleId || !shotPrice || parseFloat(shotPrice) <= 0}
-                      className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                      style={{ background: "var(--gradient-hero)" }}
-                    >
-                      + Add to Order
-                    </button>
-                  </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 mb-1">
-                    <button onClick={() => setOpenNewMode(false)} className="text-muted-foreground hover:text-foreground transition">
-                      <X className="h-4 w-4" />
-                    </button>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Open New Bottle</p>
-                  </div>
-
-                  {liquorProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No liquor in stock. Add some on the Items page.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground font-semibold">Pick from liquor inventory:</p>
-                      <div className="max-h-44 overflow-y-auto space-y-1.5 rounded-xl border border-border p-1.5" style={{ background: "var(--background)" }}>
-                        {liquorProducts.map((p) => {
-                          const selected = newBottleProductId === p.id;
-                          return (
-                            <button
-                              key={p.id}
-                              onClick={() => setNewBottleProductId(p.id)}
-                              className={`w-full flex items-center gap-3 p-2 rounded-lg transition active:scale-[0.98] text-left border ${
-                                selected ? "border-primary" : "border-transparent"
-                              }`}
-                              style={selected ? { background: "rgba(var(--primary-rgb,251 146 60)/0.12)" } : { background: "var(--muted)" }}
-                            >
-                              {/* Product image or emoji */}
-                              <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-black/30 flex items-center justify-center">
-                                {p.image_url
-                                  ? <img src={p.image_url} alt="" className="h-full w-full object-cover"
-                                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                                  : <span className="text-xl">🍾</span>}
-                              </div>
-                              {/* Text */}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-sm leading-tight truncate">{p.name}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">{p.stock_qty} in stock</div>
-                              </div>
-                              {selected && <span className="text-primary text-lg shrink-0">✓</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                      {/* Price display — read-only, no native keyboard */}
-                      <div className="h-12 rounded-xl border border-border flex items-center justify-center"
-                        style={{ background: "var(--muted)" }}>
-                        <span className={`text-2xl font-black ${newBottlePrice ? "text-foreground" : "text-muted-foreground"}`}>
-                          ${newBottlePrice || "0.00"}
-                        </span>
-                      </div>
-                      {/* Inline numpad */}
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                          <button key={k} type="button"
-                            onClick={() => {
-                              if (k === "⌫") { setNewBottlePrice(v => v.slice(0,-1)); return; }
-                              if (k === ".") { if (!newBottlePrice.includes(".")) setNewBottlePrice(v => v + "."); return; }
-                              const dotIdx = newBottlePrice.indexOf(".");
-                              if (dotIdx !== -1 && newBottlePrice.length - dotIdx > 2) return;
-                              setNewBottlePrice(v => v === "0" ? k : v + k);
-                            }}
-                            className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
-                              k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"
-                            }`}
-                          >{k}</button>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={handleOpenNewBottle}
-                        disabled={!newBottleProductId || !newBottlePrice || parseFloat(newBottlePrice) <= 0 || bottleBusy}
-                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
-                        style={{ background: "var(--gradient-hero)" }}
-                      >
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bottle & Select"}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Opened Bottles Modal ────────────────────────────────────────── */}
       {bottlesModalOpen && (
@@ -658,15 +706,27 @@ export default function RegisterPage() {
                         </div>
                       </div>
                     </div>
-                    {/* Finish button */}
-                    <button
-                      onClick={() => handleFinishBottle(b.id)}
-                      disabled={bottleBusy}
-                      className="w-full h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2 rounded-none"
-                      style={{ background: "linear-gradient(135deg,#dc2626,#991b1b)" }}
-                    >
-                      {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✓ Bottle Finished / Empty"}
-                    </button>
+                    {/* Finish / Cancel buttons */}
+                    <div className="grid grid-cols-2 gap-0">
+                      {b.shots_sold === 0 && (
+                        <button
+                          onClick={() => handleCancelBottle(b.id)}
+                          disabled={bottleBusy}
+                          className="h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-1 rounded-none border-r border-black/20"
+                          style={{ background: "linear-gradient(135deg,#374151,#1f2937)" }}
+                        >
+                          {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✕ Cancel"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleFinishBottle(b.id)}
+                        disabled={bottleBusy}
+                        className={`h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2 rounded-none ${b.shots_sold === 0 ? "" : "col-span-2"}`}
+                        style={{ background: "linear-gradient(135deg,#dc2626,#991b1b)" }}
+                      >
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✓ Bottle Finished / Empty"}
+                      </button>
+                    </div>
                   </div>
                   );
                 })
