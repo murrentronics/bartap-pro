@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 function formatTime(secs: number): string {
   if (!isFinite(secs) || secs < 0) return "0:00";
@@ -84,7 +85,10 @@ export default function MusicPage() {
 
   const handleSearch = () => {
     if (!searchInput.trim()) return;
-    if (yt.searchesRemaining === 0) return;
+    if (yt.searchesRemaining === 0) {
+      toast.error(`Daily search limit reached. Resets in ${yt.searchResetTime}.`);
+      return;
+    }
     yt.setQuery(searchInput);
     yt.search(searchInput);
     setYtSubTab("results");
@@ -626,7 +630,7 @@ export default function MusicPage() {
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${(yt.searchesRemaining / 75) * 100}%`,
+                      width: `${(yt.searchesRemaining / 100) * 100}%`,
                       background: yt.searchesRemaining <= 10 ? "#eab308" : yt.searchesRemaining <= 25 ? "#f97316" : "#22c55e",
                     }} />
                 </div>

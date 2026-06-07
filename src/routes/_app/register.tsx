@@ -124,6 +124,7 @@ export default function RegisterPage() {
   const [newBottlePrice, setNewBottlePrice]     = useState("");
   const [bottleBusy, setBottleBusy]             = useState(false);
   const [markEmptyBottleId, setMarkEmptyBottleId] = useState<string | null>(null); // confirm modal
+  const [cancelBottleId, setCancelBottleId]       = useState<string | null>(null); // confirm modal
 
   const liquorProducts = useMemo(
     () => products.filter((p) => (p.category || "beers") === "liquor" && (p.stock_qty ?? 0) > 0),
@@ -342,20 +343,21 @@ export default function RegisterPage() {
                       </div>
                     )}
 
-                    {/* Red X remove button — top-right, only when in cart */}
+                    {/* Red X remove button — top-right, same size as minus/qty circles */}
                     {inCart && (
                       <button
                         onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                        className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full flex items-center justify-center active:scale-90 transition text-white shadow z-10"
+                        className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
                         style={{ background: "#dc2626" }}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                       </button>
                     )}
 
-                    {/* Cart qty controls — full-width bottom bar, minus + qty */}
+                    {/* Cart qty controls — sits just below the top row (X + stock badge) */}
                     {inCart && (
-                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 py-2" style={{ background: "rgba(0,0,0,0.75)" }}>
+                      <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+                        style={{ background: "rgba(0,0,0,0.75)" }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); dec(p.id); }}
                           className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
@@ -477,6 +479,25 @@ export default function RegisterPage() {
                           const prod = products.find(p => p.id === b.product_id);
                           return (
                             <div key={b.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
+                              {/* Top action bar — Mark Empty (shots > 0) OR Cancel (0 shots) */}
+                              {b.shots_sold > 0 ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
+                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
+                                  style={{ background: "#dc2626" }}
+                                >
+                                  Mark Empty
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCancelBottleId(b.id); }}
+                                  disabled={bottleBusy}
+                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
+                                  style={{ background: "#374151" }}
+                                >
+                                  ✕ Cancel
+                                </button>
+                              )}
                               {/* Tap image area to sell a shot */}
                               <button
                                 onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
@@ -484,32 +505,11 @@ export default function RegisterPage() {
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                                {/* Mark Empty — full-width overlay at top of image, only when 1+ shots */}
-                                {b.shots_sold > 0 && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
-                                    className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition z-10"
-                                    style={{ background: "#dc2626" }}
-                                  >
-                                    Mark Empty
-                                  </button>
-                                )}
                               </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
                                 <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
                               </div>
-                              {/* Cancel button — only for 0-shot bottles */}
-                              {b.shots_sold === 0 && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleCancelBottle(b.id); }}
-                                  disabled={bottleBusy}
-                                  className="w-full h-9 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40"
-                                  style={{ background: "#374151" }}
-                                >
-                                  ✕ Cancel
-                                </button>
-                              )}
                             </div>
                           );
                         })}
@@ -518,6 +518,7 @@ export default function RegisterPage() {
                   )}
 
                   {/* + Open New Bottle button */}
+                  <div className="pt-3">
                   <button
                     onClick={() => setShowNewBottleGrid(true)}
                     className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
@@ -525,6 +526,7 @@ export default function RegisterPage() {
                   >
                     + Open New Bottle
                   </button>
+                  </div>
                 </>
               ) : (
                 <>
@@ -692,6 +694,43 @@ export default function RegisterPage() {
                 style={{ background: "#dc2626" }}
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel Bottle Confirm Modal ──────────────────────────────────── */}
+      {cancelBottleId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-5 pt-6 pb-4 text-center">
+              <div className="text-3xl mb-2">🍾</div>
+              <div className="font-black text-base">Cancel Bottle?</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                This will remove the bottle and restore 1 to stock.
+              </div>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <button
+                onClick={() => setCancelBottleId(null)}
+                disabled={bottleBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40"
+              >
+                Keep
+              </button>
+              <button
+                onClick={async () => {
+                  const id = cancelBottleId;
+                  setCancelBottleId(null);
+                  await handleCancelBottle(id);
+                }}
+                disabled={bottleBusy}
+                className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
+                style={{ background: "#374151" }}
+              >
+                Cancel
               </button>
             </div>
           </div>

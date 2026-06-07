@@ -27,7 +27,7 @@ export type YTHistoryItem = {
 
 // ── History — stays in localStorage (per-device preference) ──────────────────
 const LS_HISTORY  = "yt_play_history";
-const DAILY_LIMIT = 75;
+const DAILY_LIMIT = 100;
 const HISTORY_MAX = 200;
 
 function loadHistory(): YTHistoryItem[] {
@@ -93,7 +93,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadQuota = async (uid: string) => {
       try {
-        ownerIdRef.current = uid;
         const { data } = await supabase.rpc("get_search_quota", { p_owner_id: uid });
         setQuotaCount(typeof data === "number" ? data : 0);
       } catch { /* RPC may not exist yet — fail silently */ }
@@ -101,12 +100,16 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
     // Get current session once on mount
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) loadQuota(data.session.user.id);
+      if (data.session?.user) {
+        ownerIdRef.current = data.session.user.id;
+        loadQuota(data.session.user.id);
+      }
     });
 
     // Re-load when user signs in/out
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) {
+        ownerIdRef.current = session.user.id;
         loadQuota(session.user.id);
       } else {
         ownerIdRef.current = null;
@@ -177,23 +180,27 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const search = useCallback(async (q: string) => {
     if (!q.trim()) return;
     const ownerId = ownerIdRef.current;
-    if (!ownerId) return;
 
-    // Check quota before calling
-    const { data: currentCount } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: 0 }));
-    const count = typeof currentCount === "number" ? currentCount : 0;
-    if (count >= DAILY_LIMIT) {
-      setSearchError(`Daily search limit reached (${DAILY_LIMIT}/day). Resets in ${searchResetTime}.`);
-      return;
+    // If we have an owner ID, check + track quota. Otherwise skip quota check and just search.
+    if (ownerId) {
+      // Check quota before calling
+      const { data: currentCount } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: 0 }));
+      const count = typeof currentCount === "number" ? currentCount : 0;
+      if (count >= DAILY_LIMIT) {
+        setSearchError(`Daily search limit reached (${DAILY_LIMIT}/day). Resets in ${searchResetTime}.`);
+        return;
+      }
     }
 
     setSearching(true);
     setSearchError(null);
     setResults([]);
 
-    // Increment in DB
-    const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: count + 1 }));
-    setQuotaCount(typeof newCount === "number" ? newCount : count + 1);
+    // Increment quota in DB (only when we have an owner ID)
+    if (ownerId) {
+      const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: null }));
+      if (typeof newCount === "number") setQuotaCount(newCount);
+    }
 
     const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const anonKey    = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -206,15 +213,19 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       const json = await res.json();
       if (!res.ok || json.error) {
         setSearchError(json.error ?? "Search failed");
-        await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
-        setQuotaCount(c => Math.max(0, c - 1));
+        if (ownerId) {
+          await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
+          setQuotaCount(c => Math.max(0, c - 1));
+        }
         return;
       }
       setResults(json.items ?? []);
     } catch {
       setSearchError("Could not reach search service");
-      await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
-      setQuotaCount(c => Math.max(0, c - 1));
+      if (ownerId) {
+        await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
+        setQuotaCount(c => Math.max(0, c - 1));
+      }
     } finally {
       setSearching(false);
     }

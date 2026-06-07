@@ -701,7 +701,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   const currentMonthTotal = currentMonthExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
   return (
-    <div className="space-y-5 pt-2">
+    <div className="space-y-5 pt-2 pb-24">
 
       {/* ── Setup / Initial Expense ───────────────────────────────────────── */}
       <div className="rounded-2xl border border-border p-4 space-y-3"
