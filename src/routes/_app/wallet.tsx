@@ -989,8 +989,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               if (isBottle) {
                 const noteParts = (tx.note ?? "").split(" | ");
                 const title = noteParts[0] ?? tx.note ?? "Bottle closed";
-                const sub1 = noteParts[1] ?? "";
-                const sub2 = noteParts[2] ?? "";
+                const sub1 = noteParts[1] ?? ""; // "Bottle price: $X"
+                const sub2 = noteParts[2] ?? ""; // "Shots revenue: $X"
+                // Parse bottle cost and shots revenue to compute gain/loss
+                const bottlePrice = parseFloat((sub1.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                const shotsRevenue = parseFloat((sub2.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                const diff = shotsRevenue - bottlePrice;
+                const hasNumbers = !isNaN(bottlePrice) && !isNaN(shotsRevenue) && (bottlePrice > 0 || shotsRevenue > 0);
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
@@ -1000,6 +1005,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
                       {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
                       {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
+                      {hasNumbers && (
+                        <div className="text-xs font-black mt-1" style={{ color: diff >= 0 ? "#86efac" : "#fca5a5" }}>
+                          {diff >= 0
+                            ? `Gain: +$${diff.toFixed(2)}`
+                            : `Loss: -$${Math.abs(diff).toFixed(2)}`}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1117,7 +1129,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {/* Total Expenses */}
-              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <TrendingDown className="h-3 w-3" /> Expenses
                 </div>
@@ -1127,7 +1139,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               </div>
 
               {/* Net Profit */}
-              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <TrendingUp className="h-3 w-3" /> Net Profit
                 </div>

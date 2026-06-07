@@ -616,9 +616,9 @@ export default function MusicPage() {
 
               {/* Quota */}
               <div className="flex items-center justify-between px-1">
-                <span className="text-white/30 text-xs">
+                <span className="text-xs">
                   {yt.searchesRemaining > 0
-                    ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span> searches left today</>
+                    ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-green-400"}`}>{yt.searchesRemaining}</span><span className="text-green-400"> searches left today</span></>
                     : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
                   }
                 </span>
@@ -652,12 +652,15 @@ export default function MusicPage() {
               {/* ── Results sub-tab ── */}
               {ytSubTab === "results" && (
                 <>
+                  {/* Searching spinner */}
                   {yt.searching && (
                     <div className="flex items-center justify-center py-10 gap-3 text-white/40">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span className="text-sm">Searching…</span>
                     </div>
                   )}
+
+                  {/* Search error */}
                   {yt.searchError && !yt.searching && (
                     <div className="rounded-xl p-4 text-center"
                       style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
@@ -665,18 +668,15 @@ export default function MusicPage() {
                       <p className="text-white/50 text-xs mt-1">{yt.searchError}</p>
                     </div>
                   )}
+
+                  {/* Quick Play — shown when no results yet */}
                   {!yt.searching && yt.results.length === 0 && !yt.searchError && (
                     <div>
                       <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Quick Play</p>
                       <div className="grid grid-cols-2 gap-2">
                         {QUICK_SEARCHES.map(({ label, q }) => (
                           <button key={q}
-                            onClick={() => {
-                              setSearchInput(q);
-                              yt.setQuery(q);
-                              yt.search(q);
-                              setYtSubTab("results");
-                            }}
+                            onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); setYtSubTab("results"); }}
                             className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
                             style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                             {label}
@@ -685,6 +685,8 @@ export default function MusicPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Results list */}
                   {!yt.searching && yt.results.length > 0 && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between mb-1">
