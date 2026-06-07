@@ -1099,10 +1099,6 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   return (
     <div className="space-y-5">
-      {/* Sticky title */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">Wallet</h1>
-      </div>
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="rounded-3xl p-5 relative overflow-hidden"
@@ -1111,8 +1107,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         <div className="relative space-y-4">
           {/* Title row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>
-              <WalletIcon className="h-4 w-4" /> Owner Account
+            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "rgba(0,0,0,0.75)" }}>
+              <WalletIcon className="h-4 w-4" /> Owner Wallet
             </div>
             <button onClick={() => setShowStatement(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
