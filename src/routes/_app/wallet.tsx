@@ -52,6 +52,9 @@ const TX_PAGE_SIZE = 100;
 const ORDERS_PAGE_SIZE = 200;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmt(n: number): string {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 function monthKey(date: string) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -124,7 +127,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
             <WalletIcon className="h-4 w-4" /> Wallet Balance
           </div>
           <div className="text-4xl sm:text-6xl font-black text-primary-foreground mt-2 tracking-tight">
-            ${Number(profile.wallet_balance).toFixed(2)}
+            ${fmt(Number(profile.wallet_balance))}
           </div>
           <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
         </div>
@@ -148,13 +151,13 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                     <Receipt className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
                   </div>
-                  <div className="font-black text-primary text-lg shrink-0 ml-2">${Number(o.total).toFixed(2)}</div>
+                  <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
                 </div>
                 <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
                   {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Paid ${Number(o.paid).toFixed(2)} · Change ${Number(o.change_given).toFixed(2)}
+                  Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                 </div>
               </div>
             ))}
@@ -232,10 +235,10 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(100, 70, 10);
       doc.text("PERIOD SUMMARY", boxX + 3, y + 5);
       const cols = [
-        { label: "Opening Balance", value: "$" + openingBalance.toFixed(2) },
-        { label: "Total Cleared", value: "$" + totalCleared.toFixed(2) },
-        { label: "Total Resets", value: "$" + totalResets.toFixed(2) },
-        { label: "Closing Balance", value: "$" + closingBalance.toFixed(2) },
+        { label: "Opening Balance", value: "$" + fmt(openingBalance) },
+        { label: "Total Cleared", value: "$" + fmt(totalCleared) },
+        { label: "Total Resets", value: "$" + fmt(totalResets) },
+        { label: "Closing Balance", value: "$" + fmt(closingBalance) },
       ];
       const colW = boxW / cols.length;
       cols.forEach((col, i) => {
@@ -326,7 +329,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                       onClick={() => setSelectedMonth(isOpen ? null : month)}>
                       <span className="font-black text-sm">{month}</span>
                       <div className="flex items-center gap-3">
-                        <span className="font-black text-primary">${monthTotal.toFixed(2)}</span>
+                        <span className="font-black text-primary">${fmt(monthTotal)}</span>
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" type="button"
                           disabled={downloadingMonth === month}
                           onClick={(e) => { e.stopPropagation(); handleDownload(month); }}>
@@ -363,13 +366,13 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
                                   <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB")}</span>
                                 </div>
-                                <span className="font-black text-primary text-sm ml-2">${Number(o.total).toFixed(2)}</span>
+                                <span className="font-black text-primary text-sm ml-2">${fmt(Number(o.total))}</span>
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
                                 {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
                               </div>
                               <div className="mt-0.5 text-xs text-muted-foreground">
-                                Paid ${Number(o.paid).toFixed(2)} · Change ${Number(o.change_given).toFixed(2)}
+                                Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                               </div>
                             </div>
                           );
@@ -615,9 +618,9 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       doc.text("MONTHLY SUMMARY", boxX + 3, y + 5);
 
       const cols = [
-        { label: "Total Income",   value: "$" + mIncome.toFixed(2)   },
-        { label: "Total Expenses", value: "$" + mExpTotal.toFixed(2) },
-        { label: "Net Profit",     value: (mNet >= 0 ? "+" : "") + "$" + mNet.toFixed(2) },
+        { label: "Total Income",   value: "$" + fmt(mIncome)   },
+        { label: "Total Expenses", value: "$" + fmt(mExpTotal) },
+        { label: "Net Profit",     value: (mNet >= 0 ? "+" : "") + "$" + fmt(mNet) },
       ];
       const colW = boxW / cols.length;
       cols.forEach((col, i) => {
@@ -668,13 +671,13 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.5); doc.line(LM, y, RM, y); y += 5;
       doc.setTextColor(100, 70, 10);
       doc.text("TOTAL EXPENSES", LM, y);
-      doc.text("$" + mExpTotal.toFixed(2), RM, y, { align: "right" }); y += 6;
+      doc.text("$" + fmt(mExpTotal), RM, y, { align: "right" }); y += 6;
       doc.text("TOTAL INCOME", LM, y);
       doc.setTextColor(40, 140, 40);
-      doc.text("$" + mIncome.toFixed(2), RM, y, { align: "right" }); y += 6;
+      doc.text("$" + fmt(mIncome), RM, y, { align: "right" }); y += 6;
       doc.text("NET PROFIT", LM, y);
       doc.setTextColor(mNet >= 0 ? 40 : 180, mNet >= 0 ? 140 : 40, 40);
-      doc.text((mNet >= 0 ? "+" : "") + "$" + mNet.toFixed(2), RM, y, { align: "right" });
+      doc.text((mNet >= 0 ? "+" : "") + "$" + fmt(mNet), RM, y, { align: "right" });
 
       addFootersToAllPages(doc);
       const filename = `expense-report-${label.replace(/\s/g, "-")}.pdf`;
@@ -719,7 +722,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
           <div className="flex items-center gap-2">
             <span className="font-black text-primary text-base">
               {financials && Number(financials.initial_expense) > 0
-                ? `$${Number(financials.initial_expense).toFixed(2)}`
+                ? `$${fmt(Number(financials.initial_expense))}`
                 : "Not set"}
             </span>
             <button
@@ -791,7 +794,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
               {currentMonthTotal > 0 && (
                 <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2.5">
                   <span className="text-sm text-red-300">This month's expenses</span>
-                  <span className="font-black text-red-400">${currentMonthTotal.toFixed(2)}</span>
+                  <span className="font-black text-red-400">${fmt(currentMonthTotal)}</span>
                 </div>
               )}
               <div className="space-y-2">
@@ -848,7 +851,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                     <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-black text-red-400">${mTotal.toFixed(2)}</span>
+                    <span className="font-black text-red-400">${fmt(mTotal)}</span>
                     <Button
                       size="sm" variant="outline"
                       className="h-7 text-xs gap-1"
@@ -869,7 +872,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                       <div key={e.id} className="px-4 py-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">${Number(e.amount).toFixed(2)}</span>
+                            <span className="font-semibold text-sm">${fmt(Number(e.amount))}</span>
                             {e.description && (
                               <span className="text-xs text-muted-foreground truncate">· {e.description}</span>
                             )}
@@ -1008,7 +1011,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       {hasNumbers && (
                         <div className="text-xs font-black mt-1" style={{ color: diff >= 0 ? "#86efac" : "#fca5a5" }}>
                           {diff >= 0
-                            ? `Gain: +$${diff.toFixed(2)}`
+                            ? `Gain: +$${fmt(diff)}`
                             : `Loss: -$${Math.abs(diff).toFixed(2)}`}
                         </div>
                       )}
@@ -1030,7 +1033,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     </div>
                   </div>
                   <div className={`font-black text-lg shrink-0 ${isReset ? "text-orange-400" : "text-green-400"}`}>
-                    {isReset ? `-$${Math.abs(Number(tx.amount)).toFixed(2)}` : `+$${Number(tx.amount).toFixed(2)}`}
+                    {isReset ? `-$${Math.abs(Number(tx.amount)).toFixed(2)}` : `+$${fmt(Number(tx.amount))}`}
                   </div>
                 </div>
               );
@@ -1043,13 +1046,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     <Receipt className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
                   </div>
-                  <div className="font-black text-primary text-lg shrink-0 ml-2">${Number(o.total).toFixed(2)}</div>
+                  <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
                 </div>
                 <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
                   {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Paid ${Number(o.paid).toFixed(2)} · Change ${Number(o.change_given).toFixed(2)}
+                  Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                 </div>
               </div>
             );
@@ -1156,7 +1159,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   <TrendingDown className="h-3 w-3" /> Expenses
                 </div>
                 <div className="font-black text-sm leading-tight" style={{ color: hasFinancials ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {hasFinancials ? `$${totalExpenses.toFixed(2)}` : "—"}
+                  {hasFinancials ? `$${fmt(totalExpenses)}` : "—"}
                 </div>
               </div>
 
@@ -1171,7 +1174,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                     : "#fca5a5"
                 }}>
                   {hasFinancials
-                    ? `${netProfit >= 0 ? "+" : ""}$${netProfit.toFixed(2)}`
+                    ? `${netProfit >= 0 ? "+" : ""}$${fmt(netProfit)}`
                     : "—"}
                 </div>
               </div>
@@ -1183,8 +1186,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
               <BarChart3 className="h-3.5 w-3.5" /> Total Stock Resale Value
             </div>
-            <span className="font-black text-sm" style={{ color: "oklch(0.80 0.16 145)" }}>
-              ${stockResaleValue.toFixed(2)}
+            <span className="font-black text-sm" style={{ color: "#eab308" }}>
+              ${fmt(stockResaleValue)}
             </span>
           </div>
 
@@ -1193,7 +1196,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
               <DollarSign className="h-3.5 w-3.5" /> Income
             </div>
-            <span className="font-black text-sm" style={{ color: "oklch(0.88 0.16 65)" }}>${totalIncome.toFixed(2)}</span>
+            <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
           </div>
         </div>
       </section>
@@ -1245,3 +1248,4 @@ export default function WalletPage() {
   if (profile.role === "owner") return <OwnerWallet profile={profile} />;
   return <CashierWallet profile={profile} />;
 }
+

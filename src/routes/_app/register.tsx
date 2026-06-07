@@ -912,12 +912,25 @@ function CashOverlay({
                         </Button>
                       </div>
                       {/* Price + controls row */}
-                      <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center justify-between mt-3">
                         <div className="font-black text-primary text-base">${(i.qty * Number(i.price)).toFixed(2)}</div>
-                        <div className="flex items-center gap-1.5">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onDec(i.id)}><Minus className="h-3.5 w-3.5" /></Button>
-                          <span className="w-6 text-center text-sm font-black">{i.qty}</span>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onAdd(i)}><Plus className="h-3.5 w-3.5" /></Button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => onDec(i.id)}
+                            className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
+                            style={{ background: "#ef4444" }}>
+                            <Minus className="h-4 w-4 text-black" />
+                          </button>
+                          <div className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-black text-white"
+                            style={{ background: "#1a1a1a" }}>
+                            {i.qty}
+                          </div>
+                          <button
+                            onClick={() => onAdd(i)}
+                            className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
+                            style={{ background: "var(--gradient-hero)" }}>
+                            <Plus className="h-4 w-4 text-black" />
+                          </button>
                         </div>
                       </div>
                       {/* Unit price */}
