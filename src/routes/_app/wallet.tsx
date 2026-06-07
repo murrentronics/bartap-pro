@@ -5,7 +5,7 @@ import {
   Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
   ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X,
   TrendingUp, TrendingDown, DollarSign, PlusCircle, ChevronDown,
-  BarChart3, List, Calculator,
+  BarChart3, List, Calculator, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -387,33 +387,136 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   );
 }
 
+// ─── In-App Number Pad ────────────────────────────────────────────────────────
+function NumPad({
+  value,
+  onChange,
+  onDone,
+  onCancel,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onDone: () => void;
+  onCancel: () => void;
+  label?: string;
+}) {
+  const press = (key: string) => {
+    if (key === "⌫") {
+      onChange(value.slice(0, -1));
+    } else if (key === ".") {
+      if (!value.includes(".")) onChange(value + ".");
+    } else {
+      // Prevent more than 2 decimal places
+      const parts = value.split(".");
+      if (parts[1] !== undefined && parts[1].length >= 2) return;
+      onChange(value + key);
+    }
+  };
+
+  const display = value === "" ? "0" : value;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onCancel}>
+      <div
+        className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+        style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Label */}
+        {label && (
+          <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>{label}</p>
+        )}
+
+        {/* Display */}
+        <div className="rounded-2xl px-5 py-4 text-right"
+          style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+          <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+            ${display}
+          </span>
+        </div>
+
+        {/* Keys */}
+        <div className="grid grid-cols-3 gap-2">
+          {["7","8","9","4","5","6","1","2","3"].map(k => (
+            <button key={k} onClick={() => press(k)}
+              className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+              style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+              {k}
+            </button>
+          ))}
+          <button onClick={() => press(".")}
+            className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+            style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+            .
+          </button>
+          <button onClick={() => press("0")}
+            className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+            style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+            0
+          </button>
+          <button onClick={() => press("⌫")}
+            className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+            style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
+            ⌫
+          </button>
+        </div>
+
+        {/* Done */}
+        <button onClick={onDone}
+          className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition"
+          style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Financials Tab ───────────────────────────────────────────────────────────
-function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome: number }) {
+function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string; totalIncome: number; onDataChange?: () => void }) {
   const [financials, setFinancials] = useState<OwnerFinancials | null>(null);
   const [expenses, setExpenses] = useState<OwnerExpense[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
 
-  // Setup form
+  // Initial expense
+  const [editingInitial, setEditingInitial] = useState(false);
   const [initialInput, setInitialInput] = useState("");
+  const [showInitialPad, setShowInitialPad] = useState(false);
   const [savingInitial, setSavingInitial] = useState(false);
 
   // Monthly expense form
   const [expAmount, setExpAmount] = useState("");
   const [expDesc, setExpDesc] = useState("");
   const [expDate, setExpDate] = useState(todayISO());
+  const [showExpPad, setShowExpPad] = useState(false);
   const [savingExp, setSavingExp] = useState(false);
+
+  // Add expense form open/closed
+  const [expFormOpen, setExpFormOpen] = useState(false);
 
   // Accordion
   const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
-    const [finRes, expRes] = await Promise.all([
+    const [finRes, expRes, ordRes] = await Promise.all([
       sb.from("owner_financials").select("*").eq("owner_id", ownerId).maybeSingle(),
       sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
+      supabase.from("orders").select("total, created_at").eq("cashier_id", ownerId),
     ]);
     setFinancials(finRes.data as OwnerFinancials | null);
     setExpenses((expRes.data ?? []) as OwnerExpense[]);
+    // Build per-month income map
+    const incomeMap: Record<string, number> = {};
+    for (const o of (ordRes.data ?? []) as { total: number; created_at: string }[]) {
+      const mk = monthKey(o.created_at);
+      incomeMap[mk] = (incomeMap[mk] ?? 0) + Number(o.total);
+    }
+    setMonthlyIncome(incomeMap);
     setLoadingData(false);
   }, [ownerId]);
 
@@ -450,8 +553,10 @@ function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome:
     }
     setSavingInitial(false);
     setInitialInput("");
+    setEditingInitial(false);
     toast.success("Initial expense saved");
-    loadData();
+    await loadData();
+    onDataChange?.();
   };
 
   const handleSaveExpense = async () => {
@@ -471,16 +576,116 @@ function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome:
     setExpDesc("");
     setExpDate(todayISO());
     toast.success("Expense recorded");
-    // Auto-open the month that was just entered
     setOpenMonth(monthKey(expDate));
-    loadData();
+    await loadData();
+    onDataChange?.();
   };
 
   const handleDeleteExpense = async (id: string) => {
     const { error } = await sb.from("owner_expenses").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Expense removed");
-    loadData();
+    await loadData();
+    onDataChange?.();
+  };
+
+  const handleDownloadExpenseSheet = async (mk: string) => {
+    if (downloadingMonth) return;
+    setDownloadingMonth(mk);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const label = monthLabel(mk);
+      const generated = new Date().toLocaleString("en-GB");
+
+      const mExpenses = expensesByMonth[mk] ?? [];
+      const mExpTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
+      const mIncome   = monthlyIncome[mk] ?? 0;
+      const mNet      = mIncome - mExpTotal;
+
+      let y = await drawHeader(doc, "Owner Financials", "Expense Report", label, generated);
+
+      // ── Summary box ──────────────────────────────────────────────────────
+      const boxX = LM; const boxW = RM - LM; const boxH = 28;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+      doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "S");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(100, 70, 10);
+      doc.text("MONTHLY SUMMARY", boxX + 3, y + 5);
+
+      const cols = [
+        { label: "Total Income",   value: "$" + mIncome.toFixed(2)   },
+        { label: "Total Expenses", value: "$" + mExpTotal.toFixed(2) },
+        { label: "Net Profit",     value: (mNet >= 0 ? "+" : "") + "$" + mNet.toFixed(2) },
+      ];
+      const colW = boxW / cols.length;
+      cols.forEach((col, i) => {
+        const cx = boxX + i * colW + colW / 2;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+        doc.text(col.label, cx, y + 13, { align: "center" });
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+        if (col.label === "Net Profit") {
+          doc.setTextColor(mNet >= 0 ? 40 : 180, mNet >= 0 ? 140 : 40, 40);
+        } else if (col.label === "Total Expenses") {
+          doc.setTextColor(180, 40, 40);
+        } else {
+          doc.setTextColor(30, 30, 30);
+        }
+        doc.text(col.value, cx, y + 21, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0); y += boxH + 5;
+
+      // ── Column headers ────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
+      doc.text("DATE / DESCRIPTION", LM, y);
+      doc.text("AMOUNT", RM, y, { align: "right" }); y += 3;
+      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+
+      // ── Rows ─────────────────────────────────────────────────────────────
+      mExpenses.forEach((e) => {
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+          day: "numeric", month: "short", year: "numeric",
+        });
+        doc.setFont("helvetica", "bold");
+        doc.text(dateStr, LM, y);
+        doc.setTextColor(180, 40, 40);
+        doc.text("$" + Number(e.amount).toFixed(2), RM, y, { align: "right" });
+        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 5;
+        if (e.description) {
+          doc.setTextColor(100, 100, 100); doc.setFontSize(8);
+          doc.text("  " + e.description, LM, y);
+          doc.setTextColor(0, 0, 0); doc.setFontSize(9); y += 4;
+        }
+        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
+      });
+
+      // ── Totals footer ─────────────────────────────────────────────────────
+      y += 2;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.5); doc.line(LM, y, RM, y); y += 5;
+      doc.setTextColor(100, 70, 10);
+      doc.text("TOTAL EXPENSES", LM, y);
+      doc.text("$" + mExpTotal.toFixed(2), RM, y, { align: "right" }); y += 6;
+      doc.text("TOTAL INCOME", LM, y);
+      doc.setTextColor(40, 140, 40);
+      doc.text("$" + mIncome.toFixed(2), RM, y, { align: "right" }); y += 6;
+      doc.text("NET PROFIT", LM, y);
+      doc.setTextColor(mNet >= 0 ? 40 : 180, mNet >= 0 ? 140 : 40, 40);
+      doc.text((mNet >= 0 ? "+" : "") + "$" + mNet.toFixed(2), RM, y, { align: "right" });
+
+      addFootersToAllPages(doc);
+      const filename = `expense-report-${label.replace(/\s/g, "-")}.pdf`;
+      await downloadPdf(filename, doc.output("datauristring"));
+      toast.success("PDF saved to Downloads folder");
+    } catch (err: any) {
+      console.error("Expense PDF error:", err);
+      toast.error("Download failed: " + (err?.message ?? "unknown error"));
+    } finally {
+      setDownloadingMonth(null);
+    }
   };
 
   if (loadingData) {
@@ -501,86 +706,127 @@ function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome:
       {/* ── Setup / Initial Expense ───────────────────────────────────────── */}
       <div className="rounded-2xl border border-border p-4 space-y-3"
         style={{ background: "var(--gradient-card)" }}>
-        <div className="flex items-center gap-2">
-          <Calculator className="h-4 w-4 text-primary" />
-          <h3 className="font-black text-sm">Initial Bar Setup Cost</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-primary" />
+            <h3 className="font-black text-sm">Initial Bar Setup Cost</h3>
+          </div>
         </div>
-        {financials && Number(financials.initial_expense) > 0 && (
-          <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">Current initial expense</span>
-            <span className="font-black text-primary">${Number(financials.initial_expense).toFixed(2)}</span>
+
+        {/* Show current value with Edit button — no edit form by default */}
+        <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
+          <span className="text-sm text-muted-foreground">Initial expense</span>
+          <div className="flex items-center gap-2">
+            <span className="font-black text-primary text-base">
+              {financials && Number(financials.initial_expense) > 0
+                ? `$${Number(financials.initial_expense).toFixed(2)}`
+                : "Not set"}
+            </span>
+            <button
+              onClick={() => {
+                setInitialInput(financials ? String(financials.initial_expense) : "");
+                setEditingInitial(true);
+                setShowInitialPad(true);
+              }}
+              className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary/15 hover:bg-primary/25 transition active:scale-95"
+              title="Edit initial expense">
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+            </button>
+          </div>
+        </div>
+
+        {!financials && (
+          <p className="text-xs text-muted-foreground">
+            Tap the edit button to enter the total cost of all items currently stocked in your bar.
+          </p>
+        )}
+
+        {/* Inline edit form — only shows when editing */}
+        {editingInitial && (
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+              <input
+                readOnly
+                value={initialInput}
+                onFocus={() => setShowInitialPad(true)}
+                onClick={() => setShowInitialPad(true)}
+                placeholder="0.00"
+                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+              />
+            </div>
+            <Button onClick={handleSaveInitial} disabled={savingInitial || !initialInput} className="shrink-0">
+              {savingInitial ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+            <Button variant="ghost" onClick={() => { setEditingInitial(false); setInitialInput(""); }} className="shrink-0 px-2">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
-          {financials && Number(financials.initial_expense) > 0
-            ? "Update the total cost of all items currently in your bar."
-            : "Enter the total cost of all items currently stocked in your bar. This sets your initial expense baseline."}
-        </p>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
-            <input
-              type="number" min="0" step="0.01"
-              placeholder="0.00"
-              value={initialInput}
-              onChange={(e) => setInitialInput(e.target.value)}
-              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </div>
-          <Button onClick={handleSaveInitial} disabled={savingInitial || !initialInput} className="shrink-0">
-            {savingInitial ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-          </Button>
-        </div>
       </div>
 
       {/* ── This Month's Expenses ─────────────────────────────────────────── */}
       {financials !== null && (
-        <div className="rounded-2xl border border-border p-4 space-y-3"
+        <div className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}>
-          <div className="flex items-center justify-between">
+          {/* Header row — always visible, click to toggle form */}
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+            onClick={() => setExpFormOpen(o => !o)}>
             <div className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4 text-primary" />
               <h3 className="font-black text-sm">Add Expense</h3>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-            </span>
-          </div>
-          {currentMonthTotal > 0 && (
-            <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2.5">
-              <span className="text-sm text-red-300">This month's expenses</span>
-              <span className="font-black text-red-400">${currentMonthTotal.toFixed(2)}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expFormOpen ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+
+          {/* Collapsible form body */}
+          {expFormOpen && (
+            <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+              {currentMonthTotal > 0 && (
+                <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2.5">
+                  <span className="text-sm text-red-300">This month's expenses</span>
+                  <span className="font-black text-red-400">${currentMonthTotal.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                {/* Amount — taps open numpad */}
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold pointer-events-none">$</span>
+                  <input
+                    readOnly
+                    value={expAmount}
+                    onClick={() => setShowExpPad(true)}
+                    placeholder="Total purchase amount"
+                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none cursor-pointer"
+                    style={{ caretColor: "transparent" }}
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={expDesc}
+                  onChange={(e) => setExpDesc(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <input
+                  type="date"
+                  value={expDate}
+                  onChange={(e) => setExpDate(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <Button onClick={handleSaveExpense} disabled={savingExp || !expAmount} className="w-full">
+                {savingExp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+                Record Expense
+              </Button>
             </div>
           )}
-          <div className="space-y-2">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
-              <input
-                type="number" min="0" step="0.01"
-                placeholder="Total purchase amount"
-                value={expAmount}
-                onChange={(e) => setExpAmount(e.target.value)}
-                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
-            <input
-              type="text"
-              placeholder="Description (optional)"
-              value={expDesc}
-              onChange={(e) => setExpDesc(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <input
-              type="date"
-              value={expDate}
-              onChange={(e) => setExpDate(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </div>
-          <Button onClick={handleSaveExpense} disabled={savingExp || !expAmount} className="w-full">
-            {savingExp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
-            Record Expense
-          </Button>
         </div>
       )}
 
@@ -603,6 +849,17 @@ function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome:
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-black text-red-400">${mTotal.toFixed(2)}</span>
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs gap-1"
+                      type="button"
+                      disabled={downloadingMonth === mk}
+                      onClick={(e) => { e.stopPropagation(); handleDownloadExpenseSheet(mk); }}>
+                      {downloadingMonth === mk
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <Download className="h-3 w-3" />}
+                      {downloadingMonth === mk ? "…" : "PDF"}
+                    </Button>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   </div>
                 </button>
@@ -642,8 +899,28 @@ function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome:
       {/* Empty state */}
       {financials === null && (
         <p className="text-center text-sm text-muted-foreground py-4">
-          Set your initial bar cost above to start tracking your financials.
+          Tap the edit button on Initial Bar Setup Cost to start tracking your financials.
         </p>
+      )}
+
+      {/* ── Number Pads ──────────────────────────────────────────────────── */}
+      {showInitialPad && (
+        <NumPad
+          label="Initial Bar Setup Cost"
+          value={initialInput}
+          onChange={setInitialInput}
+          onDone={() => setShowInitialPad(false)}
+          onCancel={() => setShowInitialPad(false)}
+        />
+      )}
+      {showExpPad && (
+        <NumPad
+          label="Expense Amount"
+          value={expAmount}
+          onChange={setExpAmount}
+          onDone={() => setShowExpPad(false)}
+          onCancel={() => setShowExpPad(false)}
+        />
       )}
     </div>
   );
@@ -822,7 +1099,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         <div className="relative space-y-4">
           {/* Title row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
+            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>
               <WalletIcon className="h-4 w-4" /> Owner Account
             </div>
             <button onClick={() => setShowStatement(true)}
@@ -841,34 +1118,34 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-3 gap-2">
               {/* Total Income */}
               <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <DollarSign className="h-3 w-3" /> Income
                 </div>
-                <div className="text-primary-foreground font-black text-base leading-tight">
+                <div className="font-black text-sm leading-tight" style={{ color: "oklch(0.88 0.16 65)" }}>
                   ${totalIncome.toFixed(2)}
                 </div>
               </div>
 
               {/* Total Expenses */}
               <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <TrendingDown className="h-3 w-3" /> Expenses
                 </div>
-                <div className="font-black text-base leading-tight text-red-300">
+                <div className="font-black text-sm leading-tight" style={{ color: hasFinancials ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                   {hasFinancials ? `$${totalExpenses.toFixed(2)}` : "—"}
                 </div>
               </div>
 
               {/* Net Profit */}
               <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <TrendingUp className="h-3 w-3" /> Net Profit
                 </div>
-                <div className={`font-black text-base leading-tight ${
-                  !hasFinancials ? "text-primary-foreground/40"
-                  : netProfit >= 0 ? "text-green-300"
-                  : "text-red-400"
-                }`}>
+                <div className="font-black text-sm leading-tight" style={{
+                  color: !hasFinancials ? "rgba(255,255,255,0.3)"
+                    : netProfit >= 0 ? "#86efac"
+                    : "#fca5a5"
+                }}>
                   {hasFinancials
                     ? `${netProfit >= 0 ? "+" : ""}$${netProfit.toFixed(2)}`
                     : "—"}
@@ -879,8 +1156,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
           {/* Live wallet balance (current uncleared amount) */}
           <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-            <span className="text-primary-foreground/70 text-xs font-semibold">Available Balance</span>
-            <span className="font-black text-primary-foreground text-sm">${balance.toFixed(2)}</span>
+            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Available Balance</span>
+            <span className="font-black text-sm" style={{ color: "oklch(0.88 0.16 65)" }}>${balance.toFixed(2)}</span>
           </div>
         </div>
       </section>
@@ -914,6 +1191,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         <FinancialsTab
           ownerId={profile.id}
           totalIncome={totalIncome}
+          onDataChange={loadSummary}
         />
       )}
 

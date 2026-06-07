@@ -46,6 +46,9 @@ public class MainActivity extends BridgeActivity {
         Window window = getWindow();
         View decorView = window.getDecorView();
 
+        // Keep screen on — prevents sleep while app is in foreground
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         // Draw edge-to-edge — app content goes behind status bar AND nav bar
         WindowCompat.setDecorFitsSystemWindows(window, false);
 

@@ -55,7 +55,10 @@ export default function MusicPage() {
   const yt           = useYouTube();
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
-  const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
+  const [ytSubTab, setYtSubTab]       = useState<"results" | "history">(yt.results.length > 0 ? "results" : "results");
+
+  // Keep local searchInput in sync when yt.query is cleared externally
+  useEffect(() => { setSearchInput(yt.query); }, [yt.query]);
   // Use context-persisted tab so returning to /music lands on same tab
   const lastMainTab    = yt.lastMusicTab;
   const setLastMainTab = yt.setLastMusicTab;
@@ -67,30 +70,8 @@ export default function MusicPage() {
 
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const wakeLockRef    = useRef<any>(null);
 
-  // ── Keep screen awake the entire time this page is open ──────────────────
-  useEffect(() => {
-    const acquire = async () => {
-      try {
-        if (wakeLockRef.current) {
-          await wakeLockRef.current.release().catch(() => {});
-          wakeLockRef.current = null;
-        }
-        if ("wakeLock" in navigator) {
-          wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
-        }
-      } catch { /* not supported */ }
-    };
-    acquire();
-    const onVisible = () => { if (document.visibilityState === "visible") acquire(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      wakeLockRef.current?.release().catch(() => {});
-      wakeLockRef.current = null;
-    };
-  }, []);
+  // Screen kept awake natively via FLAG_KEEP_SCREEN_ON in MainActivity.java
 
   useEffect(() => {
     if (profile && profile.role !== "owner") {
@@ -106,8 +87,10 @@ export default function MusicPage() {
 
   const handleSearch = () => {
     if (!searchInput.trim()) return;
+    if (yt.searchesRemaining === 0) return;
     yt.setQuery(searchInput);
     yt.search(searchInput);
+    setYtSubTab("results");
   };
 
   const playResult = (item: { id: string; kind: string; title: string; channel?: string; thumbnail?: string }) => {
@@ -167,47 +150,45 @@ export default function MusicPage() {
 
         {/* No overlay — YouTube native controls are fully accessible */}
 
-        {/* ── Pixel covers over YouTube chrome buttons only ──────────────────
-            These transparent divs sit exactly over the YouTube UI buttons
-            that would open external apps or trigger unwanted actions.
-            The center video area and play/pause button remain fully tappable. */}
-        {!searchOpen && (
-          <>
-            {/* ── TOP COVER: solid black over YouTube title/channel/icons ── */}
-            <div style={{
-              position: "fixed",
-              top: "calc(44px + env(safe-area-inset-top, 0px))",
-              left: 0, right: 0, height: 220,
-              zIndex: 36, background: "#000", pointerEvents: "auto",
-              display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
-            }}>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 18, flexShrink: 0, marginTop: 2 }}>
-                {[0,1,2,3].map((b) => (
-                  <div key={b} style={{
-                    width: 3, borderRadius: 2, background: "#ef4444",
-                    height: "100%",
-                    animation: `musicBar ${0.35 + b * 0.12}s ease-in-out infinite alternate`,
-                    animationDelay: `${b * 0.08}s`,
-                  }} />
-                ))}
-              </div>
-              <span style={{
-                color: "#fff", fontSize: 12, fontWeight: 800,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-              }}>
-                {yt.nowPlayingTitle || "Playing…"}
-              </span>
+        {/* ── TOP COVER: always visible — blocks YouTube title/channel/settings icons
+            whether the search panel is open or not. pointerEvents blocks taps too. */}
+        <div style={{
+          position: "fixed",
+          top: "calc(44px + env(safe-area-inset-top, 0px))",
+          left: 0, right: 0, height: 220,
+          zIndex: 37, background: "#000", pointerEvents: "auto",
+          display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+        }}>
+          {/* Animated bars — only show when search panel is closed */}
+          {!searchOpen && (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 18, flexShrink: 0, marginTop: 2 }}>
+              {[0,1,2,3].map((b) => (
+                <div key={b} style={{
+                  width: 3, borderRadius: 2, background: "#ef4444",
+                  height: "100%",
+                  animation: `musicBar ${0.35 + b * 0.12}s ease-in-out infinite alternate`,
+                  animationDelay: `${b * 0.08}s`,
+                }} />
+              ))}
             </div>
+          )}
+          {!searchOpen && (
+            <span style={{
+              color: "#fff", fontSize: 12, fontWeight: 800,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+            }}>
+              {yt.nowPlayingTitle || "Playing…"}
+            </span>
+          )}
+        </div>
 
-            {/* ── BOTTOM COVER: buries YouTube's entire controls strip ─────────
-                Covers the full black area below the video: time, progress bar,
-                fullscreen button — all of it. Leave it solid black.          */}
-            <div style={{
-              position: "fixed",
-              bottom: 56, left: 0, right: 0, height: 100,
-              zIndex: 36, background: "#000", pointerEvents: "auto",
-            }} />
-          </>
+        {/* ── BOTTOM COVER: only needed when search panel is closed ── */}
+        {!searchOpen && (
+          <div style={{
+            position: "fixed",
+            bottom: 56, left: 0, right: 0, height: 100,
+            zIndex: 36, background: "#000", pointerEvents: "auto",
+          }} />
         )}
 
         {/* Search panel — slides in over the iframe when searchOpen */}
@@ -245,7 +226,7 @@ export default function MusicPage() {
                 {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </button>
               <button
-                onClick={() => { yt.setQuery(""); setSearchOpen(false); }}
+                onClick={() => { yt.setQuery(""); yt.clearResults(); setSearchOpen(false); }}
                 className="h-10 px-3 rounded-xl text-white/60 hover:text-white transition shrink-0"
                 style={{ background: "rgba(255,255,255,0.06)" }}
               >
@@ -286,7 +267,7 @@ export default function MusicPage() {
               )}
               {!yt.searching && yt.results.length > 0 && (
                 <div className="space-y-1">
-                  {yt.results.slice(1).map(item => (
+                  {yt.results.map(item => (
                     <button key={item.id}
                       onClick={() => { playResult(item); setSearchOpen(false); yt.setQuery(""); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
@@ -701,7 +682,12 @@ export default function MusicPage() {
                       <div className="grid grid-cols-2 gap-2">
                         {QUICK_SEARCHES.map(({ label, q }) => (
                           <button key={q}
-                            onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); setYtSubTab("results"); }}
+                            onClick={() => {
+                              setSearchInput(q);
+                              yt.setQuery(q);
+                              yt.search(q);
+                              setYtSubTab("results");
+                            }}
                             className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
                             style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                             {label}
@@ -716,12 +702,12 @@ export default function MusicPage() {
                         <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
                           Results for "{yt.query}"
                         </p>
-                        <button onClick={() => { yt.setQuery(""); setSearchInput(""); }}
+                        <button onClick={() => { yt.setQuery(""); setSearchInput(""); yt.clearResults(); }}
                           className="text-white/30 hover:text-white/60 transition">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      {yt.results.slice(1).map(item => (
+                      {yt.results.map(item => (
                         <button key={item.id} onClick={() => playResult(item)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
                             yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
