@@ -492,12 +492,12 @@ export default function RegisterPage() {
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                                {/* Red Mark Empty button — only when 1+ shots sold */}
+                                {/* Mark Empty — full-width overlay at top of image, only when 1+ shots */}
                                 {b.shots_sold > 0 && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
-                                    className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 rounded-md px-1.5 py-0.5 font-black text-[9px] text-white leading-tight whitespace-nowrap active:scale-95 transition"
-                                    style={{ background: "#dc2626", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
+                                    className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition z-10"
+                                    style={{ background: "#dc2626" }}
                                   >
                                     Mark Empty
                                   </button>
