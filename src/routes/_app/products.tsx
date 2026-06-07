@@ -404,9 +404,12 @@ export default function ProductsPage() {
                     {categoryIcon(p.category ?? "drinks")}
                   </div>
 
-                  {/* Out-of-stock overlay */}
+                  {/* Out-of-stock overlay — tappable to open qty editor */}
                   {(p.stock_qty ?? 0) === 0 && (
-                    <div className="absolute inset-x-0 top-10 bottom-10 z-[5] flex items-center justify-center bg-red-950/70 backdrop-blur-[1px] pointer-events-none">
+                    <div
+                      onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
+                      className="absolute inset-0 z-[5] flex items-center justify-center bg-red-950/75 backdrop-blur-[1px] cursor-pointer active:bg-red-950/90 transition"
+                    >
                       <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
                         <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
                       </div>
