@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Shared YouTube context.
  *
  * Quota is stored in Supabase (youtube_search_quota table) so it persists
- * across installs, devices and app reinstalls — tied to the account, not the device.
+ * across installs, devices and app reinstalls ΓÇö tied to the account, not the device.
  * History stays in localStorage (non-sensitive, per-device preference).
  */
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
@@ -25,10 +25,10 @@ export type YTHistoryItem = {
   playedAt:  number;
 };
 
-// ── History — stays in localStorage (per-device preference) ──────────────────
+// ΓöÇΓöÇ History ΓÇö stays in localStorage (per-device preference) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const LS_HISTORY  = "yt_play_history";
-const DAILY_LIMIT = 75;
-const HISTORY_MAX = 200;
+const DAILY_LIMIT = 100;
+const HISTORY_MAX = 50;
 
 function loadHistory(): YTHistoryItem[] {
   try {
@@ -41,7 +41,7 @@ function saveHistory(h: YTHistoryItem[]) {
   try { localStorage.setItem(LS_HISTORY, JSON.stringify(h)); } catch { /* ignore */ }
 }
 
-// ── Context type ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Context type ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 type YouTubeCtx = {
   videoId:      string | null;
   isPlaylist:   boolean;
@@ -88,14 +88,14 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [quotaCount,      setQuotaCount    ] = useState(0);
   const ownerIdRef = useRef<string | null>(null);
 
-  // Load quota from DB on mount — reloads when auth changes
+  // Load quota from DB on mount ΓÇö reloads when auth changes
   useEffect(() => {
     const loadQuota = async (uid: string) => {
       try {
         ownerIdRef.current = uid;
         const { data } = await supabase.rpc("get_search_quota", { p_owner_id: uid });
         setQuotaCount(typeof data === "number" ? data : 0);
-      } catch { /* RPC may not exist yet — fail silently */ }
+      } catch { /* RPC may not exist yet ΓÇö fail silently */ }
     };
 
     // Get current session once on mount
@@ -115,7 +115,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Poll every minute — catches midnight reset automatically
+  // Poll every minute ΓÇö catches midnight reset automatically
   useEffect(() => {
     const interval = setInterval(async () => {
       const id = ownerIdRef.current;

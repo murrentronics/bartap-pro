@@ -1,18 +1,18 @@
-/**
+﻿/**
  * MusicPage
  *
  * Two views controlled by `ytActive` (a video ID is set in YouTubeContext):
  *
- * VIEW A — Local player  (ytActive = false)
+ * VIEW A ΓÇö Local player  (ytActive = false)
  *   Compact player strip at top + scrollable Playlist / Files tabs
  *   Normal page flow, no fixed positioning, no overflow issues
- *   YouTube tab shows search — tapping a result sets videoId → switches to View B
+ *   YouTube tab shows search ΓÇö tapping a result sets videoId ΓåÆ switches to View B
  *
- * VIEW B — YouTube fullscreen  (ytActive = true)
+ * VIEW B ΓÇö YouTube fullscreen  (ytActive = true)
  *   The iframe is rendered in AppLayout fixed below the header (z-35)
- *   This page renders ONLY a thin "← Back" bar (z-36) at the very top of its area
+ *   This page renders ONLY a thin "ΓåÉ Back" bar (z-36) at the very top of its area
  *   Everything else is transparent so the iframe fills the screen
- *   User taps ← Back → clears videoId → back to View A (audio stops)
+ *   User taps ΓåÉ Back ΓåÆ clears videoId ΓåÆ back to View A (audio stops)
  *
  * Screen never sleeps while this page is mounted (WakeLock API).
  */
@@ -38,14 +38,14 @@ function formatTime(secs: number): string {
 }
 
 const QUICK_SEARCHES = [
-  { label: "🔥 Soca Mix",   q: "soca party mix 2024" },
-  { label: "💃 Dancehall",  q: "dancehall mix 2024" },
-  { label: "😌 R&B Chill",  q: "rnb chill playlist" },
-  { label: "🍹 Bar Vibes",  q: "bar background music mix" },
-  { label: "🎶 Top Hits",   q: "top hits 2024 playlist" },
-  { label: "🎸 Classics",   q: "classic rock hits playlist" },
-  { label: "🌴 Reggae",     q: "reggae mix playlist" },
-  { label: "🎵 Hip Hop",    q: "hip hop mix 2024" },
+  { label: "≡ƒöÑ Soca Mix",   q: "soca party mix 2024" },
+  { label: "≡ƒÆâ Dancehall",  q: "dancehall mix 2024" },
+  { label: "≡ƒÿî R&B Chill",  q: "rnb chill playlist" },
+  { label: "≡ƒì╣ Bar Vibes",  q: "bar background music mix" },
+  { label: "≡ƒÄ╢ Top Hits",   q: "top hits 2024 playlist" },
+  { label: "≡ƒÄ╕ Classics",   q: "classic rock hits playlist" },
+  { label: "≡ƒî┤ Reggae",     q: "reggae mix playlist" },
+  { label: "≡ƒÄ╡ Hip Hop",    q: "hip hop mix 2024" },
 ];
 
 export default function MusicPage() {
@@ -69,7 +69,7 @@ export default function MusicPage() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
 
-  // ── Keep screen awake the entire time this page is open ──────────────────
+  // ΓöÇΓöÇ Keep screen awake the entire time this page is open ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     const acquire = async () => {
       try {
@@ -134,7 +134,7 @@ export default function MusicPage() {
     return <Repeat className="h-4 w-4" />;
   };
 
-  // ── Listen for YouTube video ended → auto-play next from history ──────
+  // ΓöÇΓöÇ Listen for YouTube video ended ΓåÆ auto-play next from history ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       try {
@@ -160,22 +160,22 @@ export default function MusicPage() {
 
   const ytActive = !!yt.videoId; // video is loaded in iframe (may or may not be fullscreen)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW B — YouTube fullscreen (only when showYTFullscreen is true)
-  // ─────────────────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // VIEW B ΓÇö YouTube fullscreen (only when showYTFullscreen is true)
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   if (showYTFullscreen && yt.videoId) {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
-        {/* No overlay — YouTube native controls are fully accessible */}
+        {/* No overlay ΓÇö YouTube native controls are fully accessible */}
 
-        {/* ── Pixel covers over YouTube chrome buttons only ──────────────────
+        {/* ΓöÇΓöÇ Pixel covers over YouTube chrome buttons only ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
             These transparent divs sit exactly over the YouTube UI buttons
             that would open external apps or trigger unwanted actions.
             The center video area and play/pause button remain fully tappable. */}
         {!searchOpen && (
           <>
-            {/* ── TOP COVER: buries the entire YouTube title/channel/icon bar ──
+            {/* ΓöÇΓöÇ TOP COVER: buries the entire YouTube title/channel/icon bar ΓöÇΓöÇ
                 YouTube's top chrome is ~220px tall on mobile. We cover it all
                 with solid black and show our own now-playing strip at the top. */}
             <div style={{
@@ -200,11 +200,11 @@ export default function MusicPage() {
                 color: "#fff", fontSize: 12, fontWeight: 800,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
               }}>
-                {yt.nowPlayingTitle || "Playing…"}
+                {yt.nowPlayingTitle || "PlayingΓÇª"}
               </span>
             </div>
 
-            {/* ── BOTTOM-RIGHT COVER: fullscreen button only ────────────────
+            {/* ΓöÇΓöÇ BOTTOM-RIGHT COVER: fullscreen button only ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                 Sits right at the bottom-right corner of the YT controls row.
                 Using bottom:0 so it anchors to the very bottom of the screen
                 and covers the controls bar from the right edge inward.       */}
@@ -216,7 +216,7 @@ export default function MusicPage() {
           </>
         )}
 
-        {/* Search panel — slides in over the iframe when searchOpen */}
+        {/* Search panel ΓÇö slides in over the iframe when searchOpen */}
         {searchOpen ? (
           <div
             style={{
@@ -240,7 +240,7 @@ export default function MusicPage() {
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && yt.searchesRemaining > 0 && handleSearch()}
-                  placeholder="Search songs, artists…"
+                  placeholder="Search songs, artistsΓÇª"
                   className="pl-9 text-sm bg-black/60 border-red-500/40 text-white placeholder:text-white/30 h-10 rounded-xl"
                 />
               </div>
@@ -263,7 +263,7 @@ export default function MusicPage() {
               <span className="text-xs">
                 {yt.searchesRemaining > 0
                   ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-green-400"}`}>{yt.searchesRemaining}</span><span className="text-white/30"> searches left</span></>
-                  : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
+                  : <span className="text-red-400 font-bold">Limit reached ΓÇö resets in {yt.searchResetTime}</span>
                 }
               </span>
               <div className="h-1 w-20 rounded-full bg-white/10 overflow-hidden">
@@ -280,7 +280,7 @@ export default function MusicPage() {
               {yt.searching && (
                 <div className="flex items-center justify-center py-10 gap-3 text-white/40">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">Searching…</span>
+                  <span className="text-sm">SearchingΓÇª</span>
                 </div>
               )}
               {yt.searchError && !yt.searching && (
@@ -292,7 +292,7 @@ export default function MusicPage() {
               )}
               {!yt.searching && yt.results.length > 0 && (
                 <div className="space-y-1">
-                  {yt.results.slice(0).map(item => (
+                  {yt.results.slice(1).map(item => (
                     <button key={item.id}
                       onClick={() => { playResult(item); setSearchOpen(false); yt.setQuery(""); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
@@ -340,7 +340,7 @@ export default function MusicPage() {
             </div>
           </div>
         ) : (
-          /* ── Minimised footer — track playing, search icon ── */
+          /* ΓöÇΓöÇ Minimised footer ΓÇö track playing, search icon ΓöÇΓöÇ */
           <div
             style={{
               position: "fixed",
@@ -361,7 +361,15 @@ export default function MusicPage() {
               </div>
               {/* Track title */}
               <span className="text-white text-xs font-bold truncate flex-1">{yt.nowPlayingTitle || "YouTube playing"}</span>
-              {/* Red Exit button — hides fullscreen, music keeps playing */}
+              {/* Search button */}
+              <button
+                onClick={() => { setSearchInput(""); setSearchOpen(true); }}
+                className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                style={{ background: "rgba(239,68,68,0.7)" }}
+              >
+                <Search className="h-3.5 w-3.5" /> Search
+              </button>
+              {/* Red Exit button ΓÇö hides fullscreen, music keeps playing */}
               <button
                 onClick={() => {
                   setShowYTFullscreen(false);
@@ -385,15 +393,15 @@ export default function MusicPage() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW A — Local player + Playlist / Files / YouTube search
-  // ─────────────────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // VIEW A ΓÇö Local player + Playlist / Files / YouTube search
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const onYouTubeTab = lastMainTab === "youtube";
 
   return (
     <div className="-mx-3 -mt-3" style={{ background: "#000", minHeight: "calc(100vh - 44px)" }}>
 
-      {/* ── Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ── */}
+      {/* ΓöÇΓöÇ Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ΓöÇΓöÇ */}
       {onYouTubeTab ? (
         /* YouTube mini now-playing strip */
         <div
@@ -426,7 +434,7 @@ export default function MusicPage() {
                 className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(239,68,68,0.6)" }}
               >
-                ▶ Resume
+                Γû╢ Resume
               </button>
             </div>
           ) : (
@@ -437,7 +445,7 @@ export default function MusicPage() {
           )}
         </div>
       ) : (
-      /* ── Compact MP3 player strip ── */
+      /* ΓöÇΓöÇ Compact MP3 player strip ΓöÇΓöÇ */
       <div
         className="relative px-4 pt-3 pb-3"
         style={{
@@ -516,18 +524,18 @@ export default function MusicPage() {
       </div>
       )} {/* end MP3 player / YouTube mini-player conditional */}
 
-      {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
+      {/* ΓöÇΓöÇ Tabs ΓÇö scrollable, no fixed positioning ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <div style={{ background: "#0d1117" }}>
         <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)}>
-          <TabsList className="grid grid-cols-3 mx-3 mt-2 h-14"
+          <TabsList className="grid grid-cols-3 mx-3 mt-2"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
-            <TabsTrigger value="playlist" className="gap-1.5 h-full text-sm data-[state=active]:text-blue-300">
+            <TabsTrigger value="playlist" className="gap-1.5 data-[state=active]:text-blue-300">
               <ListMusic className="h-3.5 w-3.5" /> Playlist
             </TabsTrigger>
-            <TabsTrigger value="files" className="gap-1.5 h-full text-sm data-[state=active]:text-blue-300">
+            <TabsTrigger value="files" className="gap-1.5 data-[state=active]:text-blue-300">
               <FolderOpen className="h-3.5 w-3.5" /> Files
             </TabsTrigger>
-            <TabsTrigger value="youtube" className="gap-1.5 h-full text-sm data-[state=active]:text-blue-300">
+            <TabsTrigger value="youtube" className="gap-1.5 data-[state=active]:text-blue-300">
               <Youtube className="h-3.5 w-3.5" /> YouTube
             </TabsTrigger>
           </TabsList>
@@ -612,7 +620,7 @@ export default function MusicPage() {
             </div>
           </TabsContent>
 
-          {/* YouTube — search + sub-tabs */}
+          {/* YouTube ΓÇö search + sub-tabs */}
           <TabsContent value="youtube" className="px-3 pb-8 mt-2">
             <div className="space-y-3">
 
@@ -629,7 +637,7 @@ export default function MusicPage() {
                         setYtSubTab("results");
                       }
                     }}
-                    placeholder="Search songs, artists…"
+                    placeholder="Search songs, artistsΓÇª"
                     className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
@@ -647,7 +655,7 @@ export default function MusicPage() {
                 <span className="text-white/30 text-xs">
                   {yt.searchesRemaining > 0
                     ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span> searches left today</>
-                    : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
+                    : <span className="text-red-400 font-bold">Limit reached ΓÇö resets in {yt.searchResetTime}</span>
                   }
                 </span>
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
@@ -677,13 +685,13 @@ export default function MusicPage() {
                 </button>
               </div>
 
-              {/* ── Results sub-tab ── */}
+              {/* ΓöÇΓöÇ Results sub-tab ΓöÇΓöÇ */}
               {ytSubTab === "results" && (
                 <>
                   {yt.searching && (
                     <div className="flex items-center justify-center py-10 gap-3 text-white/40">
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      <span className="text-sm">Searching…</span>
+                      <span className="text-sm">SearchingΓÇª</span>
                     </div>
                   )}
                   {yt.searchError && !yt.searching && (
@@ -719,7 +727,7 @@ export default function MusicPage() {
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      {yt.results.slice(0).map(item => (
+                      {yt.results.slice(1).map(item => (
                         <button key={item.id} onClick={() => playResult(item)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
                             yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
@@ -743,7 +751,7 @@ export default function MusicPage() {
                 </>
               )}
 
-              {/* ── History sub-tab ── */}
+              {/* ΓöÇΓöÇ History sub-tab ΓöÇΓöÇ */}
               {ytSubTab === "history" && (
                 <>
                   {yt.history.length === 0 ? (
