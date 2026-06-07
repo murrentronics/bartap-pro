@@ -490,7 +490,7 @@ export default function MusicPage() {
 
       {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
       <div style={{ background: "#0d1117" }}>
-        <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)}>
+        <Tabs value={lastMainTab} onValueChange={v => setLastMainTab(v)}>
           <TabsList className="grid grid-cols-3 mx-3 mt-2 h-14"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <TabsTrigger value="playlist" className="gap-2 h-full text-sm data-[state=active]:text-blue-300">
