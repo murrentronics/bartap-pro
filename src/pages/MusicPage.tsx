@@ -204,13 +204,37 @@ export default function MusicPage() {
               </span>
             </div>
 
-            {/* ── BOTTOM-RIGHT COVER: entire area with fullscreen button ──────
-                Covers the full bottom-right black zone above the progress bar */}
+            {/* ── BOTTOM COVER: buries YouTube's entire controls strip ─────────
+                Covers the full black area below the video: time, progress bar,
+                fullscreen button — all of it. We draw our own on top.        */}
             <div style={{
               position: "fixed",
-              bottom: 72, right: 0, width: 180, height: 80,
+              bottom: 56, left: 0, right: 0, height: 100,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
+
+            {/* ── OUR PROGRESS BAR + TIME — sits on top of the cover ───────── */}
+            <div style={{
+              position: "fixed",
+              bottom: 56, left: 0, right: 0, height: 100,
+              zIndex: 37, pointerEvents: "none",
+              display: "flex", flexDirection: "column", justifyContent: "center",
+              padding: "0 16px", gap: 6,
+            }}>
+              {/* Time display */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                  {yt.nowPlayingTitle ? "▶ Playing" : ""}
+                </span>
+              </div>
+              {/* Progress bar replica — purely decorative, shows the track is playing */}
+              <div style={{ width: "100%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 2, background: "#ef4444",
+                  width: "60%", /* static indicator — YouTube iframe manages actual progress */
+                }} />
+              </div>
+            </div>
           </>
         )}
 
