@@ -421,8 +421,53 @@ function TemplateImportPanel() {
 
   const CAT_EMOJI = Object.fromEntries(CATEGORIES.map(c => [c.value, c.icon])) as Record<TemplateCategory, string>;
 
+  const [recaching, setRecaching] = useState(false);
+  const [recacheResult, setRecacheResult] = useState<string | null>(null);
+
+  const handleRecacheAll = async () => {
+    setRecaching(true);
+    setRecacheResult(null);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/backfill-template-images`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}`, "apikey": supabaseKey },
+        signal: AbortSignal.timeout(120000),
+      });
+      const json = await res.json() as { templates?: { total: number; success: number; failed: number }; products?: { total: number; success: number; failed: number } };
+      const t = json.templates ?? { total: 0, success: 0, failed: 0 };
+      const p = json.products  ?? { total: 0, success: 0, failed: 0 };
+      setRecacheResult(`Templates: ${t.success}/${t.total} fixed. Products: ${p.success}/${p.total} fixed.`);
+      toast.success("Re-cache complete");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRecaching(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {/* ── Re-cache broken images ── */}
+      <div className="rounded-2xl p-4 border border-amber-500/30 space-y-3" style={{ background: "rgba(245,158,11,0.06)" }}>
+        <h2 className="font-black text-sm flex items-center gap-2 text-amber-400">
+          <RefreshCw className="h-4 w-4" /> Fix Broken Images
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Re-downloads all external template and product images into Supabase storage. Run this once to fix images that show broken on devices.
+        </p>
+        <Button
+          onClick={handleRecacheAll}
+          disabled={recaching}
+          variant="outline"
+          className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold"
+        >
+          {recaching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Re-caching all images…</> : "Re-cache All Images Now"}
+        </Button>
+        {recacheResult && <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>}
+      </div>
+
       <div className="rounded-2xl p-4 border border-border space-y-4" style={{ background: "var(--gradient-card)" }}>
         <h2 className="font-black text-lg flex items-center gap-2">
           <ImagePlus className="h-5 w-5 text-primary" /> Import Templates from URL
@@ -551,7 +596,7 @@ function TemplateImportPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {images.map((img, idx) => (
               <div
                 key={img.url}

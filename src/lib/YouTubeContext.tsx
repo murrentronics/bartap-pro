@@ -1,14 +1,12 @@
 /**
  * Shared YouTube context.
  *
- * Features:
- * - videoId / setVideoId — drives the persistent iframe in AppLayout
- * - search — calls the edge function, enforces a 100-search/day client-side quota
- * - history — auto-saves every played video to localStorage (max 50 entries)
- *             replaying from history costs 0 API calls
- * - searchesRemaining / searchResetTime — shown in the UI as a countdown
+ * Quota is stored in Supabase (youtube_search_quota table) so it persists
+ * across installs, devices and app reinstalls — tied to the account, not the device.
+ * History stays in localStorage (non-sensitive, per-device preference).
  */
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type YTResult = {
   id:        string;
@@ -24,33 +22,13 @@ export type YTHistoryItem = {
   title:     string;
   channel:   string;
   thumbnail: string;
-  playedAt:  number; // timestamp ms
+  playedAt:  number;
 };
 
-// ── localStorage keys ─────────────────────────────────────────────────────────
-const LS_QUOTA   = "yt_search_quota";   // { count: number, date: string "YYYY-MM-DD" }
-const LS_HISTORY = "yt_play_history";   // YTHistoryItem[]
+// ── History — stays in localStorage (per-device preference) ──────────────────
+const LS_HISTORY  = "yt_play_history";
 const DAILY_LIMIT = 100;
 const HISTORY_MAX = 50;
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function loadQuota(): { count: number; date: string } {
-  try {
-    const raw = localStorage.getItem(LS_QUOTA);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.date === todayStr()) return parsed;
-    }
-  } catch { /* ignore */ }
-  return { count: 0, date: todayStr() };
-}
-
-function saveQuota(q: { count: number; date: string }) {
-  try { localStorage.setItem(LS_QUOTA, JSON.stringify(q)); } catch { /* ignore */ }
-}
 
 function loadHistory(): YTHistoryItem[] {
   try {
@@ -69,7 +47,6 @@ type YouTubeCtx = {
   isPlaylist:   boolean;
   setVideoId:   (id: string | null, playlist?: boolean) => void;
 
-  // Controls whether the iframe is visible (fullscreen) or hidden behind the page
   ytFullscreen:    boolean;
   setYtFullscreen: (v: boolean) => void;
 
@@ -80,20 +57,17 @@ type YouTubeCtx = {
   searchError:  string | null;
   search:       (q: string) => Promise<void>;
 
-  // Quota
   searchesRemaining: number;
-  searchResetTime:   string; // e.g. "midnight"
+  searchResetTime:   string;
 
-  // History
-  history:         YTHistoryItem[];
-  addToHistory:    (item: Omit<YTHistoryItem, "playedAt">) => void;
-  clearHistory:    () => void;
+  history:           YTHistoryItem[];
+  addToHistory:      (item: Omit<YTHistoryItem, "playedAt">) => void;
+  clearHistory:      () => void;
   removeFromHistory: (id: string) => void;
 
   nowPlayingTitle:    string;
   setNowPlayingTitle: (t: string) => void;
 
-  // Last active music tab — persists across navigation
   lastMusicTab:    string;
   setLastMusicTab: (tab: string) => void;
 };
@@ -101,36 +75,46 @@ type YouTubeCtx = {
 const Ctx = createContext<YouTubeCtx | null>(null);
 
 export function YouTubeProvider({ children }: { children: ReactNode }) {
-  const [videoId,          setVideoIdRaw    ] = useState<string | null>(null);
-  const [isPlaylist,       setIsPlaylist    ] = useState(false);
-  const [ytFullscreen,     setYtFullscreen  ] = useState(false);
-  const [query,            setQuery         ] = useState("");
-  const [results,          setResults       ] = useState<YTResult[]>([]);
-  const [searching,        setSearching     ] = useState(false);
-  const [searchError,      setSearchError   ] = useState<string | null>(null);
-  const [nowPlayingTitle,  setNowPlayingTitle] = useState("");
-  const [lastMusicTab,     setLastMusicTab   ] = useState("playlist");
-  const [quota,            setQuota         ] = useState(loadQuota);
-  const [history,          setHistoryState  ] = useState<YTHistoryItem[]>(loadHistory);
+  const [videoId,         setVideoIdRaw    ] = useState<string | null>(null);
+  const [isPlaylist,      setIsPlaylist    ] = useState(false);
+  const [ytFullscreen,    setYtFullscreen  ] = useState(false);
+  const [query,           setQuery         ] = useState("");
+  const [results,         setResults       ] = useState<YTResult[]>([]);
+  const [searching,       setSearching     ] = useState(false);
+  const [searchError,     setSearchError   ] = useState<string | null>(null);
+  const [nowPlayingTitle, setNowPlayingTitle] = useState("");
+  const [lastMusicTab,    setLastMusicTab  ] = useState("playlist");
+  const [history,         setHistoryState  ] = useState<YTHistoryItem[]>(loadHistory);
+  const [quotaCount,      setQuotaCount    ] = useState(0);
+  const ownerIdRef = useRef<string | null>(null);
 
-  // Reset quota if the day has changed
+  // Load quota from DB on mount — reloads when auth changes
   useEffect(() => {
-    const interval = setInterval(() => {
-      setQuota(q => {
-        if (q.date !== todayStr()) {
-          const fresh = { count: 0, date: todayStr() };
-          saveQuota(fresh);
-          return fresh;
-        }
-        return q;
-      });
-    }, 60_000); // check every minute
+    const loadQuota = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      ownerIdRef.current = user.id;
+      const { data } = await supabase.rpc("get_search_quota", { p_owner_id: user.id });
+      setQuotaCount(typeof data === "number" ? data : 0);
+    };
+    loadQuota();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => loadQuota());
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Poll every minute — catches midnight reset automatically
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const id = ownerIdRef.current;
+      if (!id) return;
+      const { data } = await supabase.rpc("get_search_quota", { p_owner_id: id });
+      setQuotaCount(typeof data === "number" ? data : 0);
+    }, 60_000);
     return () => clearInterval(interval);
   }, []);
 
-  const searchesRemaining = Math.max(0, DAILY_LIMIT - quota.count);
+  const searchesRemaining = Math.max(0, DAILY_LIMIT - quotaCount);
 
-  // Show time until midnight local time
   const searchResetTime = (() => {
     const now = new Date();
     const midnight = new Date(now);
@@ -149,7 +133,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
     setHistoryState(prev => {
-      // Move to top if already exists, else prepend
       const filtered = prev.filter(h => h.id !== item.id);
       const updated  = [{ ...item, playedAt: Date.now() }, ...filtered].slice(0, HISTORY_MAX);
       saveHistory(updated);
@@ -172,10 +155,13 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) return;
+    const ownerId = ownerIdRef.current;
+    if (!ownerId) return;
 
-    // Enforce daily client-side quota
-    const current = loadQuota(); // re-read in case another tab updated it
-    if (current.count >= DAILY_LIMIT) {
+    // Check quota before calling
+    const { data: currentCount } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId });
+    const count = typeof currentCount === "number" ? currentCount : 0;
+    if (count >= DAILY_LIMIT) {
       setSearchError(`Daily search limit reached (${DAILY_LIMIT}/day). Resets in ${searchResetTime}.`);
       return;
     }
@@ -184,10 +170,9 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     setSearchError(null);
     setResults([]);
 
-    // Increment quota before the request
-    const updated = { count: current.count + 1, date: todayStr() };
-    saveQuota(updated);
-    setQuota(updated);
+    // Increment in DB
+    const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId });
+    setQuotaCount(typeof newCount === "number" ? newCount : count + 1);
 
     const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const anonKey    = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -200,18 +185,15 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       const json = await res.json();
       if (!res.ok || json.error) {
         setSearchError(json.error ?? "Search failed");
-        // Refund the quota count on failure
-        const refund = { count: Math.max(0, updated.count - 1), date: todayStr() };
-        saveQuota(refund);
-        setQuota(refund);
+        await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId });
+        setQuotaCount(c => Math.max(0, c - 1));
         return;
       }
       setResults(json.items ?? []);
     } catch {
       setSearchError("Could not reach search service");
-      const refund = { count: Math.max(0, updated.count - 1), date: todayStr() };
-      saveQuota(refund);
-      setQuota(refund);
+      await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId });
+      setQuotaCount(c => Math.max(0, c - 1));
     } finally {
       setSearching(false);
     }

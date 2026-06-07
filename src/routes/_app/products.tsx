@@ -260,7 +260,7 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-3 gap-2">
       {visible.map((t) => (
         <button
           key={t.url}
@@ -383,18 +383,24 @@ export default function ProductsPage() {
           <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => (
               <div key={p.id} className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
-
-                {/* ── Image area ── */}
                 <div className="aspect-[3/4] relative w-full">
-                  {p.image_url && (
+                  {p.image_url ? (
                     <img
                       src={p.image_url}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.style.display = "none";
+                        const fallback = img.nextElementSibling as HTMLElement | null;
+                        if (fallback) fallback.style.display = "flex";
+                      }}
                     />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center text-4xl -z-0">
+                  ) : null}
+                  <div
+                    className="absolute inset-0 items-center justify-center text-4xl"
+                    style={{ display: p.image_url ? "none" : "flex" }}
+                  >
                     {categoryIcon(p.category ?? "drinks")}
                   </div>
 

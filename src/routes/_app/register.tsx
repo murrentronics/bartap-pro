@@ -175,6 +175,7 @@ export default function RegisterPage() {
       .order("opened_at", { ascending: false })
       .limit(1);
     if (data?.[0]) setShotBottleId(data[0].id);
+    setShotPrice(newBottlePrice); // carry the shot price over so Add to Order is ready
     setOpenNewMode(false);
     setNewBottleProductId("");
     setNewBottlePrice("");
@@ -230,7 +231,7 @@ export default function RegisterPage() {
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
-              onClick={() => setCategory(cat.value)}
+              onClick={() => { setCategory(cat.value); window.scrollTo({ top: 0, behavior: "instant" }); }}
               className={`h-14 rounded-xl font-bold text-2xl transition ${
                 category === cat.value
                   ? "text-primary-foreground"
@@ -295,65 +296,82 @@ export default function RegisterPage() {
                   key={p.id}
                   onClick={() => !outOfStock && addToCart(p)}
                   disabled={outOfStock}
-                  className={`group relative aspect-[3/4] rounded-2xl overflow-hidden border transition ${outOfStock ? "cursor-not-allowed" : "active:scale-95"}`}
+                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition ${outOfStock ? "cursor-not-allowed" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
                     borderColor: inCart ? "var(--primary)" : "var(--border)",
                   }}
                 >
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-4xl">
+                  {/* ── Image area ── */}
+                  <div className="aspect-[3/4] relative w-full">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          img.style.display = "none";
+                          const fallback = img.nextElementSibling as HTMLElement | null;
+                          if (fallback) fallback.style.display = "flex";
+                        }} />
+                    ) : null}
+                    <div
+                      className="absolute inset-0 items-center justify-center text-4xl"
+                      style={{ display: p.image_url ? "none" : "flex" }}
+                    >
                       {categoryIcon(p.category ?? "drinks")}
                     </div>
-                  )}
-                  <div className="absolute inset-x-0 bottom-0 p-2 text-left bg-gradient-to-t from-black/85 via-black/50 to-transparent">
-                    <div className="font-bold text-sm leading-tight line-clamp-2 text-white">{p.name}</div>
-                    <div className="text-primary font-black text-base">${Number(p.price).toFixed(2)}</div>
+
+                    {/* Price on image bottom */}
+                    <div className="absolute inset-x-0 bottom-0 px-2 py-1 bg-gradient-to-t from-black/80 to-transparent">
+                      <div className="text-primary font-black text-sm">${Number(p.price).toFixed(2)}</div>
+                    </div>
+
+                    {/* Stock qty badge top-left */}
+                    {p.stock_qty !== undefined && !outOfStock && (
+                      <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
+                        <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
+                      </div>
+                    )}
+
+                    {/* Cart qty controls top-right */}
+                    {inCart && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); dec(p.id); }}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 active:scale-90 transition text-white shadow"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <div
+                          className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-primary-foreground shadow"
+                          style={{ background: "var(--gradient-hero)" }}
+                        >
+                          {inCart.qty}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Out-of-stock overlay */}
+                    {outOfStock && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
+                        <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                          <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Low stock badge */}
+                    {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                      <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                        <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Stock qty badge (top-left) — always visible when stock_qty is defined */}
-                  {p.stock_qty !== undefined && !outOfStock && (
-                    <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
-                      <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
-                    </div>
-                  )}
-
-                  {/* Cart qty badge (top-right) */}
-                  {inCart && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 active:scale-90 transition text-white shadow"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <div
-                        className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-primary-foreground shadow"
-                        style={{ background: "var(--gradient-hero)" }}
-                      >
-                        {inCart.qty}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Out-of-stock overlay */}
-                  {outOfStock && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
-                      <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                        <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Low stock badge (top-right corner) — only when in cart badge is not showing */}
-                  {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-                      <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
-                    </div>
-                  )}
+                  {/* ── Title strip below image ── */}
+                  <div className="px-1.5 py-1.5" style={{ background: "var(--gradient-hero)" }}>
+                    <div className="font-bold text-[11px] text-white truncate leading-tight">{p.name}</div>
+                  </div>
                 </button>
               );
             })}
@@ -413,7 +431,7 @@ export default function RegisterPage() {
       {/* ── Shot Modal ──────────────────────────────────────────────────── */}
       {shotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setNewBottlePrice(""); }}>
+          onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); }}>
           <div
             className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
@@ -421,7 +439,7 @@ export default function RegisterPage() {
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-black">🥃 Add Shot</span>
-              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setNewBottlePrice(""); }}
+              <button onClick={() => { setShotModalOpen(false); setOpenNewMode(false); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
               </button>
@@ -441,7 +459,7 @@ export default function RegisterPage() {
                         return (
                           <button
                             key={b.id}
-                            onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); }}
+                            onClick={() => { setShotBottleId(b.id === shotBottleId ? "" : b.id); setShotPrice(b.id === shotBottleId ? "" : (b.shot_price ? String(b.shot_price) : "")); }}
                             className="w-full flex items-center gap-3 p-2.5 rounded-xl border transition active:scale-[0.98] text-left"
                             style={selected
                               ? { background: "var(--gradient-hero)", borderColor: "var(--primary)" }

@@ -210,7 +210,7 @@ export default function MusicPage() {
                 and covers the controls bar from the right edge inward.       */}
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 56, height: 48,
+              bottom: 56, right: 0, width: 80, height: 56,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>
@@ -262,7 +262,7 @@ export default function MusicPage() {
             <div className="flex items-center justify-between px-4 pb-2 shrink-0">
               <span className="text-xs">
                 {yt.searchesRemaining > 0
-                  ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span><span className="text-white/30"> searches left</span></>
+                  ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-green-400"}`}>{yt.searchesRemaining}</span><span className="text-white/30"> searches left</span></>
                   : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
                 }
               </span>
