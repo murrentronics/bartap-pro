@@ -90,15 +90,28 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   // Load quota from DB on mount — reloads when auth changes
   useEffect(() => {
-    const loadQuota = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      ownerIdRef.current = user.id;
-      const { data } = await supabase.rpc("get_search_quota", { p_owner_id: user.id });
-      setQuotaCount(typeof data === "number" ? data : 0);
+    const loadQuota = async (uid: string) => {
+      try {
+        ownerIdRef.current = uid;
+        const { data } = await supabase.rpc("get_search_quota", { p_owner_id: uid });
+        setQuotaCount(typeof data === "number" ? data : 0);
+      } catch { /* RPC may not exist yet — fail silently */ }
     };
-    loadQuota();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => loadQuota());
+
+    // Get current session once on mount
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) loadQuota(data.session.user.id);
+    });
+
+    // Re-load when user signs in/out
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) {
+        loadQuota(session.user.id);
+      } else {
+        ownerIdRef.current = null;
+        setQuotaCount(0);
+      }
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -107,8 +120,10 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(async () => {
       const id = ownerIdRef.current;
       if (!id) return;
-      const { data } = await supabase.rpc("get_search_quota", { p_owner_id: id });
-      setQuotaCount(typeof data === "number" ? data : 0);
+      try {
+        const { data } = await supabase.rpc("get_search_quota", { p_owner_id: id });
+        setQuotaCount(typeof data === "number" ? data : 0);
+      } catch { /* ignore */ }
     }, 60_000);
     return () => clearInterval(interval);
   }, []);
@@ -159,7 +174,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
 
     // Check quota before calling
-    const { data: currentCount } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId });
+    const { data: currentCount } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: 0 }));
     const count = typeof currentCount === "number" ? currentCount : 0;
     if (count >= DAILY_LIMIT) {
       setSearchError(`Daily search limit reached (${DAILY_LIMIT}/day). Resets in ${searchResetTime}.`);
@@ -171,7 +186,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     setResults([]);
 
     // Increment in DB
-    const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId });
+    const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: count + 1 }));
     setQuotaCount(typeof newCount === "number" ? newCount : count + 1);
 
     const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -185,14 +200,14 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       const json = await res.json();
       if (!res.ok || json.error) {
         setSearchError(json.error ?? "Search failed");
-        await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId });
+        await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
         setQuotaCount(c => Math.max(0, c - 1));
         return;
       }
       setResults(json.items ?? []);
     } catch {
       setSearchError("Could not reach search service");
-      await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId });
+      await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {});
       setQuotaCount(c => Math.max(0, c - 1));
     } finally {
       setSearching(false);

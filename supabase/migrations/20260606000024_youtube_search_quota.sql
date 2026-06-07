@@ -1,7 +1,7 @@
 -- ─── YouTube search quota stored per account ─────────────────────────────────
 -- Replaces localStorage so quota persists across installs and devices.
 
-CREATE TABLE public.youtube_search_quota (
+CREATE TABLE IF NOT EXISTS public.youtube_search_quota (
   owner_id   UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
   count      INTEGER NOT NULL DEFAULT 0,
   quota_date DATE    NOT NULL DEFAULT CURRENT_DATE,
@@ -10,6 +10,7 @@ CREATE TABLE public.youtube_search_quota (
 
 ALTER TABLE public.youtube_search_quota ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Owner manages own quota" ON public.youtube_search_quota;
 CREATE POLICY "Owner manages own quota" ON public.youtube_search_quota
   FOR ALL USING (owner_id = auth.uid());
 
