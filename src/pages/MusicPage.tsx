@@ -56,9 +56,6 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">(yt.results.length > 0 ? "results" : "results");
-
-  // Keep local searchInput in sync when yt.query is cleared externally
-  useEffect(() => { setSearchInput(yt.query); }, [yt.query]);
   // Use context-persisted tab so returning to /music lands on same tab
   const lastMainTab    = yt.lastMusicTab;
   const setLastMainTab = yt.setLastMusicTab;
@@ -336,14 +333,6 @@ export default function MusicPage() {
               </div>
               {/* Track title */}
               <span className="text-white text-xs font-bold truncate flex-1">{yt.nowPlayingTitle || "YouTube playing"}</span>
-              {/* Search button */}
-              <button
-                onClick={() => { setSearchInput(""); setSearchOpen(true); }}
-                className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
-                style={{ background: "rgba(239,68,68,0.7)" }}
-              >
-                <Search className="h-3.5 w-3.5" /> Search
-              </button>
               {/* Red Exit button — hides fullscreen, music keeps playing */}
               <button
                 onClick={() => {

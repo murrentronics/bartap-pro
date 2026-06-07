@@ -123,6 +123,7 @@ export default function RegisterPage() {
   const [newBottleProductId, setNewBottleProductId] = useState<string>("");
   const [newBottlePrice, setNewBottlePrice]     = useState("");
   const [bottleBusy, setBottleBusy]             = useState(false);
+  const [markEmptyBottleId, setMarkEmptyBottleId] = useState<string | null>(null); // confirm modal
 
   const liquorProducts = useMemo(
     () => products.filter((p) => (p.category || "beers") === "liquor" && (p.stock_qty ?? 0) > 0),
@@ -350,24 +351,29 @@ export default function RegisterPage() {
                       </div>
                     )}
 
-                    {/* Cart qty controls — bottom of image, X · minus · qty */}
+                    {/* Red X remove button — top-right, only when in cart */}
                     {inCart && (
-                      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-black/70 active:scale-90 transition text-white shadow"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
+                        className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full flex items-center justify-center active:scale-90 transition text-white shadow z-10"
+                        style={{ background: "#dc2626" }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+
+                    {/* Cart qty controls — full-width bottom bar, minus + qty */}
+                    {inCart && (
+                      <div className="absolute bottom-0 left-0 right-0 flex items-stretch" style={{ background: "rgba(0,0,0,0.75)" }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 active:scale-90 transition text-white shadow"
+                          className="flex-1 flex items-center justify-center py-2.5 active:bg-red-700 transition"
+                          style={{ color: "#f87171" }}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-5 w-5" />
                         </button>
                         <div
-                          className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-primary-foreground shadow"
-                          style={{ background: "var(--gradient-hero)" }}
+                          className="flex items-center justify-center px-4 py-2.5 text-base font-black text-white border-l border-white/20"
                         >
                           {inCart.qty}
                         </div>
@@ -478,18 +484,30 @@ export default function RegisterPage() {
                         {openedBottles.map((b) => {
                           const prod = products.find(p => p.id === b.product_id);
                           return (
-                            <button key={b.id}
-                              onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
-                              className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition">
-                              <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
+                            <div key={b.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
+                              {/* Tap image area to sell a shot */}
+                              <button
+                                onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
+                                className="aspect-[3/4] relative w-full active:scale-95 transition"
+                                style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                              </div>
+                                {/* Red Mark Empty button — only when 1+ shots sold */}
+                                {b.shots_sold > 0 && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
+                                    className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 rounded-md px-1.5 py-0.5 font-black text-[9px] text-white leading-tight whitespace-nowrap active:scale-95 transition"
+                                    style={{ background: "#dc2626", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
+                                  >
+                                    Mark Empty
+                                  </button>
+                                )}
+                              </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
                                 <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
                               </div>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -634,6 +652,43 @@ export default function RegisterPage() {
                 style={{ background: "var(--gradient-hero)" }}
               >
                 + Add to Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mark Empty Confirm Modal ────────────────────────────────────── */}
+      {markEmptyBottleId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-5 pt-6 pb-4 text-center">
+              <div className="text-3xl mb-2">🍾</div>
+              <div className="font-black text-base">Mark Bottle Empty?</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                This will close the bottle and record the wallet entry.
+              </div>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <button
+                onClick={() => setMarkEmptyBottleId(null)}
+                disabled={bottleBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = markEmptyBottleId;
+                  setMarkEmptyBottleId(null);
+                  await handleFinishBottle(id);
+                }}
+                disabled={bottleBusy}
+                className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
+                style={{ background: "#dc2626" }}
+              >
+                OK
               </button>
             </div>
           </div>

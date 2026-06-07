@@ -1111,21 +1111,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
           {/* Mini stat cards */}
           {loadingSummary ? (
-            <div className="grid grid-cols-3 gap-2">
-              {[0, 1, 2].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
+            <div className="grid grid-cols-2 gap-2">
+              {[0, 1].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {/* Total Income */}
-              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <DollarSign className="h-3 w-3" /> Income
-                </div>
-                <div className="font-black text-sm leading-tight" style={{ color: "oklch(0.88 0.16 65)" }}>
-                  ${totalIncome.toFixed(2)}
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-2">
               {/* Total Expenses */}
               <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
@@ -1154,10 +1144,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           )}
 
-          {/* Live wallet balance (current uncleared amount) */}
+          {/* Income — full width row (replaces Available Balance) */}
           <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Available Balance</span>
-            <span className="font-black text-sm" style={{ color: "oklch(0.88 0.16 65)" }}>${balance.toFixed(2)}</span>
+            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <DollarSign className="h-3.5 w-3.5" /> Income
+            </div>
+            <span className="font-black text-sm" style={{ color: "oklch(0.88 0.16 65)" }}>${totalIncome.toFixed(2)}</span>
           </div>
         </div>
       </section>
