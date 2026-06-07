@@ -1,12 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight, ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X } from "lucide-react";
+import {
+  Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
+  ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X,
+  TrendingUp, TrendingDown, DollarSign, PlusCircle, ChevronDown,
+  BarChart3, List, Calculator,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
+// ─── Typed supabase helpers for new tables ────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 type Order = {
   id: string;
   total: number;
@@ -24,20 +34,43 @@ type WalletTx = {
   created_at: string;
 };
 
-const PAGE_SIZE = 200;
+type OwnerFinancials = {
+  id: string;
+  initial_expense: number;
+};
 
+type OwnerExpense = {
+  id: string;
+  amount: number;
+  description: string | null;
+  expense_date: string;
+  created_at: string;
+};
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TX_PAGE_SIZE = 100;
+const ORDERS_PAGE_SIZE = 200;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function monthKey(date: string) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthLabel(key: string) {
+  const [y, m] = key.split("-");
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-GB", {
+    year: "numeric", month: "long",
+  });
+}
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ─── Pagination Bar ──────────────────────────────────────────────────────────
 function PaginationBar({
-  page,
-  totalPages,
-  total,
-  onPrev,
-  onNext,
+  page, totalPages, total, onPrev, onNext,
 }: {
-  page: number;
-  totalPages: number;
-  total: number;
-  onPrev: () => void;
-  onNext: () => void;
+  page: number; totalPages: number; total: number; onPrev: () => void; onNext: () => void;
 }) {
   if (totalPages <= 1) return null;
   return (
@@ -55,33 +88,24 @@ function PaginationBar({
   );
 }
 
-// ─── Cashier wallet: shows their own orders in chronological order ────────────
+// ─── Cashier Wallet ───────────────────────────────────────────────────────────
 function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
 
   useEffect(() => {
     setLoading(true);
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
+    supabase.from("orders").select("id", { count: "exact", head: true })
       .eq("cashier_id", profile.id)
       .then(({ count }) => setTotal(count ?? 0));
-
-    supabase
-      .from("orders")
-      .select("*")
+    supabase.from("orders").select("*")
       .eq("cashier_id", profile.id)
       .order("created_at", { ascending: false })
-      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
-      .then(({ data }) => {
-        setOrders((data ?? []) as unknown as Order[]);
-        setLoading(false);
-      });
+      .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
+      .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
   }, [profile.id, page]);
 
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -89,16 +113,11 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
   return (
     <div className="space-y-5">
-      {/* Sticky page title */}
       <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <h1 className="text-xl font-black leading-tight">Wallet</h1>
       </div>
-
-      {/* Balance card */}
-      <section
-        className="rounded-3xl p-6 relative overflow-hidden"
-        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}
-      >
+      <section className="rounded-3xl p-6 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
           <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
@@ -107,47 +126,29 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           <div className="text-4xl sm:text-6xl font-black text-primary-foreground mt-2 tracking-tight">
             ${Number(profile.wallet_balance).toFixed(2)}
           </div>
-          <div className="mt-3 text-primary-foreground/80 text-sm">
-            Cashier — clears to owner
-          </div>
+          <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
         </div>
       </section>
-
-      {/* Orders */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-xl">Orders</h2>
           <span className="text-sm text-muted-foreground">{total} total</span>
         </div>
-
         <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
-
         {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl h-20 bg-muted/30 animate-pulse" />
-            ))}
-          </div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="rounded-xl h-20 bg-muted/30 animate-pulse" />)}</div>
         ) : orders.length === 0 ? (
           <div className="text-muted-foreground text-sm py-8 text-center">No orders yet.</div>
         ) : (
           <div className="space-y-2">
             {orders.map((o) => (
-              <div
-                key={o.id}
-                className="rounded-xl p-4 border border-border"
-                style={{ background: "var(--gradient-card)" }}
-              >
+              <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <Receipt className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">
-                      {new Date(o.created_at).toLocaleString()}
-                    </span>
+                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
                   </div>
-                  <div className="font-black text-primary text-lg shrink-0 ml-2">
-                    ${Number(o.total).toFixed(2)}
-                  </div>
+                  <div className="font-black text-primary text-lg shrink-0 ml-2">${Number(o.total).toFixed(2)}</div>
                 </div>
                 <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
                   {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
@@ -159,7 +160,6 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
             ))}
           </div>
         )}
-
         <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
       </section>
     </div>
@@ -181,40 +181,28 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      supabase
-        .from("orders")
-        .select("*")
-        .eq("cashier_id", profile.id)
+      supabase.from("orders").select("*").eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
-      supabase
-        .from("wallet_transactions")
-        .select("*")
-        .eq("profile_id", profile.id)
+      supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
         .in("type", ["transfer_in", "wallet_reset"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
   }, [profile.id]);
 
-  // Build flat merged list newest-first
   const allRecords: OwnerFlatRecord[] = [
     ...orders.map((o): OwnerFlatRecord => ({ kind: "order", data: o, ts: new Date(o.created_at).getTime() })),
     ...txs.map((tx): OwnerFlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts);
 
-  // Derive unique months for the accordion rows
-  const months = Array.from(
-    new Set(
-      allRecords.map((r) =>
-        new Date(r.data.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long" })
-      )
-    )
-  );
+  const months = Array.from(new Set(allRecords.map((r) =>
+    new Date(r.data.created_at).toLocaleDateString("en-GB", { year: "numeric", month: "long" })
+  )));
 
   const getRecordsForMonth = (month: string) =>
     allRecords.filter((r) =>
-      new Date(r.data.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long" }) === month
+      new Date(r.data.created_at).toLocaleDateString("en-GB", { year: "numeric", month: "long" }) === month
     );
 
   const handleDownload = async (month: string) => {
@@ -224,110 +212,62 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       const monthRecords = getRecordsForMonth(month);
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
-
       const businessName = profile.username ?? "Owner";
-      const generated = new Date().toLocaleString();
-
-      // ── Calculate summary figures ──────────────────────────────────────────
-      const orders = monthRecords.filter((r) => r.kind === "order");
-      const txs    = monthRecords.filter((r) => r.kind === "tx");
-
-      const totalSales    = orders.reduce((s, r) => s + Number((r.data as Order).total), 0);
-      const totalCleared  = txs
-        .filter((r) => (r.data as WalletTx).type === "transfer_in")
+      const generated = new Date().toLocaleString("en-GB");
+      const ordersR = monthRecords.filter((r) => r.kind === "order");
+      const txsR = monthRecords.filter((r) => r.kind === "tx");
+      const totalSales = ordersR.reduce((s, r) => s + Number((r.data as Order).total), 0);
+      const totalCleared = txsR.filter((r) => (r.data as WalletTx).type === "transfer_in")
         .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
-      const totalResets   = txs
-        .filter((r) => (r.data as WalletTx).type === "wallet_reset")
+      const totalResets = txsR.filter((r) => (r.data as WalletTx).type === "wallet_reset")
         .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
-      // Opening balance = total sales for the period (before any clears/resets)
-      // Closing balance = what remains after clears and resets
       const openingBalance = totalSales;
       const closingBalance = totalSales - totalCleared - totalResets;
-
-      // Draw header and get starting Y
       let y = await drawHeader(doc, businessName, "Wallet Statement", month, generated);
-
-      // ── Summary box ───────────────────────────────────────────────────────
-      const boxX = LM;
-      const boxW = RM - LM;
-      const boxH = 28;
+      const boxX = LM; const boxW = RM - LM; const boxH = 28;
       doc.setFillColor(245, 240, 230);
       doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "F");
-      doc.setDrawColor(232, 146, 42);
-      doc.setLineWidth(0.4);
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
       doc.roundedRect(boxX, y, boxW, boxH, 2, 2, "S");
-
-      // Summary title
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 70, 10);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(100, 70, 10);
       doc.text("PERIOD SUMMARY", boxX + 3, y + 5);
-
-      // Four columns: Opening Balance | Total Sales | Total Cleared | Closing Balance
       const cols = [
         { label: "Opening Balance", value: "$" + openingBalance.toFixed(2) },
-        { label: "Total Cleared",   value: "$" + totalCleared.toFixed(2) },
-        { label: "Total Resets",    value: "$" + totalResets.toFixed(2) },
+        { label: "Total Cleared", value: "$" + totalCleared.toFixed(2) },
+        { label: "Total Resets", value: "$" + totalResets.toFixed(2) },
         { label: "Closing Balance", value: "$" + closingBalance.toFixed(2) },
       ];
       const colW = boxW / cols.length;
       cols.forEach((col, i) => {
         const cx = boxX + i * colW + colW / 2;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(6.5);
-        doc.setTextColor(100, 100, 100);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
         doc.text(col.label, cx, y + 13, { align: "center" });
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        // Closing balance green if positive, red if negative
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
         if (col.label === "Closing Balance") {
           doc.setTextColor(closingBalance >= 0 ? 40 : 180, closingBalance >= 0 ? 140 : 40, 40);
-        } else {
-          doc.setTextColor(30, 30, 30);
-        }
+        } else { doc.setTextColor(30, 30, 30); }
         doc.text(col.value, cx, y + 21, { align: "center" });
       });
-
-      doc.setTextColor(0, 0, 0);
-      y += boxH + 5;
-
-      // ── Column headers ────────────────────────────────────────────────────
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(130, 130, 130);
-      doc.text("DATE / ITEMS", LM, y);
-      doc.text("AMOUNT", RM, y, { align: "right" });
-      y += 3;
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.2);
-      doc.line(LM, y, RM, y);
-      y += 4;
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-
+      doc.setTextColor(0, 0, 0); y += boxH + 5;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
+      doc.text("DATE / ITEMS", LM, y); doc.text("AMOUNT", RM, y, { align: "right" }); y += 3;
+      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
       monthRecords.forEach((rec) => {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         if (rec.kind === "order") {
           const o = rec.data as Order;
           doc.setFont("helvetica", "bold");
-          doc.text(new Date(o.created_at).toLocaleString(), LM, y);
-          doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
-          y += 5;
+          doc.text(new Date(o.created_at).toLocaleString("en-GB"), LM, y);
+          doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" }); y += 5;
           doc.setFont("helvetica", "normal");
           const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
-          doc.text(wrapped, LM, y);
-          y += wrapped.length * 4.5 + 1;
+          doc.text(wrapped, LM, y); y += wrapped.length * 4.5 + 1;
           doc.setTextColor(100, 100, 100);
           doc.text("  Paid $" + Number(o.paid).toFixed(2) + "   Change $" + Number(o.change_given).toFixed(2), LM, y);
-          doc.setTextColor(0, 0, 0);
-          y += 4;
-          doc.setDrawColor(220, 220, 220);
-          doc.setLineWidth(0.1);
-          doc.line(LM, y, RM, y);
-          y += 4;
+          doc.setTextColor(0, 0, 0); y += 4;
+          doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
         } else {
           const tx = rec.data as WalletTx;
           const isReset = tx.type === "wallet_reset";
@@ -335,21 +275,14 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           const sign = isReset ? "-" : "+";
           doc.setFont("helvetica", "bold");
           doc.setTextColor(isReset ? 200 : 40, isReset ? 80 : 140, isReset ? 40 : 80);
-          doc.text(new Date(tx.created_at).toLocaleString(), LM, y);
+          doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
           doc.text(label, LM + 55, y);
           doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
-          doc.setTextColor(0, 0, 0);
-          doc.setFont("helvetica", "normal");
-          y += 4;
-          doc.setDrawColor(220, 220, 220);
-          doc.setLineWidth(0.1);
-          doc.line(LM, y, RM, y);
-          y += 4;
+          doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 4;
+          doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
         }
       });
-
       addFootersToAllPages(doc);
-
       const filename = "wallet-statement-" + businessName + "-" + month.replace(/\s/g, "-") + ".pdf";
       await downloadPdf(filename, doc.output("datauristring"));
       toast.success("PDF saved to Downloads folder");
@@ -363,72 +296,46 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div
-        className="relative w-full max-w-lg rounded-3xl border border-border shadow-2xl mt-4 mb-8"
-        style={{ background: "var(--gradient-card)" }}
-      >
-        {/* Header */}
+      <div className="relative w-full max-w-lg rounded-3xl border border-border shadow-2xl mt-4 mb-8"
+        style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <div>
             <h2 className="text-xl font-black">Owner Statement</h2>
             <p className="text-sm text-muted-foreground">Your wallet records</p>
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
-          >
+          <button onClick={onClose}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
             <X className="h-4 w-4" />
           </button>
         </div>
-
         <div className="p-5 space-y-4">
           {loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />
-              ))}
-            </div>
+            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
           ) : months.length === 0 ? (
             <div className="text-muted-foreground text-sm py-8 text-center">No records yet.</div>
           ) : (
             <div className="space-y-4">
               {months.map((month) => {
                 const monthRecords = getRecordsForMonth(month);
-                const monthTotal = monthRecords
-                  .filter((r) => r.kind === "order")
+                const monthTotal = monthRecords.filter((r) => r.kind === "order")
                   .reduce((s, r) => s + Number((r.data as Order).total), 0);
                 const isOpen = selectedMonth === month;
-
                 return (
                   <div key={month} className="rounded-2xl border border-border overflow-hidden">
-                    <button
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
-                      onClick={() => setSelectedMonth(isOpen ? null : month)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-black text-sm">{month}</span>
-                      </div>
+                    <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                      onClick={() => setSelectedMonth(isOpen ? null : month)}>
+                      <span className="font-black text-sm">{month}</span>
                       <div className="flex items-center gap-3">
                         <span className="font-black text-primary">${monthTotal.toFixed(2)}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs gap-1"
-                          type="button"
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" type="button"
                           disabled={downloadingMonth === month}
-                          onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
-                        >
-                          {downloadingMonth === month
-                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <Download className="h-3 w-3" />}
+                          onClick={(e) => { e.stopPropagation(); handleDownload(month); }}>
+                          {downloadingMonth === month ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                           {downloadingMonth === month ? "…" : "PDF"}
                         </Button>
-                        <ChevronRight
-                          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`}
-                        />
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
                       </div>
                     </button>
-
                     {isOpen && (
                       <div className="border-t border-border divide-y divide-border/50">
                         {monthRecords.map((rec) => {
@@ -436,16 +343,11 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                             const tx = rec.data;
                             const isReset = tx.type === "wallet_reset";
                             return (
-                              <div
-                                key={tx.id}
-                                className={`px-4 py-3 flex items-center gap-3 ${isReset ? "bg-orange-500/5" : "bg-green-500/5"}`}
-                              >
-                                {isReset
-                                  ? <RotateCcw className="h-3.5 w-3.5 text-orange-400 shrink-0" />
-                                  : <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />}
+                              <div key={tx.id} className={`px-4 py-3 flex items-center gap-3 ${isReset ? "bg-orange-500/5" : "bg-green-500/5"}`}>
+                                {isReset ? <RotateCcw className="h-3.5 w-3.5 text-orange-400 shrink-0" /> : <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />}
                                 <div className={`flex-1 text-xs ${isReset ? "text-orange-400" : "text-green-400"}`}>
                                   {tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier")}
-                                  {" · "}{new Date(tx.created_at).toLocaleString()}
+                                  {" · "}{new Date(tx.created_at).toLocaleString("en-GB")}
                                 </div>
                                 <span className={`font-black text-sm ${isReset ? "text-orange-400" : "text-green-400"}`}>
                                   {isReset ? "-" : "+"}${Math.abs(Number(tx.amount)).toFixed(2)}
@@ -459,13 +361,9 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  <span className="text-xs text-muted-foreground">
-                                    {new Date(o.created_at).toLocaleString()}
-                                  </span>
+                                  <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB")}</span>
                                 </div>
-                                <span className="font-black text-primary text-sm ml-2">
-                                  ${Number(o.total).toFixed(2)}
-                                </span>
+                                <span className="font-black text-primary text-sm ml-2">${Number(o.total).toFixed(2)}</span>
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
                                 {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
@@ -489,231 +387,535 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   );
 }
 
-// ─── Owner wallet: all records flat in chronological order ───────────────────
+// ─── Financials Tab ───────────────────────────────────────────────────────────
+function FinancialsTab({ ownerId, totalIncome }: { ownerId: string; totalIncome: number }) {
+  const [financials, setFinancials] = useState<OwnerFinancials | null>(null);
+  const [expenses, setExpenses] = useState<OwnerExpense[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Setup form
+  const [initialInput, setInitialInput] = useState("");
+  const [savingInitial, setSavingInitial] = useState(false);
+
+  // Monthly expense form
+  const [expAmount, setExpAmount] = useState("");
+  const [expDesc, setExpDesc] = useState("");
+  const [expDate, setExpDate] = useState(todayISO());
+  const [savingExp, setSavingExp] = useState(false);
+
+  // Accordion
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoadingData(true);
+    const [finRes, expRes] = await Promise.all([
+      sb.from("owner_financials").select("*").eq("owner_id", ownerId).maybeSingle(),
+      sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
+    ]);
+    setFinancials(finRes.data as OwnerFinancials | null);
+    setExpenses((expRes.data ?? []) as OwnerExpense[]);
+    setLoadingData(false);
+  }, [ownerId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Derived totals ────────────────────────────────────────────────────────
+  const initialExpense = financials ? Number(financials.initial_expense) : 0;
+  const monthlyExpensesTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpenses = initialExpense + monthlyExpensesTotal;
+  const netProfit = totalIncome - totalExpenses;
+
+  // ── Group expenses by month ───────────────────────────────────────────────
+  const expensesByMonth: Record<string, OwnerExpense[]> = {};
+  expenses.forEach((e) => {
+    const key = monthKey(e.expense_date);
+    if (!expensesByMonth[key]) expensesByMonth[key] = [];
+    expensesByMonth[key].push(e);
+  });
+  const expenseMonths = Object.keys(expensesByMonth).sort((a, b) => b.localeCompare(a));
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleSaveInitial = async () => {
+    const val = parseFloat(initialInput);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSavingInitial(true);
+    if (financials) {
+      const { error } = await sb.from("owner_financials")
+        .update({ initial_expense: val }).eq("id", financials.id);
+      if (error) { toast.error(error.message); setSavingInitial(false); return; }
+    } else {
+      const { error } = await sb.from("owner_financials")
+        .insert({ owner_id: ownerId, initial_expense: val });
+      if (error) { toast.error(error.message); setSavingInitial(false); return; }
+    }
+    setSavingInitial(false);
+    setInitialInput("");
+    toast.success("Initial expense saved");
+    loadData();
+  };
+
+  const handleSaveExpense = async () => {
+    const val = parseFloat(expAmount);
+    if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!expDate) { toast.error("Select a date"); return; }
+    setSavingExp(true);
+    const { error } = await sb.from("owner_expenses").insert({
+      owner_id: ownerId,
+      amount: val,
+      description: expDesc.trim() || null,
+      expense_date: expDate,
+    });
+    if (error) { toast.error(error.message); setSavingExp(false); return; }
+    setSavingExp(false);
+    setExpAmount("");
+    setExpDesc("");
+    setExpDate(todayISO());
+    toast.success("Expense recorded");
+    // Auto-open the month that was just entered
+    setOpenMonth(monthKey(expDate));
+    loadData();
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    const { error } = await sb.from("owner_expenses").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Expense removed");
+    loadData();
+  };
+
+  if (loadingData) {
+    return (
+      <div className="space-y-3 pt-2">
+        {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}
+      </div>
+    );
+  }
+
+  const currentMonthKey = monthKey(todayISO());
+  const currentMonthExpenses = expensesByMonth[currentMonthKey] ?? [];
+  const currentMonthTotal = currentMonthExpenses.reduce((s, e) => s + Number(e.amount), 0);
+
+  return (
+    <div className="space-y-5 pt-2">
+
+      {/* ── Setup / Initial Expense ───────────────────────────────────────── */}
+      <div className="rounded-2xl border border-border p-4 space-y-3"
+        style={{ background: "var(--gradient-card)" }}>
+        <div className="flex items-center gap-2">
+          <Calculator className="h-4 w-4 text-primary" />
+          <h3 className="font-black text-sm">Initial Bar Setup Cost</h3>
+        </div>
+        {financials && Number(financials.initial_expense) > 0 && (
+          <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-2.5">
+            <span className="text-sm text-muted-foreground">Current initial expense</span>
+            <span className="font-black text-primary">${Number(financials.initial_expense).toFixed(2)}</span>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {financials && Number(financials.initial_expense) > 0
+            ? "Update the total cost of all items currently in your bar."
+            : "Enter the total cost of all items currently stocked in your bar. This sets your initial expense baseline."}
+        </p>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+            <input
+              type="number" min="0" step="0.01"
+              placeholder="0.00"
+              value={initialInput}
+              onChange={(e) => setInitialInput(e.target.value)}
+              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <Button onClick={handleSaveInitial} disabled={savingInitial || !initialInput} className="shrink-0">
+            {savingInitial ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── This Month's Expenses ─────────────────────────────────────────── */}
+      {financials !== null && (
+        <div className="rounded-2xl border border-border p-4 space-y-3"
+          style={{ background: "var(--gradient-card)" }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4 text-primary" />
+              <h3 className="font-black text-sm">Add Expense</h3>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            </span>
+          </div>
+          {currentMonthTotal > 0 && (
+            <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2.5">
+              <span className="text-sm text-red-300">This month's expenses</span>
+              <span className="font-black text-red-400">${currentMonthTotal.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="space-y-2">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+              <input
+                type="number" min="0" step="0.01"
+                placeholder="Total purchase amount"
+                value={expAmount}
+                onChange={(e) => setExpAmount(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Description (optional)"
+              value={expDesc}
+              onChange={(e) => setExpDesc(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <input
+              type="date"
+              value={expDate}
+              onChange={(e) => setExpDate(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <Button onClick={handleSaveExpense} disabled={savingExp || !expAmount} className="w-full">
+            {savingExp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+            Record Expense
+          </Button>
+        </div>
+      )}
+
+      {/* ── Expense History by Month ──────────────────────────────────────── */}
+      {expenseMonths.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>
+          {expenseMonths.map((mk) => {
+            const mExpenses = expensesByMonth[mk];
+            const mTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
+            const isOpen = openMonth === mk;
+            return (
+              <div key={mk} className="rounded-2xl border border-border overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                  onClick={() => setOpenMonth(isOpen ? null : mk)}>
+                  <div className="flex items-center gap-3">
+                    <span className="font-black text-sm">{monthLabel(mk)}</span>
+                    <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-black text-red-400">${mTotal.toFixed(2)}</span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-t border-border divide-y divide-border/50">
+                    {mExpenses.map((e) => (
+                      <div key={e.id} className="px-4 py-3 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">${Number(e.amount).toFixed(2)}</span>
+                            {e.description && (
+                              <span className="text-xs text-muted-foreground truncate">· {e.description}</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteExpense(e.id)}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition shrink-0"
+                          title="Remove expense">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {financials === null && (
+        <p className="text-center text-sm text-muted-foreground py-4">
+          Set your initial bar cost above to start tracking your financials.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Transactions Tab ─────────────────────────────────────────────────────────
 type FlatRecord =
   | { kind: "order"; data: Order; ts: number }
   | { kind: "tx"; data: WalletTx; ts: number };
 
-function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
-  const { refreshProfile } = useAuth();
+function TransactionsTab({ profile }: { profile: { id: string } }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [resetting, setResetting] = useState(false);
-  const [balance, setBalance] = useState(Number(profile.wallet_balance));
-  const [showStatement, setShowStatement] = useState(false);
+  const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
+    supabase.from("orders").select("id", { count: "exact", head: true })
       .eq("cashier_id", profile.id)
       .then(({ count }) => setTotal(count ?? 0));
-
-    supabase
-      .from("orders")
-      .select("*")
+    supabase.from("orders").select("*")
       .eq("cashier_id", profile.id)
       .order("created_at", { ascending: false })
-      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
-      .then(({ data }) => {
-        setOrders((data ?? []) as unknown as Order[]);
-        setLoading(false);
-      });
-
-    // transfer_in (cleared from cashier) + wallet_reset + bottle_finished records
-    supabase
-      .from("wallet_transactions")
-      .select("*")
+      .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
+      .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
+    supabase.from("wallet_transactions").select("*")
       .eq("profile_id", profile.id)
       .in("type", ["transfer_in", "wallet_reset", "bottle_finished"])
       .order("created_at", { ascending: false })
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
-  };
-
-  useEffect(() => {
-    fetchData();
   }, [profile.id, page]);
 
-  // Keep local balance in sync with profile
-  useEffect(() => { setBalance(Number(profile.wallet_balance)); }, [profile.wallet_balance]);
-
-  const handleReset = async () => {
-    if (balance === 0) { toast.error("Balance is already $0.00"); return; }
-    setResetting(true);
-    const prevBalance = balance;
-
-    // Use the DB function so it runs as SECURITY DEFINER (bypasses RLS)
-    const { error } = await supabase.rpc("owner_reset_wallet", {
-      _owner_id: profile.id,
-      _prev_balance: prevBalance,
-    });
-    if (error) { toast.error(error.message); setResetting(false); return; }
-
-    setBalance(0);
-    setResetting(false);
-    toast.success("Wallet reset to $0.00");
-    refreshProfile();
-    fetchData();
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
-  // Merge orders + txs into a single flat list sorted newest first
+  // Merge orders and txs for the current page's date range
   const flatRecords: FlatRecord[] = [
     ...orders.map((o): FlatRecord => ({ kind: "order", data: o, ts: new Date(o.created_at).getTime() })),
     ...txs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts);
 
   return (
-    <div className="space-y-5">
-      {/* Sticky page title */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">Wallet</h1>
+    <div className="space-y-3 pt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">{total} orders total</span>
       </div>
 
-      <section className="rounded-3xl p-6 relative overflow-hidden" style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
-              <WalletIcon className="h-4 w-4" /> Wallet Balance
-            </div>
-            {/* Reset button */}
-            <button
-              onClick={handleReset}
-              disabled={resetting || balance === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition text-primary-foreground text-xs font-black disabled:opacity-40"
-              title="Reset wallet balance to $0.00"
-            >
-              {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Reset
-            </button>
-          </div>
-          <div className="text-4xl sm:text-6xl font-black text-primary-foreground mt-2 tracking-tight">
-            ${balance.toFixed(2)}
-          </div>
-          <div className="mt-3 text-primary-foreground/80 text-sm">Owner account</div>
-          <button
-            onClick={() => setShowStatement(true)}
-            className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
-            style={{ background: "oklch(0.18 0.02 60)", color: "oklch(0.78 0.17 65)" }}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            View Statement
-          </button>
-        </div>
-      </section>
+      <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-black text-xl">Records</h2>
-          <span className="text-sm text-muted-foreground">{total} orders</span>
-        </div>
-        <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
-
-        {loading ? (
-          <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
-        ) : flatRecords.length === 0 ? (
-          <div className="text-muted-foreground text-sm py-8 text-center">No records yet.</div>
-        ) : (
-          <div className="space-y-2">
-            {flatRecords.map((rec) => {
-              if (rec.kind === "tx") {
-                const tx = rec.data;
-                const isReset    = tx.type === "wallet_reset";
-                const isBottle   = tx.type === "bottle_finished";
-
-                if (isBottle) {
-                  // Note format: "Open bottle sold out: NAME | Bottle price: $X | Shots revenue: $Y"
-                  const noteParts = (tx.note ?? "").split(" | ");
-                  const title     = noteParts[0] ?? tx.note ?? "Bottle closed";
-                  const sub1      = noteParts[1] ?? "";
-                  const sub2      = noteParts[2] ?? "";
-                  return (
-                    <div
-                      key={tx.id}
-                      className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
-                      style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}
-                    >
-                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-amber-500/20 border-amber-500/30 text-lg">
-                        🍾
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</div>
-                        <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
-                        {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
-                        {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
-                      </div>
-                    </div>
-                  );
-                }
-
+      {loading ? (
+        <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
+      ) : flatRecords.length === 0 ? (
+        <div className="text-muted-foreground text-sm py-8 text-center">No records yet.</div>
+      ) : (
+        <div className="space-y-2">
+          {flatRecords.map((rec) => {
+            if (rec.kind === "tx") {
+              const tx = rec.data;
+              const isReset = tx.type === "wallet_reset";
+              const isBottle = tx.type === "bottle_finished";
+              if (isBottle) {
+                const noteParts = (tx.note ?? "").split(" | ");
+                const title = noteParts[0] ?? tx.note ?? "Bottle closed";
+                const sub1 = noteParts[1] ?? "";
+                const sub2 = noteParts[2] ?? "";
                 return (
-                  <div
-                    key={tx.id}
-                    className={`rounded-xl p-4 border flex items-center gap-3 ${
-                      isReset ? "border-orange-500/30" : "border-green-500/30"
-                    }`}
-                    style={{
-                      background: isReset
-                        ? "oklch(0.22 0.06 50 / 0.3)"
-                        : "oklch(0.22 0.06 145 / 0.3)",
-                    }}
-                  >
-                    <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border ${
-                      isReset
-                        ? "bg-orange-500/20 border-orange-500/30"
-                        : "bg-green-500/20 border-green-500/30"
-                    }`}>
-                      {isReset
-                        ? <RotateCcw className="h-4 w-4 text-orange-400" />
-                        : <ArrowDownLeft className="h-4 w-4 text-green-400" />}
-                    </div>
+                  <div key={tx.id} className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
+                    style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-amber-500/20 border-amber-500/30 text-lg">🍾</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</div>
-                      <div className={`text-sm font-semibold ${isReset ? "text-orange-300" : "text-green-300"}`}>
-                        {tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier")}
-                      </div>
-                    </div>
-                    <div className={`font-black text-lg shrink-0 ${isReset ? "text-orange-400" : "text-green-400"}`}>
-                      {isReset
-                        ? `-$${Math.abs(Number(tx.amount)).toFixed(2)}`
-                        : `+$${Number(tx.amount).toFixed(2)}`}
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
+                      {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
+                      {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
                     </div>
                   </div>
                 );
               }
-
-              const o = rec.data;
               return (
-                <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Receipt className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString()}</span>
+                <div key={tx.id}
+                  className={`rounded-xl p-4 border flex items-center gap-3 ${isReset ? "border-orange-500/30" : "border-green-500/30"}`}
+                  style={{ background: isReset ? "oklch(0.22 0.06 50 / 0.3)" : "oklch(0.22 0.06 145 / 0.3)" }}>
+                  <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border ${isReset ? "bg-orange-500/20 border-orange-500/30" : "bg-green-500/20 border-green-500/30"}`}>
+                    {isReset ? <RotateCcw className="h-4 w-4 text-orange-400" /> : <ArrowDownLeft className="h-4 w-4 text-green-400" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                    <div className={`text-sm font-semibold ${isReset ? "text-orange-300" : "text-green-300"}`}>
+                      {tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier")}
                     </div>
-                    <div className="font-black text-primary text-lg shrink-0 ml-2">${Number(o.total).toFixed(2)}</div>
                   </div>
-                  <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-                    {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Paid ${Number(o.paid).toFixed(2)} · Change ${Number(o.change_given).toFixed(2)}
+                  <div className={`font-black text-lg shrink-0 ${isReset ? "text-orange-400" : "text-green-400"}`}>
+                    {isReset ? `-$${Math.abs(Number(tx.amount)).toFixed(2)}` : `+$${Number(tx.amount).toFixed(2)}`}
                   </div>
                 </div>
               );
-            })}
+            }
+            const o = rec.data as Order;
+            return (
+              <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Receipt className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
+                  </div>
+                  <div className="font-black text-primary text-lg shrink-0 ml-2">${Number(o.total).toFixed(2)}</div>
+                </div>
+                <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+                  {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Paid ${Number(o.paid).toFixed(2)} · Change ${Number(o.change_given).toFixed(2)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+    </div>
+  );
+}
+
+// ─── Owner Wallet ─────────────────────────────────────────────────────────────
+function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string } }) {
+  const [activeTab, setActiveTab] = useState<"transactions" | "financials">("transactions");
+  const [showStatement, setShowStatement] = useState(false);
+  const [balance] = useState(Number(profile.wallet_balance));
+
+  // Financial summary state (loaded for hero display)
+  const [financialSummary, setFinancialSummary] = useState<{
+    initialExpense: number;
+    monthlyExpenses: number;
+    totalIncome: number;
+  } | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
+  const loadSummary = useCallback(async () => {
+    setLoadingSummary(true);
+    const [finRes, expRes, incomeRes] = await Promise.all([
+      sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
+      sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
+      supabase.from("orders").select("total").eq("cashier_id", profile.id),
+    ]);
+    const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
+    const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
+    const totalIncome = (incomeRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome });
+    setLoadingSummary(false);
+  }, [profile.id]);
+
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+
+  const totalExpenses = financialSummary ? financialSummary.initialExpense + financialSummary.monthlyExpenses : 0;
+  const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
+  const netProfit = totalIncome - totalExpenses;
+  const hasFinancials = financialSummary !== null && (financialSummary.initialExpense > 0 || financialSummary.monthlyExpenses > 0);
+
+  return (
+    <div className="space-y-5">
+      {/* Sticky title */}
+      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <h1 className="text-xl font-black leading-tight">Wallet</h1>
+      </div>
+
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="rounded-3xl p-5 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative space-y-4">
+          {/* Title row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
+              <WalletIcon className="h-4 w-4" /> Owner Account
+            </div>
+            <button onClick={() => setShowStatement(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
+              style={{ background: "oklch(0.18 0.02 60)", color: "oklch(0.78 0.17 65)" }}>
+              <FileText className="h-3.5 w-3.5" /> Statement
+            </button>
           </div>
-        )}
-        <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+
+          {/* Mini stat cards */}
+          {loadingSummary ? (
+            <div className="grid grid-cols-3 gap-2">
+              {[0, 1, 2].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {/* Total Income */}
+              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                  <DollarSign className="h-3 w-3" /> Income
+                </div>
+                <div className="text-primary-foreground font-black text-base leading-tight">
+                  ${totalIncome.toFixed(2)}
+                </div>
+              </div>
+
+              {/* Total Expenses */}
+              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                  <TrendingDown className="h-3 w-3" /> Expenses
+                </div>
+                <div className="font-black text-base leading-tight text-red-300">
+                  {hasFinancials ? `$${totalExpenses.toFixed(2)}` : "—"}
+                </div>
+              </div>
+
+              {/* Net Profit */}
+              <div className="rounded-2xl p-3 flex flex-col gap-1" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-primary-foreground/60 text-[10px] font-semibold">
+                  <TrendingUp className="h-3 w-3" /> Net Profit
+                </div>
+                <div className={`font-black text-base leading-tight ${
+                  !hasFinancials ? "text-primary-foreground/40"
+                  : netProfit >= 0 ? "text-green-300"
+                  : "text-red-400"
+                }`}>
+                  {hasFinancials
+                    ? `${netProfit >= 0 ? "+" : ""}$${netProfit.toFixed(2)}`
+                    : "—"}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Live wallet balance (current uncleared amount) */}
+          <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+            <span className="text-primary-foreground/70 text-xs font-semibold">Available Balance</span>
+            <span className="font-black text-primary-foreground text-sm">${balance.toFixed(2)}</span>
+          </div>
+        </div>
       </section>
+
+      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+      <div className="flex rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+        <button
+          onClick={() => setActiveTab("transactions")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+            activeTab === "transactions"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}>
+          <List className="h-4 w-4" /> Transactions
+        </button>
+        <button
+          onClick={() => setActiveTab("financials")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+            activeTab === "financials"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}>
+          <BarChart3 className="h-4 w-4" /> Financials
+        </button>
+      </div>
+
+      {/* ── Tab content ──────────────────────────────────────────────────── */}
+      {activeTab === "transactions" ? (
+        <TransactionsTab profile={profile} />
+      ) : (
+        <FinancialsTab
+          ownerId={profile.id}
+          totalIncome={totalIncome}
+        />
+      )}
 
       {showStatement && (
         <OwnerStatement profile={profile} onClose={() => setShowStatement(false)} />
@@ -722,6 +924,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   );
 }
 
+// ─── Page Entry Point ─────────────────────────────────────────────────────────
 export default function WalletPage() {
   const { profile } = useAuth();
   if (!profile) return null;

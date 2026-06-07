@@ -638,14 +638,14 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onPick(e.target.files?.[0])} />
               </div>
               <div className="flex flex-col gap-2 flex-1 justify-center">
-                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => setShowTemplates(true)}>
-                  <LayoutGrid className="h-4 w-4 mr-1.5" /> Template
+                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => setShowTemplates(true)}>
+                  <LayoutGrid className="h-5 w-5 mr-2" /> Template
                 </Button>
-                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => camRef.current?.click()}>
-                  <Camera className="h-4 w-4 mr-1.5" /> Take Photo
+                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => camRef.current?.click()}>
+                  <Camera className="h-5 w-5 mr-2" /> Take Photo
                 </Button>
-                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="h-4 w-4 mr-1.5" /> Upload
+                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => fileRef.current?.click()}>
+                  <ImagePlus className="h-5 w-5 mr-2" /> Upload
                 </Button>
               </div>
             </div>

@@ -49,7 +49,7 @@ function nextDueDate(fromDate: string): Date {
 }
 
 function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ─── Subscription Badge ───────────────────────────────────────────────────────
@@ -1131,7 +1131,7 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          Joined {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          Joined {new Date(r.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1351,10 +1351,10 @@ function YouTubeAdminPanel() {
           <div className="rounded-xl p-4 border border-border bg-card space-y-1">
             <p className="text-xs text-muted-foreground font-medium">Quota Remaining</p>
             <p className="text-3xl font-black text-green-400">
-              {(stats?.quota_remaining ?? 0).toLocaleString()}
+              {(stats?.quota_remaining ?? 0).toLocaleString("en-GB")}
             </p>
             <p className="text-xs text-muted-foreground">
-              of {totalCapacity.toLocaleString()} total
+              of {totalCapacity.toLocaleString("en-GB")} total
             </p>
           </div>
         </div>
@@ -1377,7 +1377,7 @@ function YouTubeAdminPanel() {
             />
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>{totalUsed.toLocaleString()} used</span>
+            <span>{totalUsed.toLocaleString("en-GB")} used</span>
             <span>
               <span className="text-green-400">{stats?.successful_today ?? 0} ok</span>
               {(stats?.failed_today ?? 0) > 0 && (
@@ -1467,7 +1467,7 @@ function YouTubeAdminPanel() {
                       />
                     </div>
                     <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>{key.used_today.toLocaleString()} / {key.daily_limit.toLocaleString()}</span>
+                      <span>{key.used_today.toLocaleString("en-GB")} / {key.daily_limit.toLocaleString("en-GB")}</span>
                       <span>{pct.toFixed(1)}%</span>
                       {key.last_used_at && (
                         <span>Last: {new Date(key.last_used_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>

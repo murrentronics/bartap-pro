@@ -350,9 +350,15 @@ export default function RegisterPage() {
                       </div>
                     )}
 
-                    {/* Cart qty controls top-right */}
+                    {/* Cart qty controls — bottom of image, X · minus · qty */}
                     {inCart && (
-                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-black/70 active:scale-90 transition text-white shadow"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); dec(p.id); }}
                           className="h-8 w-8 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 active:scale-90 transition text-white shadow"
@@ -672,7 +678,7 @@ export default function RegisterPage() {
                       <div className="flex-1 min-w-0">
                         <div className="font-black text-sm leading-tight truncate">{b.product_name}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          Opened {new Date(b.opened_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          Opened {new Date(b.opened_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">{b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}</span>

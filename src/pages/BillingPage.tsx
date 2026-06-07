@@ -218,7 +218,7 @@ export default function BillingPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Next due</span>
                 <span className={`font-semibold ${isOverdue ? "text-red-400" : daysUntilDue !== null && daysUntilDue <= 7 ? "text-yellow-400" : ""}`}>
-                  {nextDueDate ? nextDueDate.toLocaleDateString() : "N/A"}
+                  {nextDueDate ? nextDueDate.toLocaleDateString("en-GB") : "N/A"}
                   {daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= 30 && (
                     <span className="text-muted-foreground font-normal ml-1">({daysUntilDue}d)</span>
                   )}
@@ -463,9 +463,9 @@ export default function BillingPage() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2">
-                        <span>Submitted: {new Date(payment.created_at).toLocaleDateString()}</span>
+                        <span>Submitted: {new Date(payment.created_at).toLocaleDateString("en-GB")}</span>
                         {payment.next_due_date && (
-                          <span>Next due: {new Date(payment.next_due_date).toLocaleDateString()}</span>
+                          <span>Next due: {new Date(payment.next_due_date).toLocaleDateString("en-GB")}</span>
                         )}
                       </div>
                     </div>

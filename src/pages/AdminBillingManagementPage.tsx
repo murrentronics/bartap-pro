@@ -291,7 +291,7 @@ export default function AdminBillingManagementPage() {
                       {payment.billing_plans?.name || "Unknown Plan"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Created: {new Date(payment.created_at).toLocaleString()}
+                      Created: {new Date(payment.created_at).toLocaleString("en-GB")}
                     </p>
                   </div>
                   <div className="text-right">
@@ -373,7 +373,7 @@ export default function AdminBillingManagementPage() {
 
                 <div>
                   <Label>Due Date</Label>
-                  <p>{new Date(selectedPayment.due_date).toLocaleDateString()}</p>
+                  <p>{new Date(selectedPayment.due_date).toLocaleDateString("en-GB")}</p>
                 </div>
 
                 {selectedPayment.status === "pending" && (

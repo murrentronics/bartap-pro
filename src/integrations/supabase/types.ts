@@ -189,6 +189,73 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_expenses: {
+        Row: {
+          id: string
+          owner_id: string
+          amount: number
+          description: string | null
+          expense_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          amount: number
+          description?: string | null
+          expense_date?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          amount?: number
+          description?: string | null
+          expense_date?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_expenses_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      owner_financials: {
+        Row: {
+          id: string
+          owner_id: string
+          initial_expense: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          initial_expense?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          initial_expense?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_financials_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_transactions: {
         Row: {
           amount: number
