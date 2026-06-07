@@ -27,8 +27,8 @@ export type YTHistoryItem = {
 
 // ── History — stays in localStorage (per-device preference) ──────────────────
 const LS_HISTORY  = "yt_play_history";
-const DAILY_LIMIT = 75;
-const HISTORY_MAX = 200;
+const DAILY_LIMIT = 100;
+const HISTORY_MAX = 50;
 
 function loadHistory(): YTHistoryItem[] {
   try {
@@ -60,7 +60,6 @@ type YouTubeCtx = {
   searchesRemaining: number;
   searchResetTime:   string;
 
-  clearResults:  () => void;
   history:           YTHistoryItem[];
   addToHistory:      (item: Omit<YTHistoryItem, "playedAt">) => void;
   clearHistory:      () => void;
@@ -147,11 +146,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); }
   }, []);
 
-  const clearResults = useCallback(() => {
-    setResults([]);
-    setSearchError(null);
-  }, []);
-
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
     setHistoryState(prev => {
       const filtered = prev.filter(h => h.id !== item.id);
@@ -228,7 +222,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       query, setQuery,
       results, searching, searchError, search,
       searchesRemaining, searchResetTime,
-      clearResults,
       history, addToHistory, clearHistory, removeFromHistory,
       nowPlayingTitle, setNowPlayingTitle,
       lastMusicTab, setLastMusicTab,
