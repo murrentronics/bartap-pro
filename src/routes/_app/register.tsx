@@ -558,21 +558,23 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ── Shot Step 2: Price entry — inline on the page below the buttons ── */}
-      {shotStep === "price" && shotBottleId && (() => {
-        return (
-          <div className="mb-3 rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <span className="font-black text-sm">🥃 Add Shot</span>
-              <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+      {/* ── Shot Step 2: Price entry — bottom-sheet modal ── */}
+      {shotStep === "price" && shotBottleId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}>
+          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="font-black text-base">🥃 Add Shot</span>
+              <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); setShotModalOpen(true); }}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
               </button>
             </div>
 
             {/* 3-col card grid — all open bottles, selected one highlighted */}
-            <div className="px-3 pb-2">
+            <div className="px-4 pb-2">
               <div className="grid grid-cols-3 gap-2">
                 {openedBottles.map((b) => {
                   const bProd = products.find(p => p.id === b.product_id);
@@ -600,7 +602,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Numpad */}
-            <div className="px-3 pb-3 space-y-2 border-t border-border/40 pt-3">
+            <div className="px-4 pb-5 space-y-2 border-t border-border/40 pt-3">
               <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
               <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
                 <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
@@ -629,8 +631,8 @@ export default function RegisterPage() {
               </button>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* ── Opened Bottles Modal ────────────────────────────────────────── */}
       {bottlesModalOpen && (
@@ -717,7 +719,7 @@ export default function RegisterPage() {
       )}
 
       {/* Permanent on-screen keyboard — hidden when native input has focus */}
-      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused || shotStep === "price"} onKey={(k) => {
+      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused} onKey={(k) => {
         if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
         if (k === "SPACE") { setSearch((s) => s + " "); return; }
         setSearch((s) => s + k.toLowerCase());

@@ -73,7 +73,6 @@ export default function MusicPage() {
   useEffect(() => {
     const acquire = async () => {
       try {
-        // Release any existing lock before requesting a new one
         if (wakeLockRef.current) {
           await wakeLockRef.current.release().catch(() => {});
           wakeLockRef.current = null;
@@ -81,10 +80,9 @@ export default function MusicPage() {
         if ("wakeLock" in navigator) {
           wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
         }
-      } catch { /* device doesn't support it or request was denied */ }
+      } catch { /* not supported */ }
     };
     acquire();
-    // Re-acquire whenever the page becomes visible (Android kills the lock on screen-off)
     const onVisible = () => { if (document.visibilityState === "visible") acquire(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
