@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
   if (!q) return json({ error: "Missing query parameter: q" }, 400);
 
   // ── Try simple single-key mode first ─────────────────────────────────────
-  const simpleKey = Deno.env.get("YOUTUBE_API_KEY");
+  const simpleKey = Deno.env.get("YOUTUBE_API_KEY") || Deno.env.get("YOUTUBE_API_KEY_1");
 
   if (simpleKey) {
     const result = await callYouTube(simpleKey, q, type, maxResults);
