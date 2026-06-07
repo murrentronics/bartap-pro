@@ -173,7 +173,14 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) return;
-    const ownerId = ownerIdRef.current;
+
+    // Ensure we have an owner ID — get it inline if ref not set yet
+    let ownerId = ownerIdRef.current;
+    if (!ownerId) {
+      const { data } = await supabase.auth.getSession();
+      ownerId = data.session?.user?.id ?? null;
+      if (ownerId) ownerIdRef.current = ownerId;
+    }
     if (!ownerId) return;
 
     // Check quota before calling

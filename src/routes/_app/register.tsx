@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2, Delete,
+  Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
@@ -20,14 +20,11 @@ type OpenedBottle = {
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
-  const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryValue>("beers");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
   const [saleResult, setSaleResult] = useState<{ paid: number; change: number } | null>(null);
-  const [kbHeight, setKbHeight] = useState(120);
-  const [nativeInputFocused, setNativeInputFocused] = useState(false);
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
@@ -76,10 +73,8 @@ export default function RegisterPage() {
   }, [ownerId, fetchProducts]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const byCat = products.filter((p) => (p.category || "beers") === category);
-    return q ? byCat.filter((p) => p.name.toLowerCase().includes(q)) : byCat;
-  }, [products, search, category]);
+    return products.filter((p) => (p.category || "beers") === category);
+  }, [products, category]);
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
@@ -127,8 +122,15 @@ export default function RegisterPage() {
   const [cancelBottleId, setCancelBottleId]       = useState<string | null>(null); // confirm modal
 
   const liquorProducts = useMemo(
-    () => products.filter((p) => (p.category || "beers") === "liquor" && (p.stock_qty ?? 0) > 0),
-    [products]
+    () => {
+      const openedProductIds = new Set(openedBottles.map(b => b.product_id));
+      return products.filter((p) =>
+        (p.category || "beers") === "liquor" &&
+        (p.stock_qty ?? 0) > 0 &&
+        !openedProductIds.has(p.id)
+      );
+    },
+    [products, openedBottles]
   );
 
   const fetchOpenedBottles = useCallback(async () => {
@@ -270,8 +272,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Items grid — extra bottom padding for keyboard + cash button */}
-      <div className="pt-4 pb-64">
+      {/* Items grid — bottom padding clears the fixed CASH button */}
+      <div className="pt-4 pb-24">
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -405,11 +407,11 @@ export default function RegisterPage() {
         )}
       </div>
 
-      {/* Sticky CASH button — animates up when search text is present */}
+      {/* Sticky CASH button — fixed at bottom */}
       {cartCount > 0 && (
         <div
-          className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none transition-all duration-300 ease-in-out"
-          style={{ bottom: search ? kbHeight + 52 : kbHeight + 8 }}
+          className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none"
+          style={{ bottom: 8 }}
         >
           <div className="max-w-2xl mx-auto pointer-events-auto">
             <button
@@ -617,7 +619,7 @@ export default function RegisterPage() {
                         <div className="aspect-[3/4] relative w-full">
                           {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                           <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
-                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)" }}>✓</div>}
+                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✓</div>}
                         </div>
                         <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                           <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
@@ -803,103 +805,11 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* Search text display — sits right on top of keyboard */}
-      {search && (
-        <div
-          className="fixed inset-x-0 z-30 px-3 pointer-events-none"
-          style={{ bottom: kbHeight }}
-        >
-          <div className="max-w-2xl mx-auto flex items-center justify-between bg-black/95 rounded-t-xl px-4 py-2.5 border-x border-t border-white/10 shadow-2xl">
-            <span className="text-white font-bold text-lg tracking-widest">{search}</span>
-            <button
-              className="pointer-events-auto text-white/50 hover:text-white transition ml-3 shrink-0"
-              onPointerDown={(e) => { e.preventDefault(); setSearch(""); }}
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Permanent on-screen keyboard — hidden when native input has focus */}
-      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused} onKey={(k) => {
-        if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
-        if (k === "SPACE") { setSearch((s) => s + " "); return; }
-        setSearch((s) => s + k.toLowerCase());
-      }} onHeightChange={setKbHeight} />
     </>
   );
 }
 
-// ─── On-Screen Keyboard ───────────────────────────────────────────────────────
-const ROWS = [
-  ["Q","W","E","R","T","Y","U","I","O","P"],
-  ["A","S","D","F","G","H","J","K","L"],
-  ["Z","X","C","V","B","N","M","⌫"],
-];
-
-function OnScreenKeyboard({ onKey, onHeightChange, searchText, hidden }: { 
-  onKey: (k: string) => void; 
-  onHeightChange?: (h: number) => void;
-  searchText: string;
-  hidden?: boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (ref.current && onHeightChange) {
-      onHeightChange(ref.current.offsetHeight);
-    }
-  });
-
-  // When a native input is focused, hide the app keyboard entirely
-  // Report height 0 so the layout doesn't reserve space for it
-  if (hidden) {
-    return (
-      <div
-        ref={ref}
-        className="fixed bottom-0 inset-x-0 z-[25]"
-        style={{ height: 0, overflow: "hidden" }}
-      />
-    );
-  }
-
-  return (
-    <div
-      ref={ref}
-      className="fixed bottom-0 inset-x-0 z-[25] bg-background/95 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)", boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
-    >
-      {ROWS.map((row, ri) => (
-        <div key={ri} className="flex justify-center gap-1">
-          {row.map((k) => (
-            <button
-              key={k}
-              onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
-              className={`flex-1 max-w-[2.6rem] h-9 rounded-lg font-bold text-sm transition active:scale-90 select-none ${
-                k === "⌫"
-                  ? "bg-destructive/30 text-destructive max-w-[3.5rem]"
-                  : "bg-muted hover:bg-muted/70 text-foreground"
-              }`}
-            >
-              {k === "⌫" ? <Delete className="h-4 w-4 mx-auto" /> : k}
-            </button>
-          ))}
-        </div>
-      ))}
-      {/* Space bar row */}
-      <div className="flex justify-center gap-1 px-2">
-        <button
-          onPointerDown={(e) => { e.preventDefault(); onKey("SPACE"); }}
-          className="flex-1 h-9 rounded-lg bg-muted hover:bg-muted/70 text-xs font-bold text-muted-foreground transition active:scale-95 select-none"
-        >
-          SPACE
-        </button>
-      </div>
-    </div>
-  );
-}
-
+// ─── Cash Overlay ─────────────────────────────────────────────────────────────
 function CashOverlay({
   total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess,
 }: {
