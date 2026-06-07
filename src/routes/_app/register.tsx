@@ -321,11 +321,6 @@ export default function RegisterPage() {
                       {categoryIcon(p.category ?? "drinks")}
                     </div>
 
-                    {/* Price on image bottom */}
-                    <div className="absolute inset-x-0 bottom-0 px-2 py-1 bg-gradient-to-t from-black/80 to-transparent">
-                      <div className="text-primary font-black text-sm">${Number(p.price).toFixed(2)}</div>
-                    </div>
-
                     {/* Stock qty badge top-left */}
                     {p.stock_qty !== undefined && !outOfStock && (
                       <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
@@ -368,9 +363,10 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* ── Title strip below image ── */}
+                  {/* ── Title + price strip below image ── */}
                   <div className="px-1.5 py-1.5" style={{ background: "var(--gradient-hero)" }}>
                     <div className="font-bold text-[11px] text-white truncate leading-tight">{p.name}</div>
+                    <div className="text-white font-black text-xs mt-0.5">${Number(p.price).toFixed(2)}</div>
                   </div>
                 </button>
               );

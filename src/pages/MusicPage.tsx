@@ -204,18 +204,13 @@ export default function MusicPage() {
               </span>
             </div>
 
-            {/* ── BOTTOM-RIGHT COVER: fullscreen button ─────────────────────
-                Wide enough to cover time display + fullscreen arrow area.   */}
+            {/* ── BOTTOM-RIGHT COVER: entire area with fullscreen button ──────
+                Covers the full bottom-right black zone above the progress bar
+                where the fullscreen icon sits — matched to the green box.   */}
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 120, height: 60,
+              bottom: 96, right: 0, width: 180, height: 60,
               zIndex: 36, background: "#000", pointerEvents: "auto",
-            }} />
-            {/* ── Extra strip covering the gap between progress bar and footer */}
-            <div style={{
-              position: "fixed",
-              bottom: 56, right: 0, width: "100%", height: 4,
-              zIndex: 36, background: "#000", pointerEvents: "none",
             }} />
           </>
         )}

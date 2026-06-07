@@ -434,37 +434,35 @@ export default function ProductsPage() {
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {/* Price + delete on image bottom */}
-                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 bg-gradient-to-t from-black/80 to-transparent z-10">
-                    <div className="flex justify-between items-center">
-                      <span className="text-primary font-black text-sm">${Number(p.price).toFixed(2)}</span>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button className="p-1 rounded text-white/70 hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete {p.name}?</AlertDialogTitle>
-                            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={async () => {
-                              await supabase.from("products").delete().eq("id", p.id);
-                              load();
-                            }}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                  {/* Delete button on image bottom-right, price moves to footer */}
+                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 z-10 flex justify-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button className="p-1 rounded text-white/70 hover:text-destructive bg-black/50 rounded-lg">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {p.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={async () => {
+                            await supabase.from("products").delete().eq("id", p.id);
+                            load();
+                          }}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
 
-                {/* ── Title below image ── */}
+                {/* ── Title + price below image ── */}
                 <div className="px-1.5 py-1.5" style={{ background: "var(--gradient-hero)" }}>
                   <div className="font-bold text-[11px] text-white truncate leading-tight">{p.name}</div>
+                  <div className="text-white font-black text-xs mt-0.5">${Number(p.price).toFixed(2)}</div>
                 </div>
 
               </div>
