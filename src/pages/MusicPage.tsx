@@ -245,7 +245,7 @@ export default function MusicPage() {
                 />
               </div>
               <button onClick={handleSearch}
-                disabled={!searchInput.trim() || yt.searching || yt.searchesRemaining === 0}
+                disabled={!searchInput.trim() || yt.searching}
                 className="h-10 px-3 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0"
                 style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
                 {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
