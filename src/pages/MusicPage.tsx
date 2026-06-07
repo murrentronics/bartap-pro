@@ -85,10 +85,6 @@ export default function MusicPage() {
 
   const handleSearch = () => {
     if (!searchInput.trim()) return;
-    if (yt.searchesRemaining === 0) {
-      toast.error(`Daily search limit reached. Resets in ${yt.searchResetTime}.`);
-      return;
-    }
     yt.setQuery(searchInput);
     yt.search(searchInput);
     setYtSubTab("results");
@@ -605,14 +601,13 @@ export default function MusicPage() {
                         setYtSubTab("results");
                       }
                     }}
-                    placeholder={yt.searchesRemaining === 0 ? "Daily limit reached — use History tab" : "Search songs, artists…"}
-                    disabled={yt.searchesRemaining === 0}
-                    className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Search songs, artists…"
+                    className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
                 <button
                   onClick={() => { handleSearch(); setYtSubTab("results"); }}
-                  disabled={!searchInput.trim() || yt.searching || yt.searchesRemaining === 0}
+                  disabled={!searchInput.trim() || yt.searching}
                   className="h-11 px-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0 flex items-center gap-1.5"
                   style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
                   {yt.searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -630,7 +625,7 @@ export default function MusicPage() {
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${(yt.searchesRemaining / 100) * 100}%`,
+                      width: `${(yt.searchesRemaining / 75) * 100}%`,
                       background: yt.searchesRemaining <= 10 ? "#eab308" : yt.searchesRemaining <= 25 ? "#f97316" : "#22c55e",
                     }} />
                 </div>

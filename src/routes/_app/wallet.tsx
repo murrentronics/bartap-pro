@@ -1073,20 +1073,45 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     initialExpense: number;
     monthlyExpenses: number;
     totalIncome: number;
+    stockResaleValue: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, incomeRes] = await Promise.all([
+    const [finRes, expRes, incomeRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       supabase.from("orders").select("total").eq("cashier_id", profile.id),
+      // All products with stock: price × qty
+      supabase.from("products").select("price, stock_qty"),
+      // Currently open bottles: product price + shots revenue already sold
+      sb.from("opened_bottles")
+        .select("revenue, product_id, products(price)")
+        .eq("owner_id", profile.id)
+        .eq("status", "open"),
     ]);
+
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
     const totalIncome = (incomeRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome });
+
+    // Closed stock: sum of price × stock_qty for all products
+    const closedStockValue = (productsRes.data ?? []).reduce(
+      (s: number, p: { price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty),
+      0
+    );
+    // Opened bottles: base cost (product price) minus shots revenue already collected
+    const openBottles = (openBottlesRes.data ?? []) as { revenue: number; products: { price: number } | null }[];
+    const openedBottlesNetValue = openBottles.reduce((s, b) => {
+      const bottlePrice = b.products ? Number(b.products.price) : 0;
+      const soldRevenue = Number(b.revenue);
+      return s + bottlePrice - soldRevenue;
+    }, 0);
+
+    const stockResaleValue = closedStockValue + openedBottlesNetValue;
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -1095,6 +1120,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const totalExpenses = financialSummary ? financialSummary.initialExpense + financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const netProfit = totalIncome - totalExpenses;
+  const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
   const hasFinancials = financialSummary !== null && (financialSummary.initialExpense > 0 || financialSummary.monthlyExpenses > 0);
 
   return (
@@ -1151,6 +1177,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               </div>
             </div>
           )}
+
+          {/* Stock Resale Value — full width row */}
+          <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <BarChart3 className="h-3.5 w-3.5" /> Total Stock Resale Value
+            </div>
+            <span className="font-black text-sm" style={{ color: "oklch(0.80 0.16 145)" }}>
+              ${stockResaleValue.toFixed(2)}
+            </span>
+          </div>
 
           {/* Income — full width row (replaces Available Balance) */}
           <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
