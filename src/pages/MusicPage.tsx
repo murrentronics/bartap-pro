@@ -205,11 +205,10 @@ export default function MusicPage() {
             </div>
 
             {/* ── BOTTOM-RIGHT COVER: entire area with fullscreen button ──────
-                Covers the full bottom-right black zone above the progress bar
-                where the fullscreen icon sits — matched to the green box.   */}
+                Covers the full bottom-right black zone above the progress bar */}
             <div style={{
               position: "fixed",
-              bottom: 96, right: 0, width: 180, height: 60,
+              bottom: 72, right: 0, width: 180, height: 80,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>

@@ -364,9 +364,9 @@ export default function RegisterPage() {
                   </div>
 
                   {/* ── Title + price strip below image ── */}
-                  <div className="px-1.5 py-1.5" style={{ background: "var(--gradient-hero)" }}>
-                    <div className="font-bold text-[11px] text-white truncate leading-tight">{p.name}</div>
-                    <div className="text-white font-black text-xs mt-0.5">${Number(p.price).toFixed(2)}</div>
+                  <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
+                    <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                    <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
                   </div>
                 </button>
               );
