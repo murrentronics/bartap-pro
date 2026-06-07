@@ -7,7 +7,7 @@
 -- YOUTUBE_API_KEY_1 .. YOUTUBE_API_KEY_10.  This table tracks usage only —
 -- the actual key string is NEVER stored here (stays in Vault/secrets).
 CREATE TABLE IF NOT EXISTS public.youtube_api_keys (
-  slot          INTEGER PRIMARY KEY CHECK (slot BETWEEN 1 AND 10),
+  slot          INTEGER PRIMARY KEY CHECK (slot BETWEEN 0 AND 10),
   label         TEXT    NOT NULL DEFAULT '',      -- friendly name, e.g. "Account A"
   enabled       BOOLEAN NOT NULL DEFAULT true,    -- admin can disable a slot
   daily_limit   INTEGER NOT NULL DEFAULT 9800,    -- conservative limit (real quota is 10 000)
@@ -18,19 +18,20 @@ CREATE TABLE IF NOT EXISTS public.youtube_api_keys (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Seed slots 1-10 (disabled by default — admin enables them once keys are set)
+-- Seed slot 0 (primary YOUTUBE_API_KEY) + slots 1-10
 INSERT INTO public.youtube_api_keys (slot, label, enabled)
 VALUES
-  (1,  'Key Slot 1',  false),
-  (2,  'Key Slot 2',  false),
-  (3,  'Key Slot 3',  false),
-  (4,  'Key Slot 4',  false),
-  (5,  'Key Slot 5',  false),
-  (6,  'Key Slot 6',  false),
-  (7,  'Key Slot 7',  false),
-  (8,  'Key Slot 8',  false),
-  (9,  'Key Slot 9',  false),
-  (10, 'Key Slot 10', false)
+  (0,  'YOUTUBE_API_KEY (Primary)', true),
+  (1,  'YOUTUBE_API_KEY_1',  false),
+  (2,  'YOUTUBE_API_KEY_2',  false),
+  (3,  'YOUTUBE_API_KEY_3',  false),
+  (4,  'YOUTUBE_API_KEY_4',  false),
+  (5,  'YOUTUBE_API_KEY_5',  false),
+  (6,  'YOUTUBE_API_KEY_6',  false),
+  (7,  'YOUTUBE_API_KEY_7',  false),
+  (8,  'YOUTUBE_API_KEY_8',  false),
+  (9,  'YOUTUBE_API_KEY_9',  false),
+  (10, 'YOUTUBE_API_KEY_10', false)
 ON CONFLICT (slot) DO NOTHING;
 
 -- Table: youtube_search_log
@@ -56,6 +57,7 @@ ALTER TABLE public.youtube_api_keys  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.youtube_search_log ENABLE ROW LEVEL SECURITY;
 
 -- Only admins can read/write the key pool table
+DROP POLICY IF EXISTS "Admins can manage api keys" ON public.youtube_api_keys;
 CREATE POLICY "Admins can manage api keys"
   ON public.youtube_api_keys FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
@@ -63,10 +65,12 @@ CREATE POLICY "Admins can manage api keys"
 -- Edge functions (service role) can also write to the key table — handled via service role bypass
 
 -- Admins can view all logs; owners can view their own
+DROP POLICY IF EXISTS "Admins can view all search logs" ON public.youtube_search_log;
 CREATE POLICY "Admins can view all search logs"
   ON public.youtube_search_log FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
 
+DROP POLICY IF EXISTS "Users can view own search logs" ON public.youtube_search_log;
 CREATE POLICY "Users can view own search logs"
   ON public.youtube_search_log FOR SELECT
   USING (user_id = auth.uid());
@@ -95,6 +99,7 @@ $$;
 -- Replaces the old SECURITY DEFINER view so RLS is enforced on the caller,
 -- not the view creator. Only admins can read youtube_api_keys/search_log anyway.
 
+DROP FUNCTION IF EXISTS public.get_youtube_daily_stats();
 CREATE OR REPLACE FUNCTION public.get_youtube_daily_stats()
 RETURNS TABLE (
   searches_today     BIGINT,

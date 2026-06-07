@@ -1416,19 +1416,19 @@ function YouTubeAdminPanel() {
                 }`}>
                 <div className="flex items-center gap-3">
                   {/* Slot number */}
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 ${
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
                     key.exhausted ? "bg-red-500/20 text-red-400"
                     : key.enabled  ? "bg-green-500/20 text-green-400"
                     : "bg-muted text-muted-foreground"
                   }`}>
-                    {key.slot}
+                    {key.slot === 0 ? "★" : key.slot}
                   </div>
 
                   {/* Label (editable) */}
                   <Input
                     defaultValue={key.label}
                     onBlur={e => { if (e.target.value !== key.label) updateLabel(key.slot, e.target.value); }}
-                    placeholder={`Key Slot ${key.slot}`}
+                    placeholder={key.slot === 0 ? "YOUTUBE_API_KEY (Primary)" : `YOUTUBE_API_KEY_${key.slot}`}
                     className="h-7 text-xs flex-1 bg-transparent border-muted"
                   />
 

@@ -491,16 +491,16 @@ export default function MusicPage() {
       {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
       <div style={{ background: "#0d1117" }}>
         <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)}>
-          <TabsList className="grid grid-cols-3 mx-3 mt-2"
+          <TabsList className="grid grid-cols-3 mx-3 mt-2 h-14"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
-            <TabsTrigger value="playlist" className="gap-1.5 data-[state=active]:text-blue-300">
-              <ListMusic className="h-3.5 w-3.5" /> Playlist
+            <TabsTrigger value="playlist" className="gap-2 h-full text-sm data-[state=active]:text-blue-300">
+              <ListMusic className="h-4.5 w-4.5" /> Playlist
             </TabsTrigger>
-            <TabsTrigger value="files" className="gap-1.5 data-[state=active]:text-blue-300">
-              <FolderOpen className="h-3.5 w-3.5" /> Files
+            <TabsTrigger value="files" className="gap-2 h-full text-sm data-[state=active]:text-blue-300">
+              <FolderOpen className="h-4.5 w-4.5" /> Files
             </TabsTrigger>
-            <TabsTrigger value="youtube" className="gap-1.5 data-[state=active]:text-blue-300">
-              <Youtube className="h-3.5 w-3.5" /> YouTube
+            <TabsTrigger value="youtube" className="gap-2 h-full text-sm data-[state=active]:text-blue-300">
+              <Youtube className="h-4.5 w-4.5" /> YouTube
             </TabsTrigger>
           </TabsList>
 
@@ -601,8 +601,9 @@ export default function MusicPage() {
                         setYtSubTab("results");
                       }
                     }}
-                    placeholder="Search songs, artists…"
-                    className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
+                    placeholder={yt.searchesRemaining === 0 ? "Daily limit reached — use History tab" : "Search songs, artists…"}
+                    disabled={yt.searchesRemaining === 0}
+                    className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <button
@@ -625,11 +626,23 @@ export default function MusicPage() {
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${(yt.searchesRemaining / 100) * 100}%`,
+                      width: `${(yt.searchesRemaining / 75) * 100}%`,
                       background: yt.searchesRemaining <= 10 ? "#eab308" : yt.searchesRemaining <= 25 ? "#f97316" : "#22c55e",
                     }} />
                 </div>
               </div>
+
+              {/* Limit reached banner */}
+              {yt.searchesRemaining === 0 && (
+                <div className="rounded-xl px-4 py-3 flex items-center gap-3"
+                  style={{ background: "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.35)" }}>
+                  <span className="text-xl shrink-0">⚠️</span>
+                  <div>
+                    <p className="text-xs font-black" style={{ color: "#eab308" }}>Daily search limit reached</p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(234,179,8,0.7)" }}>Resets in {yt.searchResetTime} · Use your History tab to keep playing</p>
+                  </div>
+                </div>
+              )}
 
               {/* Sub-tabs: Results | History */}
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.05)" }}>
