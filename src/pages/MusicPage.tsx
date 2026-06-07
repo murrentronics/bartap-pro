@@ -175,9 +175,7 @@ export default function MusicPage() {
             The center video area and play/pause button remain fully tappable. */}
         {!searchOpen && (
           <>
-            {/* ── TOP COVER: buries the entire YouTube title/channel/icon bar ──
-                YouTube's top chrome is ~220px tall on mobile. We cover it all
-                with solid black and show our own now-playing strip at the top. */}
+            {/* ── TOP COVER: solid black over YouTube title/channel/icons ── */}
             <div style={{
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
@@ -185,7 +183,6 @@ export default function MusicPage() {
               zIndex: 36, background: "#000", pointerEvents: "auto",
               display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
             }}>
-              {/* Animated bars */}
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 18, flexShrink: 0, marginTop: 2 }}>
                 {[0,1,2,3].map((b) => (
                   <div key={b} style={{
@@ -206,35 +203,12 @@ export default function MusicPage() {
 
             {/* ── BOTTOM COVER: buries YouTube's entire controls strip ─────────
                 Covers the full black area below the video: time, progress bar,
-                fullscreen button — all of it. We draw our own on top.        */}
+                fullscreen button — all of it. Leave it solid black.          */}
             <div style={{
               position: "fixed",
               bottom: 56, left: 0, right: 0, height: 100,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
-
-            {/* ── OUR PROGRESS BAR + TIME — sits on top of the cover ───────── */}
-            <div style={{
-              position: "fixed",
-              bottom: 56, left: 0, right: 0, height: 100,
-              zIndex: 37, pointerEvents: "none",
-              display: "flex", flexDirection: "column", justifyContent: "center",
-              padding: "0 16px", gap: 6,
-            }}>
-              {/* Time display */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-                  {yt.nowPlayingTitle ? "▶ Playing" : ""}
-                </span>
-              </div>
-              {/* Progress bar replica — purely decorative, shows the track is playing */}
-              <div style={{ width: "100%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: 2, background: "#ef4444",
-                  width: "60%", /* static indicator — YouTube iframe manages actual progress */
-                }} />
-              </div>
-            </div>
           </>
         )}
 

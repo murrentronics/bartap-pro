@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Minus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
 import {
@@ -73,21 +73,21 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
         </div>
 
         {/* Current qty display */}
-        <div className="mx-5 mb-2 px-4 py-2 rounded-xl bg-muted/30 flex items-center justify-between">
+        <div className="mx-5 mb-2 px-4 py-3 rounded-xl bg-muted/30 flex items-center justify-between">
           <span className="text-sm text-muted-foreground font-medium">Current stock</span>
           <span className="text-2xl font-black text-foreground">{currentQty}</span>
         </div>
 
-        {/* Add amount input */}
-        <div className="mx-5 mb-1 h-14 rounded-2xl border border-border bg-muted/30 flex items-center justify-center">
-          <span className="text-xs text-muted-foreground mr-2">+ Add</span>
-          <span className="text-4xl font-black text-primary">{value}</span>
+        {/* Add amount */}
+        <div className="mx-5 mb-2 px-4 py-3 rounded-xl border border-border bg-muted/30 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground font-medium">+ Adding</span>
+          <span className="text-2xl font-black text-primary">{value}</span>
         </div>
 
         {/* New total preview */}
-        <div className="mx-5 mb-3 flex items-center justify-between px-2">
-          <span className="text-xs text-muted-foreground">New total after adding</span>
-          <span className="text-lg font-black text-green-400">{newTotal}</span>
+        <div className="mx-5 mb-3 px-4 py-3 rounded-xl bg-muted/30 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground font-medium">New total</span>
+          <span className="text-2xl font-black text-green-400">{newTotal}</span>
         </div>
 
         <div className="px-5 pb-5 space-y-2">
@@ -413,27 +413,13 @@ export default function ProductsPage() {
                     </div>
                   )}
 
-                  {/* Stock controls */}
-                  <div className="absolute top-0 inset-x-0 flex items-center justify-between px-1.5 pt-1.5 gap-1 z-10">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateStock(p.id, -1); }}
-                      className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-600/80 active:scale-90 transition text-white shadow shrink-0"
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
-                      className="flex-1 h-7 rounded-full flex items-center justify-center bg-black/70 hover:bg-black/90 active:scale-95 transition shadow"
-                    >
-                      <span className="text-xs font-black text-white leading-none">{p.stock_qty ?? 0}</span>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateStock(p.id, 1); }}
-                      className="h-7 w-7 rounded-full flex items-center justify-center bg-black/60 hover:bg-green-600/80 active:scale-90 transition text-white shadow shrink-0"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  {/* Stock qty — top-left, larger, tappable to open numpad */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
+                    className="absolute top-1.5 left-1.5 h-10 min-w-[2.5rem] px-2 rounded-full flex items-center justify-center bg-black/70 active:scale-95 transition shadow z-10"
+                  >
+                    <span className="text-base font-black text-white leading-none">{p.stock_qty ?? 0}</span>
+                  </button>
                   {/* Delete button on image bottom-right, price moves to footer */}
                   <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 z-10 flex justify-end">
                     <AlertDialog>

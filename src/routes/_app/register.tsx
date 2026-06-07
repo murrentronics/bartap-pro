@@ -115,6 +115,7 @@ export default function RegisterPage() {
   const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
   const [shotModalOpen, setShotModalOpen]       = useState(false);
   const [shotStep, setShotStep]                 = useState<"select" | "price">("select");
+  const [showNewBottleGrid, setShowNewBottleGrid] = useState(false);
   const [shotBottleId, setShotBottleId]         = useState<string>("");
   const [shotPrice, setShotPrice]               = useState("");
   const selectedBottleRef                       = useRef<HTMLDivElement>(null);
@@ -448,102 +449,109 @@ export default function RegisterPage() {
       {/* ── Shot Modal — Step 1: Select Liquor (3-column card grid) ──── */}
       {shotModalOpen && shotStep === "select" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); }}>
+          onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}>
           <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-black">🥃 Select Liquor</span>
-              <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); }}
+              <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="px-4 pb-5 space-y-4 max-h-[75vh] overflow-y-auto">
 
-              {/* Currently open — 3-col card grid */}
-              {openedBottles.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {openedBottles.map((b) => {
-                      const prod = products.find(p => p.id === b.product_id);
-                      return (
-                        <button key={b.id}
-                          onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); }}
-                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition">
-                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
-                            {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                          </div>
-                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
-                            <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {!showNewBottleGrid ? (
+                <>
+                  {/* Currently open — 3-col card grid */}
+                  {openedBottles.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {openedBottles.map((b) => {
+                          const prod = products.find(p => p.id === b.product_id);
+                          return (
+                            <button key={b.id}
+                              onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
+                              className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition">
+                              <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
+                                {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
+                              </div>
+                              <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                                <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
+                                <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Open new bottle — 3-col card grid from liquor inventory */}
-              {liquorProducts.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Open New Bottle</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {liquorProducts.map((p) => {
-                      const sel = newBottleProductId === p.id;
-                      return (
+                  {/* + Open New Bottle button */}
+                  <button
+                    onClick={() => setShowNewBottleGrid(true)}
+                    className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
+                    style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+                  >
+                    + Open New Bottle
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Back button + inventory grid */}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setShowNewBottleGrid(false)} className="text-muted-foreground hover:text-foreground transition">
+                      <X className="h-4 w-4" />
+                    </button>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select from Inventory</p>
+                  </div>
+                  {liquorProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No liquor in stock.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {liquorProducts.map((p) => (
                         <button key={p.id}
-                          onClick={() => setNewBottleProductId(sel ? "" : p.id)}
-                          className="flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
-                          style={{ borderColor: sel ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
-                          <div className="aspect-[3/4] relative w-full">
+                          onClick={async () => {
+                            setBottleBusy(true);
+                            const ownId = ownerIdRef.current;
+                            if (!ownId) { setBottleBusy(false); return; }
+                            const { error } = await supabase.rpc("open_bottle", {
+                              p_owner_id: ownId, p_product_id: p.id, p_shot_price: 0,
+                            });
+                            if (error) { toast.error(error.message); setBottleBusy(false); return; }
+                            await fetchOpenedBottles();
+                            await fetchProducts();
+                            const { data } = await supabase.from("opened_bottles").select("id")
+                              .eq("owner_id", ownId).eq("product_id", p.id).eq("status", "open")
+                              .order("opened_at", { ascending: false }).limit(1);
+                            setBottleBusy(false);
+                            if (data?.[0]) {
+                              setShotBottleId(data[0].id);
+                              setShotPrice("");
+                              setShotStep("price");
+                              setShotModalOpen(false);
+                              setShowNewBottleGrid(false);
+                            }
+                          }}
+                          disabled={bottleBusy}
+                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
+                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>🍾</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
-                            {sel && <div className="absolute inset-0 flex items-center justify-center bg-primary/20 text-2xl">✓</div>}
+                            {bottleBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                           </div>
                           <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                             <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
                           </div>
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  {newBottleProductId && (
-                    <div className="mt-3 space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                      <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                        <span className={`text-2xl font-black ${newBottlePrice ? "text-foreground" : "text-muted-foreground"}`}>${newBottlePrice || "0.00"}</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                          <button key={k} type="button"
-                            onClick={() => {
-                              if (k === "⌫") { setNewBottlePrice(v => v.slice(0,-1)); return; }
-                              if (k === ".") { if (!newBottlePrice.includes(".")) setNewBottlePrice(v => v + "."); return; }
-                              const dotIdx = newBottlePrice.indexOf(".");
-                              if (dotIdx !== -1 && newBottlePrice.length - dotIdx > 2) return;
-                              setNewBottlePrice(v => v === "0" ? k : v + k);
-                            }}
-                            className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
-                          >{k}</button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={handleOpenNewBottle}
-                        disabled={!newBottlePrice || parseFloat(newBottlePrice) <= 0 || bottleBusy}
-                        className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
-                        style={{ background: "var(--gradient-hero)" }}
-                      >
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bottle & Select"}
-                      </button>
+                      ))}
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -552,7 +560,6 @@ export default function RegisterPage() {
 
       {/* ── Shot Step 2: Price entry — inline on the page below the buttons ── */}
       {shotStep === "price" && shotBottleId && (() => {
-        const bottle = openedBottles.find(b => b.id === shotBottleId);
         const prod = bottle ? products.find(p => p.id === bottle.product_id) : null;
         return (
           <div className="mb-3 rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
@@ -626,40 +633,6 @@ export default function RegisterPage() {
         );
       })()}
 
-                  {openedBottles.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground font-semibold">Currently open:</p>
-                      {openedBottles.map((b) => {
-                        const prod = products.find(p => p.id === b.product_id);
-                        const selected = shotBottleId === b.id;
-                        return (
-                          <button
-                            key={b.id}
-                            onClick={() => { setShotBottleId(b.id === shotBottleId ? "" : b.id); setShotPrice(b.id === shotBottleId ? "" : (b.shot_price ? String(b.shot_price) : "")); }}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-xl border transition active:scale-[0.98] text-left"
-                            style={selected
-                              ? { background: "var(--gradient-hero)", borderColor: "var(--primary)" }
-                              : { background: "var(--muted)", borderColor: "transparent" }}
-                          >
-                            <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-black/30 flex items-center justify-center">
-                              {prod?.image_url
-                                ? <img src={prod.image_url} alt="" className="h-full w-full object-cover"
-                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                                : <span className="text-2xl">🍾</span>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`font-bold text-sm leading-tight truncate ${selected ? "text-white" : ""}`}>{b.product_name}</div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-xs font-black ${selected ? "text-white" : "text-primary"}`}>${Number(b.revenue).toFixed(2)} made</span>
-                              </div>
-                            </div>
-                            {selected && <span className="text-white text-lg shrink-0">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
       {/* ── Opened Bottles Modal ────────────────────────────────────────── */}
       {bottlesModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -706,25 +679,15 @@ export default function RegisterPage() {
                         </div>
                       </div>
                     </div>
-                    {/* Finish / Cancel buttons */}
-                    <div className="grid grid-cols-2 gap-0">
-                      {b.shots_sold === 0 && (
-                        <button
-                          onClick={() => handleCancelBottle(b.id)}
-                          disabled={bottleBusy}
-                          className="h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-1 rounded-none border-r border-black/20"
-                          style={{ background: "linear-gradient(135deg,#374151,#1f2937)" }}
-                        >
-                          {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✕ Cancel"}
-                        </button>
-                      )}
+                    {/* Single centered button — Cancel if 0 shots, Mark Bottle Empty if shots sold */}
+                    <div className="flex justify-center py-2">
                       <button
-                        onClick={() => handleFinishBottle(b.id)}
+                        onClick={() => b.shots_sold === 0 ? handleCancelBottle(b.id) : handleFinishBottle(b.id)}
                         disabled={bottleBusy}
-                        className={`h-10 font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2 rounded-none ${b.shots_sold === 0 ? "" : "col-span-2"}`}
-                        style={{ background: "linear-gradient(135deg,#dc2626,#991b1b)" }}
+                        className="px-6 h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                        style={{ background: b.shots_sold === 0 ? "linear-gradient(135deg,#374151,#1f2937)" : "linear-gradient(135deg,#dc2626,#991b1b)" }}
                       >
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "✓ Bottle Finished / Empty"}
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : b.shots_sold === 0 ? "✕ Cancel" : "Mark Bottle Empty"}
                       </button>
                     </div>
                   </div>
@@ -755,7 +718,7 @@ export default function RegisterPage() {
       )}
 
       {/* Permanent on-screen keyboard — hidden when native input has focus */}
-      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused} onKey={(k) => {
+      <OnScreenKeyboard searchText={search} hidden={nativeInputFocused || shotStep === "price"} onKey={(k) => {
         if (k === "⌫") { setSearch((s) => s.slice(0, -1)); return; }
         if (k === "SPACE") { setSearch((s) => s + " "); return; }
         setSearch((s) => s + k.toLowerCase());
