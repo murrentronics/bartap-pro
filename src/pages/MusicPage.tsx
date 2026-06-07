@@ -204,14 +204,18 @@ export default function MusicPage() {
               </span>
             </div>
 
-            {/* ── BOTTOM-RIGHT COVER: fullscreen button only ────────────────
-                Sits right at the bottom-right corner of the YT controls row.
-                Using bottom:0 so it anchors to the very bottom of the screen
-                and covers the controls bar from the right edge inward.       */}
+            {/* ── BOTTOM-RIGHT COVER: fullscreen button ─────────────────────
+                Wide enough to cover time display + fullscreen arrow area.   */}
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 80, height: 56,
+              bottom: 56, right: 0, width: 120, height: 60,
               zIndex: 36, background: "#000", pointerEvents: "auto",
+            }} />
+            {/* ── Extra strip covering the gap between progress bar and footer */}
+            <div style={{
+              position: "fixed",
+              bottom: 56, right: 0, width: "100%", height: 4,
+              zIndex: 36, background: "#000", pointerEvents: "none",
             }} />
           </>
         )}
