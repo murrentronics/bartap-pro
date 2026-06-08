@@ -175,7 +175,7 @@ export default function RegisterPage() {
     const pack = openedPacks.find((p) => p.id === packPackId);
     const price = parseFloat(packPrice);
     if (!pack || isNaN(price) || price <= 0) { toast.error("Select a pack and set a price"); return; }
-    const label = pack.pack_type === "paper" ? "Paper" : "Cigarette";
+    const label = "Retail";
     const id = `pack-${pack.id}-${Date.now()}`;
     setCart((c) => [...c, {
       id, name: `${label}: ${pack.product_name}`, price,
