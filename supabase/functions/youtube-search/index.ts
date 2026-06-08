@@ -130,8 +130,8 @@ async function callYouTube(apiKey: string, q: string, type: string, maxResults: 
     const rawItems = (data.items ?? []).map((item: any) => ({
       id:        item.id?.videoId ?? item.id?.playlistId,
       kind:      item.id?.kind,
-      title:     item.snippet?.title,
-      channel:   item.snippet?.channelTitle,
+      title:     decodeHtml(item.snippet?.title ?? ""),
+      channel:   decodeHtml(item.snippet?.channelTitle ?? ""),
       thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url,
       duration:  null as string | null,
     }));
@@ -166,6 +166,17 @@ async function callYouTube(apiKey: string, q: string, type: string, maxResults: 
   } catch (e) {
     return { ok: false, quotaExceeded: false, error: String(e) };
   }
+}
+
+// Decode HTML entities in YouTube titles (e.g. &amp; → &, &#39; → ')
+function decodeHtml(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&apos;/g, "'");
 }
 
 // Converts ISO 8601 duration (PT1H2M3S) → "1:02:03" or "2:03"

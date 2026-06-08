@@ -160,9 +160,9 @@ export default function AppLayout() {
       ];
 
   return (
-    <div className="min-h-screen">
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
       <header
-        className="sticky top-0 z-50 bg-background/90 backdrop-blur border-b border-border"
+        className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
@@ -234,7 +234,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-3 overflow-y-auto" style={{ height: "calc(100vh - 44px - env(safe-area-inset-top, 0px))" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 py-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none" }}>
         <Outlet />
       </main>
 
