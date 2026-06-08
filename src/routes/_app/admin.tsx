@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import {
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import {
   Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2,
   ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
-  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap,
+  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
@@ -725,6 +725,13 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
   if (hidden) return null;
 
   const handleDelete = async () => {
+    const ok = await confirm({
+      title: "Delete Template?",
+      description: `"${label}" will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     setDeleting(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("template_images").delete().eq("id", t.id);
@@ -812,11 +819,149 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
   );
 }
 
+// ─── Add Template Modal ───────────────────────────────────────────────────────
+function AddTemplateModal({ onDone }: { onDone: () => void }) {
+  const [name, setName]         = useState("");
+  const [category, setCategory] = useState<string>("beers");
+  const [file, setFile]         = useState<File | null>(null);
+  const [preview, setPreview]   = useState<string | null>(null);
+  const [busy, setBusy]         = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const camRef  = useRef<HTMLInputElement>(null);
+
+  const onPick = (f: File | undefined | null) => {
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const clearImage = () => { setFile(null); setPreview(null); };
+
+  const submit = async () => {
+    if (!name.trim()) { toast.error("Enter a title"); return; }
+    setBusy(true);
+    let url: string | null = null;
+    if (file) {
+      const ext  = file.name.split(".").pop() || "jpg";
+      const path = `manual/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("template-images")
+        .upload(path, file, { upsert: false });
+      if (upErr) { toast.error(upErr.message); setBusy(false); return; }
+      url = supabase.storage.from("template-images").getPublicUrl(path).data.publicUrl;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("template_images").insert({
+      url: url ?? `manual:${crypto.randomUUID()}`,
+      label: name.trim(),
+      category,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Template added");
+    onDone();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onDone}>
+      <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Handle */}
+        <div className="w-10 h-1 rounded-full mx-auto mt-3 mb-1" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
+          <span className="font-black text-base">Add Template</span>
+          <button onClick={onDone}
+            className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-6 space-y-4 max-h-[80vh] overflow-y-auto">
+
+          {/* Image area */}
+          <div className="flex gap-3 items-stretch">
+            {/* Preview box */}
+            <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
+              style={{ background: "var(--gradient-card)" }}>
+              {preview
+                ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
+              }
+              {preview && (
+                <button onClick={clearImage}
+                  className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1">
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+              <input ref={camRef} type="file" accept="image/*" capture="environment" hidden
+                onChange={(e) => onPick(e.target.files?.[0])} />
+              <input ref={fileRef} type="file" accept="image/*" hidden
+                onChange={(e) => onPick(e.target.files?.[0])} />
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-col gap-2 flex-1 justify-center">
+              <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
+                onClick={() => camRef.current?.click()}>
+                <Camera className="h-5 w-5 mr-2" /> Take Photo
+              </Button>
+              <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
+                onClick={() => fileRef.current?.click()}>
+                <ImagePlus className="h-5 w-5 mr-2" /> Upload Photo
+              </Button>
+            </div>
+          </div>
+
+          {/* Category */}
+          <div>
+            <Label className="text-xs mb-1.5 block">Category</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {CATEGORIES.map((cat) => (
+                <button key={cat.value} type="button"
+                  onClick={() => setCategory(cat.value)}
+                  className={`h-14 rounded-xl font-bold text-2xl transition ${
+                    category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                  style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
+                  title={cat.label}>
+                  {cat.icon}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <Label className="text-xs mb-1.5 block">Title</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Heineken 330ml"
+              className="h-11" />
+          </div>
+
+          {/* Save */}
+          <Button
+            className="w-full h-12 font-black text-base"
+            disabled={!name.trim() || busy}
+            onClick={submit}
+            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Template"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TemplateGalleryPanel() {
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCat, setFilterCat] = useState<TemplateCategory>("beers");
   const [fixing, setFixing] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -877,8 +1022,8 @@ function TemplateGalleryPanel() {
   return (
     <div className="space-y-4">
       {/* Category filter tabs — sticky below header */}
-      <div className="sticky top-[88px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        <div className="grid grid-cols-5 gap-2">
+      <div className="sticky top-[44px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
+        <div className="grid grid-cols-5 gap-2 mb-2">
           {TEMPLATE_CATEGORIES.map((cat) => {
             const catDef = CATEGORIES.find(c => c.value === cat);
             return (
@@ -898,6 +1043,13 @@ function TemplateGalleryPanel() {
             );
           })}
         </div>
+        {/* Add Template button */}
+        <button
+          onClick={() => setAddOpen(true)}
+          className="w-full h-10 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98] border-dashed border-2"
+          style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+          <Plus className="h-4 w-4" /> Add Template
+        </button>
       </div>
 
       {loading ? (
@@ -922,6 +1074,12 @@ function TemplateGalleryPanel() {
             />
           ))}
         </div>
+      )}
+
+      {addOpen && (
+        <AddTemplateModal
+          onDone={() => { setAddOpen(false); load(); }}
+        />
       )}
     </div>
   );
@@ -1033,7 +1191,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       {/* Sticky page title */}
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-primary" />
           <h1 className="text-xl font-black leading-tight">Admin</h1>
@@ -1136,7 +1294,20 @@ export default function AdminPage() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {k === "pending" && (
-                          <span className="text-sm text-muted-foreground">Awaiting payment approval in Billing tab</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Awaiting payment approval in Billing tab</span>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              const ok = await confirm({
+                                title: `Delete ${r.username}?`,
+                                description: "This will permanently remove this account. Cannot be undone.",
+                                confirmLabel: "Delete",
+                                destructive: true,
+                              });
+                              if (ok) act(() => adminDeleteUser(r.id), "Deleted");
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                         {k === "approved" && (
                           <>
