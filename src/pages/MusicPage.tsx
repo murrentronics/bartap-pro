@@ -204,13 +204,12 @@ export default function MusicPage() {
               </span>
             </div>
 
-            {/* ── BOTTOM-RIGHT COVER: fullscreen button only ────────────────
-                Sits right at the bottom-right corner of the YT controls row.
-                Using bottom:0 so it anchors to the very bottom of the screen
-                and covers the controls bar from the right edge inward.       */}
+            {/* ── BOTTOM COVER: full-width black strip over entire YT controls bar ──
+                Covers the whole bottom controls row (scrubber + buttons) so
+                nothing slips through. The footer bar sits on top of this.    */}
             <div style={{
               position: "fixed",
-              bottom: 56, right: 0, width: 80, height: 56,
+              bottom: 56, left: 0, right: 0, height: 60,
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>
@@ -643,15 +642,15 @@ export default function MusicPage() {
               <div className="flex items-center justify-between px-1">
                 <span className="text-white/30 text-xs">
                   {yt.searchesRemaining > 0
-                    ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-white/50"}`}>{yt.searchesRemaining}</span> searches left today</>
+                    ? <><span className={`font-bold ${yt.searchesRemaining <= 5 ? "text-yellow-400" : yt.searchesRemaining <= 10 ? "text-orange-400" : "text-green-400"}`}>{yt.searchesRemaining}</span> searches left today</>
                     : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
                   }
                 </span>
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${(yt.searchesRemaining / 75) * 100}%`,
-                      background: yt.searchesRemaining <= 10 ? "#eab308" : yt.searchesRemaining <= 25 ? "#f97316" : "#22c55e",
+                      width: `${(yt.searchesRemaining / 33) * 100}%`,
+                      background: yt.searchesRemaining <= 5 ? "#eab308" : yt.searchesRemaining <= 10 ? "#f97316" : "#22c55e",
                     }} />
                 </div>
               </div>
@@ -722,11 +721,16 @@ export default function MusicPage() {
                             yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
                           }`}
                           style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
-                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40 relative">
                             {item.thumbnail
                               ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
                               : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
                             }
+                            {item.duration && (
+                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                                {item.duration}
+                              </span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
@@ -762,11 +766,16 @@ export default function MusicPage() {
                           onClick={() => playResult(item)}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
                           style={{ background: "rgba(255,255,255,0.04)" }}>
-                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40">
+                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40 relative">
                             {item.thumbnail
                               ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
                               : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
                             }
+                            {item.duration && (
+                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                                {item.duration}
+                              </span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>

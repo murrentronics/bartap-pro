@@ -127,18 +127,56 @@ async function callYouTube(apiKey: string, q: string, type: string, maxResults: 
       return { ok: false, quotaExceeded: isQuota, error: reason };
     }
 
-    const items = (data.items ?? []).map((item: any) => ({
+    const rawItems = (data.items ?? []).map((item: any) => ({
       id:        item.id?.videoId ?? item.id?.playlistId,
       kind:      item.id?.kind,
       title:     item.snippet?.title,
       channel:   item.snippet?.channelTitle,
       thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url,
+      duration:  null as string | null,
     }));
 
-    return { ok: true, items };
+    // Batch-fetch durations for video results (one extra API call, costs 1 unit)
+    const videoIds = rawItems
+      .filter(i => i.kind === "youtube#video" && i.id)
+      .map(i => i.id)
+      .join(",");
+
+    if (videoIds) {
+      try {
+        const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+        detailsUrl.searchParams.set("key",  apiKey);
+        detailsUrl.searchParams.set("id",   videoIds);
+        detailsUrl.searchParams.set("part", "contentDetails");
+        const dRes  = await fetch(detailsUrl.toString());
+        const dData = await dRes.json();
+        if (dRes.ok && dData.items) {
+          const durMap: Record<string, string> = {};
+          for (const v of dData.items) {
+            durMap[v.id] = parseDuration(v.contentDetails?.duration ?? "");
+          }
+          for (const item of rawItems) {
+            if (item.id && durMap[item.id]) item.duration = durMap[item.id];
+          }
+        }
+      } catch { /* duration is optional — don't fail the whole search */ }
+    }
+
+    return { ok: true, items: rawItems };
   } catch (e) {
     return { ok: false, quotaExceeded: false, error: String(e) };
   }
+}
+
+// Converts ISO 8601 duration (PT1H2M3S) → "1:02:03" or "2:03"
+function parseDuration(iso: string): string {
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return "";
+  const h = parseInt(m[1] ?? "0");
+  const min = parseInt(m[2] ?? "0");
+  const s = parseInt(m[3] ?? "0");
+  if (h > 0) return `${h}:${String(min).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${min}:${String(s).padStart(2,"0")}`;
 }
 
 function json(body: unknown, status = 200): Response {

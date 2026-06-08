@@ -5,15 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 const sb = supabase as any;
 
 export type YTResult = {
-  id: string; kind: string; title: string; channel: string; thumbnail: string;
+  id: string; kind: string; title: string; channel: string; thumbnail: string; duration?: string | null;
 };
 export type YTHistoryItem = {
-  id: string; kind: string; title: string; channel: string; thumbnail: string; playedAt: number;
+  id: string; kind: string; title: string; channel: string; thumbnail: string; playedAt: number; duration?: string | null;
 };
 
 const LS_HISTORY  = "yt_play_history";
-const DAILY_LIMIT = 75;
-const HISTORY_MAX = 200;
+const DAILY_LIMIT = 33;
+const HISTORY_MAX = 300;
 
 function loadHistory(): YTHistoryItem[] {
   try { return JSON.parse(localStorage.getItem(LS_HISTORY) ?? "[]"); } catch { return []; }
