@@ -131,8 +131,16 @@ export default function MusicPage() {
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
     yt.setNowPlayingTitle(decodeHtml(item.title));
-    // No auto-save — user must tap + to save to Saved tab
-    setShowYTFullscreen(true); // go to fullscreen View B
+    // Store full item data so the fullscreen Save button has thumbnail + duration
+    yt.setCurrentItem({
+      id:        item.id,
+      kind:      item.kind,
+      title:     decodeHtml(item.title),
+      channel:   item.channel   ?? "",
+      thumbnail: item.thumbnail ?? "",
+      duration:  item.duration  ?? null,
+    });
+    setShowYTFullscreen(true);
     setSearchOpen(false);
   };
 
@@ -382,11 +390,11 @@ export default function MusicPage() {
                       if (!yt.videoId || alreadySaved) return;
                       yt.addToHistory({
                         id:        yt.videoId,
-                        kind:      yt.isPlaylist ? "youtube#playlist" : "youtube#video",
-                        title:     yt.nowPlayingTitle,
-                        channel:   "",
-                        thumbnail: "",
-                        duration:  null,
+                        kind:      yt.currentItem?.kind ?? (yt.isPlaylist ? "youtube#playlist" : "youtube#video"),
+                        title:     yt.currentItem?.title ?? yt.nowPlayingTitle,
+                        channel:   yt.currentItem?.channel ?? "",
+                        thumbnail: yt.currentItem?.thumbnail ?? "",
+                        duration:  yt.currentItem?.duration ?? null,
                       });
                       toast.success("Saved");
                     }}

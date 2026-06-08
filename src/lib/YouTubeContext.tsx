@@ -38,6 +38,8 @@ type YTCtxType = {
   nowPlayingTitle: string; setNowPlayingTitle: (t: string) => void;
   lastMusicTab: string; setLastMusicTab: (t: string) => void;
   playNextFromHistory: () => void;
+  currentItem: Omit<YTHistoryItem, "playedAt"> | null;
+  setCurrentItem: (item: Omit<YTHistoryItem, "playedAt"> | null) => void;
 };
 
 const YTCtx = createContext<YTCtxType | null>(null);
@@ -54,6 +56,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [lastMusicTab, setLastMusicTab] = useState("playlist");
   const [history, setHistoryState] = useState<YTHistoryItem[]>(loadHistory);
   const [quotaCount, setQuotaCount] = useState(0);
+  const [currentItem, setCurrentItem] = useState<Omit<YTHistoryItem, "playedAt"> | null>(null);
   const ownerIdRef  = useRef<string | null>(null);
   const historyRef  = useRef<YTHistoryItem[]>([]);
   const videoIdRef  = useRef<string | null>(null);
@@ -94,7 +97,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const setVideoId = useCallback((id: string | null, playlist = false) => {
     setVideoIdRaw(id);
     setIsPlaylist(playlist);
-    if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); }
+    if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); setCurrentItem(null); }
   }, []);
 
   const clearResults = useCallback(() => {
@@ -214,6 +217,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       nowPlayingTitle, setNowPlayingTitle,
       lastMusicTab, setLastMusicTab,
       playNextFromHistory,
+      currentItem, setCurrentItem,
     }}>
       {children}
     </YTCtx.Provider>
