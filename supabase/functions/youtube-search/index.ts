@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
   // ── Multi-key rotation mode ───────────────────────────────────────────────
   // Check if any numbered keys exist
   let anyKeyFound = false;
-  for (let s = 1; s <= 10; s++) {
+  for (let s = 1; s <= 25; s++) {
     if (Deno.env.get(`YOUTUBE_API_KEY_${s}`)) { anyKeyFound = true; break; }
   }
 
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
   } catch { /* ignore */ }
 
   // Try each enabled slot in order
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 26; attempt++) {
     const { data: slot } = await db.rpc("yt_claim_key_slot");
     if (!slot) {
       await logSearch(db, userId, q, type, null, false, "ALL_KEYS_EXHAUSTED");

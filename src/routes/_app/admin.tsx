@@ -1401,7 +1401,7 @@ function YouTubeAdminPanel() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          Keys are stored as Supabase secrets <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> … <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_10</code>. Enable each slot once the secret is set.
+          Keys are stored as Supabase secrets <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> … <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_25</code>. Enable each slot once the secret is set.
         </p>
 
         <div className="space-y-2">
@@ -1523,7 +1523,7 @@ function YouTubeAdminPanel() {
         <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
           <li>Get a free YouTube Data API v3 key from <span className="text-primary">console.cloud.google.com</span></li>
           <li>Run: <code className="bg-muted px-1 rounded">supabase secrets set YOUTUBE_API_KEY_1=AIzaSy...</code></li>
-          <li>Repeat for each key (up to YOUTUBE_API_KEY_10)</li>
+          <li>Repeat for each key (up to YOUTUBE_API_KEY_25)</li>
           <li>Toggle each slot <span className="text-green-400 font-bold">On</span> in the table above</li>
           <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy youtube-search</code></li>
           <li>Set up daily cron: <code className="bg-muted px-1 rounded">SELECT cron.schedule('reset-youtube-keys', '0 0 * * *', 'SELECT public.reset_youtube_key_counts()')</code></li>

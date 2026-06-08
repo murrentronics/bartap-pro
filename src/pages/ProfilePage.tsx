@@ -196,7 +196,7 @@ export default function ProfilePage() {
   if (!profile || profile.role !== "owner") return null;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-8 pt-3">
       <div>
         <h1 className="text-3xl font-black tracking-tight">Profile Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your business information and account</p>

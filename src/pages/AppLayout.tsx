@@ -46,8 +46,11 @@ export default function AppLayout() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Close menu on route change
-  useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
+  // Close menu on route change + scroll main back to top
+  useEffect(() => {
+    setMenuOpen(false);
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+  }, [loc.pathname]);
 
   // Hide YouTube fullscreen when navigating away from /music
   useEffect(() => {
@@ -55,6 +58,21 @@ export default function AppLayout() {
       yt.setYtFullscreen(false);
     }
   }, [loc.pathname]);
+
+  // Auto-play next history track when current video ends (YT player state 0 = ended)
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        // YouTube IFrame API fires: { event: "infoDelivery", info: { playerState: 0 } }
+        if (data?.event === "infoDelivery" && data?.info?.playerState === 0) {
+          yt.playNextFromHistory();
+        }
+      } catch { /* ignore non-JSON messages */ }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [yt.playNextFromHistory]);
 
   if (loading || !session || !profile) {
     return (
@@ -234,7 +252,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto" }}>
         <Outlet />
       </main>
 

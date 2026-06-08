@@ -37,6 +37,7 @@ type YTCtxType = {
   removeFromHistory: (id: string) => void;
   nowPlayingTitle: string; setNowPlayingTitle: (t: string) => void;
   lastMusicTab: string; setLastMusicTab: (t: string) => void;
+  playNextFromHistory: () => void;
 };
 
 const YTCtx = createContext<YTCtxType | null>(null);
@@ -53,7 +54,13 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [lastMusicTab, setLastMusicTab] = useState("playlist");
   const [history, setHistoryState] = useState<YTHistoryItem[]>(loadHistory);
   const [quotaCount, setQuotaCount] = useState(0);
-  const ownerIdRef = useRef<string | null>(null);
+  const ownerIdRef  = useRef<string | null>(null);
+  const historyRef  = useRef<YTHistoryItem[]>([]);
+  const videoIdRef  = useRef<string | null>(null);
+
+  // Keep refs in sync
+  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { videoIdRef.current = videoId; }, [videoId]);
 
   useEffect(() => {
     const load = async (uid: string) => {
@@ -111,6 +118,27 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const removeFromHistory = useCallback((id: string) => {
     setHistoryState(prev => {
       const updated = prev.filter(h => h.id !== id);
+      saveHistory(updated);
+      return updated;
+    });
+  }, []);
+
+  // Auto-play the next track in history after the current one ends
+  const playNextFromHistory = useCallback(() => {
+    const hist = historyRef.current;
+    const currentId = videoIdRef.current;
+    if (!hist.length) return;
+    const currentIdx = hist.findIndex(h => h.id === currentId);
+    // Play next in list; if at end or not found, wrap to first
+    const nextIdx = currentIdx >= 0 && currentIdx < hist.length - 1 ? currentIdx + 1 : 0;
+    const next = hist[nextIdx];
+    if (!next) return;
+    setVideoIdRaw(next.id);
+    setIsPlaylist(next.kind === "youtube#playlist");
+    setNowPlayingTitle(next.title);
+    // Move to top of history
+    setHistoryState(prev => {
+      const updated = [{ ...next, playedAt: Date.now() }, ...prev.filter(h => h.id !== next.id)].slice(0, HISTORY_MAX);
       saveHistory(updated);
       return updated;
     });
@@ -185,6 +213,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       history, addToHistory, clearHistory, removeFromHistory,
       nowPlayingTitle, setNowPlayingTitle,
       lastMusicTab, setLastMusicTab,
+      playNextFromHistory,
     }}>
       {children}
     </YTCtx.Provider>
