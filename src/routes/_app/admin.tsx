@@ -1655,10 +1655,28 @@ function YouTubeAdminPanel() {
       {/* ── Recent Searches ───────────────────────────────────────────────── */}
       {recent.length > 0 && (
         <div>
-          <h2 className="font-black text-base flex items-center gap-2 mb-3">
-            <Search className="h-4 w-4 text-blue-400" />
-            Recent Searches
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-black text-base flex items-center gap-2">
+              <Search className="h-4 w-4 text-blue-400" />
+              Recent Searches
+            </h2>
+            <Button size="sm" variant="outline"
+              className="gap-1.5 h-8 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Clear Search Log?",
+                  description: "This will permanently delete all recent search history. Stats for today will still show.",
+                  confirmLabel: "Clear",
+                  destructive: true,
+                });
+                if (!ok) return;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (supabase as any).from("youtube_search_log").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                await load();
+              }}>
+              <Trash2 className="h-3.5 w-3.5" /> Clear Log
+            </Button>
+          </div>
           <div className="rounded-xl border border-border overflow-hidden">
             <div className="divide-y divide-border">
               {recent.map(s => (

@@ -34,32 +34,7 @@ Deno.serve(async (req: Request) => {
 
   if (!q) return json({ error: "Missing query parameter: q" }, 400);
 
-  // ── Try simple single-key mode first ─────────────────────────────────────
-  const simpleKey = Deno.env.get("YOUTUBE_API_KEY") || Deno.env.get("YOUTUBE_API_KEY_1");
-
-  if (simpleKey) {
-    const result = await callYouTube(simpleKey, q, type, maxResults);
-    if (result.ok) return json({ items: result.items });
-    if (result.quotaExceeded) {
-      return json({ error: "YouTube search quota reached for today. Resets at midnight Pacific time.", code: "QUOTA_EXHAUSTED" }, 503);
-    }
-    return json({ error: result.error }, 500);
-  }
-
-  // ── Multi-key rotation mode ───────────────────────────────────────────────
-  // Check if any numbered keys exist
-  let anyKeyFound = false;
-  for (let s = 1; s <= 25; s++) {
-    if (Deno.env.get(`YOUTUBE_API_KEY_${s}`)) { anyKeyFound = true; break; }
-  }
-
-  if (!anyKeyFound) {
-    return json({
-      error: "YouTube search is not set up yet. Add YOUTUBE_API_KEY in Supabase secrets to enable search.",
-      code: "NOT_CONFIGURED",
-    }, 503);
-  }
-
+  // ── Always use slot rotation mode so all searches are tracked ────────────
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -74,6 +49,26 @@ Deno.serve(async (req: Request) => {
     }
   } catch { /* ignore */ }
 
+  // Check if any slots are configured — fall back to env key if none in DB
+  const { data: activeSlots } = await db
+    .from("youtube_api_keys")
+    .select("slot")
+    .eq("enabled", true)
+    .eq("exhausted", false)
+    .limit(1);
+
+  // If no active slots in DB, try the raw env key as a last resort (untracked)
+  if (!activeSlots || activeSlots.length === 0) {
+    const fallbackKey = Deno.env.get("YOUTUBE_API_KEY") || Deno.env.get("YOUTUBE_API_KEY_1");
+    if (fallbackKey) {
+      const result = await callYouTube(fallbackKey, q, type, maxResults);
+      if (result.ok) return json({ items: result.items });
+      if (result.quotaExceeded) return json({ error: "YouTube search quota reached for today.", code: "QUOTA_EXHAUSTED" }, 503);
+      return json({ error: result.error }, 500);
+    }
+    return json({ error: "No YouTube API keys are enabled. Enable at least one slot in Admin → YouTube.", code: "NOT_CONFIGURED" }, 503);
+  }
+
   // Try each enabled slot in order
   for (let attempt = 0; attempt < 26; attempt++) {
     const { data: slot } = await db.rpc("yt_claim_key_slot");
@@ -82,7 +77,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: "All YouTube search quota used today. Resets at midnight UTC.", code: "QUOTA_EXHAUSTED" }, 503);
     }
 
-    const apiKey = Deno.env.get(`YOUTUBE_API_KEY_${slot}`);
+    const apiKey = slot === 0
+      ? (Deno.env.get("YOUTUBE_API_KEY") || Deno.env.get("YOUTUBE_API_KEY_0"))
+      : Deno.env.get(`YOUTUBE_API_KEY_${slot}`);
     if (!apiKey) {
       await db.rpc("yt_exhaust_key_slot", { p_slot: slot });
       continue;
