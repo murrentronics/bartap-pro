@@ -205,11 +205,12 @@ export default function MusicPage() {
             </div>
 
             {/* ── BOTTOM COVER: full-width black strip over entire YT controls bar ──
-                Covers the whole bottom controls row (scrubber + buttons) so
-                nothing slips through. The footer bar sits on top of this.    */}
+                Anchored to bottom: 0, tall enough to cover all of YouTube's
+                controls row plus any safe-area gap. Footer sits on top (z:37). */}
             <div style={{
               position: "fixed",
-              bottom: 56, left: 0, right: 0, height: 60,
+              bottom: 0, left: 0, right: 0,
+              height: "calc(100px + env(safe-area-inset-bottom, 0px))",
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>
@@ -344,7 +345,7 @@ export default function MusicPage() {
             style={{
               position: "fixed",
               left: 0, right: 0, bottom: 0,
-              zIndex: 36,
+              zIndex: 37,
               background: "rgba(0,0,0,0.82)",
               borderTop: "1px solid rgba(239,68,68,0.2)",
               backdropFilter: "blur(8px)",
@@ -612,8 +613,10 @@ export default function MusicPage() {
           </TabsContent>
 
           {/* YouTube — search + sub-tabs */}
-          <TabsContent value="youtube" className="px-3 pb-8 mt-2">
-            <div className="space-y-3">
+          <TabsContent value="youtube" className="mt-2" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", overflow: "hidden" }}>
+
+            {/* ── Sticky header: search bar + quota + sub-tabs ── */}
+            <div className="px-3 pb-2 shrink-0 space-y-3">
 
               {/* Search bar */}
               <div className="flex gap-2">
@@ -642,7 +645,7 @@ export default function MusicPage() {
               <div className="flex items-center justify-between px-1">
                 <span className="text-white/30 text-xs">
                   {yt.searchesRemaining > 0
-                    ? <><span className={`font-bold ${yt.searchesRemaining <= 5 ? "text-yellow-400" : yt.searchesRemaining <= 10 ? "text-orange-400" : "text-green-400"}`}>{yt.searchesRemaining}</span> searches left today</>
+                    ? <><span className="text-white/40">Searches left today: </span><span className={`font-bold ${yt.searchesRemaining <= 5 ? "text-yellow-400" : yt.searchesRemaining <= 10 ? "text-orange-400" : "text-green-400"}`}>{yt.searchesRemaining}</span></>
                     : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
                   }
                 </span>
@@ -672,6 +675,10 @@ export default function MusicPage() {
                   History {yt.history.length > 0 && `(${yt.history.length})`}
                 </button>
               </div>
+            </div>
+
+            {/* ── Scrollable results area ── */}
+            <div className="flex-1 overflow-y-auto px-3 pb-8">
 
               {/* ── Results sub-tab ── */}
               {ytSubTab === "results" && (
@@ -761,6 +768,10 @@ export default function MusicPage() {
                           Clear all
                         </button>
                       </div>
+                      <p className="text-[10px] mb-2">
+                        <span className="text-white/30">Limit: </span>
+                        <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
+                      </p>
                       {yt.history.map(item => (
                         <button key={item.id + item.playedAt}
                           onClick={() => playResult(item)}
@@ -791,7 +802,7 @@ export default function MusicPage() {
                   )}
                 </>
               )}
-            </div>
+            </div>{/* end scrollable area */}
           </TabsContent>
         </Tabs>
       </div>
