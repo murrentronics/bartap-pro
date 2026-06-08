@@ -84,10 +84,15 @@
 
 /* Prevent horizontal overflow on all screens */
 html {
-  overflow-x: clip;
+  overflow: hidden;
+  height: 100%;
   -webkit-text-size-adjust: 100%;
 }
 body {
+  overflow: hidden;
+  height: 100%;
+  position: fixed;
+  width: 100%;
   -webkit-text-size-adjust: 100%;
 }
 

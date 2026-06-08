@@ -25,7 +25,7 @@ import { useYouTube } from "@/lib/YouTubeContext";
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music2, Youtube, FolderOpen, ListMusic,
-  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo,
+  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo, HelpCircle, Lightbulb,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,8 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
-  // Use context-persisted tab so returning to /music lands on same tab
+  const [showTips, setShowTips]               = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);  // Use context-persisted tab so returning to /music lands on same tab
   const lastMainTab    = yt.lastMusicTab;
   const setLastMainTab = yt.setLastMusicTab;
 
@@ -112,7 +113,7 @@ export default function MusicPage() {
     yt.search(searchInput);
   };
 
-  const playResult = (item: { id: string; kind: string; title: string; channel?: string; thumbnail?: string }) => {
+  const playResult = (item: { id: string; kind: string; title: string; channel?: string; thumbnail?: string; duration?: string | null }) => {
     // Hard-stop local MP3
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
@@ -123,6 +124,7 @@ export default function MusicPage() {
       title:     item.title,
       channel:   item.channel   ?? "",
       thumbnail: item.thumbnail ?? "",
+      duration:  item.duration  ?? null,
     });
     setShowYTFullscreen(true); // go to fullscreen View B
     setSearchOpen(false);
@@ -629,8 +631,16 @@ export default function MusicPage() {
                       if (e.key === "Enter") { handleSearch(); setYtSubTab("results"); }
                     }}
                     placeholder="Search songs, artists…"
-                    className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
+                    className="pl-9 pr-14 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
+                  {searchInput && (
+                    <button
+                      onClick={() => { setSearchInput(""); yt.setQuery(""); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white active:scale-90 transition text-xs font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
                 <button
                   onPointerDown={(e) => { e.preventDefault(); handleSearch(); setYtSubTab("results"); }}
@@ -652,7 +662,7 @@ export default function MusicPage() {
                 <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${(yt.searchesRemaining / 33) * 100}%`,
+                      width: `${(yt.searchesRemaining / 40) * 100}%`,
                       background: yt.searchesRemaining <= 5 ? "#eab308" : yt.searchesRemaining <= 10 ? "#f97316" : "#22c55e",
                     }} />
                 </div>
@@ -713,15 +723,9 @@ export default function MusicPage() {
                   )}
                   {!yt.searching && yt.results.length > 0 && (
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
-                          Results for "{yt.query}"
-                        </p>
-                        <button onClick={() => { yt.setQuery(""); setSearchInput(""); }}
-                          className="text-white/30 hover:text-white/60 transition">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-1">
+                        Results for "{yt.query}"
+                      </p>
                       {yt.results.slice(0).map(item => (
                         <button key={item.id} onClick={() => playResult(item)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
@@ -764,9 +768,32 @@ export default function MusicPage() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
-                        <button onClick={yt.clearHistory} className="text-white/20 hover:text-white/50 text-xs transition">
-                          Clear all
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setShowTips(true)}
+                            className="flex items-center gap-1 text-yellow-400/70 hover:text-yellow-400 text-xs transition active:scale-90">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                            <span className="font-bold">Tips</span>
+                          </button>
+                          {showClearConfirm ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-white/50 text-xs">Sure?</span>
+                              <button
+                                onClick={() => { yt.clearHistory(); setShowClearConfirm(false); }}
+                                className="text-red-400 font-bold text-xs active:scale-90 transition">
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => setShowClearConfirm(false)}
+                                className="text-white/30 font-bold text-xs active:scale-90 transition">
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setShowClearConfirm(true)} className="text-white/20 hover:text-white/50 text-xs transition">
+                              Clear all
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-[10px] mb-2">
                         <span className="text-white/30">Limit: </span>
@@ -803,6 +830,91 @@ export default function MusicPage() {
                 </>
               )}
             </div>{/* end scrollable area */}
+
+            {/* ── Tips modal ── */}
+            {showTips && (
+              <div
+                style={{
+                  position: "fixed", inset: 0, zIndex: 60,
+                  background: "rgba(0,0,0,0.75)",
+                  display: "flex", alignItems: "flex-end",
+                }}
+                onClick={() => setShowTips(false)}
+              >
+                <div
+                  style={{
+                    width: "100%", maxHeight: "85vh",
+                    background: "linear-gradient(180deg, #1a0808 0%, #0d0505 100%)",
+                    borderTop: "1px solid rgba(239,68,68,0.3)",
+                    borderRadius: "20px 20px 0 0",
+                    overflow: "hidden",
+                    display: "flex", flexDirection: "column",
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-yellow-400" />
+                      <span className="text-white font-black text-base">YouTube Tips</span>
+                    </div>
+                    <button onClick={() => setShowTips(false)}
+                      className="h-8 w-8 rounded-full flex items-center justify-center text-white/50 hover:text-white active:scale-90 transition"
+                      style={{ background: "rgba(255,255,255,0.08)" }}>
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Tips list */}
+                  <div className="overflow-y-auto px-5 pb-8 space-y-4">
+
+                    {[
+                      {
+                        emoji: "🔍",
+                        title: "You get 40 searches per day",
+                        body: "Each search costs 1 of your 40 daily searches. The counter resets every night at midnight. Use them wisely — long mixes and playlists are worth more than individual songs.",
+                      },
+                      {
+                        emoji: "📚",
+                        title: "Build your history over a few days",
+                        body: "Your last 300 played tracks are saved in History. Spend a few days searching and playing different mixes to fill it up. Once it's full, you can run your bar all night from History alone — zero searches needed.",
+                      },
+                      {
+                        emoji: "▶️",
+                        title: "Replaying history is always free",
+                        body: "Tapping a song in History costs no searches at all. The video ID is already saved locally so it plays instantly without touching your daily quota.",
+                      },
+                      {
+                        emoji: "🎵",
+                        title: "Search for long mixes, not single songs",
+                        body: "A 2-hour mix uses the same 1 search as a 3-minute song. Search for \"dancehall mix 2024\", \"soca party mix\", or \"bar background music\" to get hours of music per search.",
+                      },
+                      {
+                        emoji: "📋",
+                        title: "Use Quick Play to save searches",
+                        body: "The Quick Play buttons on the Results tab are pre-loaded searches for common bar vibes. Tap one to get great music without typing — and save your manual searches for specific requests.",
+                      },
+                      {
+                        emoji: "💡",
+                        title: "Pro tip: Build a 300-track history once",
+                        body: "On your first few days, use all 40 searches to explore and play different mixes. After about a week your history will be stacked with great content and you'll rarely need to search again.",
+                      },
+                    ].map((tip, i) => (
+                      <div key={i}
+                        style={{
+                          background: "rgba(239,68,68,0.07)",
+                          border: "1px solid rgba(239,68,68,0.15)",
+                          borderRadius: 14,
+                          padding: "14px 16px",
+                        }}>
+                        <p className="text-white font-black text-sm mb-1">{tip.emoji} {tip.title}</p>
+                        <p className="text-white/55 text-xs leading-relaxed">{tip.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

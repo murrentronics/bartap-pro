@@ -12,7 +12,7 @@ export type YTHistoryItem = {
 };
 
 const LS_HISTORY  = "yt_play_history";
-const DAILY_LIMIT = 33;
+const DAILY_LIMIT = 40;
 const HISTORY_MAX = 300;
 
 function loadHistory(): YTHistoryItem[] {

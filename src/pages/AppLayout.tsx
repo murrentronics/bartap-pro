@@ -234,7 +234,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-3">
+      <main className="max-w-2xl mx-auto px-3 py-3 overflow-y-auto" style={{ height: "calc(100vh - 44px - env(safe-area-inset-top, 0px))" }}>
         <Outlet />
       </main>
 
