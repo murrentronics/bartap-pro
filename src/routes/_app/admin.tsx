@@ -843,12 +843,12 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     let url: string | null = null;
     if (file) {
       const ext  = file.name.split(".").pop() || "jpg";
-      const path = `manual/${crypto.randomUUID()}.${ext}`;
+      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
-        .from("template-images")
+        .from("product-images")
         .upload(path, file, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
-      url = supabase.storage.from("template-images").getPublicUrl(path).data.publicUrl;
+      url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("template_images").insert({
