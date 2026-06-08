@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sb = supabase as any;
+
 export type YTResult = {
   id: string; kind: string; title: string; channel: string; thumbnail: string;
 };
-
 export type YTHistoryItem = {
   id: string; kind: string; title: string; channel: string; thumbnail: string; playedAt: number;
 };
@@ -20,7 +22,7 @@ function saveHistory(h: YTHistoryItem[]) {
   try { localStorage.setItem(LS_HISTORY, JSON.stringify(h)); } catch { /**/ }
 }
 
-type Ctx = {
+type YTCtxType = {
   videoId: string | null; isPlaylist: boolean;
   setVideoId: (id: string | null, playlist?: boolean) => void;
   ytFullscreen: boolean; setYtFullscreen: (v: boolean) => void;
@@ -37,7 +39,7 @@ type Ctx = {
   lastMusicTab: string; setLastMusicTab: (t: string) => void;
 };
 
-const YTCtx = createContext<Ctx | null>(null);
+const YTCtx = createContext<YTCtxType | null>(null);
 
 export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [videoId, setVideoIdRaw] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     const load = async (uid: string) => {
       ownerIdRef.current = uid;
       try {
-        const { data } = await supabase.rpc("get_search_quota", { p_owner_id: uid });
+        const { data } = await sb.rpc("get_search_quota", { p_owner_id: uid });
         if (typeof data === "number") setQuotaCount(data);
       } catch { /**/ }
     };
@@ -72,60 +74,79 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const searchesRemaining = Math.max(0, DAILY_LIMIT - quotaCount);
+
   const searchResetTime = (() => {
-    const now = new Date(); const mid = new Date(now); mid.setHours(24, 0, 0, 0);
+    const now = new Date();
+    const mid = new Date(now);
+    mid.setHours(24, 0, 0, 0);
     const diffH = Math.floor((mid.getTime() - now.getTime()) / 3600000);
     const diffM = Math.floor(((mid.getTime() - now.getTime()) % 3600000) / 60000);
     return diffH > 0 ? `${diffH}h ${diffM}m` : `${diffM}m`;
   })();
 
   const setVideoId = useCallback((id: string | null, playlist = false) => {
-    setVideoIdRaw(id); setIsPlaylist(playlist);
+    setVideoIdRaw(id);
+    setIsPlaylist(playlist);
     if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); }
   }, []);
 
-  const clearResults = useCallback(() => { setResults([]); setSearchError(null); }, []);
+  const clearResults = useCallback(() => {
+    setResults([]);
+    setSearchError(null);
+  }, []);
 
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
     setHistoryState(prev => {
       const updated = [{ ...item, playedAt: Date.now() }, ...prev.filter(h => h.id !== item.id)].slice(0, HISTORY_MAX);
-      saveHistory(updated); return updated;
+      saveHistory(updated);
+      return updated;
     });
   }, []);
 
-  const clearHistory = useCallback(() => { setHistoryState([]); saveHistory([]); }, []);
+  const clearHistory = useCallback(() => {
+    setHistoryState([]);
+    saveHistory([]);
+  }, []);
 
   const removeFromHistory = useCallback((id: string) => {
-    setHistoryState(prev => { const u = prev.filter(h => h.id !== id); saveHistory(u); return u; });
+    setHistoryState(prev => {
+      const updated = prev.filter(h => h.id !== id);
+      saveHistory(updated);
+      return updated;
+    });
   }, []);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) return;
 
-    // Get owner ID — use ref or fetch inline
+    // Ensure owner ID
     let ownerId = ownerIdRef.current;
     if (!ownerId) {
       const { data } = await supabase.auth.getSession();
       ownerId = data.session?.user?.id ?? null;
       if (ownerId) ownerIdRef.current = ownerId;
     }
+    if (!ownerId) {
+      setSearchError("Not signed in — please restart the app");
+      return;
+    }
 
     // Check quota
-    if (ownerId) {
-      const { data: count } = await supabase.rpc("get_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: 0 }));
-      if (typeof count === "number" && count >= DAILY_LIMIT) {
-        setSearchError(`Daily limit reached. Resets in ${searchResetTime}.`);
-        return;
-      }
+    let count: number | null = null;
+    try { ({ data: count } = await sb.rpc("get_search_quota", { p_owner_id: ownerId })); } catch { count = 0; }
+    if (typeof count === "number" && count >= DAILY_LIMIT) {
+      setSearchError(`Daily limit reached. Resets in ${searchResetTime}.`);
+      return;
     }
 
-    setSearching(true); setSearchError(null); setResults([]);
+    setSearching(true);
+    setSearchError(null);
+    setResults([]);
 
     // Increment quota
-    if (ownerId) {
-      const { data: newCount } = await supabase.rpc("increment_search_quota", { p_owner_id: ownerId }).catch(() => ({ data: null }));
-      if (typeof newCount === "number") setQuotaCount(newCount);
-    }
+    let newCount: number | null = null;
+    try { ({ data: newCount } = await sb.rpc("increment_search_quota", { p_owner_id: ownerId })); } catch { newCount = null; }
+    if (typeof newCount === "number") setQuotaCount(newCount);
 
     const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const anonKey    = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -137,14 +158,16 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       );
       const json = await res.json();
       if (!res.ok || json.error) {
-        setSearchError(json.error ?? "Search failed");
-        if (ownerId) { await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {}); setQuotaCount(c => Math.max(0, c - 1)); }
+        setSearchError(json.error ?? `HTTP ${res.status}`);
+        try { await sb.rpc("decrement_search_quota", { p_owner_id: ownerId }); } catch { /**/ }
+        setQuotaCount(c => Math.max(0, c - 1));
         return;
       }
       setResults(json.items ?? []);
-    } catch {
-      setSearchError("Could not reach search service");
-      if (ownerId) { await supabase.rpc("decrement_search_quota", { p_owner_id: ownerId }).catch(() => {}); setQuotaCount(c => Math.max(0, c - 1)); }
+    } catch (err) {
+      setSearchError(`Network error: ${String(err)}`);
+      try { await sb.rpc("decrement_search_quota", { p_owner_id: ownerId }); } catch { /**/ }
+      setQuotaCount(c => Math.max(0, c - 1));
     } finally {
       setSearching(false);
     }

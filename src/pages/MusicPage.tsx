@@ -624,17 +624,14 @@ export default function MusicPage() {
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === "Enter" && yt.searchesRemaining > 0) {
-                        handleSearch();
-                        setYtSubTab("results");
-                      }
+                      if (e.key === "Enter") { handleSearch(); setYtSubTab("results"); }
                     }}
                     placeholder="Search songs, artists…"
                     className="pl-9 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                 </div>
                 <button
-                  onClick={() => { handleSearch(); setYtSubTab("results"); }}
+                  onPointerDown={(e) => { e.preventDefault(); handleSearch(); setYtSubTab("results"); }}
                   disabled={!searchInput.trim() || yt.searching}
                   className="h-11 px-4 rounded-xl text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition shrink-0 flex items-center gap-1.5"
                   style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
