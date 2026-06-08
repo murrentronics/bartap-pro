@@ -210,7 +210,7 @@ export default function MusicPage() {
             <div style={{
               position: "fixed",
               bottom: 0, left: 0, right: 0,
-              height: "calc(100px + env(safe-area-inset-bottom, 0px))",
+              height: "calc(200px + env(safe-area-inset-bottom, 0px))",
               zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
           </>
@@ -391,7 +391,7 @@ export default function MusicPage() {
   const onYouTubeTab = lastMainTab === "youtube";
 
   return (
-    <div className="-mx-3 -mt-3" style={{ background: "#000", minHeight: "calc(100vh - 44px)" }}>
+    <div className="-mx-3 -mt-3" style={{ background: "#000", height: "calc(100vh - 44px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* ── Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ── */}
       {onYouTubeTab ? (
@@ -517,8 +517,8 @@ export default function MusicPage() {
       )} {/* end MP3 player / YouTube mini-player conditional */}
 
       {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
-      <div style={{ background: "#0d1117" }}>
-        <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)}>
+      <div style={{ background: "#0d1117", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <TabsList className="grid grid-cols-3 mx-3 mt-2 h-14"
             style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
             <TabsTrigger value="playlist" className="gap-1.5 h-full text-sm data-[state=active]:text-blue-300">
@@ -613,7 +613,7 @@ export default function MusicPage() {
           </TabsContent>
 
           {/* YouTube — search + sub-tabs */}
-          <TabsContent value="youtube" className="mt-2" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 220px)", overflow: "hidden" }}>
+          <TabsContent value="youtube" className="mt-2" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
             {/* ── Sticky header: search bar + quota + sub-tabs ── */}
             <div className="px-3 pb-2 shrink-0 space-y-3">
