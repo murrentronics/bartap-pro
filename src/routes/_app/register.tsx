@@ -121,6 +121,93 @@ export default function RegisterPage() {
   const [markEmptyBottleId, setMarkEmptyBottleId] = useState<string | null>(null); // confirm modal
   const [cancelBottleId, setCancelBottleId]       = useState<string | null>(null); // confirm modal
 
+  // ── Opened Packs state (cigarettes retail + rolling paper) ──────────────
+  type OpenedPack = {
+    id: string; owner_id: string; product_id: string; product_name: string;
+    pack_type: "retail" | "paper"; unit_price: number; units_sold: number;
+    revenue: number; opened_at: string; finished_at: string | null; status: string;
+  };
+  const [openedPacks, setOpenedPacks]             = useState<OpenedPack[]>([]);
+  const [packModalOpen, setPackModalOpen]         = useState(false);
+  const [packType, setPackType]                   = useState<"retail" | "paper">("retail");
+  const [packStep, setPackStep]                   = useState<"select" | "price">("select");
+  const [packPackId, setPackPackId]               = useState<string>("");
+  const [packPrice, setPackPrice]                 = useState("");
+  const [showNewPackGrid, setShowNewPackGrid]     = useState(false);
+  const [packBusy, setPackBusy]                   = useState(false);
+  const [markEmptyPackId, setMarkEmptyPackId]     = useState<string | null>(null);
+  const [cancelPackId, setCancelPackId]           = useState<string | null>(null);
+
+  const cigaretteProducts = useMemo(() => {
+    const openedProductIds = new Set(openedPacks.map(p => p.product_id));
+    return products.filter((p) =>
+      (p.category || "beers") === "cigarettes" &&
+      (p.stock_qty ?? 0) > 0 &&
+      !openedProductIds.has(p.id)
+    );
+  }, [products, openedPacks]);
+
+  const fetchOpenedPacks = useCallback(async () => {
+    const id = ownerIdRef.current;
+    if (!id) return;
+    const { data } = await supabase
+      .from("opened_packs")
+      .select("*")
+      .eq("owner_id", id)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false });
+    setOpenedPacks((data ?? []) as OpenedPack[]);
+  }, []);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    fetchOpenedPacks();
+    const ch = supabase
+      .channel(`opened-packs-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "opened_packs", filter: `owner_id=eq.${ownerId}` },
+        () => fetchOpenedPacks())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, fetchOpenedPacks]);
+
+  const addPackUnit = () => {
+    const pack = openedPacks.find((p) => p.id === packPackId);
+    const price = parseFloat(packPrice);
+    if (!pack || isNaN(price) || price <= 0) { toast.error("Select a pack and set a price"); return; }
+    const label = pack.pack_type === "paper" ? "Paper" : "Cigarette";
+    const id = `pack-${pack.id}-${Date.now()}`;
+    setCart((c) => [...c, {
+      id, name: `${label}: ${pack.product_name}`, price,
+      image_url: null, category: "cigarettes", qty: 1,
+      _pack_id: pack.id,
+    } as CartItem & { _pack_id: string }]);
+    setPackModalOpen(false);
+    setPackStep("select");
+    setPackPackId("");
+    setPackPrice("");
+  };
+
+  const handleFinishPack = async (packId: string) => {
+    if (!profile) return;
+    setPackBusy(true);
+    const { error } = await supabase.rpc("finish_pack", { p_pack_id: packId, p_cashier_id: profile.id });
+    setPackBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pack marked empty — revenue recorded");
+    await fetchOpenedPacks();
+    refreshProfile();
+  };
+
+  const handleCancelPack = async (packId: string) => {
+    setPackBusy(true);
+    const { error } = await supabase.rpc("cancel_pack", { p_pack_id: packId });
+    setPackBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pack cancelled — stock restored");
+    await fetchOpenedPacks();
+    await fetchProducts();
+  };
+
   const liquorProducts = useMemo(
     () => {
       const openedProductIds = new Set(openedBottles.map(b => b.product_id));
@@ -293,6 +380,40 @@ export default function RegisterPage() {
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
                       {openedBottles.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* ── Cigarette pack buttons — cigarettes tab only ── */}
+            {category === "cigarettes" && (
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {/* Retail — sell single cigarettes from an open pack */}
+                <button
+                  onClick={() => { setPackType("retail"); setPackModalOpen(true); }}
+                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
+                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
+                >
+                  🚬 Retail
+                  {openedPacks.filter(p => p.pack_type === "retail").length > 0 && (
+                    <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {openedPacks.filter(p => p.pack_type === "retail").length}
+                    </span>
+                  )}
+                </button>
+                {/* Single Paper — sell individual rolling papers */}
+                <button
+                  onClick={() => { setPackType("paper"); setPackModalOpen(true); }}
+                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
+                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
+                >
+                  📄 Single Paper
+                  {openedPacks.filter(p => p.pack_type === "paper").length > 0 && (
+                    <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {openedPacks.filter(p => p.pack_type === "paper").length}
                     </span>
                   )}
                 </button>
@@ -805,6 +926,209 @@ export default function RegisterPage() {
         </div>
       )}
 
+      {/* ══ PACK MODALS (cigarettes / rolling papers) ════════════════════════ */}
+
+      {/* ── Pack Step 1: Select open pack + open new ── */}
+      {packModalOpen && packStep === "select" && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}>
+          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-black">{packType === "paper" ? "📄 Select Paper Pack" : "🚬 Select Cigarette Pack"}</span>
+              <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-4 pb-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {!showNewPackGrid ? (
+                <>
+                  {/* Currently open packs of this type */}
+                  {openedPacks.filter(p => p.pack_type === packType).length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {openedPacks.filter(p => p.pack_type === packType).map((pk) => {
+                          const prod = products.find(p => p.id === pk.product_id);
+                          return (
+                            <div key={pk.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
+                              {pk.units_sold > 0 ? (
+                                <button onClick={(e) => { e.stopPropagation(); setMarkEmptyPackId(pk.id); }}
+                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
+                                  style={{ background: "#dc2626" }}>Mark Empty</button>
+                              ) : (
+                                <button onClick={(e) => { e.stopPropagation(); setCancelPackId(pk.id); }}
+                                  disabled={packBusy}
+                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
+                                  style={{ background: "#374151" }}>✕ Cancel</button>
+                              )}
+                              <button
+                                onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }}
+                                className="aspect-[3/4] relative w-full active:scale-95 transition"
+                                style={{ background: "var(--gradient-card)" }}>
+                                {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                <div className="absolute inset-0 flex items-center justify-center text-3xl"
+                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
+                              </button>
+                              <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                                <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
+                                <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(pk.revenue).toFixed(2)} made</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-3">
+                    <button onClick={() => setShowNewPackGrid(true)}
+                      className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
+                      style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+                      + Open New Pack
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setShowNewPackGrid(false)} className="text-muted-foreground hover:text-foreground transition"><X className="h-4 w-4" /></button>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select from Inventory</p>
+                  </div>
+                  {cigaretteProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No cigarettes in stock.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {cigaretteProducts.map((p) => (
+                        <button key={p.id}
+                          onClick={async () => {
+                            setPackBusy(true);
+                            const ownId = ownerIdRef.current;
+                            if (!ownId) { setPackBusy(false); return; }
+                            const { error } = await supabase.rpc("open_pack", {
+                              p_owner_id: ownId, p_product_id: p.id, p_pack_type: packType, p_unit_price: 0,
+                            });
+                            if (error) { toast.error(error.message); setPackBusy(false); return; }
+                            await fetchOpenedPacks();
+                            await fetchProducts();
+                            const { data } = await supabase.from("opened_packs").select("id")
+                              .eq("owner_id", ownId).eq("product_id", p.id).eq("status", "open").eq("pack_type", packType)
+                              .order("opened_at", { ascending: false }).limit(1);
+                            setPackBusy(false);
+                            if (data?.[0]) { setPackPackId(data[0].id); setPackPrice(""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }
+                          }}
+                          disabled={packBusy}
+                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
+                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
+                            {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl"
+                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
+                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
+                            {packBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                          </div>
+                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pack Step 2: Price entry numpad ── */}
+      {packStep === "price" && packPackId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); }}>
+          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="font-black text-base">{packType === "paper" ? "📄 Add Paper" : "🚬 Add Cigarette"}</span>
+              <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackModalOpen(true); }}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
+                <X className="h-3.5 w-3.5" /> Change
+              </button>
+            </div>
+            <div className="px-4 pb-5 space-y-2 border-t border-border/40 pt-3">
+              <label className="text-xs font-semibold text-muted-foreground block">
+                {packType === "paper" ? "Price per Paper ($)" : "Price per Cigarette ($)"}
+              </label>
+              <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                  <button key={k} type="button"
+                    onClick={() => {
+                      if (k === "⌫") { setPackPrice(v => v.slice(0,-1)); return; }
+                      if (k === ".") { if (!packPrice.includes(".")) setPackPrice(v => v + "."); return; }
+                      const dotIdx = packPrice.indexOf(".");
+                      if (dotIdx !== -1 && packPrice.length - dotIdx > 2) return;
+                      setPackPrice(v => v === "0" ? k : v + k);
+                    }}
+                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                  >{k}</button>
+                ))}
+              </div>
+              <button onClick={addPackUnit}
+                disabled={!packPrice || parseFloat(packPrice) <= 0}
+                className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                style={{ background: "var(--gradient-hero)" }}>
+                + Add to Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mark Pack Empty Confirm ── */}
+      {markEmptyPackId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-5 pt-6 pb-4 text-center">
+              <div className="text-3xl mb-2">🚬</div>
+              <div className="font-black text-base">Mark Pack Empty?</div>
+              <div className="text-xs text-muted-foreground mt-1">This will close the pack and record the wallet entry.</div>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <button onClick={() => setMarkEmptyPackId(null)} disabled={packBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40">Cancel</button>
+              <button onClick={async () => { const id = markEmptyPackId; setMarkEmptyPackId(null); await handleFinishPack(id!); }}
+                disabled={packBusy}
+                className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
+                style={{ background: "#dc2626" }}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel Pack Confirm ── */}
+      {cancelPackId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
+          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-5 pt-6 pb-4 text-center">
+              <div className="text-3xl mb-2">🚬</div>
+              <div className="font-black text-base">Cancel Pack?</div>
+              <div className="text-xs text-muted-foreground mt-1">This will remove the pack and restore 1 to stock.</div>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <button onClick={() => setCancelPackId(null)} disabled={packBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40">Keep</button>
+              <button onClick={async () => { const id = cancelPackId; setCancelPackId(null); await handleCancelPack(id!); }}
+                disabled={packBusy}
+                className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
+                style={{ background: "#374151" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
@@ -860,6 +1184,17 @@ function CashOverlay({
         p_revenue:   shot.qty * Number(shot.price),
       });
       if (shotErr) console.warn("record_shot failed:", shotErr.message);
+    }
+
+    // 4. Record pack units against their opened packs (cigarettes / papers)
+    const packItems = cart.filter((c) => (c as any)._pack_id);
+    for (const unit of packItems) {
+      const { error: packErr } = await supabase.rpc("record_pack_unit", {
+        p_pack_id: (unit as any)._pack_id,
+        p_qty:     unit.qty,
+        p_revenue: unit.qty * Number(unit.price),
+      });
+      if (packErr) console.warn("record_pack_unit failed:", packErr.message);
     }
 
     setBusy(false);
