@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 function formatTime(secs: number): string {
   if (!isFinite(secs) || secs < 0) return "0:00";
@@ -65,7 +66,7 @@ export default function MusicPage() {
   const yt           = useYouTube();
   const [searchInput, setSearchInput] = useState(yt.query);
   const [searchOpen, setSearchOpen]   = useState(false);
-  const [ytSubTab, setYtSubTab]       = useState<"results" | "history">("results");
+  const [ytSubTab, setYtSubTab]       = useState<"results" | "saved">("results");
   const [showTips, setShowTips]               = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);  // Use context-persisted tab so returning to /music lands on same tab
   const lastMainTab    = yt.lastMusicTab;
@@ -119,6 +120,8 @@ export default function MusicPage() {
 
   const handleSearch = () => {
     if (!searchInput.trim()) return;
+    // Dismiss keyboard
+    (document.activeElement as HTMLElement)?.blur();
     yt.setQuery(searchInput);
     yt.search(searchInput);
   };
@@ -128,6 +131,12 @@ export default function MusicPage() {
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
     yt.setNowPlayingTitle(decodeHtml(item.title));
+    // No auto-save — user must tap + to save to Saved tab
+    setShowYTFullscreen(true); // go to fullscreen View B
+    setSearchOpen(false);
+  };
+
+  const saveToHistory = (item: { id: string; kind: string; title: string; channel?: string; thumbnail?: string; duration?: string | null }) => {
     yt.addToHistory({
       id:        item.id,
       kind:      item.kind,
@@ -136,8 +145,7 @@ export default function MusicPage() {
       thumbnail: item.thumbnail ?? "",
       duration:  item.duration  ?? null,
     });
-    setShowYTFullscreen(true); // go to fullscreen View B
-    setSearchOpen(false);
+    toast.success("Saved");
   };
 
   const PlayModeIcon = () => {
@@ -352,7 +360,7 @@ export default function MusicPage() {
             </div>
           </div>
         ) : (
-          /* ── Minimised footer — track playing, search icon ── */
+          /* ── Minimised footer — exit + save ── */
           <div
             style={{
               position: "fixed",
@@ -363,17 +371,33 @@ export default function MusicPage() {
               backdropFilter: "blur(8px)",
             }}
           >
-            <div className="flex items-center gap-3 px-3 h-14">
-              {/* Animated bars */}
-              <div className="flex items-end gap-px h-4 shrink-0">
-                {[0,1,2,3].map(b => (
-                  <div key={b} className="w-0.5 rounded-full bg-red-400"
-                    style={{ height: "100%", animation: `musicBar ${0.35+b*0.12}s ease-in-out infinite alternate`, animationDelay: `${b*0.08}s` }} />
-                ))}
-              </div>
-              {/* Track title */}
-              <span className="text-white text-xs font-bold truncate flex-1">{yt.nowPlayingTitle || "YouTube playing"}</span>
-              {/* Red Exit button — hides fullscreen, music keeps playing */}
+            <div className="flex items-center gap-2 px-3 h-14 justify-end">
+              {/* Save button */}
+              {(() => {
+                const alreadySaved = yt.videoId ? yt.history.some(h => h.id === yt.videoId) : false;
+                return (
+                  <button
+                    disabled={alreadySaved}
+                    onClick={() => {
+                      if (!yt.videoId || alreadySaved) return;
+                      yt.addToHistory({
+                        id:        yt.videoId,
+                        kind:      yt.isPlaylist ? "youtube#playlist" : "youtube#video",
+                        title:     yt.nowPlayingTitle,
+                        channel:   "",
+                        thumbnail: "",
+                        duration:  null,
+                      });
+                      toast.success("Saved");
+                    }}
+                    className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition disabled:opacity-70"
+                    style={{ background: alreadySaved ? "rgba(22,163,74,0.6)" : "rgba(22,163,74,0.85)" }}
+                  >
+                    {alreadySaved ? "✓ Saved" : "+ Save"}
+                  </button>
+                );
+              })()}
+              {/* Red Exit button */}
               <button
                 onClick={() => {
                   setShowYTFullscreen(false);
@@ -689,11 +713,11 @@ export default function MusicPage() {
                   Results {yt.results.length > 0 && `(${yt.results.length})`}
                 </button>
                 <button
-                  onClick={() => setYtSubTab("history")}
-                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "history" ? "text-white" : "text-white/40 hover:text-white/70"}`}
-                  style={ytSubTab === "history" ? { background: "rgba(239,68,68,0.7)" } : {}}
+                  onClick={() => setYtSubTab("saved")}
+                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "saved" ? "text-white" : "text-white/40 hover:text-white/70"}`}
+                  style={ytSubTab === "saved" ? { background: "rgba(239,68,68,0.7)" } : {}}
                 >
-                  History {yt.history.length > 0 && `(${yt.history.length})`}
+                  Saved {yt.history.length > 0 && `(${yt.history.length})`}
                 </button>
               </div>
             </div>
@@ -737,49 +761,65 @@ export default function MusicPage() {
                       <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-1">
                         Results for "{yt.query}"
                       </p>
-                      {yt.results.slice(0).map(item => (
-                        <button key={item.id} onClick={() => playResult(item)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
-                            yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
+                      {yt.results.slice(0).map(item => {
+                        const alreadySaved = yt.history.some(h => h.id === item.id);
+                        return (
+                        <div key={item.id} className={`flex items-center rounded-xl border transition ${
+                            yt.videoId === item.id ? "border-red-500/60" : "border-transparent"
                           }`}
                           style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
-                          <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40 relative">
-                            {item.thumbnail
-                              ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
-                            }
-                            {item.duration && (
-                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
-                                {item.duration}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{decodeHtml(item.title)}</p>
-                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
-                          </div>
-                          {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
-                        </button>
-                      ))}
+                          {/* Tap row to play */}
+                          <button onClick={() => playResult(item)}
+                            className="flex items-center gap-3 px-3 py-2.5 flex-1 min-w-0 text-left active:scale-[0.98] transition">
+                            <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40 relative">
+                              {item.thumbnail
+                                ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center"><Youtube className="h-5 w-5 text-red-400/50" /></div>
+                              }
+                              {item.duration && (
+                                <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                                  {item.duration}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{decodeHtml(item.title)}</p>
+                              <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
+                            </div>
+                            {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
+                          </button>
+                          {/* + Save button */}
+                          <button
+                            onClick={e => { e.stopPropagation(); if (!alreadySaved) saveToHistory(item); }}
+                            className="h-full px-3 flex items-center justify-center shrink-0 active:scale-90 transition"
+                            title={alreadySaved ? "Already saved" : "Save to Saved"}>
+                            <span className="text-xl font-black leading-none"
+                              style={{ color: alreadySaved ? "rgba(34,197,94,0.8)" : "rgba(239,68,68,0.7)" }}>
+                              {alreadySaved ? "✓" : "+"}
+                            </span>
+                          </button>
+                        </div>
+                        );
+                      })}
                     </div>
                   )}
                 </>
               )}
 
-              {/* ── History sub-tab ── */}
-              {ytSubTab === "history" && (
+              {/* ── Saved sub-tab ── */}
+              {ytSubTab === "saved" && (
                 <>
                   {yt.history.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-white/30 gap-2">
                       <Youtube className="h-8 w-8" />
-                      <p className="text-sm">No history yet</p>
-                      <p className="text-xs">Played videos appear here</p>
+                      <p className="text-sm">No saved songs yet</p>
+                      <p className="text-xs">Tap + on any result to save it here</p>
                     </div>
                   ) : (
                     <div className="space-y-1">
                       {/* Row 1: title + limit */}
                       <div className="flex items-center justify-between mb-1 mt-4">
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
                       </div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[10px]">
