@@ -137,6 +137,7 @@ export default function RegisterPage() {
   const [packBusy, setPackBusy]                   = useState(false);
   const [markEmptyPackId, setMarkEmptyPackId]     = useState<string | null>(null);
   const [cancelPackId, setCancelPackId]           = useState<string | null>(null);
+  const [packQty, setPackQty]                     = useState(1);
 
   const cigaretteProducts = useMemo(() => {
     const openedProductIds = new Set(openedPacks.map(p => p.product_id));
@@ -178,13 +179,14 @@ export default function RegisterPage() {
     const id = `pack-${pack.id}-${Date.now()}`;
     setCart((c) => [...c, {
       id, name: `${label}: ${pack.product_name}`, price,
-      image_url: null, category: "cigarettes", qty: 1,
+      image_url: null, category: "cigarettes", qty: packQty,
       _pack_id: pack.id,
     } as CartItem & { _pack_id: string }]);
     setPackModalOpen(false);
     setPackStep("select");
     setPackPackId("");
     setPackPrice("");
+    setPackQty(1);
   };
 
   const handleFinishPack = async (packId: string) => {
@@ -386,34 +388,19 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* ── Cigarette pack buttons — cigarettes tab only ── */}
+            {/* ── Cigarette pack button — cigarettes tab only ── */}
             {category === "cigarettes" && (
-              <div className="mb-3 grid grid-cols-2 gap-2">
-                {/* Retail — sell single cigarettes from an open pack */}
+              <div className="mb-3">
                 <button
-                  onClick={() => { setPackType("retail"); setPackModalOpen(true); }}
-                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
+                  onClick={() => { setPackModalOpen(true); }}
+                  className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
                 >
-                  🚬 Retail
-                  {openedPacks.filter(p => p.pack_type === "retail").length > 0 && (
+                  🚬 Retail Cigarette &amp; Paper
+                  {openedPacks.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
-                      {openedPacks.filter(p => p.pack_type === "retail").length}
-                    </span>
-                  )}
-                </button>
-                {/* Single Paper — sell individual rolling papers */}
-                <button
-                  onClick={() => { setPackType("paper"); setPackModalOpen(true); }}
-                  className="h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
-                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
-                >
-                  📄 Single Paper
-                  {openedPacks.filter(p => p.pack_type === "paper").length > 0 && (
-                    <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
-                      style={{ background: "var(--gradient-hero)" }}>
-                      {openedPacks.filter(p => p.pack_type === "paper").length}
+                      {openedPacks.length}
                     </span>
                   )}
                 </button>
@@ -1044,24 +1031,68 @@ export default function RegisterPage() {
       {/* ── Pack Step 2: Price entry numpad ── */}
       {packStep === "price" && packPackId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); }}>
+          onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); }}>
           <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">{packType === "paper" ? "📄 Add Paper" : "🚬 Add Cigarette"}</span>
-              <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackModalOpen(true); }}
+              <span className="font-black text-base">🚬 Add to Order</span>
+              <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
               </button>
             </div>
+
+            {/* Pack grid — all open packs, selected highlighted with orange border + checkmark */}
+            <div className="px-4 pb-2">
+              <div className="grid grid-cols-3 gap-2">
+                {openedPacks.map((pk) => {
+                  const pkProd = products.find(p => p.id === pk.product_id);
+                  const isSelected = pk.id === packPackId;
+                  return (
+                    <button key={pk.id}
+                      onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); }}
+                      className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
+                      style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
+                      <div className="aspect-[3/4] relative w-full">
+                        {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                        <div className="absolute inset-0 flex items-center justify-center text-3xl"
+                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
+                        {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black"
+                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✓</div>}
+                      </div>
+                      <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                        <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
+                        <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(pk.revenue).toFixed(2)} made</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="px-4 pb-5 space-y-2 border-t border-border/40 pt-3">
-              <label className="text-xs font-semibold text-muted-foreground block">
-                {packType === "paper" ? "Price per Paper ($)" : "Price per Cigarette ($)"}
-              </label>
+              {/* Retail Price */}
+              <label className="text-xs font-semibold text-muted-foreground block">Retail Price ($)</label>
               <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
                 <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
               </div>
+
+              {/* Qty stepper — below price, full-height minus/plus buttons */}
+              <label className="text-xs font-semibold text-muted-foreground block">Qty</label>
+              <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
+                <button type="button"
+                  onClick={() => setPackQty(q => Math.max(1, q - 1))}
+                  className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0"
+                  style={{ background: "var(--muted)" }}>−</button>
+                <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
+                <button type="button"
+                  onClick={() => setPackQty(q => q + 1)}
+                  className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0"
+                  style={{ background: "var(--muted)" }}>+</button>
+              </div>
+
+              {/* Numpad */}
               <div className="grid grid-cols-3 gap-1.5">
                 {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                   <button key={k} type="button"
