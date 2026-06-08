@@ -234,7 +234,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto w-full px-3 py-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none" }}>
         <Outlet />
       </main>
 

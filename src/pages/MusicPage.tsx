@@ -766,39 +766,29 @@ export default function MusicPage() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between mb-1">
+                      {/* Row 1: title + limit */}
+                      <div className="flex items-center justify-between mb-1 mt-4">
                         <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Recently Played</p>
-                        <div className="flex items-center gap-2">
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px]">
+                          <span className="text-white/30">Limit: </span>
+                          <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
+                        </p>
+                        <div className="flex items-center gap-3">
                           <button onClick={() => setShowTips(true)}
-                            className="flex items-center gap-1 text-yellow-400/70 hover:text-yellow-400 text-xs transition active:scale-90">
-                            <HelpCircle className="h-3.5 w-3.5" />
-                            <span className="font-bold">Tips</span>
+                            className="flex items-center gap-1.5 active:scale-90 transition"
+                            style={{ color: "#facc15" }}>
+                            <HelpCircle className="h-4 w-4" />
+                            <span className="text-sm font-bold">Tips</span>
                           </button>
-                          {showClearConfirm ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-white/50 text-xs">Sure?</span>
-                              <button
-                                onClick={() => { yt.clearHistory(); setShowClearConfirm(false); }}
-                                className="text-red-400 font-bold text-xs active:scale-90 transition">
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => setShowClearConfirm(false)}
-                                className="text-white/30 font-bold text-xs active:scale-90 transition">
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setShowClearConfirm(true)} className="text-white/20 hover:text-white/50 text-xs transition">
-                              Clear all
-                            </button>
-                          )}
+                          <button onClick={() => setShowClearConfirm(true)}
+                            className="text-sm font-bold active:scale-90 transition"
+                            style={{ color: "rgba(239,68,68,0.7)" }}>
+                            Clear All
+                          </button>
                         </div>
                       </div>
-                      <p className="text-[10px] mb-2">
-                        <span className="text-white/30">Limit: </span>
-                        <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
-                      </p>
                       {yt.history.map(item => (
                         <button key={item.id + item.playedAt}
                           onClick={() => playResult(item)}
@@ -830,6 +820,36 @@ export default function MusicPage() {
                 </>
               )}
             </div>{/* end scrollable area */}
+
+            {/* ── Clear All confirm modal ── */}
+            {showClearConfirm && (
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}
+                onClick={() => setShowClearConfirm(false)}
+              >
+                <div
+                  style={{ width: "100%", background: "linear-gradient(180deg, #1a0808 0%, #0d0505 100%)", borderRadius: 20, padding: "28px 24px", border: "1px solid rgba(239,68,68,0.3)" }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <p className="text-white font-black text-lg mb-2">Clear History?</p>
+                  <p className="text-white/50 text-sm mb-6">This will permanently delete all {yt.history.length} tracks from your recently played history. This cannot be undone.</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowClearConfirm(false)}
+                      className="flex-1 h-12 rounded-xl font-bold text-sm text-white/60 active:scale-95 transition"
+                      style={{ background: "rgba(255,255,255,0.07)" }}>
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => { yt.clearHistory(); setShowClearConfirm(false); }}
+                      className="flex-1 h-12 rounded-xl font-bold text-sm text-white active:scale-95 transition"
+                      style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)" }}>
+                      Yes, Clear All
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── Tips modal ── */}
             {showTips && (
