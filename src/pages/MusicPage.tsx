@@ -37,6 +37,16 @@ function formatTime(secs: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function decodeHtml(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&apos;/g, "'");
+}
+
 const QUICK_SEARCHES = [
   { label: "🔥 Soca Mix",   q: "soca party mix 2024" },
   { label: "💃 Dancehall",  q: "dancehall mix 2024" },
@@ -117,11 +127,11 @@ export default function MusicPage() {
     // Hard-stop local MP3
     player.stopPlayback();
     yt.setVideoId(item.id, item.kind === "youtube#playlist");
-    yt.setNowPlayingTitle(item.title);
+    yt.setNowPlayingTitle(decodeHtml(item.title));
     yt.addToHistory({
       id:        item.id,
       kind:      item.kind,
-      title:     item.title,
+      title:     decodeHtml(item.title),
       channel:   item.channel   ?? "",
       thumbnail: item.thumbnail ?? "",
       duration:  item.duration  ?? null,
@@ -306,8 +316,8 @@ export default function MusicPage() {
                         }
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
-                        <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                        <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{decodeHtml(item.title)}</p>
+                        <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
                       </div>
                       {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
                     </button>
@@ -331,8 +341,8 @@ export default function MusicPage() {
                           }
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-xs font-bold line-clamp-1">{item.title}</p>
-                          <p className="text-white/40 text-[10px] truncate">{item.channel}</p>
+                          <p className="text-white text-xs font-bold line-clamp-1">{decodeHtml(item.title)}</p>
+                          <p className="text-white/40 text-[10px] truncate">{decodeHtml(item.channel)}</p>
                         </div>
                       </button>
                     ))}
@@ -399,7 +409,7 @@ export default function MusicPage() {
       {onYouTubeTab ? (
         /* YouTube mini now-playing strip */
         <div
-          className="px-4 py-3"
+          className="px-4 py-3 mt-2"
           style={{
             background: "linear-gradient(180deg, #1a0808 0%, #0d0a0a 100%)",
             borderBottom: "1px solid rgba(239,68,68,0.2)",
@@ -636,7 +646,8 @@ export default function MusicPage() {
                   {searchInput && (
                     <button
                       onClick={() => { setSearchInput(""); yt.setQuery(""); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white active:scale-90 transition text-xs font-bold"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 active:scale-90 transition text-xs font-bold px-2 py-1 rounded-lg"
+                      style={{ background: "rgba(0,0,0,0.7)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }}
                     >
                       Clear
                     </button>
@@ -744,8 +755,8 @@ export default function MusicPage() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
-                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{decodeHtml(item.title)}</p>
+                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
                           </div>
                           {item.kind === "youtube#playlist" && <ListVideo className="h-4 w-4 text-red-400/60 shrink-0" />}
                         </button>
@@ -806,8 +817,8 @@ export default function MusicPage() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{item.title}</p>
-                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{item.channel}</p>
+                            <p className="text-white text-xs font-bold line-clamp-2 leading-tight">{decodeHtml(item.title)}</p>
+                            <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
                           </div>
                           <button onClick={e => { e.stopPropagation(); yt.removeFromHistory(item.id); }}
                             className="text-white/20 hover:text-white/50 p-1.5 transition shrink-0">
