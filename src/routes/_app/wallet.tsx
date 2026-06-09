@@ -116,7 +116,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
   return (
     <div className="space-y-5">
-      <div className="sticky top-[44px] z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <h1 className="text-xl font-black leading-tight">Wallet</h1>
       </div>
       <section className="rounded-3xl p-6 relative overflow-hidden"

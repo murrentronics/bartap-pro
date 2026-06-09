@@ -79,7 +79,6 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
     setBusy(false);
     if (error) toast.error(friendlyError(error));
-    else toast.success("Welcome back");
   };
 
   if (showForgot) {
