@@ -509,11 +509,12 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     const [finRes, expRes, ordRes] = await Promise.all([
       sb.from("owner_financials").select("*").eq("owner_id", ownerId).maybeSingle(),
       sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
-      supabase.from("orders").select("total, created_at").eq("cashier_id", ownerId),
+      // Fetch ALL orders for this owner (owner's own + all cashiers)
+      supabase.from("orders").select("total, created_at").eq("owner_id", ownerId),
     ]);
     setFinancials(finRes.data as OwnerFinancials | null);
     setExpenses((expRes.data ?? []) as OwnerExpense[]);
-    // Build per-month income map
+    // Build per-month income map from all owner orders
     const incomeMap: Record<string, number> = {};
     for (const o of (ordRes.data ?? []) as { total: number; created_at: string }[]) {
       const mk = monthKey(o.created_at);
@@ -768,6 +769,38 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         )}
       </div>
 
+      {/* ── This Month's Summary ─────────────────────────────────────────── */}
+      {financials !== null && (() => {
+        const currentMk = monthKey(todayISO());
+        const curIncome = monthlyIncome[currentMk] ?? 0;
+        const curExpenses = expensesByMonth[currentMk]?.reduce((s, e) => s + Number(e.amount), 0) ?? 0;
+        const curNet = curIncome - curExpenses;
+        return (
+          <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+            <h3 className="font-black text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(34,197,94,0.1)" }}>
+                <div className="text-[10px] text-muted-foreground mb-0.5">Income</div>
+                <div className="font-black text-sm text-green-400">${fmt(curIncome)}</div>
+              </div>
+              <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(239,68,68,0.1)" }}>
+                <div className="text-[10px] text-muted-foreground mb-0.5">Expenses</div>
+                <div className="font-black text-sm text-red-400">${fmt(curExpenses)}</div>
+              </div>
+              <div className="rounded-xl p-2.5 text-center" style={{ background: curNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)" }}>
+                <div className="text-[10px] text-muted-foreground mb-0.5">Net</div>
+                <div className={`font-black text-sm ${curNet >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {curNet >= 0 ? "+" : ""}${fmt(curNet)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── This Month's Expenses ─────────────────────────────────────────── */}
       {financials !== null && (
         <div className="rounded-2xl border border-border overflow-hidden"
@@ -840,6 +873,8 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
           {expenseMonths.map((mk) => {
             const mExpenses = expensesByMonth[mk];
             const mTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
+            const mIncome = monthlyIncome[mk] ?? 0;
+            const mNet = mIncome - mTotal;
             const isOpen = openMonth === mk;
             return (
               <div key={mk} className="rounded-2xl border border-border overflow-hidden">
@@ -851,7 +886,12 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                     <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-black text-red-400">${fmt(mTotal)}</span>
+                    <div className="text-right">
+                      <div className="text-xs text-red-400 font-bold">Exp: ${fmt(mTotal)}</div>
+                      <div className={`text-xs font-bold ${mNet >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        Net: {mNet >= 0 ? "+" : ""}${fmt(mNet)}
+                      </div>
+                    </div>
                     <Button
                       size="sm" variant="outline"
                       className="h-7 text-xs gap-1"
