@@ -87,10 +87,13 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const searchResetTime = (() => {
     const now = new Date();
-    const mid = new Date(now);
+    // Midnight Port of Spain (UTC-4)
+    const pos = new Date(now.toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
+    const mid = new Date(pos);
     mid.setHours(24, 0, 0, 0);
-    const diffH = Math.floor((mid.getTime() - now.getTime()) / 3600000);
-    const diffM = Math.floor(((mid.getTime() - now.getTime()) % 3600000) / 60000);
+    const diffMs = mid.getTime() - pos.getTime();
+    const diffH = Math.floor(diffMs / 3600000);
+    const diffM = Math.floor((diffMs % 3600000) / 60000);
     return diffH > 0 ? `${diffH}h ${diffM}m` : `${diffM}m`;
   })();
 

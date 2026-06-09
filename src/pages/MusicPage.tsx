@@ -851,8 +851,10 @@ export default function MusicPage() {
                       {yt.history.map(item => (
                         <button key={item.id + item.playedAt}
                           onClick={() => playResult(item)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border border-transparent hover:border-red-500/20"
-                          style={{ background: "rgba(255,255,255,0.04)" }}>
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
+                            yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"
+                          }`}
+                          style={{ background: yt.videoId === item.id ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)" }}>
                           <div className="h-12 w-20 rounded-lg overflow-hidden shrink-0 bg-black/40 relative">
                             {item.thumbnail
                               ? <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
