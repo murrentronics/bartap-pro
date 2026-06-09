@@ -84,12 +84,13 @@ export default function AppLayout() {
 
   const isOwner    = profile.role === "owner";
   const isAdmin    = profile.role === "admin";
-  const isPending  = !isAdmin && profile.status === "pending";
-  const isSuspended = !isAdmin && profile.status === "suspended";
+  const isCashier  = profile.role === "cashier";
+  const isPending  = !isAdmin && !isCashier && profile.status === "pending";
+  const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
   const hasMusic   = isOwner;
   const isOnMusic  = loc.pathname === "/music";
 
-  if (!isAdmin && profile.status === "expelled") {
+  if (!isAdmin && !isCashier && profile.status === "expelled") {
     return (
       <FullScreenStatus
         icon={UserMinus}

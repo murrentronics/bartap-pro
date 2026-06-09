@@ -78,7 +78,7 @@ serve(async (req) => {
     // Create the cashier user in auth.users
     // The trigger will automatically create the profile
     const { data: authData, error: createError } = await supabaseClient.auth.admin.createUser({
-      email: `${username}@cashier.local`,
+      email: `${username}@bartendaz.cashier`,
       password: password,
       email_confirm: true,
       user_metadata: {
