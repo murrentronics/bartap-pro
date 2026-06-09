@@ -954,7 +954,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
     supabase.from("wallet_transactions").select("*")
       .eq("profile_id", profile.id)
-      .in("type", ["transfer_in", "wallet_reset", "bottle_finished"])
+      .in("type", ["transfer_in", "wallet_reset", "bottle_finished", "cashier_sale", "pack_finished"])
       .order("created_at", { ascending: false })
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
   }, [profile.id, page]);
@@ -989,6 +989,28 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               const tx = rec.data;
               const isReset = tx.type === "wallet_reset";
               const isBottle = tx.type === "bottle_finished";
+              const isCashierSale = tx.type === "cashier_sale";
+
+              if (isCashierSale) {
+                // note: "Cashier: NAME | $total | items…"
+                const parts = (tx.note ?? "").split(" | ");
+                const cashierLabel = parts[0] ?? "Cashier";          // "Cashier: NAME"
+                const totalStr     = parts[1] ?? "";                  // "$12.00"
+                const itemsStr     = parts.slice(2).join(", ") ?? ""; // "2x Carib, 1x…"
+                return (
+                  <div key={tx.id} className="rounded-xl p-4 border border-blue-500/20 flex items-start gap-3"
+                    style={{ background: "oklch(0.20 0.04 240 / 0.30)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-blue-500/15 border-blue-500/25 text-base">🧾</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-sm font-black text-blue-300 mt-0.5">{cashierLabel}</div>
+                      {totalStr && <div className="text-xs font-bold text-blue-200 mt-0.5">Sale: {totalStr}</div>}
+                      {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsStr}</div>}
+                    </div>
+                  </div>
+                );
+              }
+
               if (isBottle) {
                 const noteParts = (tx.note ?? "").split(" | ");
                 const title = noteParts[0] ?? tx.note ?? "Bottle closed";
