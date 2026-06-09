@@ -1173,7 +1173,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     const [finRes, expRes, incomeRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
-      supabase.from("orders").select("total").eq("cashier_id", profile.id),
+      supabase.from("orders").select("total").eq("owner_id", profile.id),
       // All products with stock: price × qty
       supabase.from("products").select("price, stock_qty"),
       // Currently open bottles: product price + shots revenue already sold
