@@ -773,27 +773,28 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       {financials !== null && (() => {
         const currentMk = monthKey(todayISO());
         const curIncome = monthlyIncome[currentMk] ?? 0;
-        const curExpenses = expensesByMonth[currentMk]?.reduce((s, e) => s + Number(e.amount), 0) ?? 0;
-        const curNet = curIncome - curExpenses;
+        const allTimeIncome = Object.values(monthlyIncome).reduce((s, v) => s + v, 0);
+        const allTimeExpenses = initialExpense + monthlyExpensesTotal;
+        const allTimeNet = allTimeIncome - allTimeExpenses;
         return (
           <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
             <h3 className="font-black text-sm flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })} — All Time
             </h3>
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(34,197,94,0.1)" }}>
-                <div className="text-[10px] text-muted-foreground mb-0.5">Income</div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">This Month</div>
                 <div className="font-black text-sm text-green-400">${fmt(curIncome)}</div>
               </div>
               <div className="rounded-xl p-2.5 text-center" style={{ background: "rgba(239,68,68,0.1)" }}>
-                <div className="text-[10px] text-muted-foreground mb-0.5">Expenses</div>
-                <div className="font-black text-sm text-red-400">${fmt(curExpenses)}</div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">Total Expenses</div>
+                <div className="font-black text-sm text-red-400">${fmt(allTimeExpenses)}</div>
               </div>
-              <div className="rounded-xl p-2.5 text-center" style={{ background: curNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)" }}>
-                <div className="text-[10px] text-muted-foreground mb-0.5">Net</div>
-                <div className={`font-black text-sm ${curNet >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {curNet >= 0 ? "+" : ""}${fmt(curNet)}
+              <div className="rounded-xl p-2.5 text-center" style={{ background: allTimeNet >= 0 ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)" }}>
+                <div className="text-[10px] text-muted-foreground mb-0.5">Net Profit</div>
+                <div className={`font-black text-sm ${allTimeNet >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {allTimeNet >= 0 ? "+" : ""}${fmt(allTimeNet)}
                 </div>
               </div>
             </div>
