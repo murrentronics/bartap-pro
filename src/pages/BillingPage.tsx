@@ -164,12 +164,14 @@ export default function BillingPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen p-6 pb-24">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <CreditCard className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-black">Billing</h1>
+    <div className="pb-24">
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border mb-4">
+        <div className="flex items-center gap-3">
+          <CreditCard className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-black">Billing</h1>
         </div>
+      </div>
+      <div className="max-w-4xl mx-auto space-y-6">
 
         {/* ── Status card ── */}
         <Card className="p-6">
