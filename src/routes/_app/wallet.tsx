@@ -184,11 +184,11 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      supabase.from("orders").select("*").eq("cashier_id", profile.id)
+      supabase.from("orders").select("*").eq("owner_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
-        .in("type", ["transfer_in"])
+        .in("type", ["transfer_in", "cashier_sale", "bottle_finished", "pack_finished"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -267,15 +267,52 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
         } else {
           const tx = rec.data as WalletTx;
-          const isReset = tx.type === "wallet_reset";
-          const label = tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier");
-          const sign = isReset ? "-" : "+";
+          const isCashierSale = tx.type === "cashier_sale";
+          const isTransferIn  = tx.type === "transfer_in";
+          const isBottlePack  = tx.type === "bottle_finished" || tx.type === "pack_finished";
+
           doc.setFont("helvetica", "bold");
-          doc.setTextColor(isReset ? 200 : 40, isReset ? 80 : 140, isReset ? 40 : 80);
-          doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
-          doc.text(label, LM + 55, y);
-          doc.text(sign + "$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
-          doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 4;
+          if (isCashierSale) {
+            // Blue read-only — show inline, no amount column
+            doc.setTextColor(60, 100, 200);
+            const parts = (tx.note ?? "").split(" | ");
+            const cashierLabel = parts[0] ?? "Cashier sale";
+            const totalStr     = parts[1] ?? "";
+            const itemsStr     = parts.slice(2).join(", ");
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(cashierLabel + (totalStr ? " — " + totalStr : ""), LM + 45, y);
+            doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+            if (itemsStr) {
+              y += 4;
+              doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+              const wrapped = doc.splitTextToSize("  " + itemsStr, 155);
+              doc.text(wrapped, LM, y); y += wrapped.length * 3.5;
+              doc.setFontSize(9); doc.setTextColor(0, 0, 0);
+            }
+          } else if (isTransferIn) {
+            doc.setTextColor(40, 140, 40);
+            const label = tx.note ?? "Cleared from cashier";
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(label, LM + 45, y);
+            doc.text("+$" + Number(tx.amount).toFixed(2), RM, y, { align: "right" });
+            doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+          } else if (isBottlePack) {
+            doc.setTextColor(180, 120, 30);
+            const label = tx.note ?? "Pack/Bottle closed";
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            const wrapped = doc.splitTextToSize(label, 140);
+            doc.text(wrapped, LM + 45, y);
+            doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+            y += (wrapped.length - 1) * 4.5;
+          } else {
+            doc.setTextColor(100, 100, 100);
+            const label = tx.note ?? tx.type;
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(label, LM + 45, y);
+            if (Number(tx.amount) !== 0) doc.text("$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
+            doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+          }
+          y += 4;
           doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
         }
       });
@@ -338,19 +375,52 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                         {monthRecords.map((rec) => {
                           if (rec.kind === "tx") {
                             const tx = rec.data;
-                            const isReset = tx.type === "wallet_reset";
-                            return (
-                              <div key={tx.id} className={`px-4 py-3 flex items-center gap-3 ${isReset ? "bg-orange-500/5" : "bg-green-500/5"}`}>
-                                {isReset ? <RotateCcw className="h-3.5 w-3.5 text-orange-400 shrink-0" /> : <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />}
-                                <div className={`flex-1 text-xs ${isReset ? "text-orange-400" : "text-green-400"}`}>
-                                  {tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier")}
-                                  {" · "}{new Date(tx.created_at).toLocaleString("en-GB")}
+                            const isCashierSale = tx.type === "cashier_sale";
+                            const isTransferIn  = tx.type === "transfer_in";
+                            const isBottlePack  = tx.type === "bottle_finished" || tx.type === "pack_finished";
+
+                            if (isCashierSale) {
+                              const parts = (tx.note ?? "").split(" | ");
+                              const cashierLabel = parts[0] ?? "Cashier sale";
+                              const totalStr     = parts[1] ?? "";
+                              const itemsStr     = parts.slice(2).join(", ");
+                              return (
+                                <div key={tx.id} className="px-4 py-3 bg-blue-500/5 flex items-start gap-3">
+                                  <div className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400">🧾</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-blue-400 font-bold">{cashierLabel}{totalStr ? " — " + totalStr : ""}</div>
+                                    {itemsStr && <div className="text-xs text-muted-foreground mt-0.5">{itemsStr}</div>}
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                                  </div>
                                 </div>
-                                <span className={`font-black text-sm ${isReset ? "text-orange-400" : "text-green-400"}`}>
-                                  {isReset ? "-" : "+"}${Math.abs(Number(tx.amount)).toFixed(2)}
-                                </span>
-                              </div>
-                            );
+                              );
+                            }
+                            if (isTransferIn) {
+                              return (
+                                <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-green-500/5">
+                                  <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                                  <div className="flex-1 text-xs text-green-400">
+                                    {tx.note ?? "Cleared from cashier"}
+                                    {" · "}{new Date(tx.created_at).toLocaleString("en-GB")}
+                                  </div>
+                                  <span className="font-black text-sm text-green-400">
+                                    +${Number(tx.amount).toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            if (isBottlePack) {
+                              return (
+                                <div key={tx.id} className="px-4 py-3 flex items-start gap-3 bg-amber-500/5">
+                                  <span className="text-base shrink-0">🍾</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-amber-400 font-bold line-clamp-2">{tx.note}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
                           }
                           const o = rec.data as Order;
                           return (
