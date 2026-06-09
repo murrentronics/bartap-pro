@@ -188,7 +188,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
-        .in("type", ["transfer_in", "wallet_reset"])
+        .in("type", ["transfer_in"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -220,12 +220,8 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       const ordersR = monthRecords.filter((r) => r.kind === "order");
       const txsR = monthRecords.filter((r) => r.kind === "tx");
       const totalSales = ordersR.reduce((s, r) => s + Number((r.data as Order).total), 0);
-      const totalCleared = txsR.filter((r) => (r.data as WalletTx).type === "transfer_in")
-        .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
-      const totalResets = txsR.filter((r) => (r.data as WalletTx).type === "wallet_reset")
-        .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
-      const openingBalance = totalSales;
-      const closingBalance = totalSales - totalCleared - totalResets;
+      const openingBalance = 0;
+      const closingBalance = totalSales;
       let y = await drawHeader(doc, businessName, "Wallet Statement", month, generated);
       const boxX = LM; const boxW = RM - LM; const boxH = 28;
       doc.setFillColor(245, 240, 230);
@@ -236,7 +232,6 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       doc.text("PERIOD SUMMARY", boxX + 3, y + 5);
       const cols = [
         { label: "Opening Balance", value: "$" + fmt(openingBalance) },
-        { label: "Total Resets",    value: "$" + fmt(totalResets) },
         { label: "Closing Balance", value: "$" + fmt(closingBalance) },
       ];
       const colW = boxW / cols.length;
@@ -1004,7 +999,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
     supabase.from("wallet_transactions").select("*")
       .eq("profile_id", profile.id)
-      .in("type", ["transfer_in", "wallet_reset", "bottle_finished", "cashier_sale", "pack_finished"])
+      .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished"])
       .order("created_at", { ascending: false })
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
   }, [profile.id, page]);
