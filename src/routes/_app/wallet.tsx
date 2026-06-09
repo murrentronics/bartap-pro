@@ -1038,11 +1038,10 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               const isCashierSale = tx.type === "cashier_sale";
 
               if (isCashierSale) {
-                // note: "Cashier: NAME | $total | items…"
                 const parts = (tx.note ?? "").split(" | ");
-                const cashierLabel = parts[0] ?? "Cashier";          // "Cashier: NAME"
-                const totalStr     = parts[1] ?? "";                  // "$12.00"
-                const itemsStr     = parts.slice(2).join(", ") ?? ""; // "2x Carib, 1x…"
+                const cashierLabel = parts[0] ?? "Cashier";
+                const totalStr     = parts[1] ?? "";
+                const itemsStr     = parts.slice(2).join(", ") ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-blue-500/20 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.04 240 / 0.30)" }}>
@@ -1052,6 +1051,27 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       <div className="text-sm font-black text-blue-300 mt-0.5">{cashierLabel}</div>
                       {totalStr && <div className="text-xs font-bold text-blue-200 mt-0.5">Sale: {totalStr}</div>}
                       {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsStr}</div>}
+                    </div>
+                  </div>
+                );
+              }
+
+              const isTransferIn = tx.type === "transfer_in";
+              if (isTransferIn) {
+                return (
+                  <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-center gap-3"
+                    style={{ background: "oklch(0.22 0.06 145 / 0.3)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/20 border-green-500/30">
+                      <ArrowDownLeft className="h-4 w-4 text-green-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-sm font-semibold text-green-300">
+                        {tx.note ?? "Cleared from cashier"}
+                      </div>
+                    </div>
+                    <div className="font-black text-lg shrink-0 text-green-400">
+                      +${fmt(Number(tx.amount))}
                     </div>
                   </div>
                 );
