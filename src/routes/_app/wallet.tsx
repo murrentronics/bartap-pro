@@ -149,7 +149,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <Receipt className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
+                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
                   </div>
                   <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
                 </div>
@@ -184,7 +184,10 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      supabase.from("orders").select("*").eq("owner_id", profile.id)
+      // Only owner's own direct sales (cashier_id = owner_id)
+      supabase.from("orders").select("*")
+        .eq("owner_id", profile.id)
+        .eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
@@ -216,7 +219,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const businessName = profile.username ?? "Owner";
-      const generated = new Date().toLocaleString("en-GB");
+      const generated = new Date().toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" });
       const ordersR = monthRecords.filter((r) => r.kind === "order");
       const txsR = monthRecords.filter((r) => r.kind === "tx");
       const totalSales = ordersR.reduce((s, r) => s + Number((r.data as Order).total), 0);
@@ -255,7 +258,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         if (rec.kind === "order") {
           const o = rec.data as Order;
           doc.setFont("helvetica", "bold");
-          doc.text(new Date(o.created_at).toLocaleString("en-GB"), LM, y);
+          doc.text(new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" }); y += 5;
           doc.setFont("helvetica", "normal");
           const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
@@ -279,7 +282,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
             const cashierLabel = parts[0] ?? "Cashier sale";
             const totalStr     = parts[1] ?? "";
             const itemsStr     = parts.slice(2).join(", ");
-            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
             doc.text(cashierLabel + (totalStr ? " — " + totalStr : ""), LM + 45, y);
             doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
             if (itemsStr) {
@@ -292,14 +295,14 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           } else if (isTransferIn) {
             doc.setTextColor(40, 140, 40);
             const label = tx.note ?? "Cleared from cashier";
-            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
             doc.text(label, LM + 45, y);
             doc.text("+$" + Number(tx.amount).toFixed(2), RM, y, { align: "right" });
             doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
           } else if (isBottlePack) {
             doc.setTextColor(180, 120, 30);
             const label = tx.note ?? "Pack/Bottle closed";
-            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
             const wrapped = doc.splitTextToSize(label, 140);
             doc.text(wrapped, LM + 45, y);
             doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
@@ -307,7 +310,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           } else {
             doc.setTextColor(100, 100, 100);
             const label = tx.note ?? tx.type;
-            doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+            doc.text(new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
             doc.text(label, LM + 45, y);
             if (Number(tx.amount) !== 0) doc.text("$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
             doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
@@ -390,7 +393,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs text-blue-400 font-bold">{cashierLabel}{totalStr ? " — " + totalStr : ""}</div>
                                     {itemsStr && <div className="text-xs text-muted-foreground mt-0.5">{itemsStr}</div>}
-                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
                                 </div>
                               );
@@ -401,7 +404,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
                                   <div className="flex-1 text-xs text-green-400">
                                     {tx.note ?? "Cleared from cashier"}
-                                    {" · "}{new Date(tx.created_at).toLocaleString("en-GB")}
+                                    {" · "}{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
                                   </div>
                                   <span className="font-black text-sm text-green-400">
                                     +${Number(tx.amount).toFixed(2)}
@@ -415,7 +418,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   <span className="text-base shrink-0">🍾</span>
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs text-amber-400 font-bold line-clamp-2">{tx.note}</div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
                                 </div>
                               );
@@ -428,7 +431,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB")}</span>
+                                  <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
                                 </div>
                                 <span className="font-black text-primary text-sm ml-2">${fmt(Number(o.total))}</span>
                               </div>
@@ -664,7 +667,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const label = monthLabel(mk);
-      const generated = new Date().toLocaleString("en-GB");
+      const generated = new Date().toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" });
 
       const mExpenses = expensesByMonth[mk] ?? [];
       const mExpTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -1061,10 +1064,10 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
   const fetchData = useCallback(() => {
     setLoading(true);
     supabase.from("orders").select("id", { count: "exact", head: true })
-      .eq("cashier_id", profile.id)
+      .eq("owner_id", profile.id)
       .then(({ count }) => setTotal(count ?? 0));
     supabase.from("orders").select("*")
-      .eq("cashier_id", profile.id)
+      .eq("owner_id", profile.id)
       .order("created_at", { ascending: false })
       .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
@@ -1117,7 +1120,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     style={{ background: "oklch(0.20 0.04 240 / 0.30)" }}>
                     <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-blue-500/15 border-blue-500/25 text-base">🧾</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-black text-blue-300 mt-0.5">{cashierLabel}</div>
                       {totalStr && <div className="text-xs font-bold text-blue-200 mt-0.5">Sale: {totalStr}</div>}
                       {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsStr}</div>}
@@ -1135,7 +1138,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       <ArrowDownLeft className="h-4 w-4 text-green-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-semibold text-green-300">
                         {tx.note ?? "Cleared from cashier"}
                       </div>
@@ -1162,7 +1165,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
                     <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-amber-500/20 border-amber-500/30 text-lg">🍾</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
                       {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
                       {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
@@ -1185,7 +1188,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     {isReset ? <RotateCcw className="h-4 w-4 text-orange-400" /> : <ArrowDownLeft className="h-4 w-4 text-green-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB")}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                     <div className={`text-sm font-semibold ${isReset ? "text-orange-300" : "text-green-300"}`}>
                       {tx.note ?? (isReset ? "Wallet reset" : "Cleared from cashier")}
                     </div>
@@ -1202,7 +1205,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <Receipt className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB")}</span>
+                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
                   </div>
                   <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
                 </div>

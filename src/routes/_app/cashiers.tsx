@@ -98,7 +98,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-      const generated = new Date().toLocaleString("en-GB");
+      const generated = new Date().toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" });
       let y = await drawHeader(doc, ownerName, "Cashier Statement", month, generated);
 
       // ── Calculate summary figures ──────────────────────────────────────────
@@ -178,7 +178,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
         if (rec.kind === "order") {
           const o = rec.data as Order;
           doc.setFont("helvetica", "bold");
-          doc.text(new Date(o.created_at).toLocaleString("en-GB"), LM, y);
+          doc.text(new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" }), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
           y += 5;
           doc.setFont("helvetica", "normal");
@@ -198,7 +198,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
           const tx = rec.data as WalletTx;
           doc.setFont("helvetica", "bold");
           doc.setTextColor(40, 140, 80);
-          doc.text(new Date(tx.created_at).toLocaleString("en-GB"), LM, y);
+          doc.text(new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" }), LM, y);
           doc.text(tx.note ?? "Cleared to owner", LM + 55, y);
           doc.text("-$" + Math.abs(Number(tx.amount)).toFixed(2), RM, y, { align: "right" });
           doc.setTextColor(0, 0, 0);
@@ -307,7 +307,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                               <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-green-500/5">
                                 <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
                                 <div className="flex-1 text-xs text-green-400">
-                                  {tx.note ?? "Cleared to owner"} · {new Date(tx.created_at).toLocaleString("en-GB")}
+                                  {tx.note ?? "Cleared to owner"} · {new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
                                 </div>
                                 <span className="font-black text-green-400 text-sm">
                                   -${Math.abs(Number(tx.amount)).toFixed(2)}
@@ -322,7 +322,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                                 <div className="flex items-center gap-2 min-w-0">
                                   <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
                                   <span className="text-xs text-muted-foreground">
-                                    {new Date(o.created_at).toLocaleString("en-GB")}
+                                    {new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
                                   </span>
                                 </div>
                                 <span className="font-black text-primary text-sm ml-2">
