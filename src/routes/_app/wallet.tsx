@@ -354,8 +354,11 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
             <div className="space-y-4">
               {months.map((month) => {
                 const monthRecords = getRecordsForMonth(month);
-                const monthTotal = monthRecords.filter((r) => r.kind === "order")
-                  .reduce((s, r) => s + Number((r.data as Order).total), 0);
+                const monthTotal = monthRecords.reduce((s, r) => {
+                  if (r.kind === "order") return s + Number((r.data as Order).total);
+                  if (r.kind === "tx" && (r.data as WalletTx).type === "transfer_in") return s + Number((r.data as WalletTx).amount);
+                  return s;
+                }, 0);
                 const isOpen = selectedMonth === month;
                 return (
                   <div key={month} className="rounded-2xl border border-border overflow-hidden">
