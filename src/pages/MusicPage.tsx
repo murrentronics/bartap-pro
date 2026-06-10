@@ -49,14 +49,14 @@ function decodeHtml(str: string): string {
 }
 
 const QUICK_SEARCHES = [
-  { label: "🔥 Soca Mix",   q: "soca party mix 2024" },
-  { label: "💃 Dancehall",  q: "dancehall mix 2024" },
-  { label: "😌 R&B Chill",  q: "rnb chill playlist" },
-  { label: "🍹 Bar Vibes",  q: "bar background music mix" },
-  { label: "🎶 Top Hits",   q: "top hits 2024 playlist" },
-  { label: "🎸 Classics",   q: "classic rock hits playlist" },
-  { label: "🌴 Reggae",     q: "reggae mix playlist" },
-  { label: "🎵 Hip Hop",    q: "hip hop mix 2024" },
+  { label: "🔥 Latest Soca",      q: "latest soca 2025" },
+  { label: "💃 Latest Dancehall", q: "latest dancehall 2025" },
+  { label: "🎵 Latest Hip Hop",   q: "latest hip hop 2025" },
+  { label: "🇹🇹 Latest Trinibad", q: "latest trinibad 2025" },
+  { label: "🌴 Latest Reggae",    q: "latest reggae 2025" },
+  { label: "😌 Latest R&B",       q: "latest rnb 2025" },
+  { label: "🍹 Bar Vibes",        q: "bar background music mix 2025" },
+  { label: "🎶 Top Hits",         q: "top hits playlist 2025" },
 ];
 
 export default function MusicPage() {
@@ -766,9 +766,17 @@ export default function MusicPage() {
                   )}
                   {!yt.searching && yt.results.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-1">
-                        Results for "{yt.query}"
-                      </p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
+                          Results for "{yt.query}"
+                        </p>
+                        <button
+                          onClick={() => { yt.clearResults(); yt.setQuery(""); setSearchInput(""); }}
+                          className="text-xs font-bold active:scale-90 transition"
+                          style={{ color: "rgba(239,68,68,0.7)" }}>
+                          Clear
+                        </button>
+                      </div>
                       {yt.results.slice(0).map(item => {
                         const alreadySaved = yt.history.some(h => h.id === item.id);
                         return (
@@ -957,13 +965,18 @@ export default function MusicPage() {
                       },
                       {
                         emoji: "📚",
-                        title: "Build your history over a few days",
-                        body: "Your last 300 played tracks are saved in History. Spend a few days searching and playing different mixes to fill it up. Once it's full, you can run your bar all night from History alone — zero searches needed.",
+                        title: "Build your Saved list over a few days",
+                        body: "Tap the + button on any search result to save it. You can save up to 300 tracks. Once your Saved list is full, you can run your bar all night from it alone — zero searches needed.",
                       },
                       {
                         emoji: "▶️",
-                        title: "Replaying history is always free",
-                        body: "Tapping a song in History costs no searches at all. The video ID is already saved locally so it plays instantly without touching your daily quota.",
+                        title: "Playing from Saved is always free",
+                        body: "Tapping a song in your Saved list costs no searches at all. The video ID is already saved locally so it plays instantly without touching your daily quota.",
+                      },
+                      {
+                        emoji: "💾",
+                        title: "Save from the fullscreen player too",
+                        body: "While a song is playing fullscreen, tap the green Save button in the footer to add it to your Saved list. If it already shows a checkmark it's already saved.",
                       },
                       {
                         emoji: "🎵",
@@ -974,11 +987,6 @@ export default function MusicPage() {
                         emoji: "📋",
                         title: "Use Quick Play to save searches",
                         body: "The Quick Play buttons on the Results tab are pre-loaded searches for common bar vibes. Tap one to get great music without typing — and save your manual searches for specific requests.",
-                      },
-                      {
-                        emoji: "💡",
-                        title: "Pro tip: Build a 300-track history once",
-                        body: "On your first few days, use all 40 searches to explore and play different mixes. After about a week your history will be stacked with great content and you'll rarely need to search again.",
                       },
                     ].map((tip, i) => (
                       <div key={i}
