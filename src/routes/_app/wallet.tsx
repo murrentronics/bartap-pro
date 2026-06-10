@@ -695,6 +695,14 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
 
       let y = await drawHeader(doc, "Owner Financials", "Expense Report", label, generated);
 
+      // ── Last modified line ────────────────────────────────────────────────
+      const lastModified = financials?.updated_at
+        ? new Date(financials.updated_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "short", year: "numeric" })
+        : generated;
+      doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(150, 100, 30);
+      doc.text("Last modified: " + lastModified + "  |  This document is system-generated and tamper-evident.", LM, y);
+      doc.setTextColor(0, 0, 0); y += 5;
+
       // ── Summary box ──────────────────────────────────────────────────────
       const boxX = LM; const boxW = RM - LM; const boxH = 28;
       doc.setFillColor(245, 240, 230);
@@ -746,6 +754,18 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         }
         doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
       });
+
+      // ── This month subtotal ───────────────────────────────────────────────
+      if (mExpenses.length > 0) {
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+        doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
+        doc.setTextColor(100, 70, 10);
+        doc.text("THIS MONTH'S EXPENSES", LM, y);
+        doc.setTextColor(180, 40, 40);
+        doc.text("$" + fmt(mExpTotal), RM, y, { align: "right" });
+        doc.setTextColor(0, 0, 0); y += 4;
+      }
 
       addFootersToAllPages(doc);
       const filename = `expense-report-${label.replace(/\s/g, "-")}.pdf`;
