@@ -223,8 +223,10 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
       const ordersR = monthRecords.filter((r) => r.kind === "order");
       const txsR = monthRecords.filter((r) => r.kind === "tx");
       const totalSales = ordersR.reduce((s, r) => s + Number((r.data as Order).total), 0);
+      const totalTransfersIn = txsR.filter((r) => (r.data as WalletTx).type === "transfer_in")
+        .reduce((s, r) => s + Number((r.data as WalletTx).amount), 0);
       const openingBalance = 0;
-      const closingBalance = totalSales;
+      const closingBalance = totalSales + totalTransfersIn;
       let y = await drawHeader(doc, businessName, "Wallet Statement", month, generated);
       const boxX = LM; const boxW = RM - LM; const boxH = 28;
       doc.setFillColor(245, 240, 230);
@@ -703,9 +705,10 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       doc.text("SUMMARY (ALL TIME TO " + label.toUpperCase() + ")", boxX + 3, y + 5);
 
       const cols = [
-        { label: "This Month Income",  value: "$" + fmt(mIncome)       },
-        { label: "Total Expenses",     value: "$" + fmt(allTimeExpenses) },
-        { label: "Net Profit",         value: (allTimeNet >= 0 ? "+" : "") + "$" + fmt(allTimeNet) },
+        { label: "This Month Income",  value: "$" + fmt(mIncome),        color: [40, 140, 40]  as [number,number,number] },
+        { label: "Initial Investment", value: "$" + fmt(initialExpense),  color: [180, 40, 40]  as [number,number,number] },
+        { label: "Total Expenses",     value: "$" + fmt(allTimeExpenses), color: [180, 40, 40]  as [number,number,number] },
+        { label: "Net Profit",         value: (allTimeNet >= 0 ? "+" : "") + "$" + fmt(allTimeNet), color: (allTimeNet >= 0 ? [40,140,40] : [180,40,40]) as [number,number,number] },
       ];
       const colW = boxW / cols.length;
       cols.forEach((col, i) => {
@@ -713,13 +716,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
         doc.text(col.label, cx, y + 13, { align: "center" });
         doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-        if (col.label === "Net Profit") {
-          doc.setTextColor(allTimeNet >= 0 ? 40 : 180, allTimeNet >= 0 ? 140 : 40, 40);
-        } else if (col.label === "Total Expenses") {
-          doc.setTextColor(180, 40, 40);
-        } else {
-          doc.setTextColor(30, 30, 30);
-        }
+        doc.setTextColor(col.color[0], col.color[1], col.color[2]);
         doc.text(col.value, cx, y + 21, { align: "center" });
       });
       doc.setTextColor(0, 0, 0); y += boxH + 5;
@@ -731,7 +728,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
       doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
 
-      // ── Rows ─────────────────────────────────────────────────────────────
+      // ── Rows — monthly expenses only ──────────────────────────────────────
       mExpenses.forEach((e) => {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
@@ -749,23 +746,6 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         }
         doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
       });
-
-      // ── Totals footer ─────────────────────────────────────────────────────
-      y += 2;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.5); doc.line(LM, y, RM, y); y += 5;
-      doc.setTextColor(100, 70, 10);
-      doc.text("THIS MONTH INCOME", LM, y);
-      doc.setTextColor(40, 140, 40);
-      doc.text("$" + fmt(mIncome), RM, y, { align: "right" }); y += 6;
-      doc.setTextColor(100, 70, 10);
-      doc.text("TOTAL EXPENSES (ALL TIME)", LM, y);
-      doc.setTextColor(180, 40, 40);
-      doc.text("$" + fmt(allTimeExpenses), RM, y, { align: "right" }); y += 6;
-      doc.setTextColor(100, 70, 10);
-      doc.text("NET PROFIT (ALL TIME)", LM, y);
-      doc.setTextColor(allTimeNet >= 0 ? 40 : 180, allTimeNet >= 0 ? 140 : 40, 40);
-      doc.text((allTimeNet >= 0 ? "+" : "") + "$" + fmt(allTimeNet), RM, y, { align: "right" });
 
       addFootersToAllPages(doc);
       const filename = `expense-report-${label.replace(/\s/g, "-")}.pdf`;
@@ -1119,7 +1099,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{total} orders total</span>
+        <span className="text-sm text-muted-foreground">{flatRecords.length} records</span>
       </div>
 
       <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
