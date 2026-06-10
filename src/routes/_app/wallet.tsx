@@ -573,7 +573,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     const [finRes, expRes, ordRes] = await Promise.all([
       sb.from("owner_financials").select("*").eq("owner_id", ownerId).maybeSingle(),
       sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
-      // Fetch ALL orders for this owner (owner's own + all cashiers)
+      // Fetch ALL orders for this owner (owner's own + all cashiers) — for monthly income breakdown
       supabase.from("orders").select("total, created_at").eq("owner_id", ownerId),
     ]);
     setFinancials(finRes.data as OwnerFinancials | null);
@@ -1240,13 +1240,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, incomeRes, productsRes, openBottlesRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
-      supabase.from("orders").select("total").eq("owner_id", profile.id),
+      // Transfer-in: cashier balances cleared to owner
+      supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
+      // Owner's own direct orders (where owner is also cashier)
+      supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
       // All products with stock: price × qty
       supabase.from("products").select("price, stock_qty"),
-      // Currently open bottles: product price + shots revenue already sold
+      // Currently open bottles
       sb.from("opened_bottles")
         .select("revenue, product_id, products(price)")
         .eq("owner_id", profile.id)
@@ -1255,7 +1258,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
-    const totalIncome = (incomeRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    // Income = all transfers in + owner's own sales
+    const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+    const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    const totalIncome = transfersIncome + ownerOrdersIncome;
 
     // Closed stock: sum of price × stock_qty for all products
     const closedStockValue = (productsRes.data ?? []).reduce(

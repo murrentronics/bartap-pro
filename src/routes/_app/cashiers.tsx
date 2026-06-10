@@ -438,7 +438,6 @@ export default function CashiersPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(`Cleared $${Number(c.wallet_balance).toFixed(2)} from ${c.username}`);
       load();
       refreshProfile();
     }
