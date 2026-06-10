@@ -423,6 +423,13 @@ export default function ProductsPage() {
                   >
                     <span className="text-base font-black text-white leading-none">{p.stock_qty ?? 0}</span>
                   </button>
+
+                  {/* LOW stock badge — shows when stock is 1–5 */}
+                  {(p.stock_qty ?? 0) > 0 && (p.stock_qty ?? 0) <= 5 && (
+                    <div className="absolute top-1.5 right-1.5 z-10 bg-red-600 rounded-md px-1.5 py-0.5 shadow">
+                      <span className="text-white text-[9px] font-black uppercase tracking-wider leading-none">LOW</span>
+                    </div>
+                  )}
                   {/* Delete button on image bottom-right, price moves to footer */}
                   <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 z-10 flex justify-end">
                     <AlertDialog>

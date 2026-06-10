@@ -107,7 +107,7 @@ export default function MusicPage() {
   }, []);
 
   useEffect(() => {
-    if (profile && profile.role !== "owner") {
+    if (profile && profile.role !== "owner" && profile.role !== "cashier") {
       nav("/register", { replace: true });
     }
   }, [profile, nav]);
@@ -184,7 +184,7 @@ export default function MusicPage() {
   }, [showYTFullscreen, yt.videoId, yt.history]);
 
   const bars = Array.from({ length: 14 });
-  if (!profile || profile.role !== "owner") return null;
+  if (!profile || (profile.role !== "owner" && profile.role !== "cashier")) return null;
 
   const ytActive = !!yt.videoId; // video is loaded in iframe (may or may not be fullscreen)
 
