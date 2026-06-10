@@ -87,7 +87,7 @@ export default function AppLayout() {
   const isCashier  = profile.role === "cashier";
   const isPending  = !isAdmin && !isCashier && profile.status === "pending";
   const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
-  const hasMusic   = isOwner;
+  const hasMusic   = isOwner || isCashier;
   const isOnMusic  = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {

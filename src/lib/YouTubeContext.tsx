@@ -67,9 +67,12 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const load = async (uid: string) => {
-      ownerIdRef.current = uid;
+      // For cashiers, use parent_id (owner) for quota tracking so they share the owner's limit
+      const { data: profile } = await supabase.from("profiles").select("role, parent_id").eq("id", uid).maybeSingle();
+      const quotaOwnerId = (profile?.role === "cashier" && profile?.parent_id) ? profile.parent_id : uid;
+      ownerIdRef.current = quotaOwnerId;
       try {
-        const { data } = await sb.rpc("get_search_quota", { p_owner_id: uid });
+        const { data } = await sb.rpc("get_search_quota", { p_owner_id: quotaOwnerId });
         if (typeof data === "number") setQuotaCount(data);
       } catch { /**/ }
     };
