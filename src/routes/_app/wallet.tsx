@@ -1074,11 +1074,14 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
 
   const fetchData = useCallback(() => {
     setLoading(true);
+    // Only owner's own direct orders (where owner is also cashier) — cashier orders show as cashier_sale tx
     supabase.from("orders").select("id", { count: "exact", head: true })
       .eq("owner_id", profile.id)
+      .eq("cashier_id", profile.id)
       .then(({ count }) => setTotal(count ?? 0));
     supabase.from("orders").select("*")
       .eq("owner_id", profile.id)
+      .eq("cashier_id", profile.id)
       .order("created_at", { ascending: false })
       .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
