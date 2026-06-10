@@ -593,6 +593,17 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Realtime — refresh financials when orders or expenses change
+  useEffect(() => {
+    const ch = supabase
+      .channel(`wallet-financials-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${ownerId}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${ownerId}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${ownerId}` }, () => loadData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, loadData]);
+
   // ── Derived totals ────────────────────────────────────────────────────────
   const initialExpense = financials ? Number(financials.initial_expense) : 0;
   const monthlyExpensesTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -1080,6 +1091,16 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Realtime — refresh when new orders or wallet transactions come in
+  useEffect(() => {
+    const ch = supabase
+      .channel(`wallet-tx-${profile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile.id, fetchData]);
+
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -1286,6 +1307,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   }, [profile.id]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
+
+  // Realtime — refresh hero when orders or wallet transactions change
+  useEffect(() => {
+    const ch = supabase
+      .channel(`wallet-summary-${profile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadSummary())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile.id, loadSummary]);
 
   const totalExpenses = financialSummary ? financialSummary.initialExpense + financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
