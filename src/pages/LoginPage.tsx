@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, usernameToEmail } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +66,14 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const submitBtnRef = useRef<HTMLButtonElement>(null);
+
+  const handlePasswordFocus = () => {
+    // Give the keyboard time to animate open before scrolling
+    setTimeout(() => {
+      submitBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 400);
+  };
 
   const setForgot = (val: boolean) => {
     setShowForgot(val);
@@ -111,10 +119,11 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
           autoComplete="current-password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
+          onFocus={handlePasswordFocus}
           required
         />
       </div>
-      <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
+      <Button ref={submitBtnRef} type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
       </Button>
       <div className="text-center pt-2">
