@@ -9,6 +9,7 @@ import { CreditCard, CheckCircle, Clock, AlertCircle, Copy, Music2 } from "lucid
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
 const SETUP_FEE = 250;
+const TABLET_FEE = 600;
 
 export default function BillingPage() {
   const { profile } = useAuth();
@@ -20,6 +21,7 @@ export default function BillingPage() {
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [showRenewal, setShowRenewal]   = useState(false);
+  const [includeTablet, setIncludeTablet] = useState(false);
   const [historyPage, setHistoryPage]   = useState(0);
   const [historyTotal, setHistoryTotal] = useState(0);
 
@@ -111,7 +113,12 @@ export default function BillingPage() {
 
     // New signup = plan + setup fee. Renewal = plan only.
     const isFirstPayment = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
-    const amount = isFirstPayment ? plan.amount + SETUP_FEE : plan.amount;
+    const tabletAddon = !isRenewal && includeTablet ? TABLET_FEE : 0;
+    const amount = (isFirstPayment ? plan.amount + SETUP_FEE : plan.amount) + tabletAddon;
+
+    let notesParts: string[] = [];
+    if (isFirstPayment) notesParts.push("Includes $250 one-time setup & training fee");
+    if (!isRenewal && includeTablet) notesParts.push("Includes $600 Android tablet with app pre-installed");
 
     let dueDate: Date;
     if (isRenewal && profile.subscription_end_date) {
@@ -130,7 +137,7 @@ export default function BillingPage() {
       due_date: dueDate.toISOString(),
       status: "pending",
       payment_method: method,
-      notes: isFirstPayment ? "Includes $250 one-time setup & training fee" : null,
+      notes: notesParts.length > 0 ? notesParts.join(" • ") : null,
     });
 
     setLoading(false);
@@ -139,6 +146,7 @@ export default function BillingPage() {
     setPaymentMethod(null);
     setSelectedPlan(null);
     setShowRenewal(false);
+    setIncludeTablet(false);
     loadPayments();
   };
 
@@ -297,6 +305,19 @@ export default function BillingPage() {
             <p className="text-sm text-muted-foreground mb-5">
               All plans include the Music Player. A one-time <span className="font-bold text-primary">$250 TT setup & training fee</span> applies to new accounts.
             </p>
+            {/* Tablet add-on */}
+            <label className="flex items-start gap-3 mb-5 p-3 rounded-xl border border-border cursor-pointer hover:border-primary/60 transition">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-orange-500"
+                checked={includeTablet}
+                onChange={(e) => setIncludeTablet(e.target.checked)}
+              />
+              <div>
+                <p className="font-bold text-sm">Add Android Tablet with App Pre-Installed <span className="text-primary">+$600 TT</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">Receive a ready-to-use Android tablet with Bartendaz Pro pre-installed and configured.</p>
+              </div>
+            </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {plans.map((plan) => (
                 <button
@@ -323,9 +344,15 @@ export default function BillingPage() {
                       <span className="text-muted-foreground">One-time setup & training</span>
                       <span className="font-semibold">$250 TT</span>
                     </div>
+                    {includeTablet && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Android tablet (pre-installed)</span>
+                        <span className="font-semibold">$600 TT</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t pt-1 font-bold">
                       <span>Total first payment</span>
-                      <span className="text-primary">${(plan.amount + SETUP_FEE).toFixed(0)} TT</span>
+                      <span className="text-primary">${(plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0)).toFixed(0)} TT</span>
                     </div>
                   </div>
 
@@ -341,7 +368,7 @@ export default function BillingPage() {
         {/* ── New signup: payment method ── */}
         {isNewSignup && selectedPlan && !paymentMethod && (() => {
           const plan = plans.find(p => p.id === selectedPlan)!;
-          const total = plan.amount + SETUP_FEE;
+          const total = plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0);
           return (
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -358,6 +385,12 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">Setup & training (one-time)</span>
                   <span className="font-semibold">$250 TT</span>
                 </div>
+                {includeTablet && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Android tablet (pre-installed)</span>
+                    <span className="font-semibold">$600 TT</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t pt-2 font-black text-base">
                   <span>Total due now</span>
                   <span className="text-primary">${total.toFixed(0)} TT</span>
@@ -387,7 +420,7 @@ export default function BillingPage() {
         {/* ── New signup: confirm ── */}
         {isNewSignup && selectedPlan && paymentMethod && (() => {
           const plan = plans.find(p => p.id === selectedPlan)!;
-          const total = plan.amount + SETUP_FEE;
+          const total = plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0);
           return (
             <Card className="p-6 border-primary space-y-4">
               <div className="flex items-center justify-between">
@@ -403,6 +436,12 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">Setup & training (one-time)</span>
                   <span className="font-semibold">$250 TT</span>
                 </div>
+                {includeTablet && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Android tablet (pre-installed)</span>
+                    <span className="font-semibold">$600 TT</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t pt-2 font-black text-base">
                   <span>Total</span>
                   <span className="text-primary">${total.toFixed(0)} TT</span>
