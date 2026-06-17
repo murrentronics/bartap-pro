@@ -54,7 +54,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user && profile) {
       setBusinessName(profile.username);
-      setNewEmail(user.email || "");
+      setNewEmail("");
       setPhone(profile.phone || "");
       setAddress(profile.address || "");
     }

@@ -153,7 +153,6 @@ export default function MusicPage() {
       thumbnail: item.thumbnail ?? "",
       duration:  item.duration  ?? null,
     });
-    toast.success("Saved");
   };
 
   const PlayModeIcon = () => {
@@ -396,7 +395,6 @@ export default function MusicPage() {
                         thumbnail: yt.currentItem?.thumbnail ?? "",
                         duration:  yt.currentItem?.duration ?? null,
                       });
-                      toast.success("Saved");
                     }}
                     className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition disabled:opacity-70"
                     style={{ background: alreadySaved ? "rgba(22,163,74,0.6)" : "rgba(22,163,74,0.85)" }}

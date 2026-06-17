@@ -422,7 +422,6 @@ export default function CashiersPage() {
     setBusy(true);
     try {
       await create({ username: u, password: p });
-      toast.success(`Cashier "${u}" created`);
       setU(""); setP("");
       setTab("manage");
       load();
