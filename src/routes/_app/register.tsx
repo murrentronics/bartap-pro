@@ -1477,6 +1477,7 @@ function CreditSaleOverlay({
   // Create account form
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");
+  const [newContactPadOpen, setNewContactPadOpen] = useState(false);
   const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
   const [newIdNumber, setNewIdNumber] = useState("");
 
@@ -1746,26 +1747,49 @@ function CreditSaleOverlay({
                 />
               </div>
 
-              {/* Contact Number — 868 prefix, auto-hyphen after 3 digits */}
+              {/* Contact Number — 868 prefix, custom numpad */}
               <div>
                 <Label htmlFor="credit-new-contact">Contact Number</Label>
-                <div className="flex items-center gap-0 mt-1">
-                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
-                    868
-                  </span>
-                  <Input
-                    id="credit-new-contact"
-                    className="rounded-l-none"
-                    value={newContact}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
-                      const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                      setNewContact(formatted);
-                    }}
-                    placeholder="XXX-XXXX"
-                    maxLength={8}
-                    inputMode="numeric"
-                  />
+                <div className="mt-1">
+                  <div className="flex items-center gap-0">
+                    <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewContactPadOpen((o) => !o)}
+                      className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
+                    >
+                      <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>
+                        {newContact || "XXX-XXXX"}
+                      </span>
+                    </button>
+                  </div>
+                  {newContactPadOpen && (
+                    <div className="grid grid-cols-3 gap-1.5 mt-2">
+                      {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
+                        k === "" ? <div key={i} /> :
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => {
+                            if (k === "⌫") {
+                              setNewContact((v) => {
+                                const digits = v.replace("-", "").slice(0, -1);
+                                return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                              });
+                            } else {
+                              setNewContact((v) => {
+                                const digits = (v.replace("-", "") + k).slice(0, 7);
+                                return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                              });
+                            }
+                          }}
+                          className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${
+                            k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
+                          }`}
+                        >{k}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
