@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2,
 } from "lucide-react";
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
+  const [creditOpen, setCreditOpen] = useState(false);
   const [saleResult, setSaleResult] = useState<{ paid: number; change: number } | null>(null);
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
@@ -361,8 +363,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Items grid — bottom padding clears the fixed CASH button */}
-      <div className="pt-4 pb-24">
+      {/* Items grid — bottom padding clears the fixed CASH + CREDIT buttons */}
+      <div className="pt-4 pb-36">
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -515,13 +517,14 @@ export default function RegisterPage() {
         )}
       </div>
 
-      {/* Sticky CASH button — fixed at bottom */}
+      {/* Sticky CASH + CREDIT buttons — fixed at bottom */}
       {cartCount > 0 && (
         <div
           className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none"
           style={{ bottom: 8 }}
         >
-          <div className="max-w-2xl mx-auto pointer-events-auto">
+          <div className="max-w-2xl mx-auto pointer-events-auto space-y-2">
+            {/* CASH button */}
             <button
               onClick={() => setCashOpen(true)}
               className="w-full h-14 rounded-2xl flex items-center justify-between px-5 font-black text-lg text-primary-foreground shadow-2xl active:scale-[0.98] transition"
@@ -530,6 +533,16 @@ export default function RegisterPage() {
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
               <span className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> CASH</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
+            </button>
+            {/* CREDIT button */}
+            <button
+              onClick={() => setCreditOpen(true)}
+              className="w-full h-14 rounded-2xl flex items-center justify-between px-5 font-black text-lg shadow-2xl active:scale-[0.98] transition"
+              style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
+            >
+              <span className="flex items-center justify-center h-8 w-8 rounded-full text-sm font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)", border: "1.5px solid var(--primary)" }}>{cartCount}</span>
+              <span className="flex items-center gap-2">CREDIT</span>
+              <span className="text-base font-bold">${total.toFixed(2)}</span>
             </button>
           </div>
         </div>
@@ -550,6 +563,19 @@ export default function RegisterPage() {
             setSaleResult({ paid: paidAmt, change: changeAmt });
             refreshProfile();
             fetchOpenedBottles();
+          }}
+        />
+      )}
+
+      {creditOpen && (
+        <CreditSaleOverlay
+          total={total}
+          cart={cart}
+          onClose={() => setCreditOpen(false)}
+          onSuccess={() => {
+            setCart([]);
+            setCreditOpen(false);
+            refreshProfile();
           }}
         />
       )}
@@ -1411,6 +1437,232 @@ function SaleSuccessBanner({ paid, change, onOk }: { paid: number; change: numbe
         <div className="px-8 pb-10">
           <button onClick={onOk} className="w-full h-14 rounded-2xl font-black text-xl text-white bg-green-600 hover:bg-green-500 active:scale-95 transition shadow-lg">OK</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Credit Sale Overlay ────────────────────────────────────────────────────────
+// Step 1: Order review → Step 2: Pick/create credit account → confirm
+type CreditAccount = {
+  id: string; full_name: string; contact_number: string | null;
+  balance_owed: number; status: string;
+};
+
+function CreditSaleOverlay({
+  total, cart, onClose, onSuccess,
+}: {
+  total: number;
+  cart: CartItem[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const { profile } = useAuth();
+  const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+
+  const [step, setStep] = useState<"review" | "pick" | "create">("review");
+  const [accounts, setAccounts] = useState<CreditAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // Create account form
+  const [newName, setNewName] = useState("");
+  const [newContact, setNewContact] = useState("");
+
+  const loadAccounts = async () => {
+    if (!ownerId) return;
+    setLoadingAccounts(true);
+    const { data } = await supabase
+      .from("credit_accounts")
+      .select("id, full_name, contact_number, balance_owed, status")
+      .eq("owner_id", ownerId)
+      .order("full_name");
+    setAccounts((data ?? []) as CreditAccount[]);
+    setLoadingAccounts(false);
+  };
+
+  const handleProceed = () => {
+    setStep("pick");
+    loadAccounts();
+  };
+
+  const chargeAccount = async (account: CreditAccount) => {
+    if (!profile) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("record_credit_charge", {
+      p_credit_account_id: account.id,
+      p_cashier_id: profile.id,
+      p_amount: total,
+      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      p_note: `Credit sale — ${cart.length} item(s)`,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Charged $${total.toFixed(2)} to ${account.full_name}`);
+    onSuccess();
+  };
+
+  const createAndCharge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !ownerId || !profile) return;
+    setBusy(true);
+    // Create the account
+    const { data: acc, error: createErr } = await supabase
+      .from("credit_accounts")
+      .insert({ owner_id: ownerId, full_name: newName.trim(), contact_number: newContact.trim() || null, status: "closed" })
+      .select()
+      .single();
+    if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
+    // Charge it
+    const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
+      p_credit_account_id: acc.id,
+      p_cashier_id: profile.id,
+      p_amount: total,
+      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      p_note: `Credit sale — ${cart.length} item(s)`,
+    });
+    setBusy(false);
+    if (chargeErr) { toast.error(chargeErr.message); return; }
+    toast.success(`Account created & $${total.toFixed(2)} charged to ${newName.trim()}`);
+    onSuccess();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden border shadow-2xl"
+        style={{ background: "var(--gradient-card)", borderColor: "var(--primary)" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+          <h2 className="text-xl font-black" style={{ color: "var(--primary)" }}>Credit Order</h2>
+          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* ── Step 1: Order review ── */}
+        {step === "review" && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-4">
+              <div className="rounded-2xl p-4 text-center" style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)" }}>
+                <div className="text-sm font-medium" style={{ color: "var(--primary)" }}>Total to Credit</div>
+                <div className="text-5xl font-black" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</div>
+              </div>
+              <div className="space-y-2">
+                {cart.map((i) => (
+                  <div key={i.id} className="flex items-center justify-between p-3 rounded-xl bg-background/50">
+                    <span className="font-semibold text-sm">{i.qty}× {i.name}</span>
+                    <span className="font-black text-sm" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>Cancel</Button>
+              <Button
+                className="flex-1 h-12 font-black text-base"
+                onClick={handleProceed}
+                style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
+              >
+                Proceed
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* ── Step 2: Pick account ── */}
+        {step === "pick" && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
+              <p className="text-sm text-muted-foreground">Select the customer's credit account</p>
+              {loadingAccounts ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : accounts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No accounts yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {accounts.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => chargeAccount(a)}
+                      disabled={busy}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left disabled:opacity-50"
+                      style={{ background: "var(--gradient-card)" }}
+                    >
+                      <div>
+                        <p className="font-black text-sm">{a.full_name}</p>
+                        {a.contact_number && <p className="text-xs text-muted-foreground">{a.contact_number}</p>}
+                        {Number(a.balance_owed) > 0 && (
+                          <p className="text-xs text-red-400 font-semibold mt-0.5">Owes ${Number(a.balance_owed).toFixed(2)}</p>
+                        )}
+                      </div>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← Back</Button>
+              <Button
+                className="h-12 px-5 font-black text-sm"
+                onClick={() => setStep("create")}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                + New Account
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* ── Step 3: Create new account ── */}
+        {step === "create" && (
+          <>
+            <form onSubmit={createAndCharge} className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Create a new credit account and charge this order to it</p>
+              <div>
+                <Label htmlFor="credit-new-name">Full Name *</Label>
+                <Input
+                  id="credit-new-name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. John Smith"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label htmlFor="credit-new-contact">Contact Number</Label>
+                <Input
+                  id="credit-new-contact"
+                  value={newContact}
+                  onChange={(e) => setNewContact(e.target.value)}
+                  placeholder="+1 868 XXX-XXXX"
+                />
+              </div>
+              <div className="rounded-xl p-3 text-sm" style={{ background: "oklch(0.22 0.04 45)", border: "1px solid var(--primary)" }}>
+                <div className="flex justify-between font-black">
+                  <span style={{ color: "var(--primary)" }}>Amount to charge</span>
+                  <span style={{ color: "var(--primary)" }}>${total.toFixed(2)}</span>
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={busy || !newName.trim()}
+                className="w-full h-12 font-black text-base"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create & Charge"}
+              </Button>
+            </form>
+            <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Accounts</Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

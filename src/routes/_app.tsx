@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app")({
@@ -88,6 +88,7 @@ function AppLayout() {
         ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
         { to: "/wallet", label: "Wallet", icon: Wallet },
+        { to: "/credit", label: "Credit", icon: Receipt },
       ];
 
   return (

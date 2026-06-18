@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useYouTube } from "@/lib/YouTubeContext";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -174,6 +174,7 @@ export default function AppLayout() {
         ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
         { to: "/wallet",   label: "Wallet",   icon: Wallet },
+        { to: "/credit",   label: "Credit",   icon: Receipt },
         ...(isOwner ? [{ to: "/billing",  label: "Billing",  icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: "Profile",  icon: UserCircle }] : []),
       ];
