@@ -98,7 +98,7 @@ export default function CreditPage() {
           onRefresh={fetchAccounts}
         />
       )}
-      {tab === "closed" && <ClosedTab accounts={closed} loading={loading} />}
+      {tab === "closed" && <ClosedTab accounts={closed} loading={loading} onRefresh={fetchAccounts} />}
       {tab === "create" && <CreateTab ownerId={ownerId!} onCreated={handleCreated} />}
     </div>
   );
@@ -390,10 +390,12 @@ function OpenedTab({ accounts, loading, onRefresh }: {
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: boolean }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [txs, setTxs]           = useState<CreditTx[]>([]);
+function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]; loading: boolean; onRefresh: () => void }) {
+  const [expanded, setExpanded]   = useState<string | null>(null);
+  const [txs, setTxs]             = useState<CreditTx[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<CreditAccount | null>(null);
+  const [deleting, setDeleting]   = useState(false);
 
   const toggleExpand = async (accountId: string) => {
     if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
@@ -406,6 +408,19 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
       .order("created_at", { ascending: false });
     setTxs((data ?? []) as CreditTx[]);
     setTxLoading(false);
+  };
+
+  const deleteAccount = async (account: CreditAccount) => {
+    setDeleting(true);
+    const { error } = await supabase
+      .from("credit_accounts")
+      .delete()
+      .eq("id", account.id);
+    setDeleting(false);
+    setConfirmDelete(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${account.full_name} removed`);
+    onRefresh();
   };
 
   if (loading) return <Spinner />;
@@ -424,20 +439,29 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
           className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          <button
-            onClick={() => toggleExpand(a.id)}
-            className="w-full flex items-center justify-between p-4 text-left"
-          >
-            <div>
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => toggleExpand(a.id)}
+              className="flex-1 text-left"
+            >
               <p className="font-black text-base">{a.full_name}</p>
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
               {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-            </div>
+            </button>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
-              <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`} />
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+              <ChevronRight
+                onClick={() => toggleExpand(a.id)}
+                className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer ${expanded === a.id ? "rotate-90" : ""}`}
+              />
             </div>
-          </button>
+          </div>
 
           {expanded === a.id && (
             <div className="border-t border-border/50 px-4 pb-3 space-y-1">
@@ -472,6 +496,37 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
           )}
         </div>
       ))}
+
+      {/* ── Confirm delete customer modal ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-12 w-12 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <h3 className="font-black text-base">Delete Customer?</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                <span className="font-bold text-foreground">{confirmDelete.full_name}</span> and all their records will be permanently removed.
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-4 flex gap-3">
+              <Button variant="outline" className="flex-1 h-11" onClick={() => setConfirmDelete(null)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-11 font-black bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleting}
+                onClick={() => deleteAccount(confirmDelete)}
+              >
+                {deleting
+                  ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
