@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS public.credit_accounts (
 
 ALTER TABLE public.credit_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "View credit accounts in scope" ON public.credit_accounts;
+DROP POLICY IF EXISTS "Insert credit accounts" ON public.credit_accounts;
+DROP POLICY IF EXISTS "Update credit accounts in scope" ON public.credit_accounts;
+
 CREATE POLICY "View credit accounts in scope"
   ON public.credit_accounts FOR SELECT
   USING (owner_id = public.get_owner_id(auth.uid()));
@@ -45,6 +49,9 @@ CREATE TABLE IF NOT EXISTS public.credit_transactions (
 
 ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "View credit transactions in scope" ON public.credit_transactions;
+DROP POLICY IF EXISTS "Insert credit transactions" ON public.credit_transactions;
+
 CREATE POLICY "View credit transactions in scope"
   ON public.credit_transactions FOR SELECT
   USING (owner_id = public.get_owner_id(auth.uid()));
@@ -59,6 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_credit_accounts_status  ON public.credit_accounts
 CREATE INDEX IF NOT EXISTS idx_credit_tx_account       ON public.credit_transactions(credit_account_id);
 
 -- Trigger: update updated_at on credit_accounts
+DROP TRIGGER IF EXISTS update_credit_accounts_updated_at ON public.credit_accounts;
 CREATE TRIGGER update_credit_accounts_updated_at
   BEFORE UPDATE ON public.credit_accounts
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -144,7 +152,7 @@ BEGIN
     (credit_account_id, owner_id, cashier_id, type, amount, note)
   VALUES
     (p_credit_account_id, v_owner_id, p_cashier_id, 'payment', p_amount,
-     'Payment received');
+     'Payment received — $' || p_amount::text);
 
   -- 2. Update balance, auto-close if fully settled
   UPDATE public.credit_accounts

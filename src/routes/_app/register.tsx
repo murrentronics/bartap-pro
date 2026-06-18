@@ -1468,10 +1468,11 @@ function CreditSaleOverlay({
   const { profile } = useAuth();
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
-  const [step, setStep] = useState<"review" | "pick" | "create">("review");
+  const [step, setStep] = useState<"review" | "pick" | "confirm" | "create">("review");
   const [accounts, setAccounts] = useState<CreditAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmPick, setConfirmPick] = useState<CreditAccount | null>(null);
 
   // Create account form
   const [newName, setNewName] = useState("");
@@ -1499,12 +1500,13 @@ function CreditSaleOverlay({
   const chargeAccount = async (account: CreditAccount) => {
     if (!profile) return;
     setBusy(true);
+    const itemsDesc = cart.map((c) => `${c.qty}× ${c.name}`).join(", ");
     const { error } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
-      p_note: `Credit sale — ${cart.length} item(s)`,
+      p_note: itemsDesc,
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
@@ -1530,12 +1532,13 @@ function CreditSaleOverlay({
       .single();
     if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
     // Charge it
+    const itemsDesc = cart.map((c) => `${c.qty}× ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
       p_cashier_id: profile.id,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
-      p_note: `Credit sale — ${cart.length} item(s)`,
+      p_note: itemsDesc,
     });
     setBusy(false);
     if (chargeErr) { toast.error(chargeErr.message); return; }
@@ -1642,7 +1645,7 @@ function CreditSaleOverlay({
                   {accounts.map((a) => (
                     <button
                       key={a.id}
-                      onClick={() => chargeAccount(a)}
+                      onClick={() => setConfirmPick(a)}
                       disabled={busy}
                       className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left disabled:opacity-50"
                       style={{ background: "var(--gradient-card)" }}
@@ -1654,7 +1657,7 @@ function CreditSaleOverlay({
                           <p className="text-xs text-red-400 font-semibold mt-0.5">Owes ${Number(a.balance_owed).toFixed(2)}</p>
                         )}
                       </div>
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />}
+                      <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />
                     </button>
                   ))}
                 </div>
@@ -1671,6 +1674,32 @@ function CreditSaleOverlay({
               </Button>
             </div>
           </>
+        )}
+
+        {/* ── Step 2b: Confirm account selection ── */}
+        {confirmPick && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm rounded-3xl">
+            <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl p-6 space-y-4 text-center" style={{ background: "var(--gradient-card)" }}>
+              <h3 className="font-black text-lg">Confirm Customer?</h3>
+              <p className="text-muted-foreground text-sm">Charge this order to</p>
+              <p className="font-black text-xl">{confirmPick.full_name}</p>
+              <p className="font-black text-2xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
+              {Number(confirmPick.balance_owed) > 0 && (
+                <p className="text-xs text-red-400 font-semibold">Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}</p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" className="flex-1 h-11" onClick={() => setConfirmPick(null)}>Cancel</Button>
+                <Button
+                  className="flex-1 h-11 font-black"
+                  disabled={busy}
+                  onClick={() => { chargeAccount(confirmPick); setConfirmPick(null); }}
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, Charge"}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Step 3: Create new account ── */}

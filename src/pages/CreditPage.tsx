@@ -161,11 +161,15 @@ function OpenedTab({ accounts, loading, onSelect, onRefresh }: {
   onSelect: (a: CreditAccount) => void;
   onRefresh: () => void;
 }) {
-  // Which account's transactions are expanded
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [txs, setTxs]           = useState<CreditTx[]>([]);
-  const [txLoading, setTxLoading] = useState(false);
+  const { profile } = useAuth();
+  const [expanded, setExpanded]     = useState<string | null>(null);
+  const [txs, setTxs]               = useState<CreditTx[]>([]);
+  const [txLoading, setTxLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Inline payment
+  const [payAmount, setPayAmount]   = useState("");
+  const [padOpen, setPadOpen]       = useState(false);
+  const [paying, setPaying]         = useState(false);
 
   const loadTxs = async (accountId: string) => {
     setTxLoading(true);
@@ -182,10 +186,33 @@ function OpenedTab({ accounts, loading, onSelect, onRefresh }: {
     if (expanded === accountId) {
       setExpanded(null);
       setTxs([]);
+      setPayAmount("");
+      setPadOpen(false);
     } else {
       setExpanded(accountId);
       loadTxs(accountId);
+      setPayAmount("");
+      setPadOpen(false);
     }
+  };
+
+  const submitPayment = async (account: CreditAccount) => {
+    const amt = parseFloat(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (amt > Number(account.balance_owed)) { toast.error(`Cannot exceed balance owed ($${Number(account.balance_owed).toFixed(2)})`); return; }
+    if (!profile) return;
+    setPaying(true);
+    const { error } = await supabase.rpc("record_credit_payment", {
+      p_credit_account_id: account.id,
+      p_cashier_id: profile.id,
+      p_amount: amt,
+    });
+    setPaying(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(amt >= Number(account.balance_owed) ? `${account.full_name}'s tab fully settled!` : `Payment of $${amt.toFixed(2)} recorded`);
+    setPayAmount("");
+    loadTxs(account.id);
+    onRefresh();
   };
 
   const deleteCharge = async (tx: CreditTx) => {
@@ -250,9 +277,67 @@ function OpenedTab({ accounts, loading, onSelect, onRefresh }: {
             </div>
           </div>
 
-          {/* Expanded transactions */}
+          {/* Expanded section */}
           {expanded === a.id && (
             <div className="border-t border-border/50 px-4 pb-3 space-y-1">
+
+              {/* ── Inline payment input ── */}
+              <div className="py-3 border-b border-border/40 mb-2">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Record Payment</p>
+                <div className="flex gap-2">
+                  {/* Tappable amount display — opens numpad */}
+                  <button
+                    onClick={() => setPadOpen((o) => !o)}
+                    className="flex items-center flex-1 h-10 rounded-lg border border-input bg-background px-3 gap-1 text-left"
+                  >
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <span className={`text-base font-black flex-1 ${payAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                      {payAmount || `0.00`}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">max ${Number(a.balance_owed).toFixed(2)}</span>
+                  </button>
+                  <Button
+                    className="h-10 px-4 font-black text-sm shrink-0"
+                    disabled={paying || !payAmount}
+                    onClick={() => { setPadOpen(false); submitPayment(a); }}
+                    style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  >
+                    {paying ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : "Pay"}
+                  </Button>
+                </div>
+
+                {/* Numpad */}
+                {padOpen && (
+                  <div className="grid grid-cols-3 gap-1.5 mt-3">
+                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => {
+                          if (k === "⌫") {
+                            setPayAmount((v) => v.slice(0, -1));
+                          } else if (k === ".") {
+                            if (!payAmount.includes(".")) setPayAmount((v) => v + ".");
+                          } else {
+                            const dotIdx = payAmount.indexOf(".");
+                            if (dotIdx !== -1 && payAmount.length - dotIdx > 2) return;
+                            setPayAmount((v) => (v === "0" ? k : v + k));
+                          }
+                        }}
+                        className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${
+                          k === "⌫"
+                            ? "bg-destructive/20 text-destructive"
+                            : "bg-muted text-foreground"
+                        }`}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Transaction records ── */}
               {txLoading ? (
                 <div className="py-4 flex justify-center">
                   <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -310,6 +395,23 @@ function OpenedTab({ accounts, loading, onSelect, onRefresh }: {
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
 function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: boolean }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [txs, setTxs]           = useState<CreditTx[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+
+  const toggleExpand = async (accountId: string) => {
+    if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
+    setExpanded(accountId);
+    setTxLoading(true);
+    const { data } = await supabase
+      .from("credit_transactions")
+      .select("id, credit_account_id, type, amount, note, created_at")
+      .eq("credit_account_id", accountId)
+      .order("created_at", { ascending: false });
+    setTxs((data ?? []) as CreditTx[]);
+    setTxLoading(false);
+  };
+
   if (loading) return <Spinner />;
   if (accounts.length === 0)
     return (
@@ -323,14 +425,54 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="flex items-center justify-between p-4 rounded-2xl border border-border"
+          className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div>
-            <p className="font-black text-base">{a.full_name}</p>
-            {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-          </div>
-          <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+          <button
+            onClick={() => toggleExpand(a.id)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <div>
+              <p className="font-black text-base">{a.full_name}</p>
+              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+              <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`} />
+            </div>
+          </button>
+
+          {expanded === a.id && (
+            <div className="border-t border-border/50 px-4 pb-3 space-y-1">
+              {txLoading ? (
+                <div className="py-4 flex justify-center">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              ) : txs.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-3 text-center">No records</p>
+              ) : (
+                txs.map((tx) => {
+                  const dt   = new Date(tx.created_at);
+                  const date = dt.toLocaleDateString("en-GB");
+                  const time = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                  const isCharge = tx.type === "charge";
+                  return (
+                    <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-border/30 last:border-0">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="text-xs font-bold truncate">
+                          {tx.note ?? (isCharge ? "Credit charge" : "Payment received")}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{date} · {time}</p>
+                      </div>
+                      <span className={`text-sm font-black shrink-0 ${isCharge ? "text-red-400" : "text-green-400"}`}>
+                        {isCharge ? "+" : "-"}${Number(tx.amount).toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>
