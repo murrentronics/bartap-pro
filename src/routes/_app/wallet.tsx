@@ -94,6 +94,7 @@ function PaginationBar({
 // ─── Cashier Wallet ───────────────────────────────────────────────────────────
 function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -101,15 +102,28 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
   useEffect(() => {
     setLoading(true);
-    supabase.from("orders").select("id", { count: "exact", head: true })
-      .eq("cashier_id", profile.id)
-      .then(({ count }) => setTotal(count ?? 0));
-    supabase.from("orders").select("*")
-      .eq("cashier_id", profile.id)
-      .order("created_at", { ascending: false })
-      .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
-      .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
+    Promise.all([
+      supabase.from("orders").select("id", { count: "exact", head: true })
+        .eq("cashier_id", profile.id)
+        .then(({ count }) => setTotal(count ?? 0)),
+      supabase.from("orders").select("*")
+        .eq("cashier_id", profile.id)
+        .order("created_at", { ascending: false })
+        .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
+        .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
+      supabase.from("wallet_transactions").select("*")
+        .eq("profile_id", profile.id)
+        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment"])
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
+    ]).finally(() => setLoading(false));
   }, [profile.id, page]);
+
+  // Merge orders and txs into flat list sorted by date
+  const flatRecords: Array<{ kind: "order"; data: Order; ts: number } | { kind: "tx"; data: WalletTx; ts: number }> = [
+    ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
+    ...txs.map((tx) => ({ kind: "tx" as const, data: tx, ts: new Date(tx.created_at).getTime() })),
+  ].sort((a, b) => b.ts - a.ts);
 
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -134,33 +148,89 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       </section>
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-black text-xl">Orders</h2>
-          <span className="text-sm text-muted-foreground">{total} total</span>
+          <h2 className="font-black text-xl">Records</h2>
+          <span className="text-sm text-muted-foreground">{total} orders</span>
         </div>
         <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
         {loading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="rounded-xl h-20 bg-muted/30 animate-pulse" />)}</div>
-        ) : orders.length === 0 ? (
-          <div className="text-muted-foreground text-sm py-8 text-center">No orders yet.</div>
+        ) : flatRecords.length === 0 ? (
+          <div className="text-muted-foreground text-sm py-8 text-center">No records yet.</div>
         ) : (
           <div className="space-y-2">
-            {orders.map((o) => (
-              <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Receipt className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
+            {flatRecords.map((rec) => {
+              if (rec.kind === "tx") {
+                const tx = rec.data;
+                const isTransferIn = tx.type === "transfer_in";
+                const isBottlePack = tx.type === "bottle_finished" || tx.type === "pack_finished";
+                const isCreditPay  = tx.type === "credit_payment";
+
+                if (isTransferIn) {
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-center gap-3"
+                      style={{ background: "oklch(0.22 0.06 145 / 0.3)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/20 border-green-500/30">
+                        <ArrowDownLeft className="h-4 w-4 text-green-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-semibold text-green-300">{tx.note ?? "Cleared from cashier"}</div>
+                      </div>
+                      <div className="font-black text-lg shrink-0 text-green-400">+${fmt(Number(tx.amount))}</div>
+                    </div>
+                  );
+                }
+                if (isBottlePack) {
+                  const isPack = tx.type === "pack_finished";
+                  return (
+                    <div key={tx.id} className={`rounded-xl p-4 border flex items-start gap-3 ${isPack ? "border-green-500/30" : "border-amber-500/30"}`}
+                      style={{ background: isPack ? "oklch(0.20 0.05 145 / 0.35)" : "oklch(0.20 0.06 80 / 0.35)" }}>
+                      <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border text-lg ${isPack ? "bg-green-500/20 border-green-500/30" : "bg-amber-500/20 border-amber-500/30"}`}>
+                        {isPack ? "🚬" : "🍾"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className={`text-sm font-black mt-0.5 ${isPack ? "text-green-300" : "text-amber-300"}`}>{tx.note}</div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (isCreditPay) {
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-start gap-3"
+                      style={{ background: "oklch(0.20 0.06 145 / 0.25)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/30 text-lg">💳</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-black text-green-300 mt-0.5">{tx.note ?? "Credit payment"}</div>
+                      </div>
+                      {Number(tx.amount) > 0 && (
+                        <div className="font-black text-lg shrink-0 text-green-400 mt-1">+${fmt(Number(tx.amount))}</div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              }
+              const o = rec.data as Order;
+              return (
+                <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Receipt className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
+                    </div>
+                    <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
                   </div>
-                  <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
+                  <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+                    {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                  </div>
                 </div>
-                <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-                  {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
@@ -191,7 +261,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
-        .in("type", ["transfer_in", "cashier_sale", "bottle_finished", "pack_finished"])
+        .in("type", ["transfer_in", "cashier_sale", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -386,6 +456,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                             const isCashierSale = tx.type === "cashier_sale";
                             const isTransferIn  = tx.type === "transfer_in";
                             const isBottlePack  = tx.type === "bottle_finished" || tx.type === "pack_finished";
+                            const isCreditTx    = tx.type === "credit_payment" || tx.type === "credit_charge";
 
                             if (isCashierSale) {
                               const parts = (tx.note ?? "").split(" | ");
@@ -418,13 +489,33 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               );
                             }
                             if (isBottlePack) {
+                              const isPack = tx.type === "pack_finished";
                               return (
-                                <div key={tx.id} className="px-4 py-3 flex items-start gap-3 bg-amber-500/5">
-                                  <span className="text-base shrink-0">🍾</span>
+                                <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPack ? "bg-green-500/5" : "bg-amber-500/5"}`}>
+                                  <span className="text-base shrink-0">{isPack ? "🚬" : "🍾"}</span>
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-xs text-amber-400 font-bold line-clamp-2">{tx.note}</div>
+                                    <div className={`text-xs font-bold line-clamp-3 ${isPack ? "text-green-400" : "text-amber-400"}`}>{tx.note}</div>
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
+                                </div>
+                              );
+                            }
+                            if (isCreditTx) {
+                              const isPayment = tx.type === "credit_payment";
+                              return (
+                                <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPayment ? "bg-green-500/5" : "bg-orange-500/5"}`}>
+                                  <span className="text-base shrink-0">{isPayment ? "💳" : "🪙"}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-xs font-bold leading-snug ${isPayment ? "text-green-400" : "text-primary"}`}>
+                                      {tx.note ?? (isPayment ? "Credit payment" : "Credit charge")}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                                  </div>
+                                  {Number(tx.amount) > 0 && (
+                                    <span className={`font-black text-sm shrink-0 ${isPayment ? "text-green-400" : "text-primary"}`}>
+                                      +${Number(tx.amount).toFixed(2)}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             }
@@ -1090,7 +1181,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
     supabase.from("wallet_transactions").select("*")
       .eq("profile_id", profile.id)
-      .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished"])
+      .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
       .order("created_at", { ascending: false })
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
   }, [profile.id, page]);
@@ -1156,6 +1247,34 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                 );
               }
 
+              // ── Credit payment / credit charge card ─────────────────────
+              const isCreditTx = tx.type === "credit_payment" || tx.type === "credit_charge";
+              if (isCreditTx) {
+                const isPayment = tx.type === "credit_payment";
+                return (
+                  <div key={tx.id} className="rounded-xl p-4 border flex items-start gap-3"
+                    style={{
+                      borderColor: isPayment ? "rgba(34,197,94,0.3)" : "rgba(251,146,60,0.25)",
+                      background: isPayment ? "oklch(0.20 0.06 145 / 0.25)" : "oklch(0.20 0.04 45 / 0.30)",
+                    }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border text-base"
+                      style={{
+                        background: isPayment ? "rgba(34,197,94,0.15)" : "rgba(251,146,60,0.12)",
+                        borderColor: isPayment ? "rgba(34,197,94,0.3)" : "rgba(251,146,60,0.25)",
+                      }}>
+                      {isPayment ? "💳" : "🪙"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                      <div className="text-sm font-black mt-0.5" style={{ color: isPayment ? "#86efac" : "var(--primary)" }}>
+                        {tx.note ?? (isPayment ? "Credit payment" : "Credit charge")}
+                      </div>
+                    </div>
+                    {/* Read-only — no amount shown for owner, cashier cleared balance brings the money */}
+                  </div>
+                );
+              }
+
               const isTransferIn = tx.type === "transfer_in";
               if (isTransferIn) {
                 return (
@@ -1207,6 +1326,39 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                   </div>
                 );
               }
+
+              // ── Pack finished card ──────────────────────────────────────
+              const isPack = tx.type === "pack_finished";
+              if (isPack) {
+                const noteParts = (tx.note ?? "").split(" | ");
+                const title      = noteParts[0] ?? "Pack sold out";
+                const sub1       = noteParts[1] ?? "";  // "Pack price: $X.XX"
+                const sub2       = noteParts[2] ?? "";  // "X cigarettes sold"
+                const sub3       = noteParts[3] ?? "";  // "Revenue: $X.XX"
+                const packPrice    = parseFloat((sub1.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                const packRevenue  = parseFloat((sub3.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                const diff       = packRevenue - packPrice;
+                const hasNumbers = !isNaN(packPrice) && !isNaN(packRevenue) && (packPrice > 0 || packRevenue > 0);
+                return (
+                  <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-start gap-3"
+                    style={{ background: "oklch(0.20 0.05 145 / 0.35)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/20 border-green-500/30 text-lg">🚬</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                      <div className="text-sm font-black text-green-300 mt-0.5">{title}</div>
+                      {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
+                      {sub2 && <div className="text-xs text-muted-foreground mt-0.5">{sub2}</div>}
+                      {sub3 && <div className="text-xs text-green-400 font-semibold mt-0.5">{sub3}</div>}
+                      {hasNumbers && (
+                        <div className="text-xs font-black mt-1" style={{ color: diff >= 0 ? "#86efac" : "#fca5a5" }}>
+                          {diff >= 0 ? `Gain: +$${fmt(diff)}` : `Loss: -$${Math.abs(diff).toFixed(2)}`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div key={tx.id}
                   className={`rounded-xl p-4 border flex items-center gap-3 ${isReset ? "border-orange-500/30" : "border-green-500/30"}`}
