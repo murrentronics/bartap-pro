@@ -115,6 +115,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
   const [txs, setTxs]               = useState<CreditTx[]>([]);
   const [txLoading, setTxLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteTx, setConfirmDeleteTx] = useState<CreditTx | null>(null);
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
@@ -166,21 +167,36 @@ function OpenedTab({ accounts, loading, onRefresh }: {
 
   const deleteCharge = async (tx: CreditTx) => {
     setDeletingId(tx.id);
-    // Delete the transaction
     const { error } = await supabase
       .from("credit_transactions")
       .delete()
       .eq("id", tx.id);
     if (error) { toast.error(error.message); setDeletingId(null); return; }
-    // Reduce balance_owed on the account
+
     const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
       p_credit_account_id: tx.credit_account_id,
       p_amount: tx.amount,
     });
-    if (balErr) toast.error("Transaction deleted but balance update failed");
+    if (balErr) { toast.error("Transaction deleted but balance update failed"); setDeletingId(null); return; }
+
     setDeletingId(null);
     toast.success("Record removed");
-    loadTxs(tx.credit_account_id);
+
+    // Check new balance — if zero, account moved to closed, collapse it
+    const { data: acc } = await supabase
+      .from("credit_accounts")
+      .select("balance_owed, status")
+      .eq("id", tx.credit_account_id)
+      .single();
+
+    if (acc && Number(acc.balance_owed) <= 0) {
+      // Collapse — it will disappear from Opened after refresh
+      setExpanded(null);
+      setTxs([]);
+      toast.success("Bill cleared — account moved to Closed tab");
+    } else {
+      loadTxs(tx.credit_account_id);
+    }
     onRefresh();
   };
 
@@ -209,6 +225,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
             <div>
               <p className="font-black text-base">{a.full_name}</p>
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-base font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
@@ -315,7 +332,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                         </span>
                         {canDelete && (
                           <button
-                            onClick={() => deleteCharge(tx)}
+                            onClick={() => setConfirmDeleteTx(tx)}
                             disabled={deletingId === tx.id}
                             className="h-7 w-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition disabled:opacity-40"
                           >
@@ -336,6 +353,38 @@ function OpenedTab({ accounts, loading, onRefresh }: {
           )}
         </div>
       ))}
+
+      {/* ── Confirm delete modal ── */}
+      {confirmDeleteTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-12 w-12 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center mx-auto mb-3">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <h3 className="font-black text-base">Delete Record?</h3>
+              <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                {confirmDeleteTx.note ?? "This charge"}<br />
+                <span className="font-bold text-red-400">${Number(confirmDeleteTx.amount).toFixed(2)}</span> will be removed from the balance.
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-4 flex gap-3">
+              <Button variant="outline" className="flex-1 h-11" onClick={() => setConfirmDeleteTx(null)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-11 font-black bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deletingId === confirmDeleteTx.id}
+                onClick={() => { const tx = confirmDeleteTx; setConfirmDeleteTx(null); deleteCharge(tx); }}
+              >
+                {deletingId === confirmDeleteTx.id
+                  ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -382,6 +431,7 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
             <div>
               <p className="font-black text-base">{a.full_name}</p>
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
@@ -427,18 +477,23 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
 }
 
 // ── Create Tab ─────────────────────────────────────────────────────────────────
+type ActiveField = null | "name" | "idNumber" | "contact";
+
 function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: CreditAccount) => void }) {
   const [name, setName]         = useState("");
   const [contact, setContact]   = useState("");
-  const [contactPadOpen, setContactPadOpen] = useState(false);
   const [idType, setIdType]     = useState<"drivers_permit" | "national_id">("national_id");
   const [idNumber, setIdNumber] = useState("");
   const [busy, setBusy]         = useState(false);
   const [done, setDone]         = useState(false);
+  const [activeField, setActiveField] = useState<ActiveField>(null);
+
+  const toggle = (f: ActiveField) => setActiveField((cur) => cur === f ? null : f);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    setActiveField(null);
     setBusy(true);
     const { data, error } = await supabase
       .from("credit_accounts")
@@ -478,76 +533,161 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
       )}
 
       <form onSubmit={submit} className="space-y-3">
+        {/* Full Name */}
         <div>
-          <Label htmlFor="credit-name">Full Name *</Label>
-          <Input id="credit-name" value={name} onChange={(e) => { setName(e.target.value); setDone(false); }} placeholder="e.g. John Smith" required />
+          <Label>Full Name *</Label>
+          <button type="button" onClick={() => { setDone(false); toggle("name"); }}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+            <span className={`text-sm font-black ${name ? "text-foreground" : "text-muted-foreground"}`}>
+              {name || "e.g. John Smith"}
+            </span>
+          </button>
+          {activeField === "name" && <AlphaKeyboard value={name} onChange={setName} onDone={() => setActiveField(null)} />}
         </div>
+
+        {/* ID Type */}
         <div>
           <Label htmlFor="credit-idtype">ID Type</Label>
-          <select
-            id="credit-idtype"
-            value={idType}
+          <select id="credit-idtype" value={idType}
             onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
-          >
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
             <option value="drivers_permit">Driver's Permit</option>
             <option value="national_id">National ID</option>
           </select>
         </div>
+
+        {/* ID Number */}
         <div>
-          <Label htmlFor="credit-idnum">ID Number</Label>
-          <Input id="credit-idnum" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="e.g. 00000000" />
+          <Label>ID Number</Label>
+          <button type="button" onClick={() => toggle("idNumber")}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+            <span className={`text-sm font-black ${idNumber ? "text-foreground" : "text-muted-foreground"}`}>
+              {idNumber || "e.g. 00000000"}
+            </span>
+          </button>
+          {activeField === "idNumber" && (
+            <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+          )}
         </div>
+
+        {/* Contact Number */}
         <div>
-          <Label htmlFor="credit-contact">Contact Number</Label>
-          <div className="mt-1">
-            {/* Tappable display — opens app numpad */}
-            <div className="flex items-center gap-0">
-              <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-              <button
-                type="button"
-                onClick={() => setContactPadOpen((o) => !o)}
-                className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
-              >
-                <span className={`text-sm font-black ${contact ? "text-foreground" : "text-muted-foreground"}`}>
-                  {contact || "XXX-XXXX"}
-                </span>
-              </button>
-            </div>
-            {/* App numpad */}
-            {contactPadOpen && (
-              <div className="grid grid-cols-3 gap-1.5 mt-2">
-                {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
-                  k === "" ? <div key={i} /> :
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => {
-                      if (k === "⌫") {
-                        setContact((v) => {
-                          const digits = v.replace("-", "").slice(0, -1);
-                          return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                        });
-                      } else {
-                        setContact((v) => {
-                          const digits = (v.replace("-", "") + k).slice(0, 7);
-                          return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                        });
-                      }
-                    }}
-                    className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${
-                      k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
-                    }`}
-                  >{k}</button>
-                ))}
-              </div>
-            )}
+          <Label>Contact Number</Label>
+          <div className="flex items-center mt-1">
+            <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+            <button type="button" onClick={() => toggle("contact")}
+              className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
+              <span className={`text-sm font-black ${contact ? "text-foreground" : "text-muted-foreground"}`}>
+                {contact || "XXX-XXXX"}
+              </span>
+            </button>
           </div>
+          {activeField === "contact" && (
+            <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+          )}
         </div>
-        <Button type="submit" disabled={busy || !name.trim()} className="w-full h-12 font-black text-base" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+
+        <Button type="submit" disabled={busy || !name.trim()} className="w-full h-12 font-black text-base"
+          style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
           {busy ? "Creating…" : "Create Account"}
         </Button>
       </form>
+    </div>
+  );
+}
+
+// ── Shared keyboard helpers ────────────────────────────────────────────────────
+function NumPad({ value, onChange, maxLen = 20, onDone }: {
+  value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
+          k === "" ? <div key={i} /> :
+          <button key={k} type="button"
+            onClick={() => {
+              if (k === "⌫") onChange(value.slice(0, -1));
+              else if (value.length < maxLen) onChange(value + k);
+            }}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+          >{k}</button>
+        )}
+      </div>
+      <button type="button" onClick={onDone}
+        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
+        Done
+      </button>
+    </div>
+  );
+}
+
+function ContactNumPad({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  const handle = (k: string) => {
+    if (k === "⌫") {
+      const digits = value.replace("-", "").slice(0, -1);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    } else {
+      const digits = (value.replace("-", "") + k).slice(0, 7);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    }
+  };
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
+          k === "" ? <div key={i} /> :
+          <button key={k} type="button" onClick={() => handle(k)}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+          >{k}</button>
+        )}
+      </div>
+      <button type="button" onClick={onDone}
+        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
+        Done
+      </button>
+    </div>
+  );
+}
+
+const ALPHA_ROWS = [
+  ["Q","W","E","R","T","Y","U","I","O","P"],
+  ["A","S","D","F","G","H","J","K","L"],
+  ["Z","X","C","V","B","N","M","⌫"],
+];
+
+function AlphaKeyboard({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      {ALPHA_ROWS.map((row, ri) => (
+        <div key={ri} className="flex gap-1 justify-center">
+          {row.map((k) => (
+            <button key={k} type="button"
+              onClick={() => {
+                if (k === "⌫") onChange(value.slice(0, -1));
+                else onChange(value + k);
+              }}
+              className={`flex-1 h-10 rounded-lg font-bold text-sm transition active:scale-95 max-w-[38px] ${
+                k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
+              }`}
+            >{k}</button>
+          ))}
+        </div>
+      ))}
+      <div className="flex gap-1.5">
+        <button type="button" onClick={() => onChange(value + " ")}
+          className="flex-1 h-10 rounded-lg bg-muted text-foreground font-bold text-sm active:scale-95 transition">
+          SPACE
+        </button>
+        <button type="button" onClick={onDone}
+          className="w-20 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition">
+          Done
+        </button>
+      </div>
     </div>
   );
 }

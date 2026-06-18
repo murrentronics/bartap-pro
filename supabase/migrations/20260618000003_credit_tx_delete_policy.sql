@@ -17,11 +17,17 @@ RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public AS $$
+DECLARE
+  v_new_balance NUMERIC;
 BEGIN
+  v_new_balance := GREATEST(0, (
+    SELECT balance_owed FROM public.credit_accounts WHERE id = p_credit_account_id
+  ) - p_amount);
+
   UPDATE public.credit_accounts
   SET
-    balance_owed = GREATEST(0, balance_owed - p_amount),
-    status       = CASE WHEN (balance_owed - p_amount) <= 0 THEN 'closed' ELSE status END,
+    balance_owed = v_new_balance,
+    status       = CASE WHEN v_new_balance <= 0 THEN 'closed' ELSE status END,
     updated_at   = now()
   WHERE id = p_credit_account_id;
 END;

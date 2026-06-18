@@ -1480,6 +1480,8 @@ function CreditSaleOverlay({
   const [newContactPadOpen, setNewContactPadOpen] = useState(false);
   const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
   const [newIdNumber, setNewIdNumber] = useState("");
+  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(null);
+  const toggleNew = (f: "name" | "idNumber" | "contact") => setNewActiveField((cur) => cur === f ? null : f);
 
   const loadAccounts = async () => {
     if (!ownerId) return;
@@ -1703,7 +1705,6 @@ function CreditSaleOverlay({
           </div>
         )}
 
-        {/* ── Step 3: Create new account ── */}
         {step === "create" && (
           <>
             <form onSubmit={createAndCharge} className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
@@ -1711,26 +1712,24 @@ function CreditSaleOverlay({
 
               {/* Full Name */}
               <div>
-                <Label htmlFor="credit-new-name">Full Name *</Label>
-                <Input
-                  id="credit-new-name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. John Smith"
-                  required
-                  autoFocus
-                />
+                <Label>Full Name *</Label>
+                <button type="button" onClick={() => toggleNew("name")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                  <span className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}>
+                    {newName || "e.g. John Smith"}
+                  </span>
+                </button>
+                {newActiveField === "name" && (
+                  <CreditAlphaKeyboard value={newName} onChange={setNewName} onDone={() => setNewActiveField(null)} />
+                )}
               </div>
 
               {/* ID Type */}
               <div>
                 <Label htmlFor="credit-new-idtype">ID Type</Label>
-                <select
-                  id="credit-new-idtype"
-                  value={newIdType}
+                <select id="credit-new-idtype" value={newIdType}
                   onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
-                >
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
                   <option value="drivers_permit">Driver's Permit</option>
                   <option value="national_id">National ID</option>
                 </select>
@@ -1738,59 +1737,33 @@ function CreditSaleOverlay({
 
               {/* ID Number */}
               <div>
-                <Label htmlFor="credit-new-idnum">ID Number</Label>
-                <Input
-                  id="credit-new-idnum"
-                  value={newIdNumber}
-                  onChange={(e) => setNewIdNumber(e.target.value)}
-                  placeholder="e.g. 00000000"
-                />
+                <Label>ID Number</Label>
+                <button type="button" onClick={() => toggleNew("idNumber")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                  <span className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}>
+                    {newIdNumber || "e.g. 00000000"}
+                  </span>
+                </button>
+                {newActiveField === "idNumber" && (
+                  <CreditNumPad value={newIdNumber} onChange={setNewIdNumber} maxLen={20} onDone={() => setNewActiveField(null)} />
+                )}
               </div>
 
-              {/* Contact Number — 868 prefix, custom numpad */}
+              {/* Contact Number */}
               <div>
-                <Label htmlFor="credit-new-contact">Contact Number</Label>
-                <div className="mt-1">
-                  <div className="flex items-center gap-0">
-                    <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-                    <button
-                      type="button"
-                      onClick={() => setNewContactPadOpen((o) => !o)}
-                      className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
-                    >
-                      <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>
-                        {newContact || "XXX-XXXX"}
-                      </span>
-                    </button>
-                  </div>
-                  {newContactPadOpen && (
-                    <div className="grid grid-cols-3 gap-1.5 mt-2">
-                      {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
-                        k === "" ? <div key={i} /> :
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => {
-                            if (k === "⌫") {
-                              setNewContact((v) => {
-                                const digits = v.replace("-", "").slice(0, -1);
-                                return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                              });
-                            } else {
-                              setNewContact((v) => {
-                                const digits = (v.replace("-", "") + k).slice(0, 7);
-                                return digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                              });
-                            }
-                          }}
-                          className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${
-                            k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
-                          }`}
-                        >{k}</button>
-                      ))}
-                    </div>
-                  )}
+                <Label>Contact Number</Label>
+                <div className="flex items-center mt-1">
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                  <button type="button" onClick={() => toggleNew("contact")}
+                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
+                    <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>
+                      {newContact || "XXX-XXXX"}
+                    </span>
+                  </button>
                 </div>
+                {newActiveField === "contact" && (
+                  <CreditContactPad value={newContact} onChange={setNewContact} onDone={() => setNewActiveField(null)} />
+                )}
               </div>
 
               <div className="rounded-xl p-3 text-sm" style={{ background: "oklch(0.22 0.04 45)", border: "1px solid var(--primary)" }}>
@@ -1813,6 +1786,103 @@ function CreditSaleOverlay({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Credit form keyboard helpers ──────────────────────────────────────────────
+function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
+  value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
+          k === "" ? <div key={i} /> :
+          <button key={k} type="button"
+            onClick={() => {
+              if (k === "⌫") onChange(value.slice(0, -1));
+              else if (value.length < maxLen) onChange(value + k);
+            }}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+          >{k}</button>
+        )}
+      </div>
+      <button type="button" onClick={onDone}
+        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
+        Done
+      </button>
+    </div>
+  );
+}
+
+function CreditContactPad({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  const handle = (k: string) => {
+    if (k === "⌫") {
+      const digits = value.replace("-", "").slice(0, -1);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    } else {
+      const digits = (value.replace("-", "") + k).slice(0, 7);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    }
+  };
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
+          k === "" ? <div key={i} /> :
+          <button key={k} type="button" onClick={() => handle(k)}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+          >{k}</button>
+        )}
+      </div>
+      <button type="button" onClick={onDone}
+        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
+        Done
+      </button>
+    </div>
+  );
+}
+
+const CREDIT_ALPHA_ROWS = [
+  ["Q","W","E","R","T","Y","U","I","O","P"],
+  ["A","S","D","F","G","H","J","K","L"],
+  ["Z","X","C","V","B","N","M","⌫"],
+];
+
+function CreditAlphaKeyboard({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      {CREDIT_ALPHA_ROWS.map((row, ri) => (
+        <div key={ri} className="flex gap-1 justify-center">
+          {row.map((k) => (
+            <button key={k} type="button"
+              onClick={() => {
+                if (k === "⌫") onChange(value.slice(0, -1));
+                else onChange(value + k);
+              }}
+              className={`flex-1 h-10 rounded-lg font-bold text-sm transition active:scale-95 max-w-[38px] ${
+                k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
+              }`}
+            >{k}</button>
+          ))}
+        </div>
+      ))}
+      <div className="flex gap-1.5">
+        <button type="button" onClick={() => onChange(value + " ")}
+          className="flex-1 h-10 rounded-lg bg-muted text-foreground font-bold text-sm active:scale-95 transition">
+          SPACE
+        </button>
+        <button type="button" onClick={onDone}
+          className="w-20 h-10 rounded-lg font-bold text-sm active:scale-95 transition text-primary-foreground"
+          style={{ background: "var(--gradient-hero)" }}>
+          Done
+        </button>
       </div>
     </div>
   );
