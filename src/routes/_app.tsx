@@ -67,9 +67,12 @@ function AppLayout() {
         onSignOut={() => { signOut(); nav({ to: "/login" }); }} />;
     }
     if (profile.status === "suspended") {
+      // Allow access to /billing so they can submit a renewal payment
+      if (loc.pathname === "/billing") return <Outlet />;
       return <FullScreenStatus icon={Ban} title="Account suspended"
-        message="Please wait while admin is reviewing your account."
-        onSignOut={() => { signOut(); nav({ to: "/login" }); }} />;
+        message="Your subscription has expired or your account has been suspended. Please renew your subscription or contact admin."
+        onSignOut={() => { signOut(); nav({ to: "/login" }); }}
+        showBillingButton={() => nav({ to: "/billing" })} />;
     }
     if (profile.status === "pending") {
       return <FullScreenStatus icon={ShieldAlert} title="Awaiting approval"
@@ -157,12 +160,13 @@ function AppLayout() {
 }
 
 function FullScreenStatus({
-  icon: Icon, title, message, onSignOut,
+  icon: Icon, title, message, onSignOut, showBillingButton,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   message: string;
   onSignOut: () => void;
+  showBillingButton?: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
@@ -173,7 +177,10 @@ function FullScreenStatus({
         </div>
         <h1 className="text-3xl font-black">{title}</h1>
         <p className="text-muted-foreground">{message}</p>
-        <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+        <div className="flex gap-3 justify-center">
+          {showBillingButton && <Button onClick={showBillingButton}>Go to Billing</Button>}
+          <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+        </div>
       </div>
     </div>
   );
