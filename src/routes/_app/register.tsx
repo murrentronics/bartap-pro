@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Trash2, Minus, Plus, DollarSign, Loader2, X, CheckCircle2,
+  Trash2, Minus, Plus, Loader2, X, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
@@ -531,7 +531,7 @@ export default function RegisterPage() {
               style={{ background: "var(--gradient-hero)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> CASH</span>
+              <span className="flex items-center gap-2">CASH</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
             </button>
             {/* CREDIT button */}
@@ -571,6 +571,10 @@ export default function RegisterPage() {
         <CreditSaleOverlay
           total={total}
           cart={cart}
+          onDec={dec}
+          onAdd={addToCart}
+          onRemove={removeItem}
+          onClearCart={() => setCart([])}
           onClose={() => setCreditOpen(false)}
           onSuccess={() => {
             setCart([]);
@@ -1450,10 +1454,14 @@ type CreditAccount = {
 };
 
 function CreditSaleOverlay({
-  total, cart, onClose, onSuccess,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess,
 }: {
   total: number;
   cart: CartItem[];
+  onDec: (id: string) => void;
+  onAdd: (p: CartItem) => void;
+  onRemove: (id: string) => void;
+  onClearCart: () => void;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -1468,6 +1476,8 @@ function CreditSaleOverlay({
   // Create account form
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");
+  const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
+  const [newIdNumber, setNewIdNumber] = useState("");
 
   const loadAccounts = async () => {
     if (!ownerId) return;
@@ -1509,7 +1519,13 @@ function CreditSaleOverlay({
     // Create the account
     const { data: acc, error: createErr } = await supabase
       .from("credit_accounts")
-      .insert({ owner_id: ownerId, full_name: newName.trim(), contact_number: newContact.trim() || null, status: "closed" })
+      .insert({
+        owner_id: ownerId,
+        full_name: newName.trim(),
+        contact_number: newContact.trim() ? "868-" + newContact.trim() : null,
+        id_number: newIdNumber.trim() ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}` : null,
+        status: "closed",
+      })
       .select()
       .single();
     if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
@@ -1544,16 +1560,55 @@ function CreditSaleOverlay({
         {/* ── Step 1: Order review ── */}
         {step === "review" && (
           <>
-            <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-4">
-              <div className="rounded-2xl p-4 text-center" style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)" }}>
+            <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
+              {/* Total banner — brown/orange theme */}
+              <div className="rounded-2xl p-5 text-center" style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}>
                 <div className="text-sm font-medium" style={{ color: "var(--primary)" }}>Total to Credit</div>
                 <div className="text-5xl font-black" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</div>
               </div>
+
+              {/* Order items — same layout as Cash Order */}
               <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
+                  <button onClick={onClearCart} className="text-xs text-destructive hover:underline flex items-center gap-1">
+                    <Trash2 className="h-3 w-3" /> Clear
+                  </button>
+                </div>
                 {cart.map((i) => (
-                  <div key={i.id} className="flex items-center justify-between p-3 rounded-xl bg-background/50">
-                    <span className="font-semibold text-sm">{i.qty}× {i.name}</span>
-                    <span className="font-black text-sm" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
+                  <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
+                    <div className="h-20 w-14 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
+                      {i.image_url ? (
+                        <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                      ) : i.id.startsWith("shot-") ? (
+                        <span className="text-2xl">🥃</span>
+                      ) : (
+                        <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => onDec(i.id)} className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition" style={{ background: "#ef4444" }}>
+                            <Minus className="h-4 w-4 text-black" />
+                          </button>
+                          <div className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-black text-white" style={{ background: "#1a1a1a" }}>
+                            {i.qty}
+                          </div>
+                          <button onClick={() => onAdd(i)} className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition" style={{ background: "var(--gradient-hero)" }}>
+                            <Plus className="h-4 w-4 text-black" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">${Number(i.price).toFixed(2)} each</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1623,6 +1678,8 @@ function CreditSaleOverlay({
           <>
             <form onSubmit={createAndCharge} className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
               <p className="text-sm text-muted-foreground">Create a new credit account and charge this order to it</p>
+
+              {/* Full Name */}
               <div>
                 <Label htmlFor="credit-new-name">Full Name *</Label>
                 <Input
@@ -1634,15 +1691,55 @@ function CreditSaleOverlay({
                   autoFocus
                 />
               </div>
+
+              {/* ID Type */}
               <div>
-                <Label htmlFor="credit-new-contact">Contact Number</Label>
+                <Label htmlFor="credit-new-idtype">ID Type</Label>
+                <select
+                  id="credit-new-idtype"
+                  value={newIdType}
+                  onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                >
+                  <option value="drivers_permit">Driver's Permit</option>
+                  <option value="national_id">National ID</option>
+                </select>
+              </div>
+
+              {/* ID Number */}
+              <div>
+                <Label htmlFor="credit-new-idnum">ID Number</Label>
                 <Input
-                  id="credit-new-contact"
-                  value={newContact}
-                  onChange={(e) => setNewContact(e.target.value)}
-                  placeholder="+1 868 XXX-XXXX"
+                  id="credit-new-idnum"
+                  value={newIdNumber}
+                  onChange={(e) => setNewIdNumber(e.target.value)}
+                  placeholder="e.g. 00000000"
                 />
               </div>
+
+              {/* Contact Number — 868 prefix, auto-hyphen after 3 digits */}
+              <div>
+                <Label htmlFor="credit-new-contact">Contact Number</Label>
+                <div className="flex items-center gap-0 mt-1">
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
+                    868
+                  </span>
+                  <Input
+                    id="credit-new-contact"
+                    className="rounded-l-none"
+                    value={newContact}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+                      const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                      setNewContact(formatted);
+                    }}
+                    placeholder="XXX-XXXX"
+                    maxLength={8}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
               <div className="rounded-xl p-3 text-sm" style={{ background: "oklch(0.22 0.04 45)", border: "1px solid var(--primary)" }}>
                 <div className="flex justify-between font-black">
                   <span style={{ color: "var(--primary)" }}>Amount to charge</span>

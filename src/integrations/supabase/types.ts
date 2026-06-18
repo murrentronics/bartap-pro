@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      credit_accounts: {
+        Row: {
+          id: string
+          owner_id: string
+          full_name: string
+          contact_number: string | null
+          id_image_url: string | null
+          id_number: string | null
+          balance_owed: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          full_name: string
+          contact_number?: string | null
+          id_image_url?: string | null
+          id_number?: string | null
+          balance_owed?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          full_name?: string
+          contact_number?: string | null
+          id_image_url?: string | null
+          id_number?: string | null
+          balance_owed?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_accounts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          credit_account_id: string
+          owner_id: string
+          cashier_id: string
+          type: string
+          amount: number
+          note: string | null
+          items: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          credit_account_id: string
+          owner_id: string
+          cashier_id: string
+          type: string
+          amount: number
+          note?: string | null
+          items?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          credit_account_id?: string
+          owner_id?: string
+          cashier_id?: string
+          type?: string
+          amount?: number
+          note?: string | null
+          items?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_credit_account_id_fkey"
+            columns: ["credit_account_id"]
+            isOneToOne: false
+            referencedRelation: "credit_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_transactions_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           cashier_id: string
@@ -307,6 +412,31 @@ export type Database = {
     }
     Functions: {
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      record_credit_charge: {
+        Args: {
+          p_credit_account_id: string
+          p_cashier_id: string
+          p_amount: number
+          p_items: Json
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      record_credit_payment: {
+        Args: {
+          p_credit_account_id: string
+          p_cashier_id: string
+          p_amount: number
+        }
+        Returns: undefined
+      }
+      reduce_credit_balance: {
+        Args: {
+          p_credit_account_id: string
+          p_amount: number
+        }
+        Returns: undefined
+      }
       admin_list_profiles: {
         Args: never
         Returns: {

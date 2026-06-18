@@ -208,6 +208,8 @@ function CreateTab({
 }) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [idType, setIdType] = useState<"drivers_permit" | "national_id">("national_id");
+  const [idNumber, setIdNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -217,7 +219,13 @@ function CreateTab({
     setBusy(true);
     const { data, error } = await supabase
       .from("credit_accounts")
-      .insert({ owner_id: ownerId, full_name: name.trim(), contact_number: contact.trim() || null, status: "closed" })
+      .insert({
+        owner_id: ownerId,
+        full_name: name.trim(),
+        contact_number: contact.trim() ? "868-" + contact.trim() : null,
+        id_number: idNumber.trim() ? `${idType === "drivers_permit" ? "DP" : "NID"}: ${idNumber.trim()}` : null,
+        status: "closed",
+      })
       .select()
       .single();
     setBusy(false);
@@ -226,6 +234,8 @@ function CreateTab({
     onCreated(data as CreditAccount);
     setName("");
     setContact("");
+    setIdNumber("");
+    setIdType("national_id");
   };
 
   return (
@@ -251,6 +261,7 @@ function CreateTab({
       )}
 
       <form onSubmit={submit} className="space-y-3">
+        {/* Full Name */}
         <div>
           <Label htmlFor="credit-name">Full Name *</Label>
           <Input
@@ -261,15 +272,55 @@ function CreateTab({
             required
           />
         </div>
+
+        {/* ID Type */}
         <div>
-          <Label htmlFor="credit-contact">Contact Number</Label>
+          <Label htmlFor="credit-idtype">ID Type</Label>
+          <select
+            id="credit-idtype"
+            value={idType}
+            onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+          >
+            <option value="drivers_permit">Driver's Permit</option>
+            <option value="national_id">National ID</option>
+          </select>
+        </div>
+
+        {/* ID Number */}
+        <div>
+          <Label htmlFor="credit-idnum">ID Number</Label>
           <Input
-            id="credit-contact"
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="+1 868 XXX-XXXX"
+            id="credit-idnum"
+            value={idNumber}
+            onChange={(e) => setIdNumber(e.target.value)}
+            placeholder="e.g. 00000000"
           />
         </div>
+
+        {/* Contact — 868 prefix, auto-hyphen after 3rd digit, 7 digits max */}
+        <div>
+          <Label htmlFor="credit-contact">Contact Number</Label>
+          <div className="flex items-center gap-0 mt-1">
+            <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
+              868
+            </span>
+            <Input
+              id="credit-contact"
+              className="rounded-l-none"
+              value={contact}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+                const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                setContact(formatted);
+              }}
+              placeholder="XXX-XXXX"
+              maxLength={8}
+              inputMode="numeric"
+            />
+          </div>
+        </div>
+
         <Button
           type="submit"
           disabled={busy || !name.trim()}
