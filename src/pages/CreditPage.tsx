@@ -311,7 +311,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                   return txs.map((tx, idx) => {
                   const dt = new Date(tx.created_at);
                   const date = dt.toLocaleDateString("en-GB");
-                  const time = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                  const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                   const isCharge = tx.type === "charge";
                   // Deletable only if it's a charge AND it's newer than the last payment
                   const canDelete = isCharge && (lastPaymentIdx === -1 || idx < lastPaymentIdx);
@@ -475,7 +475,7 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
                 txs.map((tx) => {
                   const dt   = new Date(tx.created_at);
                   const date = dt.toLocaleDateString("en-GB");
-                  const time = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                  const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                   const isCharge = tx.type === "charge";
                   return (
                     <div key={tx.id} className="flex items-start justify-between py-2.5 border-b border-border/30 last:border-0">

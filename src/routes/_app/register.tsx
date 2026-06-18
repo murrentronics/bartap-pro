@@ -1653,14 +1653,16 @@ function CreditSaleOverlay({
                       className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left disabled:opacity-50"
                       style={{ background: "var(--gradient-card)" }}
                     >
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-black text-sm">{a.full_name}</p>
                         {a.contact_number && <p className="text-xs text-muted-foreground">{a.contact_number}</p>}
-                        {Number(a.balance_owed) > 0 && (
-                          <p className="text-xs text-red-400 font-semibold mt-0.5">Owes ${Number(a.balance_owed).toFixed(2)}</p>
-                        )}
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <span className={`text-sm font-black ${Number(a.balance_owed) > 0 ? "text-red-400" : "text-green-400"}`}>
+                          ${Number(a.balance_owed).toFixed(2)}
+                        </span>
+                        <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />
+                      </div>
                     </button>
                   ))}
                 </div>
