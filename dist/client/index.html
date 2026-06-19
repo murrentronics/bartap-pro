@@ -758,6 +758,34 @@
       padding: 5px 12px; border-radius: 20px; margin-bottom: 16px;
       position: relative; z-index: 1;
     }
+    .fl-hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      position: relative; z-index: 1;
+    }
+    .fl-price-badge {
+      background: rgba(0,0,0,0.3);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      width: 64px; height: 64px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .fl-price-badge-amount {
+      font-size: 15px; font-weight: 900; color: #fff; line-height: 1;
+    }
+    .fl-price-badge-period {
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.75); margin-top: 1px;
+    }
+    .fl-contact-hero {
+      font-size: 13px; font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin: 6px 0 10px;
+      position: relative; z-index: 1;
+    }
     .fl-title {
       font-size: 46px; font-weight: 900; color: #fff;
       line-height: 1; position: relative; z-index: 1;
@@ -800,36 +828,6 @@
     }
     .fl-list li strong { color: #fff; }
     .fl-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 0 20px; }
-    .fl-price-block {
-      background: rgba(240,160,48,0.08);
-      border: 1px solid rgba(240,160,48,0.2);
-      border-radius: 14px; padding: 14px 16px; margin-bottom: 20px;
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    }
-    .fl-price-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); }
-    .fl-price {
-      font-size: 24px; font-weight: 900; color: #F0A030; line-height: 1;
-      -webkit-text-fill-color: #F0A030;
-    }
-    .fl-price span { font-size: 13px; color: rgba(255,255,255,0.4); -webkit-text-fill-color: rgba(255,255,255,0.4); }
-    .fl-price-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
-    .fl-badge {
-      background: linear-gradient(135deg, #C0441A, #F0A030);
-      color: #fff; font-size: 11px; font-weight: 800;
-      padding: 6px 12px; border-radius: 12px; white-space: nowrap;
-    }
-    .fl-cta {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      width: 100%;
-      background: linear-gradient(135deg, #C0441A 0%, #F0A030 100%);
-      color: #1a0a02; font-size: 15px; font-weight: 900;
-      padding: 15px; border-radius: 14px; text-decoration: none;
-      box-shadow: 0 6px 24px rgba(240,160,48,0.3); margin-bottom: 10px;
-    }
-    .fl-url {
-      text-align: center; font-size: 10px;
-      color: rgba(255,255,255,0.3); word-break: break-all; margin-bottom: 20px;
-    }
     .fl-footer {
       border-top: 1px solid rgba(255,255,255,0.06);
       padding: 16px 24px;
@@ -845,23 +843,35 @@
     }
 
     /* ── Tablet mockup ── */
-    .fl-tablet-wrap {
+    .fl-tablet-row {
       display: flex;
-      justify-content: center;
+      align-items: center;
+      gap: 12px;
       margin: 16px 0 20px;
+    }
+    .fl-pills-side {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      flex: 1;
+    }
+    .fl-pills-side .fl-pill {
+      display: block;
+      text-align: center;
     }
     .fl-tablet {
       position: relative;
-      width: 190px;
+      width: 150px;
+      flex-shrink: 0;
       background: #1a1a1a;
       border-radius: 14px;
       border: 3px solid rgba(240,160,48,0.5);
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
-      padding: 10px 7px 14px;
+      padding: 8px 6px 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     .fl-tablet-cam {
       width: 6px; height: 6px;
@@ -884,7 +894,7 @@
       display: block;
     }
     .fl-tablet-btn {
-      width: 28px; height: 4px;
+      width: 24px; height: 3px;
       border-radius: 3px;
       background: #333;
       flex-shrink: 0;
@@ -1315,16 +1325,31 @@
 
     <div class="flyer-card" id="printable-flyer">
       <div class="fl-hero">
-        <div class="fl-tag">🍺 Bar Management App</div>
+        <div class="fl-hero-top">
+          <div class="fl-tag">🍺 Bar Management App</div>
+          <div class="fl-price-badge">
+            <div class="fl-price-badge-amount">$750</div>
+            <div class="fl-price-badge-period">/Year</div>
+          </div>
+        </div>
         <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
+        <p class="fl-contact-hero">📞 +1 868 385-0635</p>
         <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
       </div>
 
       <div class="fl-body">
         <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
 
-        <!-- Tablet mockup -->
-        <div class="fl-tablet-wrap">
+        <!-- Tablet + badges side by side -->
+        <div class="fl-tablet-row">
+          <div class="fl-pills-side">
+            <span class="fl-pill">📦 Stock Tracking</span>
+            <span class="fl-pill">💰 Live Financials</span>
+            <span class="fl-pill">👥 Multi-Cashier</span>
+            <span class="fl-pill">💳 Credit Tabs</span>
+            <span class="fl-pill">🍾 Bottles &amp; Packs</span>
+            <span class="fl-pill">📊 Owner Reports</span>
+          </div>
           <div class="fl-tablet">
             <div class="fl-tablet-cam"></div>
             <div class="fl-tablet-screen">
@@ -1332,15 +1357,6 @@
             </div>
             <div class="fl-tablet-btn"></div>
           </div>
-        </div>
-
-        <div class="fl-pills">
-          <span class="fl-pill">📦 Stock Tracking</span>
-          <span class="fl-pill">💰 Live Financials</span>
-          <span class="fl-pill">👥 Multi-Cashier</span>
-          <span class="fl-pill">💳 Credit Tabs</span>
-          <span class="fl-pill">🍾 Bottles &amp; Packs</span>
-          <span class="fl-pill">📊 Owner Reports</span>
         </div>
 
         <ul class="fl-list">
@@ -1353,24 +1369,6 @@
 
         <div class="fl-divider"></div>
 
-        <div class="fl-price-block">
-          <div>
-            <div class="fl-price-label">Starting from</div>
-            <div class="fl-price">$300 <span>TT</span></div>
-            <div class="fl-price-sub">6-month subscription</div>
-          </div>
-          <div class="fl-badge">Android Only</div>
-        </div>
-
-        <a class="fl-cta" href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" download>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Download Free — Try It Now
-        </a>
-        <p class="fl-url">github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk</p>
       </div>
 
       <div class="fl-footer">
