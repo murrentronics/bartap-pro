@@ -844,6 +844,52 @@
       font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5);
     }
 
+    /* ── Tablet mockup ── */
+    .fl-tablet-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0 20px;
+    }
+    .fl-tablet {
+      position: relative;
+      width: 190px;
+      background: #1a1a1a;
+      border-radius: 14px;
+      border: 3px solid rgba(240,160,48,0.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      padding: 10px 7px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .fl-tablet-cam {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #333;
+      border: 1px solid #444;
+      flex-shrink: 0;
+    }
+    .fl-tablet-screen {
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 9/17;
+    }
+    .fl-tablet-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .fl-tablet-btn {
+      width: 28px; height: 4px;
+      border-radius: 3px;
+      background: #333;
+      flex-shrink: 0;
+    }
+
     /* ── PRINT ── */
     @media print {
       body > *:not(#printable-flyer) { display: none !important; }
@@ -1277,6 +1323,17 @@
 
       <div class="fl-body">
         <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
+
+        <!-- Tablet mockup -->
+        <div class="fl-tablet-wrap">
+          <div class="fl-tablet">
+            <div class="fl-tablet-cam"></div>
+            <div class="fl-tablet-screen">
+              <img src="/assets/screenshots/screenshot-1.png" alt="Bartendaz Pro POS screen" />
+            </div>
+            <div class="fl-tablet-btn"></div>
+          </div>
+        </div>
 
         <div class="fl-pills">
           <span class="fl-pill">📦 Stock Tracking</span>
