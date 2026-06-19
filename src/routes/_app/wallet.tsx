@@ -113,7 +113,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
-        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment"])
+        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -164,6 +164,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                 const isTransferIn = tx.type === "transfer_in";
                 const isBottlePack = tx.type === "bottle_finished" || tx.type === "pack_finished";
                 const isCreditPay  = tx.type === "credit_payment";
+                const isCreditCharge = tx.type === "credit_charge";
 
                 if (isTransferIn) {
                   return (
@@ -196,16 +197,47 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   );
                 }
                 if (isCreditPay) {
+                  const cpParts     = (tx.note ?? "").split(" | ");
+                  const cpTitle     = cpParts[0] ?? "Credit payment";
+                  const cpPaid      = cpParts.find(p => p.startsWith("Paid:")) ?? "";
+                  const cpRemain    = cpParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
                   return (
                     <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-start gap-3"
                       style={{ background: "oklch(0.20 0.06 145 / 0.25)" }}>
                       <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/30 text-lg">💳</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                        <div className="text-sm font-black text-green-300 mt-0.5">{tx.note ?? "Credit payment"}</div>
+                        <div className="text-sm font-black text-green-300 mt-0.5">{cpTitle}</div>
+                        {(cpPaid || cpRemain) && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {[cpPaid, cpRemain].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
                       </div>
                       {Number(tx.amount) > 0 && (
                         <div className="font-black text-lg shrink-0 text-green-400 mt-1">+${fmt(Number(tx.amount))}</div>
+                      )}
+                    </div>
+                  );
+                }
+                if (isCreditCharge) {
+                  const ccParts    = (tx.note ?? "").split(" | ");
+                  const ccTitle    = ccParts[0] ?? "Credit charge";
+                  const ccAmount   = ccParts.find(p => p.startsWith("$")) ?? "";
+                  const ccBal      = ccParts.find(p => p.startsWith("Balance owed:")) ?? "";
+                  const ccItems    = ccParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-orange-500/30 flex items-start gap-3"
+                      style={{ background: "oklch(0.20 0.04 45 / 0.30)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-orange-500/15 border-orange-500/30 text-lg">🪙</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>{ccTitle}</div>
+                        {ccItems && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ccItems}</div>}
+                        {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
+                      </div>
+                      {ccAmount && (
+                        <span className="font-black text-sm shrink-0 mt-1" style={{ color: "var(--primary)" }}>{ccAmount}</span>
                       )}
                     </div>
                   );
@@ -501,13 +533,15 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               );
                             }
                             if (isCreditTx) {
-                              const isPayment = tx.type === "credit_payment";
+                              const isPayment   = tx.type === "credit_payment";
+                              const isReadOnly  = isPayment && Number(tx.amount) === 0;
                               const noteParts   = (tx.note ?? "").split(" | ");
                               const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
                               const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
                               const remainPart  = noteParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
                               const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
-                              const isReadOnly  = isPayment && Number(tx.amount) === 0;
+                              const amountPart  = !isPayment ? (noteParts.find(p => p.startsWith("$")) ?? "") : "";
+                              const itemsPart   = noteParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
                               return (
                                 <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPayment ? "bg-green-500/5" : "bg-orange-500/5"}`}>
                                   <span className="text-base shrink-0">{isPayment ? "💳" : "🪙"}</span>
@@ -520,12 +554,15 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                         {[paidPart, remainPart].filter(Boolean).join(" · ")}
                                       </div>
                                     )}
+                                    {itemsPart && (
+                                      <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsPart}</div>
+                                    )}
                                     {cashierPart && (
                                       <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
                                     )}
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
-                                  {isPayment && (
+                                  {isPayment ? (
                                     !isReadOnly ? (
                                       <span className="font-black text-sm shrink-0 text-green-400">
                                         +${Number(tx.amount).toFixed(2)}
@@ -536,7 +573,11 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                         with cashier
                                       </span>
                                     ) : null
-                                  )}
+                                  ) : amountPart ? (
+                                    <span className="font-black text-sm shrink-0" style={{ color: "var(--primary)" }}>
+                                      {amountPart}
+                                    </span>
+                                  ) : null}
                                 </div>
                               );
                             }
@@ -1271,15 +1312,17 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               // ── Credit payment / credit charge card ─────────────────────
               const isCreditTx = tx.type === "credit_payment" || tx.type === "credit_charge";
               if (isCreditTx) {
-                const isPayment = tx.type === "credit_payment";
+                const isPayment  = tx.type === "credit_payment";
                 const isReadOnly = isPayment && Number(tx.amount) === 0;
-                // Parse structured note: "Credit payment: <name> | Paid: $X | Remaining: $Y | Cashier: Z"
-                // Also handle legacy formats: "Credit payment — J | Balance remaining: $56.00"
                 const noteParts  = (tx.note ?? "").split(" | ");
-                const titlePart  = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
-                const paidPart   = noteParts.find(p => p.startsWith("Paid:")) ?? "";
-                const remainPart = noteParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
+                const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
+                const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
+                const remainPart  = noteParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
                 const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
+                // Charge records: amount shown as "$X" part, items listed after "Items:"
+                const amountPart  = !isPayment ? (noteParts.find(p => p.startsWith("$")) ?? "") : "";
+                const itemsPart   = noteParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
+                const balOwedPart = noteParts.find(p => p.startsWith("Balance owed:")) ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border flex items-start gap-3"
                     style={{
@@ -1298,17 +1341,25 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       <div className="text-sm font-black mt-0.5" style={{ color: isPayment ? "#86efac" : "var(--primary)" }}>
                         {titlePart}
                       </div>
+                      {/* Payment sub-lines */}
                       {(paidPart || remainPart) && (
                         <div className="text-xs text-muted-foreground mt-0.5">
                           {[paidPart, remainPart].filter(Boolean).join(" · ")}
                         </div>
                       )}
+                      {/* Charge: items list + balance owed */}
+                      {itemsPart && (
+                        <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsPart}</div>
+                      )}
+                      {balOwedPart && (
+                        <div className="text-xs mt-0.5 font-semibold" style={{ color: "var(--primary)" }}>{balOwedPart}</div>
+                      )}
                       {cashierPart && (
                         <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
                       )}
                     </div>
-                    {/* amount > 0 = owner received cash directly; amount = 0 = cashier holds it */}
-                    {isPayment && (
+                    {/* Payment: +$X or "with cashier" badge / Charge: show charge amount */}
+                    {isPayment ? (
                       !isReadOnly ? (
                         <span className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
                           +${fmt(Number(tx.amount))}
@@ -1319,7 +1370,11 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                           with cashier
                         </span>
                       ) : null
-                    )}
+                    ) : amountPart ? (
+                      <span className="font-black text-sm shrink-0" style={{ color: "var(--primary)" }}>
+                        {amountPart}
+                      </span>
+                    ) : null}
                   </div>
                 );
               }

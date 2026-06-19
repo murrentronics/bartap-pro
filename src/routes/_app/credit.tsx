@@ -53,8 +53,8 @@ function CreditPage() {
       .eq("owner_id", id)
       .order("updated_at", { ascending: false });
     const all = (data ?? []) as CreditAccount[];
-    setOpened(all.filter((a) => a.status === "open"));
-    setClosed(all.filter((a) => a.status === "closed"));
+    setOpened(all.filter((a) => a.status === "open").sort((a, b) => a.full_name.localeCompare(b.full_name)));
+    setClosed(all.filter((a) => a.status === "closed").sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setLoading(false);
   }, []);
 
@@ -150,6 +150,7 @@ function OpenedTab({
         >
           <div>
             <p className="font-black text-base">{a.full_name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && (
               <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>
             )}
@@ -185,6 +186,7 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
         >
           <div>
             <p className="font-black text-base">{a.full_name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && (
               <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>
             )}
