@@ -96,37 +96,49 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalTxs, setTotalTxs] = useState(0);
   const [loading, setLoading] = useState(true);
-  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+
+  const totalRecords = totalOrders + totalTxs;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
+
+  const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
+      // Count orders
       supabase.from("orders").select("id", { count: "exact", head: true })
         .eq("cashier_id", profile.id)
-        .then(({ count }) => setTotal(count ?? 0)),
+        .then(({ count }) => setTotalOrders(count ?? 0)),
+      // Fetch orders for this page
       supabase.from("orders").select("*")
         .eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
         .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
+      // Count wallet txs
+      supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
+        .eq("profile_id", profile.id)
+        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
+        .then(({ count }) => setTotalTxs(count ?? 0)),
+      // Fetch wallet txs (fetch enough for merged pagination — 2× page size)
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
         .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
+        .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
   }, [profile.id, page]);
 
-  // Merge orders and txs into flat list sorted by date
+  // Merge orders and txs into flat list sorted by date, capped at page size
   const flatRecords: Array<{ kind: "order"; data: Order; ts: number } | { kind: "tx"; data: WalletTx; ts: number }> = [
     ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
     ...txs.map((tx) => ({ kind: "tx" as const, data: tx, ts: new Date(tx.created_at).getTime() })),
-  ].sort((a, b) => b.ts - a.ts);
-
-  const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  ].sort((a, b) => b.ts - a.ts).slice(0, ORDERS_PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -149,9 +161,9 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-xl">Records</h2>
-          <span className="text-sm text-muted-foreground">{total} orders</span>
+          <span className="text-sm text-muted-foreground">{totalRecords} records</span>
         </div>
-        <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+        <PaginationBar page={page} totalPages={totalPages} total={totalRecords} onPrev={handlePrev} onNext={handleNext} />
         {loading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="rounded-xl h-20 bg-muted/30 animate-pulse" />)}</div>
         ) : flatRecords.length === 0 ? (
@@ -265,7 +277,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
             })}
           </div>
         )}
-        <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+        <PaginationBar page={page} totalPages={totalPages} total={totalRecords} onPrev={handlePrev} onNext={handleNext} />
       </section>
     </div>
   );
