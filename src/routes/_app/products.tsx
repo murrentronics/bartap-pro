@@ -25,28 +25,30 @@ type Product = {
 };
 
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
+// ── Stock button definitions ─────────────────────────────────────────────────
+const STOCK_BTNS = [
+  { qty: 30 }, { qty: 24 }, { qty: 12 },
+  { qty: 10 }, { qty: 6  }, { qty: 1  },
+];
+
 function StockNumpad({ productId, currentQty, onClose, onSaved }: {
   productId: string;
   currentQty: number;
   onClose: () => void;
   onSaved: (newQty: number) => void;
 }) {
-  const [value, setValue] = useState("0");
+  const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
   const [busy, setBusy] = useState(false);
 
-  const handleKey = (k: string) => {
-    if (k === "⌫") { setValue((v) => (v.length > 1 ? v.slice(0, -1) : "0")); return; }
-    if (k === "C") { setValue("0"); return; }
-    setValue((v) => {
-      const next = v === "0" ? k : v + k;
-      return Number(next) > 9999 ? v : next;
-    });
-  };
-
-  const addAmount = Number(value);
+  const addAmount = STOCK_BTNS.reduce((s, b, i) => s + b.qty * counts[i], 0);
   const newTotal  = currentQty + addAmount;
 
+  const tap  = (i: number) => setCounts(c => c.map((v, j) => j === i ? v + 1 : v));
+  const untap = (i: number) => setCounts(c => c.map((v, j) => j === i ? Math.max(0, v - 1) : v));
+  const reset = () => setCounts([0, 0, 0, 0, 0, 0]);
+
   const save = async () => {
+    if (addAmount === 0) return;
     setBusy(true);
     const { error } = await supabase
       .from("products")
@@ -72,47 +74,103 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
           </button>
         </div>
 
-        {/* Current qty display */}
-        <div className="mx-5 mb-2 px-4 py-3 rounded-xl bg-muted/30 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground font-medium">Current stock</span>
-          <span className="text-2xl font-black text-foreground">{currentQty}</span>
-        </div>
-
-        {/* Add amount */}
-        <div className="mx-5 mb-2 px-4 py-3 rounded-xl border border-border bg-muted/30 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground font-medium">+ Adding</span>
-          <span className="text-2xl font-black text-primary">{value}</span>
-        </div>
-
-        {/* New total preview */}
-        <div className="mx-5 mb-3 px-4 py-3 rounded-xl bg-muted/30 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground font-medium">New total</span>
-          <span className="text-2xl font-black text-green-400">{newTotal}</span>
-        </div>
-
-        <div className="px-5 pb-5 space-y-2">
-          <div className="grid grid-cols-3 gap-2">
-            {["1","2","3","4","5","6","7","8","9","C","0","⌫"].map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => handleKey(k)}
-                className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${
-                  k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
-                  : k === "C" ? "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-                  : "bg-muted hover:bg-muted/70 text-foreground"
-                }`}
-              >{k}</button>
-            ))}
+        {/* Stats row */}
+        <div className="mx-5 mb-4 grid grid-cols-3 gap-2">
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center">
+            <div className="text-xs text-muted-foreground">Current</div>
+            <div className="text-xl font-black">{currentQty}</div>
           </div>
-          <button
-            onClick={save}
-            disabled={busy || addAmount === 0}
-            className="w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
-            style={{ background: "var(--gradient-hero)" }}
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Done — set to ${newTotal}`}
-          </button>
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center border border-primary/30">
+            <div className="text-xs text-muted-foreground">Adding</div>
+            <div className="text-xl font-black text-primary">+{addAmount}</div>
+          </div>
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center">
+            <div className="text-xs text-muted-foreground">Total</div>
+            <div className="text-xl font-black text-green-400">{newTotal}</div>
+          </div>
+        </div>
+
+        {/* 6 buttons — 3 per row */}
+        <div className="px-5 pb-5 space-y-3">
+          <div>
+            <p className="text-sm font-black text-center mb-3" style={{ color: "var(--primary)" }}>
+              Select qty by Case / Pack / Single
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {STOCK_BTNS.map((b, i) => {
+                const count  = counts[i];
+                const active = count > 0;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => tap(i)}
+                    className="relative flex items-center justify-center rounded-2xl border-2 overflow-hidden transition active:scale-95"
+                    style={{
+                      aspectRatio: "1",
+                      background: active ? "oklch(0.22 0.06 50 / 0.6)" : "rgba(255,255,255,0.05)",
+                      borderColor: active ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                      boxShadow: active ? "0 4px 18px rgba(251,146,60,0.3)" : "none",
+                      paddingBottom: active ? "36px" : "0",
+                    }}
+                  >
+                    {/* X — top-right, remove all of this button */}
+                    {active && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCounts(c => c.map((v,j) => j===i ? 0 : v)); }}
+                        className="absolute top-1.5 right-1.5 h-7 w-7 rounded-full flex items-center justify-center text-black shadow z-10 active:scale-90 transition"
+                        style={{ background: "#dc2626" }}
+                      >
+                        <span className="text-xs font-black">×</span>
+                      </button>
+                    )}
+
+                    {/* Big number */}
+                    <span className="text-3xl font-black text-white leading-none">{b.qty}</span>
+
+                    {/* Minus + count strip — pinned to bottom of button */}
+                    {active && (
+                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 py-1.5"
+                        style={{ background: "rgba(0,0,0,0.80)" }}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); untap(i); }}
+                          className="h-7 w-7 rounded-full flex items-center justify-center active:scale-90 transition"
+                          style={{ background: "#ef4444" }}
+                        >
+                          <span className="text-xs font-black text-black leading-none">−</span>
+                        </button>
+                        <div
+                          className="h-7 w-7 rounded-full flex items-center justify-center text-sm font-black text-black"
+                          style={{ background: "var(--gradient-hero)" }}
+                        >
+                          {count}
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={reset}
+              disabled={addAmount === 0}
+              className="flex-1 rounded-2xl font-black text-sm py-4 bg-muted/60 text-muted-foreground active:scale-95 transition disabled:opacity-40"
+            >Clear</button>
+            <button
+              onClick={save}
+              disabled={busy || addAmount === 0}
+              className="flex-[2] rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Add ${addAmount} → ${newTotal}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>
