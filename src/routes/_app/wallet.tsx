@@ -505,8 +505,9 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               const noteParts   = (tx.note ?? "").split(" | ");
                               const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
                               const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
-                              const remainPart  = noteParts.find(p => p.startsWith("Remaining:")) ?? "";
+                              const remainPart  = noteParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
                               const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
+                              const isReadOnly  = isPayment && Number(tx.amount) === 0;
                               return (
                                 <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPayment ? "bg-green-500/5" : "bg-orange-500/5"}`}>
                                   <span className="text-base shrink-0">{isPayment ? "💳" : "🪙"}</span>
@@ -524,10 +525,17 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                     )}
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
-                                  {isPayment && Number(tx.amount) > 0 && (
-                                    <span className="font-black text-sm shrink-0 text-green-400">
-                                      +${Number(tx.amount).toFixed(2)}
-                                    </span>
+                                  {isPayment && (
+                                    !isReadOnly ? (
+                                      <span className="font-black text-sm shrink-0 text-green-400">
+                                        +${Number(tx.amount).toFixed(2)}
+                                      </span>
+                                    ) : cashierPart ? (
+                                      <span className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-semibold"
+                                        style={{ background: "rgba(34,197,94,0.12)", color: "#86efac" }}>
+                                        with cashier
+                                      </span>
+                                    ) : null
                                   )}
                                 </div>
                               );
@@ -1264,12 +1272,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               const isCreditTx = tx.type === "credit_payment" || tx.type === "credit_charge";
               if (isCreditTx) {
                 const isPayment = tx.type === "credit_payment";
-                // Parse note parts: "Credit payment: <name> | Paid: $X | Remaining: $Y | Cashier: Z"
-                // or settled: "Credit — Bill settled: <name> | Cashier: Z"
-                const noteParts = (tx.note ?? "").split(" | ");
-                const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
-                const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
-                const remainPart  = noteParts.find(p => p.startsWith("Remaining:")) ?? "";
+                const isReadOnly = isPayment && Number(tx.amount) === 0;
+                // Parse structured note: "Credit payment: <name> | Paid: $X | Remaining: $Y | Cashier: Z"
+                // Also handle legacy formats: "Credit payment — J | Balance remaining: $56.00"
+                const noteParts  = (tx.note ?? "").split(" | ");
+                const titlePart  = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
+                const paidPart   = noteParts.find(p => p.startsWith("Paid:")) ?? "";
+                const remainPart = noteParts.find(p => p.startsWith("Remaining:") || p.startsWith("Balance remaining:")) ?? "";
                 const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border flex items-start gap-3"
@@ -1300,7 +1309,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     </div>
                     {/* amount > 0 = owner received cash directly; amount = 0 = cashier holds it */}
                     {isPayment && (
-                      Number(tx.amount) > 0 ? (
+                      !isReadOnly ? (
                         <span className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
                           +${fmt(Number(tx.amount))}
                         </span>
@@ -1462,13 +1471,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, transfersRes, ownerOrdersRes, productsRes, openBottlesRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       // Transfer-in: cashier balances cleared to owner
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
       // Owner's own direct orders (where owner is also cashier)
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
+      // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
+      supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
       // All products with stock: price × qty
       supabase.from("products").select("price, stock_qty"),
       // Currently open bottles
@@ -1480,10 +1491,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
-    // Income = all transfers in + owner's own sales
+    // Income = transfers in + owner's own orders + credit payments owner collected directly
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
-    const totalIncome = transfersIncome + ownerOrdersIncome;
+    const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+    const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
 
     // Closed stock: sum of price × stock_qty for all products
     const closedStockValue = (productsRes.data ?? []).reduce(
