@@ -23,6 +23,8 @@ type Product = {
   image_url: string | null;
   category?: string;
   stock_qty: number;
+  stock_qty_undo: number | null;
+  stock_qty_undo_saved: number | null;
 };
 
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
@@ -32,15 +34,13 @@ const STOCK_BTNS = [
   { qty: 10 }, { qty: 6  }, { qty: 1  },
 ];
 
-type UndoRecord = { prevQty: number; savedNewQty: number };
-
-function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUndoRecordChange }: {
+function StockNumpad({ productId, currentQty, stockQtyUndo, stockQtyUndoSaved, onClose, onSaved }: {
   productId: string;
   currentQty: number;
-  undoRecord: UndoRecord | null;
+  stockQtyUndo: number | null;
+  stockQtyUndoSaved: number | null;
   onClose: () => void;
-  onSaved: (newQty: number) => void;
-  onUndoRecordChange: (r: UndoRecord | null) => void;
+  onSaved: (patch: Partial<Pick<Product, "stock_qty" | "stock_qty_undo" | "stock_qty_undo_saved">>) => void;
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
   const [busy, setBusy] = useState(false);
@@ -53,30 +53,30 @@ function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUn
   const untap = (i: number) => setCounts(c => c.map((v, j) => j === i ? Math.max(0, v - 1) : v));
   const reset = () => setCounts([0, 0, 0, 0, 0, 0]);
 
-  // Undo is available only if we have a record AND no sales have happened
-  // (sales reduce currentQty below the savedNewQty we recorded)
-  const canUndo = undoRecord !== null && currentQty >= undoRecord.savedNewQty;
+  // Undo disabled the moment any single sale reduces qty below what was saved after the add
+  const canUndo = stockQtyUndo !== null && stockQtyUndoSaved !== null && currentQty === stockQtyUndoSaved;
 
   const save = async () => {
     if (addAmount === 0) return;
     setBusy(true);
+    // stock_qty_undo = what qty was before this add (for reverting)
+    // stock_qty_undo_saved = what qty became after this add (to detect any sales)
     const { error } = await supabase
       .from("products")
-      .update({ stock_qty: newTotal })
+      .update({ stock_qty: newTotal, stock_qty_undo: currentQty, stock_qty_undo_saved: newTotal })
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    onUndoRecordChange({ prevQty: currentQty, savedNewQty: newTotal });
+    onSaved({ stock_qty: newTotal, stock_qty_undo: currentQty, stock_qty_undo_saved: newTotal });
     reset();
-    onSaved(newTotal);
     onClose();
   };
 
   const doUndo = async () => {
-    if (!undoRecord) return;
+    if (stockQtyUndo === null) return;
     const ok = await confirmDialog({
       title: "Undo Last Stock Edit?",
-      description: `This will revert the quantity back to ${undoRecord.prevQty} (currently ${undoRecord.savedNewQty} after last edit).`,
+      description: `This will revert the quantity back to ${stockQtyUndo} (currently ${currentQty}).`,
       confirmLabel: "Yes, Undo",
       cancelLabel: "Cancel",
       destructive: true,
@@ -85,12 +85,11 @@ function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUn
     setBusy(true);
     const { error } = await supabase
       .from("products")
-      .update({ stock_qty: undoRecord.prevQty })
+      .update({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null })
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    onSaved(undoRecord.prevQty);
-    onUndoRecordChange(null);
+    onSaved({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null });
     toast.success("Last stock edit undone");
     onClose();
   };
@@ -142,7 +141,7 @@ function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUn
                     onClick={() => tap(i)}
                     className="relative flex items-center justify-center rounded-2xl border-2 overflow-hidden transition active:scale-95"
                     style={{
-                      height: "96px",
+                      height: "110px",
                       background: active ? "oklch(0.22 0.06 50 / 0.6)" : "rgba(255,255,255,0.05)",
                       borderColor: active ? "var(--primary)" : "rgba(255,255,255,0.1)",
                       boxShadow: active ? "0 4px 18px rgba(251,146,60,0.3)" : "none",
@@ -188,7 +187,7 @@ function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUn
           {/* Row 1: Undo Last Edit + Clear */}
           <div className="flex gap-2 pt-1">
             <button
-              onClick={() => setConfirmUndo(true)}
+              onClick={doUndo}
               disabled={busy || !canUndo}
               className="flex-[2] rounded-2xl font-black text-sm py-4 active:scale-95 transition disabled:opacity-40 flex items-center justify-center gap-1.5"
               style={{
@@ -398,7 +397,6 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
-  const [undoRecords, setUndoRecords] = useState<Record<string, UndoRecord>>({});
 
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
@@ -576,21 +574,11 @@ export default function ProductsPage() {
         <StockNumpad
           productId={stockNumpadId}
           currentQty={stockNumpadProduct.stock_qty ?? 0}
-          undoRecord={undoRecords[stockNumpadId] ?? null}
+          stockQtyUndo={stockNumpadProduct.stock_qty_undo ?? null}
+          stockQtyUndoSaved={stockNumpadProduct.stock_qty_undo_saved ?? null}
           onClose={() => setStockNumpadId(null)}
-          onSaved={(newQty) => {
-            setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, stock_qty: newQty } : p));
-          }}
-          onUndoRecordChange={(r) => {
-            const id = stockNumpadId;
-            setUndoRecords((prev) => {
-              if (r === null) {
-                const next = { ...prev };
-                delete next[id];
-                return next;
-              }
-              return { ...prev, [id]: r };
-            });
+          onSaved={(patch) => {
+            setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, ...patch } : p));
           }}
         />
       )}
