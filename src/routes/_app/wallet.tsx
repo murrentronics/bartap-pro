@@ -257,19 +257,19 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
               }
               const o = rec.data as Order;
               return (
-                <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Receipt className="h-4 w-4 text-primary shrink-0" />
-                      <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
+                <div key={o.id} className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                  style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}>
+                  <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                    <div className="text-sm font-black text-green-400 mt-0.5">+${fmt(Number(o.total))}</div>
+                    <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
                     </div>
-                    <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
-                  </div>
-                  <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-                    {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                    </div>
                   </div>
                 </div>
               );
@@ -1490,19 +1490,19 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
             }
             const o = rec.data as Order;
             return (
-              <div key={o.id} className="rounded-xl p-4 border border-border" style={{ background: "var(--gradient-card)" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Receipt className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</span>
+              <div key={o.id} className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}>
+                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                  <div className="text-sm font-black text-green-400 mt-0.5">+${fmt(Number(o.total))}</div>
+                  <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
                   </div>
-                  <div className="font-black text-primary text-lg shrink-0 ml-2">${fmt(Number(o.total))}</div>
-                </div>
-                <div className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-                  {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                  </div>
                 </div>
               </div>
             );
