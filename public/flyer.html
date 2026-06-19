@@ -12,10 +12,79 @@
       font-family: 'Inter', sans-serif;
       background: #0a0a0a;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
       min-height: 100vh;
       padding: 24px 16px;
+      gap: 16px;
+    }
+
+    /* ── Print toolbar ── */
+    .print-toolbar {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .print-toolbar .hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      font-weight: 500;
+    }
+    .print-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #e06000, #ff9a00);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(255,120,0,0.35);
+      transition: opacity 0.15s;
+    }
+    .print-btn:hover { opacity: 0.88; }
+    .print-btn:active { opacity: 0.75; transform: scale(0.97); }
+
+    /* ── Print styles ── */
+    @media print {
+      /* Hide everything except the flyer */
+      body {
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .print-toolbar { display: none !important; }
+
+      /* A5 flyer size — 148mm × 210mm */
+      @page {
+        size: 148mm 210mm;
+        margin: 0;
+      }
+
+      .flyer {
+        width: 148mm !important;
+        max-width: 148mm !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        /* Scale content to fit exactly */
+        transform-origin: top left;
+      }
+
+      /* Ensure backgrounds print */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
     }
 
     .flyer {
@@ -246,6 +315,20 @@
   </style>
 </head>
 <body>
+
+  <!-- Print toolbar — hidden on print -->
+  <div class="print-toolbar">
+    <span class="hint">🖨️ A5 flyer format ready to print</span>
+    <button class="print-btn" onclick="window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+      Print Flyer
+    </button>
+  </div>
+
   <div class="flyer">
 
     <!-- Hero -->
@@ -340,5 +423,16 @@
     </div>
 
   </div>
+
+  <script>
+    // Pre-configure print dialog with A5 settings hint
+    window.addEventListener('beforeprint', function() {
+      document.title = 'Bartendaz Pro Flyer — A5';
+    });
+    window.addEventListener('afterprint', function() {
+      document.title = 'Bartendaz Pro — Flyer';
+    });
+  </script>
+
 </body>
 </html>

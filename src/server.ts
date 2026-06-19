@@ -74,6 +74,11 @@ function routeGuard(request: Request): Response | null {
     return null; // allow
   }
 
+  // Allow /flyer (business flyer page)
+  if (path === "/flyer" || path === "/flyer.html") {
+    return null; // allow
+  }
+
   // Allow static assets needed by the download page
   if (path.startsWith("/assets/") || path === "/favicon.ico" || path === "/logo.svg") {
     return null; // allow

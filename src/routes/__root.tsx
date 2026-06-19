@@ -38,8 +38,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Bartendaz Pro — Bar POS & Wallet" },
       { property: "og:description", content: "Fast bar POS for owners and cashiers. Cash items, track wallet, manage staff." },
       { name: "twitter:description", content: "Fast bar POS for owners and cashiers. Cash items, track wallet, manage staff." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/68fb9316-47d7-4abe-9d45-1e3f5a182351/id-preview-01dc6fae--5bfccddf-6cf7-4a91-9cbb-1edabd90b8ab.lovable.app-1778420278990.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/68fb9316-47d7-4abe-9d45-1e3f5a182351/id-preview-01dc6fae--5bfccddf-6cf7-4a91-9cbb-1edabd90b8ab.lovable.app-1778420278990.png" },
+      { property: "og:image", content: "" },
+      { name: "twitter:image", content: "" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
       // PWA / Android
