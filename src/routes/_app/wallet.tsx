@@ -235,7 +235,6 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                 if (isCreditCharge) {
                   const ccParts    = (tx.note ?? "").split(" | ");
                   const ccTitle    = ccParts[0] ?? "Credit charge";
-                  const ccAmount   = ccParts.find(p => p.startsWith("$")) ?? "";
                   const ccBal      = ccParts.find(p => p.startsWith("Balance owed:")) ?? "";
                   const ccItems    = ccParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
                   return (
@@ -248,9 +247,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                         {ccItems && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ccItems}</div>}
                         {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
                       </div>
-                      {ccAmount && (
-                        <span className="font-black text-sm shrink-0 mt-1" style={{ color: "var(--primary)" }}>{ccAmount}</span>
-                      )}
+                      {/* credit_charge is always read-only — no amount shown */}
                     </div>
                   );
                 }
@@ -574,7 +571,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                     )}
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
-                                  {isPayment ? (
+                                  {isPayment && (
                                     !isReadOnly ? (
                                       <span className="font-black text-sm shrink-0 text-green-400">
                                         +${Number(tx.amount).toFixed(2)}
@@ -585,11 +582,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                         with cashier
                                       </span>
                                     ) : null
-                                  ) : amountPart ? (
-                                    <span className="font-black text-sm shrink-0" style={{ color: "var(--primary)" }}>
-                                      {amountPart}
-                                    </span>
-                                  ) : null}
+                                  )}
                                 </div>
                               );
                             }
@@ -1370,8 +1363,9 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                         <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
                       )}
                     </div>
-                    {/* Payment: +$X or "with cashier" badge / Charge: show charge amount */}
-                    {isPayment ? (
+                    {/* Credit payment: +$X if owner collected, "with cashier" if cashier collected */}
+                    {/* Credit charge: always read-only, never show amount */}
+                    {isPayment && (
                       !isReadOnly ? (
                         <span className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
                           +${fmt(Number(tx.amount))}
@@ -1382,11 +1376,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                           with cashier
                         </span>
                       ) : null
-                    ) : amountPart ? (
-                      <span className="font-black text-sm shrink-0" style={{ color: "var(--primary)" }}>
-                        {amountPart}
-                      </span>
-                    ) : null}
+                    )}
                   </div>
                 );
               }
