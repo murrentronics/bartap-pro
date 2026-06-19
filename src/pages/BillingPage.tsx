@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { CreditCard, CheckCircle, Clock, AlertCircle, Copy, Music2 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
-const SETUP_FEE = 250;
+const SETUP_FEE = 250; // First year only — total first payment = $750 + $250 = $1,000 TT (includes training & installation)
 const TABLET_FEE = 600;
 
 export default function BillingPage() {
@@ -303,7 +303,7 @@ export default function BillingPage() {
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-2">Choose Your Plan</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              All plans include the Music Player. A one-time <span className="font-bold text-primary">$250 TT setup & training fee</span> applies to new accounts.
+              Annual subscription — <span className="font-bold text-primary">$750 TT/year</span>. First year is <span className="font-bold text-primary">$1,000 TT</span> and includes installation, setup &amp; training.
             </p>
             {/* Tablet add-on */}
             <label className="flex items-start gap-3 mb-5 p-3 rounded-xl border border-border cursor-pointer hover:border-primary/60 transition">
@@ -341,7 +341,7 @@ export default function BillingPage() {
                       <span className="font-semibold">${plan.amount.toFixed(0)} TT</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">One-time setup & training</span>
+                      <span className="text-muted-foreground">Installation, setup &amp; training (first year only)</span>
                       <span className="font-semibold">$250 TT</span>
                     </div>
                     {includeTablet && (
@@ -646,3 +646,4 @@ function PendingBankCard({ payment, bankDetails, onCopy, onCancel, loading }: {
     </Card>
   );
 }
+
