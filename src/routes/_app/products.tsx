@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -31,21 +32,30 @@ const STOCK_BTNS = [
   { qty: 10 }, { qty: 6  }, { qty: 1  },
 ];
 
-function StockNumpad({ productId, currentQty, onClose, onSaved }: {
+type UndoRecord = { prevQty: number; savedNewQty: number };
+
+function StockNumpad({ productId, currentQty, undoRecord, onClose, onSaved, onUndoRecordChange }: {
   productId: string;
   currentQty: number;
+  undoRecord: UndoRecord | null;
   onClose: () => void;
   onSaved: (newQty: number) => void;
+  onUndoRecordChange: (r: UndoRecord | null) => void;
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
   const [busy, setBusy] = useState(false);
+  const confirmDialog = useConfirm();
 
   const addAmount = STOCK_BTNS.reduce((s, b, i) => s + b.qty * counts[i], 0);
   const newTotal  = currentQty + addAmount;
 
-  const tap  = (i: number) => setCounts(c => c.map((v, j) => j === i ? v + 1 : v));
+  const tap   = (i: number) => setCounts(c => c.map((v, j) => j === i ? v + 1 : v));
   const untap = (i: number) => setCounts(c => c.map((v, j) => j === i ? Math.max(0, v - 1) : v));
   const reset = () => setCounts([0, 0, 0, 0, 0, 0]);
+
+  // Undo is available only if we have a record AND no sales have happened
+  // (sales reduce currentQty below the savedNewQty we recorded)
+  const canUndo = undoRecord !== null && currentQty >= undoRecord.savedNewQty;
 
   const save = async () => {
     if (addAmount === 0) return;
@@ -56,7 +66,32 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    onUndoRecordChange({ prevQty: currentQty, savedNewQty: newTotal });
+    reset();
     onSaved(newTotal);
+    onClose();
+  };
+
+  const doUndo = async () => {
+    if (!undoRecord) return;
+    const ok = await confirmDialog({
+      title: "Undo Last Stock Edit?",
+      description: `This will revert the quantity back to ${undoRecord.prevQty} (currently ${undoRecord.savedNewQty} after last edit).`,
+      confirmLabel: "Yes, Undo",
+      cancelLabel: "Cancel",
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("products")
+      .update({ stock_qty: undoRecord.prevQty })
+      .eq("id", productId);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    onSaved(undoRecord.prevQty);
+    onUndoRecordChange(null);
+    toast.success("Last stock edit undone");
     onClose();
   };
 
@@ -107,14 +142,13 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
                     onClick={() => tap(i)}
                     className="relative flex items-center justify-center rounded-2xl border-2 overflow-hidden transition active:scale-95"
                     style={{
-                      aspectRatio: "1",
+                      height: "96px",
                       background: active ? "oklch(0.22 0.06 50 / 0.6)" : "rgba(255,255,255,0.05)",
                       borderColor: active ? "var(--primary)" : "rgba(255,255,255,0.1)",
                       boxShadow: active ? "0 4px 18px rgba(251,146,60,0.3)" : "none",
                       paddingBottom: active ? "36px" : "0",
                     }}
                   >
-                    {/* X — top-right, remove all of this button */}
                     {active && (
                       <button
                         type="button"
@@ -125,11 +159,7 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
                         <span className="text-xs font-black">×</span>
                       </button>
                     )}
-
-                    {/* Big number */}
                     <span className="text-3xl font-black text-white leading-none">{b.qty}</span>
-
-                    {/* Minus + count strip — pinned to bottom of button */}
                     {active && (
                       <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 py-1.5"
                         style={{ background: "rgba(0,0,0,0.80)" }}>
@@ -155,17 +185,33 @@ function StockNumpad({ productId, currentQty, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Row 1: Undo Last Edit + Clear */}
           <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setConfirmUndo(true)}
+              disabled={busy || !canUndo}
+              className="flex-[2] rounded-2xl font-black text-sm py-4 active:scale-95 transition disabled:opacity-40 flex items-center justify-center gap-1.5"
+              style={{
+                background: canUndo ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.05)",
+                border: `2px solid ${canUndo ? "#dc2626" : "rgba(255,255,255,0.08)"}`,
+                color: canUndo ? "#f87171" : "var(--muted-foreground)",
+              }}
+            >
+              <span className="text-base leading-none">↩</span> Undo Last Edit
+            </button>
             <button
               onClick={reset}
               disabled={addAmount === 0}
               className="flex-1 rounded-2xl font-black text-sm py-4 bg-muted/60 text-muted-foreground active:scale-95 transition disabled:opacity-40"
             >Clear</button>
+          </div>
+
+          {/* Row 2: Add full width */}
+          <div>
             <button
               onClick={save}
               disabled={busy || addAmount === 0}
-              className="flex-[2] rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
+              className="w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
               style={{ background: "var(--gradient-hero)" }}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Add ${addAmount} → ${newTotal}`}
@@ -352,6 +398,7 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
+  const [undoRecords, setUndoRecords] = useState<Record<string, UndoRecord>>({});
 
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
@@ -529,9 +576,21 @@ export default function ProductsPage() {
         <StockNumpad
           productId={stockNumpadId}
           currentQty={stockNumpadProduct.stock_qty ?? 0}
+          undoRecord={undoRecords[stockNumpadId] ?? null}
           onClose={() => setStockNumpadId(null)}
           onSaved={(newQty) => {
             setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, stock_qty: newQty } : p));
+          }}
+          onUndoRecordChange={(r) => {
+            const id = stockNumpadId;
+            setUndoRecords((prev) => {
+              if (r === null) {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+              }
+              return { ...prev, [id]: r };
+            });
           }}
         />
       )}
