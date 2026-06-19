@@ -693,6 +693,174 @@
       letter-spacing: 0.5px;
       margin-top: 12px;
     }
+
+    /* ── FLYER SECTION ── */
+    .flyer-section {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .flyer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 480px;
+      margin: 0 auto 24px;
+      gap: 12px;
+    }
+    .flyer-hint { font-size: 12px; color: var(--muted); }
+    .flyer-print-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #C0441A, #F0A030);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(240,160,48,0.35);
+      transition: opacity 0.15s;
+    }
+    .flyer-print-btn:hover { opacity: 0.88; }
+
+    .flyer-card {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #111;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(240,160,48,0.2);
+      border: 1px solid rgba(240,160,48,0.18);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .fl-hero {
+      background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
+      padding: 36px 28px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .fl-hero::before {
+      content: ""; position: absolute;
+      top: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: rgba(255,255,255,0.08); border-radius: 50%;
+    }
+    .fl-tag {
+      display: inline-block;
+      background: rgba(0,0,0,0.22);
+      color: #fff; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 20px; margin-bottom: 16px;
+      position: relative; z-index: 1;
+    }
+    .fl-title {
+      font-size: 46px; font-weight: 900; color: #fff;
+      line-height: 1; position: relative; z-index: 1;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.25);
+      -webkit-text-fill-color: #fff;
+    }
+    .fl-title span { color: rgba(0,0,0,0.35); -webkit-text-fill-color: rgba(0,0,0,0.35); }
+    .fl-sub {
+      font-size: 15px; font-weight: 600;
+      color: rgba(255,255,255,0.85); margin-top: 10px;
+      position: relative; z-index: 1;
+    }
+    .fl-body { padding: 28px; }
+    .fl-tagline {
+      font-size: 18px; font-weight: 900; color: #fff;
+      line-height: 1.3; margin-bottom: 18px;
+    }
+    .fl-tagline em { color: #F0A030; font-style: normal; }
+    .fl-pills {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .fl-pill {
+      background: rgba(240,160,48,0.12);
+      border: 1px solid rgba(240,160,48,0.3);
+      color: #F0A030; font-size: 12px; font-weight: 700;
+      padding: 6px 13px; border-radius: 20px;
+    }
+    .fl-list {
+      list-style: none; display: flex; flex-direction: column;
+      gap: 11px; margin-bottom: 24px;
+    }
+    .fl-list li {
+      display: flex; align-items: flex-start; gap: 11px;
+      font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.4;
+    }
+    .fl-icon {
+      width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+      background: rgba(240,160,48,0.15); border: 1px solid rgba(240,160,48,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+    .fl-list li strong { color: #fff; }
+    .fl-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 0 20px; }
+    .fl-price-block {
+      background: rgba(240,160,48,0.08);
+      border: 1px solid rgba(240,160,48,0.2);
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .fl-price-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); }
+    .fl-price {
+      font-size: 24px; font-weight: 900; color: #F0A030; line-height: 1;
+      -webkit-text-fill-color: #F0A030;
+    }
+    .fl-price span { font-size: 13px; color: rgba(255,255,255,0.4); -webkit-text-fill-color: rgba(255,255,255,0.4); }
+    .fl-price-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .fl-badge {
+      background: linear-gradient(135deg, #C0441A, #F0A030);
+      color: #fff; font-size: 11px; font-weight: 800;
+      padding: 6px 12px; border-radius: 12px; white-space: nowrap;
+    }
+    .fl-cta {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%;
+      background: linear-gradient(135deg, #C0441A 0%, #F0A030 100%);
+      color: #1a0a02; font-size: 15px; font-weight: 900;
+      padding: 15px; border-radius: 14px; text-decoration: none;
+      box-shadow: 0 6px 24px rgba(240,160,48,0.3); margin-bottom: 10px;
+    }
+    .fl-url {
+      text-align: center; font-size: 10px;
+      color: rgba(255,255,255,0.3); word-break: break-all; margin-bottom: 20px;
+    }
+    .fl-footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .fl-brand { font-size: 14px; font-weight: 900; color: #F0A030; }
+    .fl-contact { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .fl-android-badge {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 5px 10px;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5);
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      body > *:not(#printable-flyer) { display: none !important; }
+      #printable-flyer {
+        display: block !important;
+        position: fixed; top: 0; left: 0;
+        width: 148mm; max-width: 148mm;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      @page { size: 148mm 210mm; margin: 0; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1080,6 +1248,83 @@
       </svg>
       Download Bartendaz Pro
     </a>
+  </section>
+
+  <!-- PRINTABLE FLYER -->
+  <section class="flyer-section">
+    <h2 class="section-title">Printable <span>Flyer</span></h2>
+    <div class="divider"></div>
+    <p class="pricing-intro">Share or print this A5 flyer to promote Bartendaz Pro</p>
+
+    <div class="flyer-toolbar">
+      <span class="flyer-hint">🖨️ A5 format · print backgrounds on</span>
+      <button class="flyer-print-btn" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print Flyer
+      </button>
+    </div>
+
+    <div class="flyer-card" id="printable-flyer">
+      <div class="fl-hero">
+        <div class="fl-tag">🍺 Bar Management App</div>
+        <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
+        <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
+      </div>
+
+      <div class="fl-body">
+        <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
+
+        <div class="fl-pills">
+          <span class="fl-pill">📦 Stock Tracking</span>
+          <span class="fl-pill">💰 Live Financials</span>
+          <span class="fl-pill">👥 Multi-Cashier</span>
+          <span class="fl-pill">💳 Credit Tabs</span>
+          <span class="fl-pill">🍾 Bottles &amp; Packs</span>
+          <span class="fl-pill">📊 Owner Reports</span>
+        </div>
+
+        <ul class="fl-list">
+          <li><div class="fl-icon">📦</div><div><strong>Real-time stock control.</strong> Every bottle, pack, and product tracked automatically. Get low-stock alerts before you run dry.</div></li>
+          <li><div class="fl-icon">💰</div><div><strong>Know your money, always.</strong> Income, expenses, net profit and resale value — calculated live, no spreadsheets.</div></li>
+          <li><div class="fl-icon">👥</div><div><strong>Owner + Cashier accounts.</strong> Cashiers sell, you stay in control. Every transaction logged, every wallet tracked.</div></li>
+          <li><div class="fl-icon">💳</div><div><strong>Credit tab management.</strong> Open tabs, record payments, track who owes what — with full history.</div></li>
+          <li><div class="fl-icon">🎵</div><div><strong>Built-in music player.</strong> Keep the vibes going without switching apps.</div></li>
+        </ul>
+
+        <div class="fl-divider"></div>
+
+        <div class="fl-price-block">
+          <div>
+            <div class="fl-price-label">Starting from</div>
+            <div class="fl-price">$300 <span>TT</span></div>
+            <div class="fl-price-sub">6-month subscription</div>
+          </div>
+          <div class="fl-badge">Android Only</div>
+        </div>
+
+        <a class="fl-cta" href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" download>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download Free — Try It Now
+        </a>
+        <p class="fl-url">github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk</p>
+      </div>
+
+      <div class="fl-footer">
+        <div>
+          <div class="fl-brand">Bartendaz Pro</div>
+          <div class="fl-contact">📞 +1 868 385-0635</div>
+        </div>
+        <div class="fl-android-badge">Android APK</div>
+      </div>
+    </div>
   </section>
 
   <footer>
