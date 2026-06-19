@@ -502,17 +502,30 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                             }
                             if (isCreditTx) {
                               const isPayment = tx.type === "credit_payment";
+                              const noteParts   = (tx.note ?? "").split(" | ");
+                              const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
+                              const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
+                              const remainPart  = noteParts.find(p => p.startsWith("Remaining:")) ?? "";
+                              const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                               return (
                                 <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPayment ? "bg-green-500/5" : "bg-orange-500/5"}`}>
                                   <span className="text-base shrink-0">{isPayment ? "💳" : "🪙"}</span>
                                   <div className="flex-1 min-w-0">
                                     <div className={`text-xs font-bold leading-snug ${isPayment ? "text-green-400" : "text-primary"}`}>
-                                      {tx.note ?? (isPayment ? "Credit payment" : "Credit charge")}
+                                      {titlePart}
                                     </div>
+                                    {(paidPart || remainPart) && (
+                                      <div className="text-xs text-muted-foreground mt-0.5">
+                                        {[paidPart, remainPart].filter(Boolean).join(" · ")}
+                                      </div>
+                                    )}
+                                    {cashierPart && (
+                                      <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
+                                    )}
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
-                                  {Number(tx.amount) > 0 && (
-                                    <span className={`font-black text-sm shrink-0 ${isPayment ? "text-green-400" : "text-primary"}`}>
+                                  {isPayment && Number(tx.amount) > 0 && (
+                                    <span className="font-black text-sm shrink-0 text-green-400">
                                       +${Number(tx.amount).toFixed(2)}
                                     </span>
                                   )}
@@ -1251,6 +1264,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               const isCreditTx = tx.type === "credit_payment" || tx.type === "credit_charge";
               if (isCreditTx) {
                 const isPayment = tx.type === "credit_payment";
+                // Parse note parts: "Credit payment: <name> | Paid: $X | Remaining: $Y | Cashier: Z"
+                // or settled: "Credit — Bill settled: <name> | Cashier: Z"
+                const noteParts = (tx.note ?? "").split(" | ");
+                const titlePart   = noteParts[0] ?? (isPayment ? "Credit payment" : "Credit charge");
+                const paidPart    = noteParts.find(p => p.startsWith("Paid:")) ?? "";
+                const remainPart  = noteParts.find(p => p.startsWith("Remaining:")) ?? "";
+                const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border flex items-start gap-3"
                     style={{
@@ -1267,10 +1287,30 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-black mt-0.5" style={{ color: isPayment ? "#86efac" : "var(--primary)" }}>
-                        {tx.note ?? (isPayment ? "Credit payment" : "Credit charge")}
+                        {titlePart}
                       </div>
+                      {(paidPart || remainPart) && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {[paidPart, remainPart].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                      {cashierPart && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
+                      )}
                     </div>
-                    {/* Read-only — no amount shown for owner, cashier cleared balance brings the money */}
+                    {/* amount > 0 = owner received cash directly; amount = 0 = cashier holds it */}
+                    {isPayment && (
+                      Number(tx.amount) > 0 ? (
+                        <span className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
+                          +${fmt(Number(tx.amount))}
+                        </span>
+                      ) : cashierPart ? (
+                        <span className="text-xs shrink-0 px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "rgba(34,197,94,0.12)", color: "#86efac" }}>
+                          with cashier
+                        </span>
+                      ) : null
+                    )}
                   </div>
                 );
               }
