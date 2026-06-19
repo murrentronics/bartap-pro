@@ -19,6 +19,14 @@ if (fs.existsSync(downloadSrc)) {
   process.exit(1);
 }
 
+// Copy flyer.html so /flyer route works
+const flyerSrc = path.join(__dirname, '..', 'public', 'flyer.html');
+const flyerDest = path.join(distDir, 'flyer.html');
+if (fs.existsSync(flyerSrc)) {
+  fs.copyFileSync(flyerSrc, flyerDest);
+  console.log('✓ Copied flyer.html');
+}
+
 // Copy assets folder if it exists
 const assetsSrc = path.join(__dirname, '..', 'public', 'assets');
 const assetsDest = path.join(distDir, 'assets');
@@ -28,11 +36,10 @@ if (fs.existsSync(assetsSrc)) {
   console.log('✓ Copied assets folder');
 }
 
-// Create simple _redirects
+// _redirects: named pages served directly, everything else → download page
 fs.writeFileSync(
   path.join(distDir, '_redirects'),
-  `/* /index.html 200
-`
+  `/flyer /flyer.html 200\n/* /index.html 200\n`
 );
 
-console.log('✓ Build complete: Download page only');
+console.log('✓ Build complete');
