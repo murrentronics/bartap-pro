@@ -575,7 +575,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   </div>
                                   {isPayment && (
                                     !isReadOnly ? (
-                                      <span className="font-black text-sm shrink-0 text-green-400">
+                                      <span className="font-black text-lg shrink-0 text-green-400">
                                         +${Number(tx.amount).toFixed(2)}
                                       </span>
                                     ) : cashierPart ? (
@@ -1227,6 +1227,15 @@ type FlatRecord =
   | { kind: "order"; data: Order; ts: number }
   | { kind: "tx"; data: WalletTx; ts: number };
 
+function CashierBadge() {
+  return (
+    <span className="text-xs shrink-0 px-2 py-0.5 rounded-full font-semibold self-start mt-0.5"
+      style={{ background: "rgba(99,102,241,0.15)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)" }}>
+      Cashier
+    </span>
+  );
+}
+
 function TransactionsTab({ profile }: { profile: { id: string } }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
@@ -1312,6 +1321,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       {totalStr && <div className="text-xs font-bold text-blue-200 mt-0.5">Sale: {totalStr}</div>}
                       {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsStr}</div>}
                     </div>
+                    <CashierBadge />
                   </div>
                 );
               }
@@ -1367,20 +1377,17 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                         <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
                       )}
                     </div>
-                    {/* Credit payment: +$X if owner collected, "with cashier" if cashier collected */}
-                    {/* Credit charge: always read-only, never show amount */}
-                    {isPayment && (
-                      !isReadOnly ? (
-                        <span className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
-                          +${fmt(Number(tx.amount))}
-                        </span>
-                      ) : cashierPart ? (
-                        <span className="text-xs shrink-0 px-2 py-0.5 rounded-full font-semibold"
-                          style={{ background: "rgba(34,197,94,0.12)", color: "#86efac" }}>
-                          with cashier
-                        </span>
-                      ) : null
-                    )}
+                    {/* Credit payment: +$X if owner collected, "Cashier" badge if cashier collected */}
+                    {/* Credit charge: always read-only, always show Cashier badge */}
+                    {!isPayment ? (
+                      <CashierBadge />
+                    ) : isReadOnly && cashierPart ? (
+                      <CashierBadge />
+                    ) : !isReadOnly ? (
+                      <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
+                        +${fmt(Number(tx.amount))}
+                      </span>
+                    ) : null}
                   </div>
                 );
               }
@@ -1399,7 +1406,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                         {tx.note ?? "Cleared from cashier"}
                       </div>
                     </div>
-                    <div className="font-black text-sm shrink-0 text-green-400">
+                    <div className="font-black text-lg shrink-0 text-green-400">
                       +${fmt(Number(tx.amount))}
                     </div>
                   </div>
@@ -1411,11 +1418,11 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                 const title = noteParts[0] ?? tx.note ?? "Bottle closed";
                 const sub1 = noteParts[1] ?? ""; // "Bottle price: $X"
                 const sub2 = noteParts[2] ?? ""; // "Shots revenue: $X"
-                // Parse bottle cost and shots revenue to compute gain/loss
                 const bottlePrice = parseFloat((sub1.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const shotsRevenue = parseFloat((sub2.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const diff = shotsRevenue - bottlePrice;
                 const hasNumbers = !isNaN(bottlePrice) && !isNaN(shotsRevenue) && (bottlePrice > 0 || shotsRevenue > 0);
+                const bottleCashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
@@ -1427,28 +1434,27 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
                       {hasNumbers && (
                         <div className="text-xs font-black mt-1" style={{ color: diff >= 0 ? "#86efac" : "#fca5a5" }}>
-                          {diff >= 0
-                            ? `Gain: +$${fmt(diff)}`
-                            : `Loss: -$${Math.abs(diff).toFixed(2)}`}
+                          {diff >= 0 ? `Gain: +$${fmt(diff)}` : `Loss: -$${Math.abs(diff).toFixed(2)}`}
                         </div>
                       )}
                     </div>
+                    {bottleCashierPart && <CashierBadge />}
                   </div>
                 );
               }
 
-              // ── Pack finished card ──────────────────────────────────────
               const isPack = tx.type === "pack_finished";
               if (isPack) {
                 const noteParts = (tx.note ?? "").split(" | ");
                 const title      = noteParts[0] ?? "Pack sold out";
-                const sub1       = noteParts[1] ?? "";  // "Pack price: $X.XX"
-                const sub2       = noteParts[2] ?? "";  // "X cigarettes sold"
-                const sub3       = noteParts[3] ?? "";  // "Revenue: $X.XX"
+                const sub1       = noteParts[1] ?? "";
+                const sub2       = noteParts[2] ?? "";
+                const sub3       = noteParts[3] ?? "";
                 const packPrice    = parseFloat((sub1.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const packRevenue  = parseFloat((sub3.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const diff       = packRevenue - packPrice;
                 const hasNumbers = !isNaN(packPrice) && !isNaN(packRevenue) && (packPrice > 0 || packRevenue > 0);
+                const packCashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.05 145 / 0.35)" }}>
@@ -1465,6 +1471,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                         </div>
                       )}
                     </div>
+                    {packCashierPart && <CashierBadge />}
                   </div>
                 );
               }

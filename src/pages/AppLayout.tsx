@@ -205,7 +205,7 @@ export default function AppLayout() {
           )}
 
           {/* Hamburger — no username in header on mobile */}
-          <div className="flex items-center gap-2" ref={menuRef}>
+          <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
               className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
@@ -217,7 +217,7 @@ export default function AppLayout() {
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
+                className="absolute right-0 top-[calc(100%+6px)] w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
                 style={{ background: "var(--gradient-card)" }}
               >
                 {/* Owner name — small, at the top of the menu */}
@@ -254,7 +254,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <Outlet />
       </main>
 
