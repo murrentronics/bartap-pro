@@ -23,8 +23,8 @@ type Product = {
   image_url: string | null;
   category?: string;
   stock_qty: number;
-  stock_qty_undo: number | null;
-  stock_qty_undo_saved: number | null;
+  stock_qty_undo: number | null;      // qty BEFORE the last add (revert target)
+  stock_qty_undo_saved: number | null; // qty AFTER the last add (baseline to detect sales)
 };
 
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
@@ -53,7 +53,7 @@ function StockNumpad({ productId, currentQty, stockQtyUndo, stockQtyUndoSaved, o
   const untap = (i: number) => setCounts(c => c.map((v, j) => j === i ? Math.max(0, v - 1) : v));
   const reset = () => setCounts([0, 0, 0, 0, 0, 0]);
 
-  // Undo disabled the moment any single sale reduces qty below what was saved after the add
+  // Undo disabled the moment any single sale reduces qty — currentQty must equal stock_qty_undo_saved exactly
   const canUndo = stockQtyUndo !== null && stockQtyUndoSaved !== null && currentQty === stockQtyUndoSaved;
 
   const save = async () => {
@@ -458,7 +458,16 @@ export default function ProductsPage() {
                 <Plus className="h-4 w-4 mr-1" /> Add Item
               </Button>
             </DialogTrigger>
-            <AddItemDialog key={open ? "open" : "closed"} ownerId={profile.id} onDone={() => { setOpen(false); load(); }} />
+            <AddItemDialog
+                key={open ? "open" : "closed"}
+                ownerId={profile.id}
+                onDone={() => { setOpen(false); load(); }}
+                onSaved={(product) => {
+                  // inject the new product into items immediately so the numpad can find it
+                  setItems((prev) => [...prev, product]);
+                  setStockNumpadId(product.id);
+                }}
+              />
           </Dialog>
         </div>
         <div className="grid grid-cols-5 gap-2">
@@ -587,7 +596,7 @@ export default function ProductsPage() {
 }
 
 // ─── Add Item Dialog ──────────────────────────────────────────────────────────
-function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: string }) {
+function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSaved: (product: Product) => void; ownerId: string }) {
   const { profile } = useAuth();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -645,14 +654,15 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
-    const { error } = await supabase.from("products").insert({
+    const { data: inserted, error } = await supabase.from("products").insert({
       owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
-    });
+    }).select("*").single();
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Item added");
     setName(""); setPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
     onDone();
+    onSaved(inserted);
   };
 
   return (
@@ -809,8 +819,8 @@ function AddItemDialog({ onDone, ownerId }: { onDone: () => void; ownerId: strin
       </div>
 
       {!showTemplates && (
-        <Button onClick={submit} disabled={busy || !name || !price} className="font-bold h-11 shrink-0">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Item"}
+        <Button onClick={submit} disabled={busy || !name || !price} className="font-bold h-11 shrink-0" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
         </Button>
       )}
     </DialogContent>
