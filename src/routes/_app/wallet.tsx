@@ -1399,7 +1399,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                         {tx.note ?? "Cleared from cashier"}
                       </div>
                     </div>
-                    <div className="font-black text-lg shrink-0 text-green-400">
+                    <div className="font-black text-sm shrink-0 text-green-400">
                       +${fmt(Number(tx.amount))}
                     </div>
                   </div>
@@ -1495,7 +1495,6 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                 <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                  <div className="text-sm font-black text-green-400 mt-0.5">+${fmt(Number(o.total))}</div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
@@ -1504,6 +1503,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                   </div>
                 </div>
+                <span className="font-black text-lg shrink-0 text-green-400">+${fmt(Number(o.total))}</span>
               </div>
             );
           })}
