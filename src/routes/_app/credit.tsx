@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, Camera, CheckCircle2,
-  DollarSign, ClipboardList,
+  DollarSign, ClipboardList, FileDown, Loader2,
 } from "lucide-react";
+import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 export const Route = createFileRoute("/_app/credit")({
   component: CreditPage,
@@ -28,10 +30,170 @@ type CreditAccount = {
   created_at: string;
 };
 
+// ── Print Bill ─────────────────────────────────────────────────────────────────
+async function printBill(account: CreditAccount, ownerName: string) {
+  const { data: txs, error } = await supabase
+    .from("credit_transactions")
+    .select("id, type, amount, note, items, created_at")
+    .eq("credit_account_id", account.id)
+    .order("created_at", { ascending: true });
+
+  if (error) { toast.error("Failed to load transactions"); return; }
+
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const generated = new Date().toLocaleString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
+
+  let y = await drawHeader(doc, ownerName, "Credit Bill", "Full History", generated);
+
+  // ── Customer info block ───────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Customer:", LM, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(account.full_name, LM + 24, y);
+  y += 5;
+  if (account.contact_number) {
+    doc.text("Contact: " + account.contact_number, LM, y); y += 5;
+  }
+  if (account.id_number) {
+    doc.text("ID: " + account.id_number, LM, y); y += 5;
+  }
+  doc.text("Account opened: " + new Date(account.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }), LM, y);
+  y += 5;
+
+  // ── Balance summary box ────────────────────────────────────────────────────
+  const ORANGE = [232, 146, 42] as const;
+  const totalCharged = (txs ?? []).filter(t => t.type === "charge").reduce((s, t) => s + Number(t.amount), 0);
+  const totalPaid    = (txs ?? []).filter(t => t.type === "payment").reduce((s, t) => s + Number(t.amount), 0);
+  const balance      = Number(account.balance_owed);
+
+  doc.setFillColor(245, 240, 230);
+  doc.roundedRect(LM, y, RM - LM, 22, 2, 2, "F");
+  doc.setDrawColor(...ORANGE);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(LM, y, RM - LM, 22, 2, 2, "S");
+
+  const cols = [
+    { label: "Total Charged", value: "$" + totalCharged.toFixed(2) },
+    { label: "Total Paid",    value: "$" + totalPaid.toFixed(2) },
+    { label: "Balance Remaining", value: "$" + balance.toFixed(2) },
+  ];
+  const colW = (RM - LM) / 3;
+  cols.forEach((col, i) => {
+    const cx = LM + i * colW + colW / 2;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 100, 100);
+    doc.text(col.label, cx, y + 7, { align: "center" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    if (col.label === "Balance Remaining") {
+      doc.setTextColor(balance <= 0 ? 40 : 200, balance <= 0 ? 140 : 40, 40);
+    } else {
+      doc.setTextColor(30, 30, 30);
+    }
+    doc.text(col.value, cx, y + 17, { align: "center" });
+  });
+  doc.setTextColor(0, 0, 0);
+  y += 27;
+
+  // ── Column headers ────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(130, 130, 130);
+  doc.text("DATE / DETAILS", LM, y);
+  doc.text("AMOUNT", RM, y, { align: "right" });
+  y += 3;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.2);
+  doc.line(LM, y, RM, y);
+  y += 5;
+
+  // ── Transaction rows ──────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+
+  for (const tx of txs ?? []) {
+    if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+
+    const isCharge = tx.type === "charge";
+    const dateStr  = new Date(tx.created_at).toLocaleString("en-GB", {
+      hour: "2-digit", minute: "2-digit", hour12: true,
+      day: "2-digit", month: "short", year: "numeric",
+    });
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(isCharge ? 200 : 40, isCharge ? 60 : 140, 40);
+    doc.text(isCharge ? "CHARGE" : "PAYMENT", LM, y);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    doc.text(dateStr, LM + 22, y);
+
+    const amtStr = (isCharge ? "+" : "-") + "$" + Number(tx.amount).toFixed(2);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(isCharge ? 200 : 40, isCharge ? 60 : 140, 40);
+    doc.text(amtStr, RM, y, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y += 5;
+
+    // Items for charges
+    if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
+      const itemStr = tx.items.map((it: any) => `${it.qty}× ${it.name}`).join(", ");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(80, 80, 80);
+      const wrapped = doc.splitTextToSize("  " + itemStr, RM - LM - 4);
+      doc.text(wrapped, LM, y);
+      y += wrapped.length * 4 + 1;
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+    }
+
+    // Note
+    if (tx.note) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text("  " + tx.note, LM, y);
+      y += 4;
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+    }
+
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.1);
+    doc.line(LM, y, RM, y);
+    y += 4;
+  }
+
+  // ── Footer balance line ────────────────────────────────────────────────────
+  if (y > CONTENT_BOTTOM - 10) { doc.addPage(); y = 20; }
+  y += 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...ORANGE);
+  doc.text("Balance Remaining:", LM, y);
+  doc.setTextColor(balance <= 0 ? 40 : 200, balance <= 0 ? 140 : 40, 40);
+  doc.text("$" + balance.toFixed(2), RM, y, { align: "right" });
+
+  addFootersToAllPages(doc);
+
+  const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+  await downloadPdf(`credit-bill-${safeName}.pdf`, doc.output("datauristring"));
+  toast.success("Bill saved");
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 function CreditPage() {
   const { profile } = useAuth();
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+  const ownerName = profile?.username ?? "Bar";
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
 
@@ -100,11 +262,12 @@ function CreditPage() {
         <OpenedTab
           accounts={opened}
           loading={loading}
+          ownerName={ownerName}
           onSelect={setPayAccount}
         />
       )}
       {tab === "closed" && (
-        <ClosedTab accounts={closed} loading={loading} />
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -124,12 +287,15 @@ function CreditPage() {
 
 // ── Opened Tab ─────────────────────────────────────────────────────────────────
 function OpenedTab({
-  accounts, loading, onSelect,
+  accounts, loading, ownerName, onSelect,
 }: {
   accounts: CreditAccount[];
   loading: boolean;
+  ownerName: string;
   onSelect: (a: CreditAccount) => void;
 }) {
+  const [printing, setPrinting] = useState<string | null>(null);
+
   if (loading) return <Spinner />;
   if (accounts.length === 0)
     return (
@@ -142,31 +308,51 @@ function OpenedTab({
   return (
     <div className="space-y-2">
       {accounts.map((a) => (
-        <button
+        <div
           key={a.id}
-          onClick={() => onSelect(a)}
-          className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left"
+          className="rounded-2xl border border-border"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div>
-            <p className="font-black text-base">{a.full_name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-            {a.contact_number && (
-              <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>
-            )}
+          <button
+            onClick={() => onSelect(a)}
+            className="w-full flex items-center justify-between p-4 hover:border-primary/50 active:scale-[0.98] transition text-left rounded-2xl"
+          >
+            <div>
+              <p className="font-black text-base">{a.full_name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </button>
+          <div className="px-4 pb-3">
+            <button
+              onClick={async () => {
+                setPrinting(a.id);
+                await printBill(a, ownerName);
+                setPrinting(null);
+              }}
+              disabled={printing === a.id}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
+              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+              Print Bill
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </button>
+        </div>
       ))}
     </div>
   );
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: boolean }) {
+function ClosedTab({ accounts, loading, ownerName }: { accounts: CreditAccount[]; loading: boolean; ownerName: string }) {
+  const [printing, setPrinting] = useState<string | null>(null);
+
   if (loading) return <Spinner />;
   if (accounts.length === 0)
     return (
@@ -181,19 +367,35 @@ function ClosedTab({ accounts, loading }: { accounts: CreditAccount[]; loading: 
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="flex items-center justify-between p-4 rounded-2xl border border-border"
+          className="rounded-2xl border border-border"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div>
-            <p className="font-black text-base">{a.full_name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-            {a.contact_number && (
-              <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>
-            )}
+          <div className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-black text-base">{a.full_name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+            </div>
+            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">
+              SETTLED
+            </span>
           </div>
-          <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">
-            SETTLED
-          </span>
+          <div className="px-4 pb-3">
+            <button
+              onClick={async () => {
+                setPrinting(a.id);
+                await printBill(a, ownerName);
+                setPrinting(null);
+              }}
+              disabled={printing === a.id}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
+              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+              Print Bill
+            </button>
+          </div>
         </div>
       ))}
     </div>
