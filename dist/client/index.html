@@ -737,6 +737,28 @@
       align-items: flex-start;
     }
 
+    /* Side-by-side preview */
+    .flyer-preview-row {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .flyer-preview-col {
+      flex: 1;
+      min-width: 0;
+      max-width: 480px;
+    }
+    .flyer-side-label {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
     .flyer-card {
       width: 480px;
       flex-shrink: 0;
@@ -746,10 +768,21 @@
       box-shadow: 0 0 60px rgba(240,160,48,0.2);
       border: 1px solid rgba(240,160,48,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      /* Scale down to fit container */
       transform-origin: top center;
-      transform: scale(var(--flyer-scale, 1));
-      margin-bottom: calc((var(--flyer-scale, 1) - 1) * 100%);
+    }
+
+    /* Back card — full bleed image */
+    .flyer-card-back {
+      background: #000;
+      display: flex;
+      align-items: stretch;
+    }
+    .flyer-back-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 0;
     }
     .fl-hero {
       background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
@@ -935,28 +968,57 @@
         padding: 0 !important;
         margin: 0 !important;
       }
-      .flyer-toolbar { display: none !important; }
+      .flyer-toolbar,
+      .flyer-side-label { display: none !important; }
+
+      /* Reset the preview row to stack vertically for print */
+      .flyer-preview-row {
+        display: block !important;
+      }
+      .flyer-preview-col { display: block !important; }
       .flyer-scaler {
         max-width: 100% !important;
-        transform: none !important;
+        height: auto !important;
       }
+
+      /* Both cards fill the A5 page exactly */
       .flyer-card {
         width: 148mm !important;
+        height: 210mm !important;
         max-width: 148mm !important;
         transform: none !important;
         margin: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         border: none !important;
+      }
+
+      /* Front card — page 1 */
+      #flyer-front {
+        page-break-after: always;
         background: #111 !important;
       }
+
+      /* Back card — page 2, image fills the whole page */
+      #flyer-back {
+        page-break-before: always;
+        background: #000 !important;
+        display: flex !important;
+        align-items: stretch !important;
+      }
+      .flyer-back-img {
+        width: 148mm !important;
+        height: 210mm !important;
+        object-fit: cover !important;
+        display: block !important;
+      }
+
       @page { size: 148mm 210mm; margin: 0; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         color-adjust: exact !important;
       }
-      /* Fix gradient text — force solid white/orange so it doesn't go black */
       .fl-title {
         -webkit-text-fill-color: #fff !important;
         color: #fff !important;
@@ -974,8 +1036,6 @@
       .fl-hero {
         background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%) !important;
       }
-      .fl-body { background: #111 !important; }
-      .fl-footer { background: #111 !important; }
     }
   </style>
 </head>
@@ -1369,10 +1429,10 @@
   <section class="flyer-section">
     <h2 class="section-title">Printable <span>Flyer</span></h2>
     <div class="divider"></div>
-    <p class="pricing-intro">Share or print this A5 flyer to promote Bartendaz Pro</p>
+    <p class="pricing-intro">Double-sided A5 flyer — front &amp; back. Print backgrounds on.</p>
 
     <div class="flyer-toolbar">
-      <span class="flyer-hint">🖨️ A5 format · print backgrounds on</span>
+      <span class="flyer-hint">🖨️ A5 · double-sided · enable background graphics</span>
       <button class="flyer-print-btn" onclick="window.print()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 6 2 18 2 18 9"/>
@@ -1383,80 +1443,86 @@
       </button>
     </div>
 
-    <div class="flyer-scaler" id="flyer-scaler">
-    <div class="flyer-card" id="printable-flyer">
-      <div class="fl-hero">
-        <div class="fl-hero-main">
-          <div>
-            <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
-            <p class="fl-contact-hero">📞 +1 868 385-0635</p>
-        <p class="fl-contact-hero">📞 +1 868 726-7313</p>
-        <p class="fl-setup-fee">⭐ One-time $250 TT — site visit, installation &amp; training</p>
-            <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
-          </div>
-          <div class="fl-price-badge">
-            <div class="fl-price-badge-amount">$750</div>
-            <div class="fl-price-badge-period">/Year</div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)" style="margin-top:4px"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.66 0-1.3.11-1.9.31L8.6.08c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.9 5.9 0 0 0 6.02 7h11.96a5.9 5.9 0 0 0-2.45-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
-          </div>
-        </div>
-      </div>
+    <!-- Side-by-side preview on screen -->
+    <div class="flyer-preview-row">
 
-      <div class="fl-body">
-        <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
-
-        <!-- Tablet + badges side by side -->
-        <div class="fl-tablet-row">
-          <div class="fl-pills-side">
-            <span class="fl-pill">📦 Stock Tracking</span>
-            <span class="fl-pill">💰 Live Financials</span>
-            <span class="fl-pill">👥 Multi-Cashier</span>
-            <span class="fl-pill">💳 Credit Tabs</span>
-            <span class="fl-pill">🍾 Bottles &amp; Packs</span>
-            <span class="fl-pill">📊 Owner Reports</span>
-          </div>
-          <div class="fl-tablet">
-            <div class="fl-tablet-cam"></div>
-            <div class="fl-tablet-screen">
-              <img src="/assets/pos-screen.png" alt="Bartendaz Pro POS screen" />
+      <!-- FRONT -->
+      <div class="flyer-preview-col">
+        <div class="flyer-side-label">FRONT</div>
+        <div class="flyer-scaler" id="flyer-scaler-front">
+          <div class="flyer-card" id="flyer-front">
+            <div class="fl-hero">
+              <div class="fl-hero-main">
+                <div>
+                  <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
+                  <p class="fl-contact-hero">📞 +1 868 385-0635</p>
+                  <p class="fl-contact-hero">📞 +1 868 726-7313</p>
+                  <p class="fl-setup-fee">⭐ One-time $250 TT — site visit, installation &amp; training</p>
+                  <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
+                </div>
+                <div class="fl-price-badge">
+                  <div class="fl-price-badge-amount">$750</div>
+                  <div class="fl-price-badge-period">/Year</div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)" style="margin-top:4px"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.66 0-1.3.11-1.9.31L8.6.08c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.9 5.9 0 0 0 6.02 7h11.96a5.9 5.9 0 0 0-2.45-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+                </div>
+              </div>
             </div>
-            <div class="fl-tablet-btn"></div>
+
+            <div class="fl-body">
+              <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
+
+              <div class="fl-pills">
+                <span class="fl-pill">📦 Stock Tracking</span>
+                <span class="fl-pill">💰 Live Financials</span>
+                <span class="fl-pill">👥 Multi-Cashier</span>
+                <span class="fl-pill">💳 Credit Tabs</span>
+                <span class="fl-pill">🍾 Bottles &amp; Packs</span>
+                <span class="fl-pill">📊 Owner Reports</span>
+              </div>
+
+              <ul class="fl-list">
+                <li><div class="fl-icon">📦</div><div><strong>Real-time stock control.</strong> Every bottle, pack, and product tracked automatically.</div></li>
+                <li><div class="fl-icon">💰</div><div><strong>Know your money, always.</strong> Income, expenses and net profit — calculated live.</div></li>
+                <li><div class="fl-icon">👥</div><div><strong>Owner + Cashier accounts.</strong> Cashiers sell, you stay in control. Every transaction logged.</div></li>
+                <li><div class="fl-icon">💳</div><div><strong>Credit tab management.</strong> Open tabs, record payments, track who owes what.</div></li>
+                <li><div class="fl-icon">🎵</div><div><strong>Built-in music player.</strong> Keep the vibes going without switching apps.</div></li>
+              </ul>
+
+              <div class="fl-divider"></div>
+            </div>
           </div>
         </div>
-
-        <ul class="fl-list">
-          <li><div class="fl-icon">📦</div><div><strong>Real-time stock control.</strong> Every bottle, pack, and product tracked automatically. Get low-stock alerts before you run dry.</div></li>
-          <li><div class="fl-icon">💰</div><div><strong>Know your money, always.</strong> Income, expenses, net profit and resale value — calculated live, no spreadsheets.</div></li>
-          <li><div class="fl-icon">👥</div><div><strong>Owner + Cashier accounts.</strong> Cashiers sell, you stay in control. Every transaction logged, every wallet tracked.</div></li>
-          <li><div class="fl-icon">💳</div><div><strong>Credit tab management.</strong> Open tabs, record payments, track who owes what — with full history.</div></li>
-          <li><div class="fl-icon">🎵</div><div><strong>Built-in music player.</strong> Keep the vibes going without switching apps.</div></li>
-        </ul>
-
-        <div class="fl-divider"></div>
-
       </div>
 
-    </div>
-    </div><!-- /flyer-scaler -->
+      <!-- BACK -->
+      <div class="flyer-preview-col">
+        <div class="flyer-side-label">BACK</div>
+        <div class="flyer-scaler" id="flyer-scaler-back">
+          <div class="flyer-card flyer-card-back" id="flyer-back">
+            <img src="/assets/pos-screen.png" alt="Bartendaz Pro POS screen" class="flyer-back-img" />
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /flyer-preview-row -->
 
     <script>
-      // Scale the flyer card to fit the available container width
-      function scaleFlyerToFit() {
-        const scaler = document.getElementById('flyer-scaler');
-        const card   = document.getElementById('printable-flyer');
+      function scaleFlyer(scalerId, cardId) {
+        const scaler = document.getElementById(scalerId);
+        const card   = document.getElementById(cardId);
         if (!scaler || !card) return;
         const containerW = scaler.clientWidth;
-        const cardW      = 480; // fixed design width
-        const scale      = Math.min(1, containerW / cardW);
-        card.style.setProperty('--flyer-scale', scale);
-        // Shrink the scaler height to match the scaled card height so no gap
+        const scale = Math.min(1, containerW / 480);
         card.style.transform = `scale(${scale})`;
         card.style.transformOrigin = 'top center';
-        const cardH = card.scrollHeight;
-        scaler.style.height = (cardH * scale) + 'px';
+        scaler.style.height = (card.scrollHeight * scale) + 'px';
       }
-      scaleFlyerToFit();
-      window.addEventListener('resize', scaleFlyerToFit);
+      function scaleAllFlyers() {
+        scaleFlyer('flyer-scaler-front', 'flyer-front');
+        scaleFlyer('flyer-scaler-back',  'flyer-back');
+      }
+      scaleAllFlyers();
+      window.addEventListener('resize', scaleAllFlyers);
     </script>
   </section>
 
