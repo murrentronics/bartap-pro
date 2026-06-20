@@ -485,6 +485,10 @@
       font-size: 0.8rem;
       color: var(--muted);
       border-top: 1px solid var(--border);
+      clear: both;
+      margin-top: 80px;
+      position: relative;
+      z-index: 1;
     }
 
     /* Divider */
@@ -732,9 +736,8 @@
       width: 100%;
       max-width: 480px;
       margin: 0 auto;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      /* height is set dynamically by JS */
+      overflow: hidden;
     }
 
     /* Side-by-side preview */
@@ -761,6 +764,7 @@
 
     .flyer-card {
       width: 480px;
+      height: 681px; /* A5 proportion: 480 × 210/148 = 681px */
       flex-shrink: 0;
       background: #111;
       border-radius: 28px;
@@ -769,20 +773,32 @@
       border: 1px solid rgba(240,160,48,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       transform-origin: top center;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Back card — full bleed image */
     .flyer-card-back {
       background: #000;
-      display: flex;
-      align-items: stretch;
     }
     .flyer-back-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: top center;
       display: block;
-      border-radius: 0;
+    }
+
+    /* Front card inner layout — hero fixed, body fills remaining space */
+    #flyer-front .fl-hero {
+      flex-shrink: 0;
+    }
+    #flyer-front .fl-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
     }
     .fl-hero {
       background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
@@ -851,7 +867,7 @@
       color: rgba(255,255,255,0.85); margin-top: 10px;
       position: relative; z-index: 1;
     }
-    .fl-body { padding: 12px 20px 8px; }
+    .fl-body { padding: 12px 20px 8px; overflow: hidden; }
     .fl-tagline {
       font-size: 16px; font-weight: 900; color: #fff;
       line-height: 1.3; margin-bottom: 10px;
@@ -1507,15 +1523,16 @@
     </div><!-- /flyer-preview-row -->
 
     <script>
+      const CARD_W = 480;
+      const CARD_H = 681; /* A5 proportion */
       function scaleFlyer(scalerId, cardId) {
         const scaler = document.getElementById(scalerId);
         const card   = document.getElementById(cardId);
         if (!scaler || !card) return;
-        const containerW = scaler.clientWidth;
-        const scale = Math.min(1, containerW / 480);
+        const scale = Math.min(1, scaler.clientWidth / CARD_W);
         card.style.transform = `scale(${scale})`;
-        card.style.transformOrigin = 'top center';
-        scaler.style.height = (card.scrollHeight * scale) + 'px';
+        card.style.transformOrigin = 'top left';
+        scaler.style.height = (CARD_H * scale) + 'px';
       }
       function scaleAllFlyers() {
         scaleFlyer('flyer-scaler-front', 'flyer-front');
