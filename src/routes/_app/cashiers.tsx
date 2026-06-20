@@ -502,7 +502,7 @@ export default function CashiersPage() {
               {usernameError ? (
                 <p className="text-xs text-red-500 mt-1 font-medium">{usernameError}</p>
               ) : (
-                <p className="text-xs text-muted-foreground mt-1">Single word only. Use lowercase letters, numbers, or underscores (no space).</p>
+                <p className="text-xs text-muted-foreground mt-1">Single word only. Use lowercase letters, numbers, or underscores (no spaces).</p>
               )}
             </div>
             <div>
