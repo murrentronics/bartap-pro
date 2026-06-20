@@ -764,7 +764,7 @@
 
     .flyer-card {
       width: 480px;
-      height: 681px; /* A5 proportion: 480 × 210/148 = 681px */
+      height: 1067px; /* matches pos-screen.png aspect ratio: 480 × 1600/720 */
       flex-shrink: 0;
       background: #111;
       border-radius: 28px;
@@ -772,7 +772,7 @@
       box-shadow: 0 0 60px rgba(240,160,48,0.2);
       border: 1px solid rgba(240,160,48,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      transform-origin: top center;
+      transform-origin: top left;
       display: flex;
       flex-direction: column;
     }
@@ -792,13 +792,67 @@
     /* Front card inner layout — hero fixed, body fills remaining space */
     #flyer-front .fl-hero {
       flex-shrink: 0;
+      padding: 28px 24px 24px;
     }
     #flyer-front .fl-body {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: space-evenly;
       overflow: hidden;
+      padding: 24px 24px 20px;
+    }
+    #flyer-front .fl-tagline {
+      font-size: 22px;
+      line-height: 1.4;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-pills {
+      gap: 10px;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-pill {
+      font-size: 13px;
+      padding: 8px 16px;
+    }
+    #flyer-front .fl-list {
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-list li {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #flyer-front .fl-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+      border-radius: 10px;
+    }
+    #flyer-front .fl-title {
+      font-size: 58px;
+    }
+    #flyer-front .fl-sub {
+      font-size: 17px;
+      margin-top: 14px;
+    }
+    #flyer-front .fl-contact-hero {
+      font-size: 15px;
+      margin-top: 8px;
+    }
+    #flyer-front .fl-setup-fee {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    #flyer-front .fl-price-badge {
+      width: 108px;
+      height: 108px;
+    }
+    #flyer-front .fl-price-badge-amount {
+      font-size: 26px;
+    }
+    #flyer-front .fl-divider {
+      margin: 0;
     }
     .fl-hero {
       background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
@@ -997,10 +1051,10 @@
         height: auto !important;
       }
 
-      /* Both cards fill the A5 page exactly */
+      /* Both cards fill the page exactly — print at 148mm wide, height matches pos-screen ratio */
       .flyer-card {
         width: 148mm !important;
-        height: 210mm !important;
+        height: 328mm !important; /* 148 × 1600/720 = 328mm */
         max-width: 148mm !important;
         transform: none !important;
         margin: 0 !important;
@@ -1024,12 +1078,12 @@
       }
       .flyer-back-img {
         width: 148mm !important;
-        height: 210mm !important;
+        height: 328mm !important;
         object-fit: cover !important;
         display: block !important;
       }
 
-      @page { size: 148mm 210mm; margin: 0; }
+      @page { size: 148mm 328mm; margin: 0; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -1524,7 +1578,7 @@
 
     <script>
       const CARD_W = 480;
-      const CARD_H = 681; /* A5 proportion */
+      const CARD_H = 1067; /* matches pos-screen.png: 480 × 1600/720 */
       function scaleFlyer(scalerId, cardId) {
         const scaler = document.getElementById(scalerId);
         const card   = document.getElementById(cardId);
