@@ -1032,58 +1032,57 @@
 
     /* ── PRINT ── */
     @media print {
-      body > *:not(.flyer-section) { display: none !important; }
-      .flyer-section {
-        display: block !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      .flyer-toolbar,
-      .flyer-side-label { display: none !important; }
+      /* Hide everything except print containers */
+      body { margin: 0; padding: 0; }
+      body > * { display: none !important; }
+      .print-page-front,
+      .print-page-back { display: block !important; }
 
-      /* Reset the preview row to stack vertically for print */
-      .flyer-preview-row {
-        display: block !important;
+      .print-page-front {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
       }
-      .flyer-preview-col { display: block !important; }
-      .flyer-scaler {
-        max-width: 100% !important;
-        height: auto !important;
+      .print-page-back {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
       }
 
-      /* Both cards fill the page exactly — print at 148mm wide, height matches pos-screen ratio */
-      .flyer-card {
-        width: 148mm !important;
-        height: 328mm !important; /* 148 × 1600/720 = 328mm */
-        max-width: 148mm !important;
+      /* Front card fills the page */
+      .print-page-front #flyer-front {
+        display: flex !important;
+        width: 100vw !important;
+        height: 100vh !important;
         transform: none !important;
-        margin: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         border: none !important;
-      }
-
-      /* Front card — page 1 */
-      #flyer-front {
-        page-break-after: always;
         background: #111 !important;
       }
 
-      /* Back card — page 2, image fills the whole page */
-      #flyer-back {
-        page-break-before: always;
-        background: #000 !important;
+      /* Back card — image fills the full page */
+      .print-page-back #flyer-back {
         display: flex !important;
-        align-items: stretch !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        transform: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #000 !important;
       }
-      .flyer-back-img {
-        width: 148mm !important;
-        height: 328mm !important;
+      .print-page-back .flyer-back-img {
+        width: 100vw !important;
+        height: 100vh !important;
         object-fit: cover !important;
+        object-position: top center !important;
         display: block !important;
       }
 
-      @page { size: 148mm 328mm; margin: 0; }
+      @page { size: auto; margin: 0; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -1503,7 +1502,7 @@
 
     <div class="flyer-toolbar">
       <span class="flyer-hint">🖨️ A5 · double-sided · enable background graphics</span>
-      <button class="flyer-print-btn" onclick="window.print()">
+      <button class="flyer-print-btn" onclick="printFlyer()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 6 2 18 2 18 9"/>
           <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
@@ -1576,9 +1575,14 @@
 
     </div><!-- /flyer-preview-row -->
 
+    <!-- Hidden print-only containers — shown only in @media print -->
+    <div class="print-page-front" style="display:none"></div>
+    <div class="print-page-back"  style="display:none"></div>
+
     <script>
       const CARD_W = 480;
       const CARD_H = 1067; /* matches pos-screen.png: 480 × 1600/720 */
+
       function scaleFlyer(scalerId, cardId) {
         const scaler = document.getElementById(scalerId);
         const card   = document.getElementById(cardId);
@@ -1594,6 +1598,29 @@
       }
       scaleAllFlyers();
       window.addEventListener('resize', scaleAllFlyers);
+
+      function printFlyer() {
+        // Move the actual cards into the print containers (reset transforms for print)
+        const front = document.getElementById('flyer-front');
+        const back  = document.getElementById('flyer-back');
+        const printFront = document.querySelector('.print-page-front');
+        const printBack  = document.querySelector('.print-page-back');
+
+        // Clear inline transforms so print CSS controls sizing
+        front.style.transform = '';
+        back.style.transform  = '';
+
+        // Move into print containers
+        printFront.appendChild(front);
+        printBack.appendChild(back);
+
+        window.print();
+
+        // Restore to screen containers after print dialog
+        document.getElementById('flyer-scaler-front').appendChild(front);
+        document.getElementById('flyer-scaler-back').appendChild(back);
+        scaleAllFlyers();
+      }
     </script>
   </section>
 
