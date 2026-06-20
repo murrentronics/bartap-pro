@@ -727,16 +727,29 @@
     }
     .flyer-print-btn:hover { opacity: 0.88; }
 
-    .flyer-card {
+    /* Flyer wrapper — scales the card to fit the viewport */
+    .flyer-scaler {
       width: 100%;
       max-width: 480px;
       margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .flyer-card {
+      width: 480px;
+      flex-shrink: 0;
       background: #111;
       border-radius: 28px;
       overflow: hidden;
       box-shadow: 0 0 60px rgba(240,160,48,0.2);
       border: 1px solid rgba(240,160,48,0.18);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      /* Scale down to fit container */
+      transform-origin: top center;
+      transform: scale(var(--flyer-scale, 1));
+      margin-bottom: calc((var(--flyer-scale, 1) - 1) * 100%);
     }
     .fl-hero {
       background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
@@ -913,20 +926,53 @@
 
     /* ── PRINT ── */
     @media print {
-      body > *:not(#printable-flyer) { display: none !important; }
-      #printable-flyer {
+      body > *:not(.flyer-section) { display: none !important; }
+      .flyer-section {
         display: block !important;
-        position: fixed; top: 0; left: 0;
-        width: 148mm; max-width: 148mm;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .flyer-toolbar { display: none !important; }
+      .flyer-scaler {
+        max-width: 100% !important;
+        transform: none !important;
+      }
+      .flyer-card {
+        width: 148mm !important;
+        max-width: 148mm !important;
+        transform: none !important;
+        margin: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         border: none !important;
+        background: #111 !important;
       }
       @page { size: 148mm 210mm; margin: 0; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        color-adjust: exact !important;
       }
+      /* Fix gradient text — force solid white/orange so it doesn't go black */
+      .fl-title {
+        -webkit-text-fill-color: #fff !important;
+        color: #fff !important;
+        background: none !important;
+      }
+      .fl-title span {
+        -webkit-text-fill-color: rgba(0,0,0,0.5) !important;
+        color: rgba(0,0,0,0.5) !important;
+      }
+      .fl-tagline em {
+        -webkit-text-fill-color: #F0A030 !important;
+        color: #F0A030 !important;
+        background: none !important;
+      }
+      .fl-hero {
+        background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%) !important;
+      }
+      .fl-body { background: #111 !important; }
+      .fl-footer { background: #111 !important; }
     }
   </style>
 </head>
@@ -1334,6 +1380,7 @@
       </button>
     </div>
 
+    <div class="flyer-scaler" id="flyer-scaler">
     <div class="flyer-card" id="printable-flyer">
       <div class="fl-hero">
         <div class="fl-hero-main">
@@ -1387,6 +1434,27 @@
       </div>
 
     </div>
+    </div><!-- /flyer-scaler -->
+
+    <script>
+      // Scale the flyer card to fit the available container width
+      function scaleFlyerToFit() {
+        const scaler = document.getElementById('flyer-scaler');
+        const card   = document.getElementById('printable-flyer');
+        if (!scaler || !card) return;
+        const containerW = scaler.clientWidth;
+        const cardW      = 480; // fixed design width
+        const scale      = Math.min(1, containerW / cardW);
+        card.style.setProperty('--flyer-scale', scale);
+        // Shrink the scaler height to match the scaled card height so no gap
+        card.style.transform = `scale(${scale})`;
+        card.style.transformOrigin = 'top center';
+        const cardH = card.scrollHeight;
+        scaler.style.height = (cardH * scale) + 'px';
+      }
+      scaleFlyerToFit();
+      window.addEventListener('resize', scaleFlyerToFit);
+    </script>
   </section>
 
   <footer>
