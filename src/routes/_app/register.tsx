@@ -26,7 +26,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
-  const [saleResult, setSaleResult] = useState<{ paid: number; change: number } | null>(null);
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
@@ -560,7 +559,6 @@ export default function RegisterPage() {
           onSuccess={(paidAmt, changeAmt) => {
             setCart([]);
             setCashOpen(false);
-            setSaleResult({ paid: paidAmt, change: changeAmt });
             refreshProfile();
             fetchOpenedBottles();
           }}
@@ -581,14 +579,6 @@ export default function RegisterPage() {
             setCreditOpen(false);
             refreshProfile();
           }}
-        />
-      )}
-
-      {saleResult && (
-        <SaleSuccessBanner
-          paid={saleResult.paid}
-          change={saleResult.change}
-          onOk={() => setSaleResult(null)}
         />
       )}
 

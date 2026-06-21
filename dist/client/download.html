@@ -777,16 +777,9 @@
       flex-direction: column;
     }
 
-    /* Back card — full bleed image */
+    /* Back card — full bleed background image */
     .flyer-card-back {
-      background: #000;
-    }
-    .flyer-back-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: top center;
-      display: block;
+      background: url('/assets/pos-screen.png') center top / cover no-repeat !important;
     }
 
     /* Front card inner layout — hero fixed, body fills remaining space */
@@ -1063,23 +1056,18 @@
         background: #111 !important;
       }
 
-      /* Back card — image fills the full page */
+      /* Back card — background-image fills the full page */
       .print-page-back #flyer-back {
-        display: flex !important;
+        display: block !important;
         width: 100vw !important;
         height: 100vh !important;
         transform: none !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         border: none !important;
-        background: #000 !important;
-      }
-      .print-page-back .flyer-back-img {
-        width: 100vw !important;
-        height: 100vh !important;
-        object-fit: cover !important;
-        object-position: top center !important;
-        display: block !important;
+        background: url('/assets/pos-screen.png') center top / cover no-repeat !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
 
       @page { size: auto; margin: 0; }
@@ -1147,203 +1135,6 @@
       <span class="dl-note">APK · Android 7.0+</span>
     </div>
 
-    <!-- Screenshot Carousel -->
-    <div class="mockup-wrap">
-      <div class="carousel-container">
-        <div class="carousel-track" id="carousel-track">
-          <!-- Screenshots will be dynamically inserted here -->
-        </div>
-        
-        <!-- Dots Indicator -->
-        <div class="carousel-dots" id="carousel-dots"></div>
-      </div>
-    </div>
-
-    <!-- Fullscreen Modal -->
-    <div class="fullscreen-modal" id="fullscreen-modal" onclick="closeFullscreen(event)">
-      <div class="fullscreen-content">
-        <img id="fullscreen-image" src="" alt="Bartendaz Pro screenshot" class="fullscreen-image" />
-        
-        <!-- Fullscreen Navigation -->
-        <button class="fullscreen-nav prev" onclick="prevSlideFullscreen(event)" aria-label="Previous screenshot">
-          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button class="fullscreen-nav next" onclick="nextSlideFullscreen(event)" aria-label="Next screenshot">
-          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-        
-        <!-- Close Button -->
-        <button class="fullscreen-close" onclick="closeFullscreen(event)" aria-label="Close fullscreen">
-          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <script>
-      // Screenshot carousel configuration
-      const screenshots = [
-        '/assets/screenshots/screenshot-2.png',
-        '/assets/screenshots/screenshot-3.png',
-        '/assets/screenshots/screenshot-4.png',
-        '/assets/screenshots/screenshot-5.png'
-      ];
-      
-      let currentSlide = 0;
-      let track;
-      let isScrolling = false;
-      
-      // Initialize carousel
-      function initCarousel() {
-        track = document.getElementById('carousel-track');
-        const dotsContainer = document.getElementById('carousel-dots');
-        
-        // Create phone frames
-        screenshots.forEach((src, index) => {
-          const frame = document.createElement('div');
-          frame.className = 'phone-frame' + (index === 0 ? ' center' : '');
-          frame.dataset.index = index;
-          frame.onclick = () => goToSlide(index);
-          
-          const img = document.createElement('img');
-          img.src = src;
-          img.alt = `Bartendaz Pro screenshot ${index + 1}`;
-          img.className = 'phone-screen';
-          
-          const fullscreenBtn = document.createElement('button');
-          fullscreenBtn.className = 'fullscreen-btn';
-          fullscreenBtn.onclick = (e) => {
-            e.stopPropagation();
-            openFullscreen(index);
-          };
-          fullscreenBtn.setAttribute('aria-label', 'View fullscreen');
-          fullscreenBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
-          
-          frame.appendChild(img);
-          frame.appendChild(fullscreenBtn);
-          track.appendChild(frame);
-        });
-        
-        // Create dots
-        dotsContainer.innerHTML = '';
-        screenshots.forEach((_, index) => {
-          const dot = document.createElement('button');
-          dot.className = 'carousel-dot' + (index === 0 ? ' active' : '');
-          dot.onclick = () => goToSlide(index);
-          dot.setAttribute('aria-label', `Go to screenshot ${index + 1}`);
-          dotsContainer.appendChild(dot);
-        });
-        
-        // Center first slide
-        setTimeout(() => {
-          goToSlide(0);
-        }, 100);
-        
-        // Track scroll with debounce
-        let scrollTimeout;
-        track.addEventListener('scroll', () => {
-          isScrolling = true;
-          clearTimeout(scrollTimeout);
-          scrollTimeout = setTimeout(() => {
-            isScrolling = false;
-            updateCenterFrame();
-          }, 150);
-        });
-      }
-      
-      function updateCenterFrame() {
-        if (isScrolling) return;
-        
-        const frames = track.children;
-        const trackRect = track.getBoundingClientRect();
-        const trackCenter = trackRect.left + trackRect.width / 2;
-        
-        let closestIndex = 0;
-        let closestDistance = Infinity;
-        
-        Array.from(frames).forEach((frame, index) => {
-          const frameRect = frame.getBoundingClientRect();
-          const frameCenter = frameRect.left + frameRect.width / 2;
-          const distance = Math.abs(trackCenter - frameCenter);
-          
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            closestIndex = index;
-          }
-          
-          frame.classList.remove('center');
-        });
-        
-        frames[closestIndex].classList.add('center');
-        currentSlide = closestIndex;
-        
-        // Update dots
-        const dots = document.querySelectorAll('.carousel-dot');
-        dots.forEach((dot, index) => {
-          dot.classList.toggle('active', index === closestIndex);
-        });
-      }
-      
-      function goToSlide(index) {
-        currentSlide = index;
-        const frame = track.children[index];
-        if (frame) {
-          // Remove center class from all
-          Array.from(track.children).forEach(f => f.classList.remove('center'));
-          // Add to target
-          frame.classList.add('center');
-          // Scroll to center
-          frame.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          
-          // Update dots immediately
-          const dots = document.querySelectorAll('.carousel-dot');
-          dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === index);
-          });
-        }
-      }
-      
-      function openFullscreen(index) {
-        if (index !== undefined) currentSlide = index;
-        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
-        document.getElementById('fullscreen-modal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-      }
-      
-      function closeFullscreen(event) {
-        if (event.target.id === 'fullscreen-modal' || event.target.closest('.fullscreen-close')) {
-          document.getElementById('fullscreen-modal').classList.remove('active');
-          document.body.style.overflow = '';
-        }
-      }
-      
-      function nextSlideFullscreen(event) {
-        event.stopPropagation();
-        currentSlide = (currentSlide + 1) % screenshots.length;
-        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
-      }
-      
-      function prevSlideFullscreen(event) {
-        event.stopPropagation();
-        currentSlide = (currentSlide - 1 + screenshots.length) % screenshots.length;
-        document.getElementById('fullscreen-image').src = screenshots[currentSlide];
-      }
-      
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        const modal = document.getElementById('fullscreen-modal');
-        if (modal.classList.contains('active')) {
-          if (e.key === 'ArrowLeft') prevSlideFullscreen(e);
-          if (e.key === 'ArrowRight') nextSlideFullscreen(e);
-          if (e.key === 'Escape') {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-          }
-        }
-      });
-      
-      // Initialize on page load
-      initCarousel();
-    </script>
   </section>
 
   <!-- FEATURES -->
@@ -1388,50 +1179,34 @@
   <section class="pricing">
     <h2 class="section-title">Simple <span>pricing</span></h2>
     <div class="divider"></div>
-    <p class="pricing-intro">Choose the plan that works best for your bar</p>
-    <div class="pricing-grid">
-      <div class="pricing-card">
-        <div class="plan-badge">6 Months</div>
+    <p class="pricing-intro">One plan. Everything included.</p>
+    <div class="pricing-grid" style="max-width:360px;margin:0 auto 32px;">
+      <div class="pricing-card featured" style="text-align:center;">
+        <div class="plan-badge popular">Annual Plan</div>
         <div class="plan-price">
           <span class="currency">$</span>
-          <span class="amount">300</span>
-          <span class="period">TT</span>
+          <span class="amount">750</span>
+          <span class="period">TT / year</span>
         </div>
-        <p class="plan-desc">Perfect for trying out the system</p>
+        <p class="plan-desc">Full access, renewed yearly</p>
         <ul class="plan-features">
           <li>✓ Full POS system</li>
           <li>✓ Unlimited products</li>
           <li>✓ Unlimited cashiers</li>
-          <li>✓ Sales reports</li>
-          <li>✓ 6 months access</li>
-        </ul>
-      </div>
-      
-      <div class="pricing-card featured">
-        <div class="plan-badge popular">Most Popular</div>
-        <div class="plan-price">
-          <span class="currency">$</span>
-          <span class="amount">500</span>
-          <span class="period">TT</span>
-        </div>
-        <p class="plan-desc">Best value for year-round operation</p>
-        <ul class="plan-features">
-          <li>✓ Full POS system</li>
-          <li>✓ Unlimited products</li>
-          <li>✓ Unlimited cashiers</li>
-          <li>✓ Sales reports</li>
+          <li>✓ Stock tracking</li>
+          <li>✓ Credit tab management</li>
+          <li>✓ Sales &amp; financial reports</li>
           <li>✓ 12 months access</li>
-          <li>✓ Save $100 vs 6-month</li>
         </ul>
       </div>
     </div>
-    <p class="pricing-note">Download the app and choose your plan after signing up</p>
+    <p class="pricing-note">+ One-time <strong style="color:var(--gold)">$250 TT</strong> setup &amp; training fee — we come to you</p>
     
     <div class="support-banner">
       <div class="support-icon">📞</div>
       <div class="support-content">
-        <h3>Free Installation & Setup Available</h3>
-        <p>Need help getting started? We'll set up everything for you at no extra cost.</p>
+        <h3>Setup &amp; Training Available</h3>
+        <p>We come to your bar, install everything, and train your staff. One-time $250 TT fee.</p>
         <div class="contact-buttons">
           <a href="tel:+18683850635" class="contact-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1567,9 +1342,7 @@
       <div class="flyer-preview-col">
         <div class="flyer-side-label">BACK</div>
         <div class="flyer-scaler" id="flyer-scaler-back">
-          <div class="flyer-card flyer-card-back" id="flyer-back">
-            <img src="/assets/pos-screen.png" alt="Bartendaz Pro POS screen" class="flyer-back-img" />
-          </div>
+          <div class="flyer-card flyer-card-back" id="flyer-back"></div>
         </div>
       </div>
 
@@ -1600,13 +1373,14 @@
       window.addEventListener('resize', scaleAllFlyers);
 
       function printFlyer() {
-        // Move the actual cards into the print containers (reset transforms for print)
         const front = document.getElementById('flyer-front');
         const back  = document.getElementById('flyer-back');
         const printFront = document.querySelector('.print-page-front');
         const printBack  = document.querySelector('.print-page-back');
+        const scalerFront = document.getElementById('flyer-scaler-front');
+        const scalerBack  = document.getElementById('flyer-scaler-back');
 
-        // Clear inline transforms so print CSS controls sizing
+        // Clear transforms so print CSS controls sizing
         front.style.transform = '';
         back.style.transform  = '';
 
@@ -1614,12 +1388,15 @@
         printFront.appendChild(front);
         printBack.appendChild(back);
 
-        window.print();
+        // Restore after print dialog closes
+        window.onafterprint = function() {
+          scalerFront.appendChild(front);
+          scalerBack.appendChild(back);
+          window.onafterprint = null;
+          scaleAllFlyers();
+        };
 
-        // Restore to screen containers after print dialog
-        document.getElementById('flyer-scaler-front').appendChild(front);
-        document.getElementById('flyer-scaler-back').appendChild(back);
-        scaleAllFlyers();
+        window.print();
       }
     </script>
   </section>
