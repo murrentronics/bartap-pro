@@ -537,6 +537,8 @@ function PaymentOverlay({
   const { profile } = useAuth();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const ownerName = profile?.username ?? "Bar";
   const amountNum = parseFloat(amount) || 0;
   const owed = Number(account.balance_owed);
   const tooMuch = amountNum > owed;
@@ -572,12 +574,23 @@ function PaymentOverlay({
             <h2 className="text-xl font-black">{account.full_name}</h2>
             <p className="text-sm text-muted-foreground">Record payment toward balance</p>
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => { setPrinting(true); await printBill(account, ownerName); setPrinting(false); }}
+              disabled={printing}
+              className="flex items-center gap-1.5 px-3 h-9 rounded-xl font-bold text-xs transition active:scale-95 disabled:opacity-50"
+              style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
+            >
+              {printing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+              Bill
+            </button>
+            <button
+              onClick={onClose}
+              className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="px-5 pb-5 space-y-4">
