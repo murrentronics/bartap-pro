@@ -705,32 +705,6 @@
       margin: 0 auto;
     }
 
-    .flyer-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      max-width: 480px;
-      margin: 0 auto 24px;
-      gap: 12px;
-    }
-    .flyer-hint { font-size: 12px; color: var(--muted); }
-    .flyer-print-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #C0441A, #F0A030);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 800;
-      padding: 10px 20px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 18px rgba(240,160,48,0.35);
-      transition: opacity 0.15s;
-    }
-    .flyer-print-btn:hover { opacity: 0.88; }
-
     /* Flyer wrapper — scales the card to fit the viewport */
     .flyer-scaler {
       width: 100%;
@@ -1023,77 +997,6 @@
       flex-shrink: 0;
     }
 
-    /* ── PRINT ── */
-    @media print {
-      /* Hide everything except print containers */
-      body { margin: 0; padding: 0; }
-      body > * { display: none !important; }
-      .print-page-front,
-      .print-page-back { display: block !important; }
-
-      .print-page-front {
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-        page-break-after: always;
-        break-after: page;
-      }
-      .print-page-back {
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-      }
-
-      /* Front card fills the page */
-      .print-page-front #flyer-front {
-        display: flex !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        transform: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        background: #111 !important;
-      }
-
-      /* Back card — background-image fills the full page */
-      .print-page-back #flyer-back {
-        display: block !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        transform: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        background: url('/assets/pos-screen.png') center top / cover no-repeat !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      @page { size: auto; margin: 0; }
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
-      .fl-title {
-        -webkit-text-fill-color: #fff !important;
-        color: #fff !important;
-        background: none !important;
-      }
-      .fl-title span {
-        -webkit-text-fill-color: rgba(0,0,0,0.5) !important;
-        color: rgba(0,0,0,0.5) !important;
-      }
-      .fl-tagline em {
-        -webkit-text-fill-color: #F0A030 !important;
-        color: #F0A030 !important;
-        background: none !important;
-      }
-      .fl-hero {
-        background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%) !important;
-      }
-    }
   </style>
 </head>
 <body>
@@ -1273,24 +1176,12 @@
   <section class="flyer-section">
     <h2 class="section-title">Printable <span>Flyer</span></h2>
     <div class="divider"></div>
-    <p class="pricing-intro">Double-sided A5 flyer — front &amp; back. Print backgrounds on.</p>
-
-    <div class="flyer-toolbar">
-      <span class="flyer-hint">🖨️ A5 · double-sided · enable background graphics</span>
-      <button class="flyer-print-btn" onclick="printFlyer()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 6 2 18 2 18 9"/>
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-          <rect x="6" y="14" width="12" height="8"/>
-        </svg>
-        Print Flyer
-      </button>
-    </div>
+    <p class="pricing-intro">Hold down on each image to save or share.</p>
 
     <!-- Side-by-side preview on screen -->
     <div class="flyer-preview-row">
 
-      <!-- FRONT -->
+      <!-- FRONT — rendered as a screenshot image so it can be saved -->
       <div class="flyer-preview-col">
         <div class="flyer-side-label">FRONT</div>
         <div class="flyer-scaler" id="flyer-scaler-front">
@@ -1338,23 +1229,22 @@
         </div>
       </div>
 
-      <!-- BACK -->
+      <!-- BACK — the pos-screen image, hold down to save -->
       <div class="flyer-preview-col">
         <div class="flyer-side-label">BACK</div>
-        <div class="flyer-scaler" id="flyer-scaler-back">
-          <div class="flyer-card flyer-card-back" id="flyer-back"></div>
-        </div>
+        <img
+          src="/assets/pos-screen.png"
+          alt="Bartendaz Pro — POS screen (back of flyer)"
+          draggable="true"
+          style="width:100%;max-width:480px;display:block;margin:0 auto;border-radius:20px;box-shadow:0 0 40px rgba(240,160,48,0.2);border:1px solid rgba(240,160,48,0.18);"
+        />
       </div>
 
     </div><!-- /flyer-preview-row -->
 
-    <!-- Hidden print-only containers — shown only in @media print -->
-    <div class="print-page-front" style="display:none"></div>
-    <div class="print-page-back"  style="display:none"></div>
-
     <script>
       const CARD_W = 480;
-      const CARD_H = 1067; /* matches pos-screen.png: 480 × 1600/720 */
+      const CARD_H = 1067;
 
       function scaleFlyer(scalerId, cardId) {
         const scaler = document.getElementById(scalerId);
@@ -1367,37 +1257,9 @@
       }
       function scaleAllFlyers() {
         scaleFlyer('flyer-scaler-front', 'flyer-front');
-        scaleFlyer('flyer-scaler-back',  'flyer-back');
       }
       scaleAllFlyers();
       window.addEventListener('resize', scaleAllFlyers);
-
-      function printFlyer() {
-        const front = document.getElementById('flyer-front');
-        const back  = document.getElementById('flyer-back');
-        const printFront = document.querySelector('.print-page-front');
-        const printBack  = document.querySelector('.print-page-back');
-        const scalerFront = document.getElementById('flyer-scaler-front');
-        const scalerBack  = document.getElementById('flyer-scaler-back');
-
-        // Clear transforms so print CSS controls sizing
-        front.style.transform = '';
-        back.style.transform  = '';
-
-        // Move into print containers
-        printFront.appendChild(front);
-        printBack.appendChild(back);
-
-        // Restore after print dialog closes
-        window.onafterprint = function() {
-          scalerFront.appendChild(front);
-          scalerBack.appendChild(back);
-          window.onafterprint = null;
-          scaleAllFlyers();
-        };
-
-        window.print();
-      }
     </script>
   </section>
 
