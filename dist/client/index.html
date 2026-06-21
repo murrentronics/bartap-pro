@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bartendaz Pro — Download</title>
+  <meta name="description" content="Fast bar POS for owners and cashiers. Manage products, wallets, and staff from your Android device." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #F0A030;
+      --gold-dark: #C0441A;
+      --bg: #0a0602;
+      --card: #140d04;
+      --border: rgba(240,160,48,0.15);
+      --text: #f5f0e8;
+      --muted: #8a7a6a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      background: radial-gradient(ellipse at 30% 0%, rgba(240,160,48,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 100%, rgba(192,68,26,0.10) 0%, transparent 60%);
+      text-align: center;
+    }
+
+    /* Logo */
+    .logo-wrap {
+      margin-bottom: 32px;
+    }
+    .logo-wrap svg { filter: drop-shadow(0 0 24px rgba(240,160,48,0.4)); }
+
+    /* Headline */
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #F0A030 0%, #C0441A 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .tagline {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--muted);
+      max-width: 480px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+
+    /* Main CTA */
+    .cta-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 64px;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 36px;
+      border-radius: 16px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      color: #1a0a02;
+      background: linear-gradient(135deg, #F0A030 0%, #C0441A 100%);
+      box-shadow: 0 8px 32px rgba(240,160,48,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(240,160,48,0.45); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download svg { flex-shrink: 0; }
+
+    .dl-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* Screenshot carousel - flat card stack style */
+    .mockup-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto 80px;
+      padding: 0;
+    }
+
+    .carousel-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .carousel-track {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 40px 50px;
+      cursor: grab;
+    }
+
+    .carousel-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .carousel-track:active {
+      cursor: grabbing;
+    }
+
+    .phone-frame {
+      flex: 0 0 260px;
+      width: 260px;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 9/19;
+      scroll-snap-align: center;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      opacity: 0.5;
+      transform: scale(0.88);
+    }
+
+    .phone-frame.center {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      z-index: 10;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    .carousel-dots {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+
+    .carousel-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(240,160,48,0.3);
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .carousel-dot:hover {
+      background: rgba(240,160,48,0.6);
+      transform: scale(1.2);
+    }
+
+    .carousel-dot.active {
+      background: rgba(240,160,48,1);
+      width: 32px;
+      border-radius: 5px;
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(240,160,48,0.95);
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .phone-frame.center .fullscreen-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .fullscreen-btn:hover {
+      background: rgba(240,160,48,1);
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(240,160,48,0.4);
+    }
+
+    .fullscreen-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: #1a0a02;
+    }
+
+    /* Fullscreen Modal */
+    .fullscreen-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fullscreen-modal.active {
+      display: flex;
+    }
+
+    .fullscreen-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fullscreen-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    .fullscreen-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(240,160,48,0.9);
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .fullscreen-nav:hover {
+      background: rgba(240,160,48,1);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .fullscreen-nav.prev {
+      left: 20px;
+    }
+
+    .fullscreen-nav.next {
+      right: 20px;
+    }
+
+    .fullscreen-nav svg {
+      width: 24px;
+      height: 24px;
+      fill: #1a0a02;
+    }
+
+    .fullscreen-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(240,160,48,0.9);
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .fullscreen-close:hover {
+      background: rgba(240,160,48,1);
+      transform: scale(1.1);
+    }
+
+    .fullscreen-close svg {
+      width: 24px;
+      height: 24px;
+      fill: #1a0a02;
+    }
+
+    /* Placeholder screen if no screenshot */
+    .phone-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+      background: linear-gradient(160deg, #1a0d04 0%, #0a0602 100%);
+    }
+    .phone-placeholder .app-name {
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .phone-placeholder .app-sub {
+      font-size: 0.65rem;
+      letter-spacing: 6px;
+      color: var(--muted);
+    }
+
+    /* Glow ring */
+    .mockup-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -20px;
+      border-radius: 56px;
+      background: radial-gradient(ellipse, rgba(240,160,48,0.12) 0%, transparent 70%);
+      z-index: -1;
+    }
+
+    /* ── FEATURES ── */
+    .features {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 900;
+      margin-bottom: 48px;
+      color: var(--text);
+    }
+    .section-title span {
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: rgba(240,160,48,0.35); transform: translateY(-3px); }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 14px;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── INSTALL STEPS ── */
+    .install {
+      padding: 80px 24px;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.9rem;
+      color: #1a0a02;
+    }
+
+    .step-text h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .step-text p { font-size: 0.825rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── BOTTOM CTA ── */
+    .bottom-cta {
+      padding: 80px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .bottom-cta h2 {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .bottom-cta p {
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 24px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      clear: both;
+      margin-top: 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Divider */
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, #F0A030, #C0441A);
+      border-radius: 2px;
+      margin: 0 auto 48px;
+    }
+
+    /* ── PRICING ── */
+    .pricing {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .pricing-intro {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 48px;
+      font-size: 1rem;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 700px;
+      margin: 0 auto 32px;
+    }
+
+    .pricing-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+    }
+
+    .pricing-card:hover {
+      border-color: rgba(240,160,48,0.4);
+      transform: translateY(-4px);
+    }
+
+    .pricing-card.featured {
+      border-color: rgba(240,160,48,0.5);
+      box-shadow: 0 8px 32px rgba(240,160,48,0.15);
+    }
+
+    .plan-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: rgba(240,160,48,0.15);
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+
+    .plan-badge.popular {
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      color: #1a0a02;
+    }
+
+    .plan-price {
+      margin-bottom: 16px;
+      line-height: 1;
+    }
+
+    .plan-price .currency {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      vertical-align: top;
+    }
+
+    .plan-price .amount {
+      font-size: 4rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .plan-price .period {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .plan-desc {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 28px;
+    }
+
+    .plan-features {
+      list-style: none;
+      text-align: left;
+      margin: 0 auto;
+      max-width: 240px;
+    }
+
+    .plan-features li {
+      padding: 10px 0;
+      font-size: 0.9rem;
+      color: var(--text);
+      border-bottom: 1px solid rgba(240,160,48,0.08);
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .pricing-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 32px;
+      margin-bottom: 48px;
+    }
+
+    /* Support Banner */
+    .support-banner {
+      max-width: 600px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(240,160,48,0.08) 0%, rgba(192,68,26,0.08) 100%);
+      border: 2px solid rgba(240,160,48,0.25);
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+    }
+
+    .support-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .support-content h3 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .support-content > p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+
+    .contact-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .contact-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--card);
+      border: 2px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .contact-btn:hover {
+      border-color: rgba(240,160,48,0.5);
+      transform: translateY(-2px);
+    }
+
+    .contact-btn.whatsapp {
+      background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+      border-color: #25D366;
+      color: white;
+    }
+
+    .contact-btn.whatsapp:hover {
+      box-shadow: 0 4px 16px rgba(37,211,102,0.3);
+    }
+
+    .contact-number {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.5px;
+      margin-top: 12px;
+    }
+
+    /* ── FLYER SECTION ── */
+    .flyer-section {
+      padding: 80px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Flyer wrapper — scales the card to fit the viewport */
+    .flyer-scaler {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      /* height is set dynamically by JS */
+      overflow: hidden;
+    }
+
+    /* Side-by-side preview */
+    .flyer-preview-row {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .flyer-preview-col {
+      flex: 1;
+      min-width: 0;
+      max-width: 480px;
+    }
+    .flyer-side-label {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .flyer-card {
+      width: 480px;
+      height: 1067px; /* matches pos-screen.png aspect ratio: 480 × 1600/720 */
+      flex-shrink: 0;
+      background: #111;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(240,160,48,0.2);
+      border: 1px solid rgba(240,160,48,0.18);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      transform-origin: top left;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Back card — full bleed background image */
+    .flyer-card-back {
+      background: url('/assets/pos-screen.png') center top / cover no-repeat !important;
+    }
+
+    /* Front card inner layout — hero fixed, body fills remaining space */
+    #flyer-front .fl-hero {
+      flex-shrink: 0;
+      padding: 28px 24px 24px;
+    }
+    #flyer-front .fl-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      overflow: hidden;
+      padding: 24px 24px 20px;
+    }
+    #flyer-front .fl-tagline {
+      font-size: 22px;
+      line-height: 1.4;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-pills {
+      gap: 10px;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-pill {
+      font-size: 13px;
+      padding: 8px 16px;
+    }
+    #flyer-front .fl-list {
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    #flyer-front .fl-list li {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #flyer-front .fl-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+      border-radius: 10px;
+    }
+    #flyer-front .fl-title {
+      font-size: 58px;
+    }
+    #flyer-front .fl-sub {
+      font-size: 17px;
+      margin-top: 14px;
+    }
+    #flyer-front .fl-contact-hero {
+      font-size: 15px;
+      margin-top: 8px;
+    }
+    #flyer-front .fl-setup-fee {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    #flyer-front .fl-price-badge {
+      width: 108px;
+      height: 108px;
+    }
+    #flyer-front .fl-price-badge-amount {
+      font-size: 26px;
+    }
+    #flyer-front .fl-divider {
+      margin: 0;
+    }
+    .fl-hero {
+      background: linear-gradient(145deg, #C0441A 0%, #F0A030 55%, #ffb700 100%);
+      padding: 14px 20px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .fl-hero::before {
+      content: ""; position: absolute;
+      top: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: rgba(255,255,255,0.08); border-radius: 50%;
+    }
+    .fl-tag {
+      display: inline-block;
+      background: rgba(0,0,0,0.22);
+      color: #fff; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 20px; margin-bottom: 16px;
+      position: relative; z-index: 1;
+    }
+    .fl-hero-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative; z-index: 1;
+    }
+    .fl-price-badge {
+      background: rgba(0,0,0,0.3);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      width: 90px; height: 90px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .fl-price-badge-amount {
+      font-size: 22px; font-weight: 900; color: #fff; line-height: 1;
+    }
+    .fl-price-badge-period {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75); margin-top: 2px;
+    }
+    .fl-contact-hero {
+      font-size: 13px; font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin: 4px 0 0;
+      position: relative; z-index: 1;
+    }
+    .fl-setup-fee {
+      font-size: 11px; font-weight: 700;
+      color: rgba(255,255,255,0.75);
+      margin: 6px 0 0;
+      position: relative; z-index: 1;
+    }
+    .fl-title {
+      font-size: 46px; font-weight: 900; color: #fff;
+      line-height: 1; position: relative; z-index: 1;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.25);
+      -webkit-text-fill-color: #fff;
+    }
+    .fl-title span { color: rgba(0,0,0,0.35); -webkit-text-fill-color: rgba(0,0,0,0.35); }
+    .fl-sub {
+      font-size: 15px; font-weight: 600;
+      color: rgba(255,255,255,0.85); margin-top: 10px;
+      position: relative; z-index: 1;
+    }
+    .fl-body { padding: 12px 20px 8px; overflow: hidden; }
+    .fl-tagline {
+      font-size: 16px; font-weight: 900; color: #fff;
+      line-height: 1.3; margin-bottom: 10px;
+    }
+    .fl-tagline em { color: #F0A030; font-style: normal; }
+    .fl-pills {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .fl-pill {
+      background: rgba(240,160,48,0.12);
+      border: 1px solid rgba(240,160,48,0.3);
+      color: #F0A030; font-size: 12px; font-weight: 700;
+      padding: 6px 13px; border-radius: 20px;
+    }
+    .fl-list {
+      list-style: none; display: flex; flex-direction: column;
+      gap: 7px; margin-bottom: 14px;
+    }
+    .fl-list li {
+      display: flex; align-items: flex-start; gap: 9px;
+      font-size: 12px; color: rgba(255,255,255,0.8); line-height: 1.3;
+    }
+    .fl-icon {
+      width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+      background: rgba(240,160,48,0.15); border: 1px solid rgba(240,160,48,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    .fl-list li strong { color: #fff; }
+    .fl-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 0 20px; }
+    .fl-footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .fl-brand { font-size: 14px; font-weight: 900; color: #F0A030; }
+    .fl-contact { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .fl-android-badge {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 5px 10px;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.5);
+    }
+
+    /* ── Tablet mockup ── */
+    .fl-tablet-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+    .fl-pills-side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      width: 115px;
+      align-self: center;
+    }
+    .fl-pills-side .fl-pill {
+      display: block;
+      text-align: center;
+      padding: 4px 6px;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fl-tablet {
+      flex: 1;
+      background: #1a1a1a;
+      border-radius: 14px;
+      border: 3px solid rgba(240,160,48,0.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      padding: 8px 6px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .fl-tablet-cam {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #333;
+      border: 1px solid #444;
+      flex-shrink: 0;
+    }
+    .fl-tablet-screen {
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      max-height: 120px;
+    }
+    .fl-tablet-screen img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+    .fl-tablet-btn {
+      width: 24px; height: 3px;
+      border-radius: 3px;
+      background: #333;
+      flex-shrink: 0;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="logo-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100" height="100">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F0A030"/>
+            <stop offset="100%" stop-color="#C0441A"/>
+          </linearGradient>
+          <radialGradient id="g2" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#2E1A08"/>
+            <stop offset="100%" stop-color="#0F0A04"/>
+          </radialGradient>
+        </defs>
+        <circle cx="60" cy="60" r="60" fill="url(#g2)"/>
+        <circle cx="60" cy="60" r="56" fill="none" stroke="#F0A030" stroke-width="1" opacity="0.3"/>
+        <text x="60" y="82" font-family="Georgia,serif" font-size="72" font-weight="900" text-anchor="middle" fill="url(#g1)">B</text>
+        <rect x="70" y="84" width="26" height="10" rx="4" fill="url(#g1)"/>
+        <text x="83" y="92" font-family="Arial,sans-serif" font-size="5" font-weight="800" text-anchor="middle" fill="#1A0A02" letter-spacing="1">PRO</text>
+      </svg>
+    </div>
+
+    <h1>Bartendaz Pro</h1>
+    <p class="tagline">The fast, simple bar POS for owners and cashiers. Manage products, wallets, and staff — all from your Android device.</p>
+
+    <div class="cta-wrap">
+      <a href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download" download>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download for Android
+      </a>
+      <span class="dl-note">APK · Android 7.0+</span>
+    </div>
+
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <h2 class="section-title">Everything your bar <span>needs</span></h2>
+    <div class="divider"></div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🍺</div>
+        <h3>Fast POS</h3>
+        <p>Ring up drinks and snacks in seconds. Built for speed behind the bar.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>Wallet System</h3>
+        <p>Owners and cashiers each have a wallet. Track every transaction in real time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👥</div>
+        <h3>Staff Management</h3>
+        <p>Add cashiers, set permissions, suspend or remove staff instantly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>Product Catalog</h3>
+        <p>Manage your full menu with photos, prices, categories, and stock levels.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Sales Reports</h3>
+        <p>Download PDF reports of your sales and transactions anytime.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Secure & Private</h3>
+        <p>Your data stays in your Supabase account. No third-party access.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing">
+    <h2 class="section-title">Simple <span>pricing</span></h2>
+    <div class="divider"></div>
+    <p class="pricing-intro">One plan. Everything included.</p>
+    <div class="pricing-grid" style="max-width:360px;margin:0 auto 32px;">
+      <div class="pricing-card featured" style="text-align:center;">
+        <div class="plan-badge popular">Annual Plan</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">750</span>
+          <span class="period">TT / year</span>
+        </div>
+        <p class="plan-desc">Full access, renewed yearly</p>
+        <ul class="plan-features">
+          <li>✓ Full POS system</li>
+          <li>✓ Unlimited products</li>
+          <li>✓ Unlimited cashiers</li>
+          <li>✓ Stock tracking</li>
+          <li>✓ Credit tab management</li>
+          <li>✓ Sales &amp; financial reports</li>
+          <li>✓ 12 months access</li>
+        </ul>
+      </div>
+    </div>
+    <p class="pricing-note">+ One-time <strong style="color:var(--gold)">$250 TT</strong> setup &amp; training fee — we come to you</p>
+    
+    <div class="support-banner">
+      <div class="support-icon">📞</div>
+      <div class="support-content">
+        <h3>Setup &amp; Training Available</h3>
+        <p>We come to your bar, install everything, and train your staff. One-time $250 TT fee.</p>
+        <div class="contact-buttons">
+          <a href="tel:+18683850635" class="contact-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            Call
+          </a>
+          <a href="https://wa.me/18683850635" target="_blank" class="contact-btn whatsapp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            WhatsApp
+          </a>
+        </div>
+        <p class="contact-number">+1 868 385-0635</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL STEPS -->
+  <section class="install">
+    <h2 class="section-title">How to <span>install</span></h2>
+    <div class="divider"></div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <h4>Download the APK</h4>
+          <p>Tap the download button above on your Android device.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <h4>Allow unknown sources</h4>
+          <p>When prompted, tap "Install anyway" or go to Settings → Security → allow installs from this source.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <h4>Open and sign in</h4>
+          <p>Launch Bartendaz Pro and sign in with your owner account or cashier username.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM CTA -->
+  <section class="bottom-cta">
+    <h2>Ready to run your bar smarter?</h2>
+    <p>Download now and choose your plan after signing up. Starting at $300 TT for 6 months.</p>
+    <a href="https://github.com/murrentronics/bartap-pro/releases/download/bartendaz-pro/bartendaz-pro.apk" class="btn-download" download>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download Bartendaz Pro
+    </a>
+  </section>
+
+  <!-- PRINTABLE FLYER -->
+  <section class="flyer-section">
+    <h2 class="section-title">Printable <span>Flyer</span></h2>
+    <div class="divider"></div>
+    <p class="pricing-intro">Hold down on each image to save or share.</p>
+
+    <!-- Side-by-side preview on screen -->
+    <div class="flyer-preview-row">
+
+      <!-- FRONT — rendered as a screenshot image so it can be saved -->
+      <div class="flyer-preview-col">
+        <div class="flyer-side-label">FRONT</div>
+        <div class="flyer-scaler" id="flyer-scaler-front">
+          <div class="flyer-card" id="flyer-front">
+            <div class="fl-hero">
+              <div class="fl-hero-main">
+                <div>
+                  <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
+                  <p class="fl-contact-hero">📞 +1 868 385-0635</p>
+                  <p class="fl-contact-hero">📞 +1 868 726-7313</p>
+                  <p class="fl-setup-fee">⭐ One-time $250 TT — site visit, installation &amp; training</p>
+                  <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
+                </div>
+                <div class="fl-price-badge">
+                  <div class="fl-price-badge-amount">$750</div>
+                  <div class="fl-price-badge-period">/Year</div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)" style="margin-top:4px"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.66 0-1.3.11-1.9.31L8.6.08c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.9 5.9 0 0 0 6.02 7h11.96a5.9 5.9 0 0 0-2.45-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="fl-body">
+              <p class="fl-tagline">The only POS that lets you <em>track stock, manage staff,</em> and see your <em>real profits</em> — live.</p>
+
+              <div class="fl-pills">
+                <span class="fl-pill">📦 Stock Tracking</span>
+                <span class="fl-pill">💰 Live Financials</span>
+                <span class="fl-pill">👥 Multi-Cashier</span>
+                <span class="fl-pill">💳 Credit Tabs</span>
+                <span class="fl-pill">🍾 Bottles &amp; Packs</span>
+                <span class="fl-pill">📊 Owner Reports</span>
+              </div>
+
+              <ul class="fl-list">
+                <li><div class="fl-icon">📦</div><div><strong>Real-time stock control.</strong> Every bottle, pack, and product tracked automatically.</div></li>
+                <li><div class="fl-icon">💰</div><div><strong>Know your money, always.</strong> Income, expenses and net profit — calculated live.</div></li>
+                <li><div class="fl-icon">👥</div><div><strong>Owner + Cashier accounts.</strong> Cashiers sell, you stay in control. Every transaction logged.</div></li>
+                <li><div class="fl-icon">💳</div><div><strong>Credit tab management.</strong> Open tabs, record payments, track who owes what.</div></li>
+                <li><div class="fl-icon">🎵</div><div><strong>Built-in music player.</strong> Keep the vibes going without switching apps.</div></li>
+              </ul>
+
+              <div class="fl-divider"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BACK — the pos-screen image, hold down to save -->
+      <div class="flyer-preview-col">
+        <div class="flyer-side-label">BACK</div>
+        <img
+          src="/assets/pos-screen.png"
+          alt="Bartendaz Pro — POS screen (back of flyer)"
+          draggable="true"
+          style="width:100%;max-width:480px;display:block;margin:0 auto;border-radius:20px;box-shadow:0 0 40px rgba(240,160,48,0.2);border:1px solid rgba(240,160,48,0.18);"
+        />
+      </div>
+
+    </div><!-- /flyer-preview-row -->
+
+    <script>
+      const CARD_W = 480;
+      const CARD_H = 1067;
+
+      function scaleFlyer(scalerId, cardId) {
+        const scaler = document.getElementById(scalerId);
+        const card   = document.getElementById(cardId);
+        if (!scaler || !card) return;
+        const scale = Math.min(1, scaler.clientWidth / CARD_W);
+        card.style.transform = `scale(${scale})`;
+        card.style.transformOrigin = 'top left';
+        scaler.style.height = (CARD_H * scale) + 'px';
+      }
+      function scaleAllFlyers() {
+        scaleFlyer('flyer-scaler-front', 'flyer-front');
+      }
+      scaleAllFlyers();
+      window.addEventListener('resize', scaleAllFlyers);
+    </script>
+  </section>
+
+  <footer>
+    &copy; 2026 Bartendaz Pro. All rights reserved.
+  </footer>
+
+</body>
+</html>

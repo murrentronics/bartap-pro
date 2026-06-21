@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2,
+  ClipboardList, Trash2, FileDown, Loader2, Share2,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
@@ -34,14 +35,14 @@ type CreditTx = {
   created_at: string;
 };
 
-// ── Print Bill ─────────────────────────────────────────────────────────────────
-async function printBill(account: CreditAccount, ownerName: string) {
+// ── Build bill PDF — returns base64 data URI ──────────────────────────────────
+async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<string | null> {
   const { data: txs, error } = await supabase
     .from("credit_transactions")
     .select("id, type, amount, note, items, created_at")
     .eq("credit_account_id", account.id)
     .order("created_at", { ascending: true });
-  if (error) { toast.error("Failed to load transactions"); return; }
+  if (error) { toast.error("Failed to load transactions"); return null; }
 
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -117,9 +118,133 @@ async function printBill(account: CreditAccount, ownerName: string) {
   doc.text("$"+balance.toFixed(2), RM, y, { align:"right" });
 
   addFootersToAllPages(doc);
-  const safeName = account.full_name.replace(/\s+/g,"-").toLowerCase();
-  await downloadPdf(`credit-bill-${safeName}.pdf`, doc.output("datauristring"));
-  toast.success("Bill saved");
+  return doc.output("datauristring");
+}
+
+// ── Bill Action Modal ─────────────────────────────────────────────────────────
+function BillModal({ account, ownerName, onClose }: {
+  account: CreditAccount;
+  ownerName: string;
+  onClose: () => void;
+}) {
+  const [busy, setBusy] = useState<"download" | "share" | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
+  const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+  const filename = `credit-bill-${safeName}.pdf`;
+
+  const handleDownload = async () => {
+    setBusy("download");
+    const b64 = await buildBillPdf(account, ownerName);
+    if (b64) {
+      await downloadPdf(filename, b64);
+      toast.success("Bill saved to Downloads");
+      setDownloaded(true);
+    }
+    setBusy(null);
+  };
+
+  const handleOpenDownloads = async () => {
+    try {
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({ url: "content://com.android.externalstorage.documents/document/primary%3ADownload" });
+    } catch {
+      // Fallback — open Files app intent via a simple deep link
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: "file:///storage/emulated/0/Download/" });
+      } catch {
+        toast.info("Check your Downloads folder");
+      }
+    }
+  };
+
+  const handleShare = async () => {
+    setBusy("share");
+    const b64 = await buildBillPdf(account, ownerName);
+    if (!b64) { setBusy(null); return; }
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+
+        const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
+        const writeResult = await Filesystem.writeFile({
+          path: filename,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        const rawNum = (account.contact_number ?? "").replace(/\D/g, "");
+        const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
+
+        await Share.share({
+          title: `Credit Bill — ${account.full_name}`,
+          text: shareText,
+          url: writeResult.uri,
+          dialogTitle: "Send Bill",
+        });
+      } else {
+        await downloadPdf(filename, b64);
+        toast.success("Bill saved");
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) {
+        toast.error("Share failed: " + (e?.message ?? "unknown"));
+      }
+    }
+    setBusy(null);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}>
+      <div
+        className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+          <h3 className="font-black text-base">Bill — {account.full_name}</h3>
+          <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
+          {!downloaded ? (
+            <button
+              onClick={handleDownload}
+              disabled={!!busy}
+              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              {busy === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              Download PDF
+            </button>
+          ) : (
+            <button
+              onClick={handleOpenDownloads}
+              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border border-green-500/40"
+              style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              Open Downloads
+            </button>
+          )}
+          <button
+            onClick={handleShare}
+            disabled={!!busy}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-green-500/40"
+            style={{ background: "rgba(37,211,102,0.12)", color: "#25D366" }}
+          >
+            {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+            Share via WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -207,7 +332,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
   const [txLoading, setTxLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteTx, setConfirmDeleteTx] = useState<CreditTx | null>(null);
-  const [printing, setPrinting]     = useState<string | null>(null);
+  const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
@@ -326,12 +451,11 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                 <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`} />
               </button>
               <button
-                onClick={async (e) => { e.stopPropagation(); setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
-                disabled={printing === a.id}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition disabled:opacity-50"
+                onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition"
                 style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
               >
-                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                <FileDown className="h-3 w-3" />
                 Bill
               </button>
             </div>
@@ -487,6 +611,11 @@ function OpenedTab({ accounts, loading, onRefresh }: {
           </div>
         </div>
       )}
+
+      {/* Bill modal */}
+      {billAccount && (
+        <BillModal account={billAccount} ownerName={ownerName} onClose={() => setBillAccount(null)} />
+      )}
     </div>
   );
 }
@@ -500,7 +629,7 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
   const [txLoading, setTxLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<CreditAccount | null>(null);
   const [deleting, setDeleting]   = useState(false);
-  const [printing, setPrinting]   = useState<string | null>(null);
+  const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
 
   const toggleExpand = async (accountId: string) => {
     if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
@@ -569,12 +698,11 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
                 />
               </div>
               <button
-                onClick={async (e) => { e.stopPropagation(); setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
-                disabled={printing === a.id}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition disabled:opacity-50"
+                onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition"
                 style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
               >
-                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                <FileDown className="h-3 w-3" />
                 Bill
               </button>
             </div>
@@ -643,6 +771,11 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bill modal */}
+      {billAccount && (
+        <BillModal account={billAccount} ownerName={ownerName} onClose={() => setBillAccount(null)} />
       )}
     </div>
   );
