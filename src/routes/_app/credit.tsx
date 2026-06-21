@@ -310,37 +310,31 @@ function OpenedTab({
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="rounded-2xl border border-border"
+          className="w-full flex items-center justify-between p-4 rounded-2xl border border-border text-left"
           style={{ background: "var(--gradient-card)" }}
         >
-          <button
-            onClick={() => onSelect(a)}
-            className="w-full flex items-center justify-between p-4 hover:border-primary/50 active:scale-[0.98] transition text-left rounded-2xl"
-          >
-            <div>
-              <p className="font-black text-base">{a.full_name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-            </div>
-            <div className="flex items-center gap-3">
+          {/* Left — tap to pay */}
+          <button className="flex-1 min-w-0 text-left active:scale-[0.98] transition" onClick={() => onSelect(a)}>
+            <p className="font-black text-base">{a.full_name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+            {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+            {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+          </button>
+
+          {/* Right — balance + print bill */}
+          <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
+            <button className="flex items-center gap-1.5 active:scale-95 transition" onClick={() => onSelect(a)}>
               <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </button>
-          <div className="px-4 pb-3">
+            </button>
             <button
-              onClick={async () => {
-                setPrinting(a.id);
-                await printBill(a, ownerName);
-                setPrinting(null);
-              }}
+              onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
               disabled={printing === a.id}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
               style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
             >
               {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-              Print Bill
+              Bill
             </button>
           </div>
         </div>
@@ -367,33 +361,25 @@ function ClosedTab({ accounts, loading, ownerName }: { accounts: CreditAccount[]
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="rounded-2xl border border-border"
+          className="flex items-center justify-between p-4 rounded-2xl border border-border"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div className="flex items-center justify-between p-4">
-            <div>
-              <p className="font-black text-base">{a.full_name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-            </div>
-            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">
-              SETTLED
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-base">{a.full_name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+            {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+            {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
           </div>
-          <div className="px-4 pb-3">
+          <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
+            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
             <button
-              onClick={async () => {
-                setPrinting(a.id);
-                await printBill(a, ownerName);
-                setPrinting(null);
-              }}
+              onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
               disabled={printing === a.id}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
               style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
             >
               {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-              Print Bill
+              Bill
             </button>
           </div>
         </div>
