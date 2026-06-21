@@ -128,7 +128,6 @@ function BillModal({ account, ownerName, onClose }: {
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState<"download" | "share" | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
 
@@ -138,24 +137,8 @@ function BillModal({ account, ownerName, onClose }: {
     if (b64) {
       await downloadPdf(filename, b64);
       toast.success("Bill saved to Downloads");
-      setDownloaded(true);
     }
     setBusy(null);
-  };
-
-  const handleOpenDownloads = async () => {
-    try {
-      const { Browser } = await import("@capacitor/browser");
-      await Browser.open({ url: "content://com.android.externalstorage.documents/document/primary%3ADownload" });
-    } catch {
-      // Fallback — open Files app intent via a simple deep link
-      try {
-        const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url: "file:///storage/emulated/0/Download/" });
-      } catch {
-        toast.info("Check your Downloads folder");
-      }
-    }
   };
 
   const handleShare = async () => {
@@ -212,26 +195,15 @@ function BillModal({ account, ownerName, onClose }: {
           </button>
         </div>
         <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
-          {!downloaded ? (
-            <button
-              onClick={handleDownload}
-              disabled={!!busy}
-              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-            >
-              {busy === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-              Download PDF
-            </button>
-          ) : (
-            <button
-              onClick={handleOpenDownloads}
-              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border border-green-500/40"
-              style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Open Downloads
-            </button>
-          )}
+          <button
+            onClick={handleDownload}
+            disabled={!!busy}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+          >
+            {busy === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            Download PDF
+          </button>
           <button
             onClick={handleShare}
             disabled={!!busy}

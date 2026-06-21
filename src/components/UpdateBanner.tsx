@@ -26,20 +26,17 @@ export function UpdateBanner({ update, onDismiss }: Props) {
     setDownloading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        // Open the download page in the system browser — Android will handle
-        // the APK download and install prompt natively
         const { Browser } = await import("@capacitor/browser");
         await Browser.open({
-          url: update.apkUrl,
+          url: "https://bartendaz-pro.pages.dev",
           presentationStyle: "fullscreen",
           toolbarColor: "#0a0a0a",
         });
       } else {
-        window.open(update.apkUrl, "_blank");
+        window.open("https://bartendaz-pro.pages.dev", "_blank");
       }
     } catch {
-      // Fallback
-      window.open(update.apkUrl, "_blank");
+      window.open("https://bartendaz-pro.pages.dev", "_blank");
     } finally {
       setDownloading(false);
     }
