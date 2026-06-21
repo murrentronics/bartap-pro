@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, CheckCircle2,
-  ClipboardList, Trash2,
+  ClipboardList, Trash2, FileDown, Loader2,
 } from "lucide-react";
+import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type CreditAccount = {
@@ -31,6 +33,94 @@ type CreditTx = {
   note: string | null;
   created_at: string;
 };
+
+// ── Print Bill ─────────────────────────────────────────────────────────────────
+async function printBill(account: CreditAccount, ownerName: string) {
+  const { data: txs, error } = await supabase
+    .from("credit_transactions")
+    .select("id, type, amount, note, items, created_at")
+    .eq("credit_account_id", account.id)
+    .order("created_at", { ascending: true });
+  if (error) { toast.error("Failed to load transactions"); return; }
+
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const generated = new Date().toLocaleString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
+
+  let y = await drawHeader(doc, ownerName, "Credit Bill", "Full History", generated);
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(0,0,0);
+  doc.text("Customer: " + account.full_name, LM, y); y += 5;
+  if (account.contact_number) { doc.setFont("helvetica","normal"); doc.text("Contact: " + account.contact_number, LM, y); y += 5; }
+  if (account.id_number)      { doc.setFont("helvetica","normal"); doc.text("ID: " + account.id_number, LM, y); y += 5; }
+
+  const totalCharged = (txs ?? []).filter(t => t.type === "charge").reduce((s,t) => s + Number(t.amount), 0);
+  const totalPaid    = (txs ?? []).filter(t => t.type === "payment").reduce((s,t) => s + Number(t.amount), 0);
+  const balance      = Number(account.balance_owed);
+  const ORANGE = [232, 146, 42] as const;
+
+  doc.setFillColor(245,240,230);
+  doc.roundedRect(LM, y, RM-LM, 22, 2, 2, "F");
+  doc.setDrawColor(...ORANGE); doc.setLineWidth(0.4);
+  doc.roundedRect(LM, y, RM-LM, 22, 2, 2, "S");
+  const cols = [
+    { label: "Total Charged", value: "$"+totalCharged.toFixed(2) },
+    { label: "Total Paid",    value: "$"+totalPaid.toFixed(2) },
+    { label: "Balance Remaining", value: "$"+balance.toFixed(2) },
+  ];
+  const colW = (RM-LM)/3;
+  cols.forEach((col, i) => {
+    const cx = LM + i*colW + colW/2;
+    doc.setFont("helvetica","normal"); doc.setFontSize(6.5); doc.setTextColor(100,100,100);
+    doc.text(col.label, cx, y+7, { align:"center" });
+    doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.setTextColor(col.label === "Balance Remaining" ? (balance<=0?40:200) : 30, col.label === "Balance Remaining" ? (balance<=0?140:40) : 30, 40);
+    doc.text(col.value, cx, y+17, { align:"center" });
+  });
+  doc.setTextColor(0,0,0); y += 27;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(130,130,130);
+  doc.text("DATE / DETAILS", LM, y); doc.text("AMOUNT", RM, y, { align:"right" });
+  y += 3; doc.setDrawColor(200,200,200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
+
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0,0,0);
+  for (const tx of txs ?? []) {
+    if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+    const isCharge = tx.type === "charge";
+    const dateStr = new Date(tx.created_at).toLocaleString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:true, day:"2-digit", month:"short", year:"numeric" });
+    doc.setFont("helvetica","bold");
+    doc.setTextColor(isCharge?200:40, isCharge?60:140, 40);
+    doc.text(isCharge?"CHARGE":"PAYMENT", LM, y);
+    doc.setTextColor(0,0,0); doc.setFont("helvetica","normal");
+    doc.text(dateStr, LM+22, y);
+    doc.setFont("helvetica","bold");
+    doc.setTextColor(isCharge?200:40, isCharge?60:140, 40);
+    doc.text((isCharge?"+":"-")+"$"+Number(tx.amount).toFixed(2), RM, y, { align:"right" });
+    doc.setTextColor(0,0,0); y += 5;
+    if (tx.note) {
+      doc.setFont("helvetica","italic"); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
+      const wrapped = doc.splitTextToSize("  "+tx.note, RM-LM-4);
+      doc.text(wrapped, LM, y); y += wrapped.length*4+1;
+      doc.setFontSize(8.5); doc.setTextColor(0,0,0);
+    }
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
+  }
+
+  if (y > CONTENT_BOTTOM-10) { doc.addPage(); y = 20; }
+  y += 4;
+  doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...ORANGE);
+  doc.text("Balance Remaining:", LM, y);
+  doc.setTextColor(balance<=0?40:200, balance<=0?140:40, 40);
+  doc.text("$"+balance.toFixed(2), RM, y, { align:"right" });
+
+  addFootersToAllPages(doc);
+  const safeName = account.full_name.replace(/\s+/g,"-").toLowerCase();
+  await downloadPdf(`credit-bill-${safeName}.pdf`, doc.output("datauristring"));
+  toast.success("Bill saved");
+}
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function CreditPage() {
@@ -111,11 +201,13 @@ function OpenedTab({ accounts, loading, onRefresh }: {
   onRefresh: () => void;
 }) {
   const { profile } = useAuth();
+  const ownerName = profile?.username ?? "Bar";
   const [expanded, setExpanded]     = useState<string | null>(null);
   const [txs, setTxs]               = useState<CreditTx[]>([]);
   const [txLoading, setTxLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteTx, setConfirmDeleteTx] = useState<CreditTx | null>(null);
+  const [printing, setPrinting]     = useState<string | null>(null);
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
@@ -217,24 +309,33 @@ function OpenedTab({ accounts, loading, onRefresh }: {
           className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          {/* Account row — tap anywhere to expand */}
-          <button
-            className="w-full flex items-center justify-between p-4 text-left"
-            onClick={() => toggleExpand(a.id)}
-          >
-            <div>
+          {/* Account row — tap left side to expand, Bill button on right */}
+          <div className="flex items-center justify-between p-4">
+            <button
+              className="flex-1 text-left"
+              onClick={() => toggleExpand(a.id)}
+            >
               <p className="font-black text-base">{a.full_name}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
               {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+            </button>
+            <div className="flex flex-col items-end gap-1.5 ml-2 shrink-0">
+              <button className="flex items-center gap-1.5" onClick={() => toggleExpand(a.id)}>
+                <span className="text-base font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
+                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`} />
+              </button>
+              <button
+                onClick={async (e) => { e.stopPropagation(); setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                disabled={printing === a.id}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition disabled:opacity-50"
+                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
+              >
+                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                Bill
+              </button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
-              <ChevronRight
-                className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`}
-              />
-            </div>
-          </button>
+          </div>
 
           {/* Expanded section */}
           {expanded === a.id && (
@@ -392,11 +493,14 @@ function OpenedTab({ accounts, loading, onRefresh }: {
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
 function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]; loading: boolean; onRefresh: () => void }) {
+  const { profile } = useAuth();
+  const ownerName = profile?.username ?? "Bar";
   const [expanded, setExpanded]   = useState<string | null>(null);
   const [txs, setTxs]             = useState<CreditTx[]>([]);
   const [txLoading, setTxLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<CreditAccount | null>(null);
   const [deleting, setDeleting]   = useState(false);
+  const [printing, setPrinting]   = useState<string | null>(null);
 
   const toggleExpand = async (accountId: string) => {
     if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
@@ -450,18 +554,29 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
               {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+            <div className="flex flex-col items-end gap-1.5 ml-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <ChevronRight
+                  onClick={() => toggleExpand(a.id)}
+                  className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer ${expanded === a.id ? "rotate-90" : ""}`}
+                />
+              </div>
               <button
-                onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                className="h-7 w-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
+                onClick={async (e) => { e.stopPropagation(); setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                disabled={printing === a.id}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition disabled:opacity-50"
+                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                Bill
               </button>
-              <ChevronRight
-                onClick={() => toggleExpand(a.id)}
-                className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer ${expanded === a.id ? "rotate-90" : ""}`}
-              />
             </div>
           </div>
 
