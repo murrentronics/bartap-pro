@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wine } from "lucide-react";
+import { Wine, Eye, EyeOff } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { friendlyError } from "@/lib/network-error";
 
@@ -396,10 +396,20 @@ function SignUpForm() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [pw, setPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const scrollIntoView = (e: React.FocusEvent<HTMLElement>) => {
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 350);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pw !== confirmPw) { toast.error("Passwords don't match"); return; }
     setBusy(true);
     // No emailRedirectTo — Supabase is configured to use OTP (6-digit code)
     // for email confirmation, so no redirect link is sent in the email.
@@ -434,6 +444,7 @@ function SignUpForm() {
           autoComplete="organization"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          onFocus={scrollIntoView}
           placeholder="My Bar & Grill"
           required
           minLength={3}
@@ -448,6 +459,7 @@ function SignUpForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onFocus={scrollIntoView}
           placeholder="owner@mybar.com"
           required
         />
@@ -459,6 +471,7 @@ function SignUpForm() {
           name="phone"
           value={phone}
           onChange={setPhone}
+          onFocus={scrollIntoView}
           required
         />
       </div>
@@ -470,22 +483,52 @@ function SignUpForm() {
           autoComplete="street-address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
+          onFocus={scrollIntoView}
           placeholder="123 Main St, Port of Spain"
           required
         />
       </div>
       <div>
         <Label htmlFor="signup-pw">Password</Label>
-        <Input
-          id="signup-pw"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          required
-          minLength={6}
-        />
+        <div className="relative">
+          <Input
+            id="signup-pw"
+            name="password"
+            type={showPw ? "text" : "password"}
+            autoComplete="new-password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onFocus={scrollIntoView}
+            required
+            minLength={6}
+            className="pr-10"
+          />
+          <button type="button" onClick={() => setShowPw(v => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="signup-confirm-pw">Confirm Password</Label>
+        <div className="relative">
+          <Input
+            id="signup-confirm-pw"
+            name="confirm-password"
+            type={showConfirm ? "text" : "password"}
+            autoComplete="new-password"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            onFocus={scrollIntoView}
+            required
+            minLength={6}
+            className="pr-10"
+          />
+          <button type="button" onClick={() => setShowConfirm(v => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Creating..." : "Create owner account"}

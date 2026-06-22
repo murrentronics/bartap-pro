@@ -21,6 +21,7 @@ interface PhoneInputProps {
   value: string;
   onChange: (fullValue: string) => void;
   required?: boolean;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 const PREFIX = "+1 868";
@@ -49,7 +50,7 @@ function extractLocal(fullValue: string): string {
   return allDigits.slice(-7);
 }
 
-export function PhoneInput({ id, name, value, onChange, required }: PhoneInputProps) {
+export function PhoneInput({ id, name, value, onChange, required, onFocus }: PhoneInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Derive the display value (formatted local digits) from the stored full value
@@ -92,11 +93,12 @@ export function PhoneInput({ id, name, value, onChange, required }: PhoneInputPr
         id={id}
         name={name}
         type="text"
-        inputMode="numeric"
+        inputMode="tel"
         autoComplete="tel-local"
         value={displayValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onFocus={onFocus}
         placeholder="XXX-XXXX"
         required={required}
         maxLength={8} /* 7 digits + 1 hyphen */

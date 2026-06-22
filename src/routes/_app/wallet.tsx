@@ -1378,9 +1378,9 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                       )}
                     </div>
                     {/* Credit payment: +$X if owner collected, "Cashier" badge if cashier collected */}
-                    {/* Credit charge: always read-only, always show Cashier badge */}
+                    {/* Credit charge: only show Cashier badge if a cashier did it */}
                     {!isPayment ? (
-                      <CashierBadge />
+                      cashierPart ? <CashierBadge /> : null
                     ) : isReadOnly && cashierPart ? (
                       <CashierBadge />
                     ) : !isReadOnly ? (

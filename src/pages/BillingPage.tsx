@@ -320,10 +320,9 @@ export default function BillingPage() {
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {plans.map((plan) => (
-                <button
+                <div
                   key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className="p-6 rounded-xl border-2 border-border hover:border-primary/70 transition text-left space-y-2"
+                  className="p-6 rounded-xl border-2 border-border text-left space-y-2"
                 >
                   <h3 className="text-lg font-bold">{plan.name}</h3>
 
@@ -359,7 +358,15 @@ export default function BillingPage() {
                   <div className="flex items-center gap-1.5 text-xs text-primary font-semibold">
                     <Music2 className="h-3 w-3" /> Includes Music Player
                   </div>
-                </button>
+
+                  <button
+                    onClick={() => setSelectedPlan(plan.id)}
+                    className="w-full h-10 rounded-xl font-black text-sm mt-1 transition active:scale-95"
+                    style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  >
+                    Select Plan
+                  </button>
+                </div>
               ))}
             </div>
           </Card>
@@ -398,20 +405,36 @@ export default function BillingPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <button onClick={() => setPaymentMethod("cash")}
-                  className="p-5 rounded-xl border-2 border-border hover:border-primary transition text-left">
-                  <span className="text-2xl block mb-2">💵</span>
-                  <p className="font-bold">Cash Payment</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Pay cash directly to admin</p>
-                </button>
-                <button
-                  onClick={() => bankTransferEnabled && setPaymentMethod("bank")}
-                  disabled={!bankTransferEnabled}
-                  className={`p-5 rounded-xl border-2 text-left transition ${bankTransferEnabled ? "border-border hover:border-primary cursor-pointer" : "border-border bg-muted/30 opacity-50 cursor-not-allowed"}`}>
-                  <span className="text-2xl block mb-2">🏦</span>
-                  <p className="font-bold">Bank Transfer</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{bankTransferEnabled ? "Transfer to bank account" : "Coming soon"}</p>
-                </button>
+                <div className="p-5 rounded-xl border-2 border-border flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-2xl block mb-1">💵</span>
+                    <p className="font-bold">Cash Payment</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pay cash directly to admin</p>
+                  </div>
+                  <button
+                    onClick={() => setPaymentMethod("cash")}
+                    className="shrink-0 h-9 px-4 rounded-xl font-black text-sm transition active:scale-95"
+                    style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  >
+                    Select
+                  </button>
+                </div>
+                {bankTransferEnabled && (
+                  <div className="p-5 rounded-xl border-2 border-border flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-2xl block mb-1">🏦</span>
+                      <p className="font-bold">Bank Transfer</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Transfer to bank account</p>
+                    </div>
+                    <button
+                      onClick={() => setPaymentMethod("bank")}
+                      className="shrink-0 h-9 px-4 rounded-xl font-black text-sm transition active:scale-95"
+                      style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                    >
+                      Select
+                    </button>
+                  </div>
+                )}
               </div>
             </Card>
           );
@@ -544,18 +567,34 @@ function PaymentMethodCard({ title, onCancel, onCash, onBank, bankEnabled, loadi
         <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button onClick={onCash} disabled={loading}
-          className="p-6 rounded-xl border-2 border-border hover:border-primary transition text-left disabled:opacity-50">
-          <span className="text-3xl block mb-2">💵</span>
-          <p className="font-bold">Cash Payment</p>
-          <p className="text-xs text-muted-foreground mt-1">Pay cash directly to admin</p>
-        </button>
-        <button onClick={onBank} disabled={!bankEnabled || loading}
-          className={`p-6 rounded-xl border-2 text-left transition ${bankEnabled ? "border-border hover:border-primary" : "border-border opacity-50 cursor-not-allowed"}`}>
-          <span className="text-3xl block mb-2">🏦</span>
-          <p className="font-bold">Bank Transfer</p>
-          <p className="text-xs text-muted-foreground mt-1">{bankEnabled ? "Transfer to bank account" : "Coming soon"}</p>
-        </button>
+        <div className="p-5 rounded-xl border-2 border-border flex items-center justify-between gap-4">
+          <div>
+            <span className="text-2xl block mb-1">💵</span>
+            <p className="font-bold">Cash Payment</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Pay cash directly to admin</p>
+          </div>
+          <button onClick={onCash} disabled={loading}
+            className="shrink-0 h-9 px-4 rounded-xl font-black text-sm transition active:scale-95 disabled:opacity-50"
+            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+          >
+            Select
+          </button>
+        </div>
+        {bankEnabled && (
+          <div className="p-5 rounded-xl border-2 border-border flex items-center justify-between gap-4">
+            <div>
+              <span className="text-2xl block mb-1">🏦</span>
+              <p className="font-bold">Bank Transfer</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Transfer to bank account</p>
+            </div>
+            <button onClick={onBank} disabled={loading}
+              className="shrink-0 h-9 px-4 rounded-xl font-black text-sm transition active:scale-95 disabled:opacity-50"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              Select
+            </button>
+          </div>
+        )}
       </div>
     </Card>
   );

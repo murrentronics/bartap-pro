@@ -128,6 +128,7 @@ function BillModal({ account, ownerName, onClose }: {
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState<"download" | "share" | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
 
@@ -137,6 +138,8 @@ function BillModal({ account, ownerName, onClose }: {
     if (b64) {
       await downloadPdf(filename, b64);
       toast.success("Bill saved to Downloads");
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 5000);
     }
     setBusy(null);
   };
@@ -199,10 +202,18 @@ function BillModal({ account, ownerName, onClose }: {
             onClick={handleDownload}
             disabled={!!busy}
             className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            style={downloaded
+              ? { background: "#16a34a", color: "#ffffff" }
+              : { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+            }
           >
-            {busy === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-            Download PDF
+            {busy === "download"
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : downloaded
+              ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              : <FileDown className="h-4 w-4" />
+            }
+            {downloaded ? "Downloaded" : "Download PDF"}
           </button>
           <button
             onClick={handleShare}
@@ -266,14 +277,30 @@ export default function CreditPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition flex items-center justify-center gap-1.5 ${
               tab === t ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
             style={tab === t ? { background: "var(--gradient-hero)" } : {}}
           >
-            {t === "opened"
-              ? `Opened${opened.length ? ` (${opened.length})` : ""}`
-              : t === "closed" ? "Closed" : "Create"}
+            {t === "opened" ? "Opened" : t === "closed" ? "Closed" : "Create"}
+            {t === "opened" && opened.length > 0 && (
+              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[11px] font-black leading-none"
+                style={tab === "opened"
+                  ? { background: "#7c2d12", color: "#ffffff" }
+                  : { background: "#fb923c", color: "#7c2d12" }
+                }>
+                {opened.length}
+              </span>
+            )}
+            {t === "closed" && closed.length > 0 && (
+              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[11px] font-black leading-none"
+                style={tab === "closed"
+                  ? { background: "#7c2d12", color: "#ffffff" }
+                  : { background: "#fb923c", color: "#7c2d12" }
+                }>
+                {closed.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
