@@ -1140,10 +1140,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <div className="text-xs text-green-400 font-bold">Inc: ${fmt(mIncome)}</div>
-                      <div className={`text-xs font-bold ${runningNet >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        Net: {runningNet >= 0 ? "+" : ""}${fmt(runningNet)}
-                      </div>
+                      <div className="text-xs text-red-400 font-bold">${fmt(mTotal)}</div>
                     </div>
                     <Button
                       size="sm" variant="outline"

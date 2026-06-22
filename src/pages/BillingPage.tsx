@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { CreditCard, CheckCircle, Clock, AlertCircle, Copy, Music2 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
-const SETUP_FEE = 250; // First year only — total first payment = $750 + $250 = $1,000 TT (includes training & installation)
+const SETUP_FEE = 250; // Optional agent visit — setup & training
 const TABLET_FEE = 600;
 
 export default function BillingPage() {
@@ -22,6 +22,7 @@ export default function BillingPage() {
   const [loading, setLoading]           = useState(false);
   const [showRenewal, setShowRenewal]   = useState(false);
   const [includeTablet, setIncludeTablet] = useState(false);
+  const [includeSetup, setIncludeSetup] = useState(false);
   const [historyPage, setHistoryPage]   = useState(0);
   const [historyTotal, setHistoryTotal] = useState(0);
 
@@ -111,13 +112,14 @@ export default function BillingPage() {
     const { data: refData, error: refError } = await supabase.rpc("generate_payment_reference");
     if (refError) { toast.error("Failed to generate reference"); setLoading(false); return; }
 
-    // New signup = plan + setup fee. Renewal = plan only.
+    // New signup = plan only. Setup fee optional. Tablet optional. Renewal = plan only.
     const isFirstPayment = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
+    const setupAddon = isFirstPayment && includeSetup ? SETUP_FEE : 0;
     const tabletAddon = !isRenewal && includeTablet ? TABLET_FEE : 0;
-    const amount = (isFirstPayment ? plan.amount + SETUP_FEE : plan.amount) + tabletAddon;
+    const amount = plan.amount + setupAddon + tabletAddon;
 
     let notesParts: string[] = [];
-    if (isFirstPayment) notesParts.push("Includes $250 one-time setup & training fee");
+    if (isFirstPayment && includeSetup) notesParts.push("Includes $250 agent setup & training visit");
     if (!isRenewal && includeTablet) notesParts.push("Includes $600 Android tablet with app pre-installed");
 
     let dueDate: Date;
@@ -147,6 +149,7 @@ export default function BillingPage() {
     setSelectedPlan(null);
     setShowRenewal(false);
     setIncludeTablet(false);
+    setIncludeSetup(false);
     loadPayments();
   };
 
@@ -303,8 +306,23 @@ export default function BillingPage() {
           <Card className="p-6">
             <h2 className="text-xl font-bold mb-2">Choose Your Plan</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Annual subscription — <span className="font-bold text-primary">$750 TT/year</span>. First year is <span className="font-bold text-primary">$1,000 TT</span> and includes installation, setup &amp; training.
+              Annual subscription — <span className="font-bold text-primary">$750 TT/year</span>. Renewals are also <span className="font-bold text-primary">$750 TT</span>.
             </p>
+
+            {/* Setup visit add-on */}
+            <label className="flex items-start gap-3 mb-3 p-3 rounded-xl border border-border cursor-pointer hover:border-primary/60 transition">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-orange-500"
+                checked={includeSetup}
+                onChange={(e) => setIncludeSetup(e.target.checked)}
+              />
+              <div>
+                <p className="font-bold text-sm">Add Agent Setup &amp; Training Visit <span className="text-primary">+$250 TT</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">An agent will visit to install, configure and train your team on-site.</p>
+              </div>
+            </label>
+
             {/* Tablet add-on */}
             <label className="flex items-start gap-3 mb-5 p-3 rounded-xl border border-border cursor-pointer hover:border-primary/60 transition">
               <input
@@ -318,6 +336,7 @@ export default function BillingPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">Receive a ready-to-use Android tablet with Bartendaz Pro pre-installed and configured.</p>
               </div>
             </label>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {plans.map((plan) => (
                 <div
@@ -333,16 +352,18 @@ export default function BillingPage() {
                     <p className="text-xs text-muted-foreground">Billed every {plan.duration_months} months</p>
                   </div>
 
-                  {/* Setup fee line */}
+                  {/* Breakdown */}
                   <div className="rounded-lg p-2 text-xs space-y-1" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Plan</span>
                       <span className="font-semibold">${plan.amount.toFixed(0)} TT</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Installation, setup &amp; training (first year only)</span>
-                      <span className="font-semibold">$250 TT</span>
-                    </div>
+                    {includeSetup && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Agent setup &amp; training visit</span>
+                        <span className="font-semibold">$250 TT</span>
+                      </div>
+                    )}
                     {includeTablet && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Android tablet (pre-installed)</span>
@@ -351,7 +372,7 @@ export default function BillingPage() {
                     )}
                     <div className="flex justify-between border-t pt-1 font-bold">
                       <span>Total first payment</span>
-                      <span className="text-primary">${(plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0)).toFixed(0)} TT</span>
+                      <span className="text-primary">${(plan.amount + (includeSetup ? SETUP_FEE : 0) + (includeTablet ? TABLET_FEE : 0)).toFixed(0)} TT</span>
                     </div>
                   </div>
 
@@ -375,7 +396,7 @@ export default function BillingPage() {
         {/* ── New signup: payment method ── */}
         {isNewSignup && selectedPlan && !paymentMethod && (() => {
           const plan = plans.find(p => p.id === selectedPlan)!;
-          const total = plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0);
+          const total = plan.amount + (includeSetup ? SETUP_FEE : 0) + (includeTablet ? TABLET_FEE : 0);
           return (
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -388,10 +409,12 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">{plan.name}</span>
                   <span className="font-semibold">${plan.amount.toFixed(0)} TT</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Setup & training (one-time)</span>
-                  <span className="font-semibold">$250 TT</span>
-                </div>
+                {includeSetup && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Agent setup &amp; training visit</span>
+                    <span className="font-semibold">$250 TT</span>
+                  </div>
+                )}
                 {includeTablet && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Android tablet (pre-installed)</span>
@@ -443,7 +466,7 @@ export default function BillingPage() {
         {/* ── New signup: confirm ── */}
         {isNewSignup && selectedPlan && paymentMethod && (() => {
           const plan = plans.find(p => p.id === selectedPlan)!;
-          const total = plan.amount + SETUP_FEE + (includeTablet ? TABLET_FEE : 0);
+          const total = plan.amount + (includeSetup ? SETUP_FEE : 0) + (includeTablet ? TABLET_FEE : 0);
           return (
             <Card className="p-6 border-primary space-y-4">
               <div className="flex items-center justify-between">
@@ -455,10 +478,12 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">{plan.name}</span>
                   <span className="font-semibold">${plan.amount.toFixed(0)} TT</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Setup & training (one-time)</span>
-                  <span className="font-semibold">$250 TT</span>
-                </div>
+                {includeSetup && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Agent setup &amp; training visit</span>
+                    <span className="font-semibold">$250 TT</span>
+                  </div>
+                )}
                 {includeTablet && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Android tablet (pre-installed)</span>

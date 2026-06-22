@@ -137,7 +137,6 @@ function BillModal({ account, ownerName, onClose }: {
     const b64 = await buildBillPdf(account, ownerName);
     if (b64) {
       await downloadPdf(filename, b64);
-      toast.success("Bill saved to Downloads");
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     }
@@ -682,28 +681,28 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
               {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
               {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
             </button>
-            <div className="flex flex-col items-end gap-1.5 ml-2 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+            <div className="flex flex-col items-end gap-2 ml-2 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 transition"
+                  style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  Bill
+                </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
+                  className="h-9 w-9 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4.5 w-4.5" />
                 </button>
                 <ChevronRight
                   onClick={() => toggleExpand(a.id)}
                   className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer ${expanded === a.id ? "rotate-90" : ""}`}
                 />
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition"
-                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
-              >
-                <FileDown className="h-3 w-3" />
-                Bill
-              </button>
+              <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
             </div>
           </div>
 
