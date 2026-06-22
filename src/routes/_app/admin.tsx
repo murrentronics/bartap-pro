@@ -1021,8 +1021,8 @@ function TemplateGalleryPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Category filter tabs — sticky below header */}
-      <div className="sticky top-0 z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
+      {/* Category filter tabs — sticky below admin header */}
+      <div className="sticky top-[48px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="grid grid-cols-5 gap-2 mb-2">
           {TEMPLATE_CATEGORIES.map((cat) => {
             const catDef = CATEGORIES.find(c => c.value === cat);

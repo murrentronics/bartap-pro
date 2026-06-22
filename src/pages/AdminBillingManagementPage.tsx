@@ -33,6 +33,7 @@ export default function AdminBillingManagementPage() {
   const [filter, setFilter] = useState<"pending" | "paid" | "rejected">("pending");
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({ pending: 0, paid: 0, revenue: 0 });
   
   const PAGE_SIZE = 100;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -40,6 +41,7 @@ export default function AdminBillingManagementPage() {
   useEffect(() => {
     if (profile?.role === "admin") {
       loadPayments();
+      loadStats();
     }
   }, [profile, filter, page]);
 
@@ -81,6 +83,16 @@ export default function AdminBillingManagementPage() {
     }
 
     setPayments(data || []);
+  };
+
+  const loadStats = async () => {
+    const [{ count: pendingCount }, { count: paidCount }, { data: paidData }] = await Promise.all([
+      supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "paid"),
+      supabase.from("billing_payments").select("amount").eq("status", "paid"),
+    ]);
+    const revenue = (paidData ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    setStats({ pending: pendingCount ?? 0, paid: paidCount ?? 0, revenue });
   };
 
   const filterPayments = () => {
@@ -186,6 +198,7 @@ export default function AdminBillingManagementPage() {
     setSelectedPayment(null);
     setNotes("");
     loadPayments();
+    loadStats();
   };
 
   const openPaymentDialog = (payment: PaymentWithOwner) => {
@@ -211,11 +224,9 @@ export default function AdminBillingManagementPage() {
     }
   };
 
-  const totalPending = payments.filter(p => p.status === "pending").length;
-  const totalPaid = payments.filter(p => p.status === "paid").length;
-  const totalRevenue = payments
-    .filter(p => p.status === "paid")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalPending = stats.pending;
+  const totalPaid    = stats.paid;
+  const totalRevenue = stats.revenue;
 
   return (
     <div className="min-h-screen p-6 pb-24">
