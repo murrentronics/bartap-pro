@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronLeft,
-  ChevronRight, Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff,
+  Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronDown,
+  Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -265,36 +265,44 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
 
                 return (
                   <div key={month} className="rounded-2xl border border-border overflow-hidden">
+                    {/* Row header — month info top row, arrow + PDF bottom row */}
                     <button
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                      className="w-full flex flex-col px-4 py-3 hover:bg-muted/30 transition"
                       onClick={() => setSelectedMonth(isOpen ? null : month)}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="font-black text-sm">{month}</span>
-                        {hasCleared && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-semibold">
-                            Sales
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
+                      {/* Top row: month name + Sales badge + total */}
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-sm">{month}</span>
+                          {hasCleared && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-semibold">
+                              Sales
+                            </span>
+                          )}
+                        </div>
                         <span className="font-black text-primary">${monthTotal.toFixed(2)}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs gap-1"
-                          type="button"
-                          disabled={downloadingMonth === month}
-                          onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
-                        >
-                          {downloadingMonth === month
-                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <Download className="h-3 w-3" />}
-                          {downloadingMonth === month ? "…" : "PDF"}
-                        </Button>
-                        <ChevronRight
-                          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`}
+                      </div>
+                      {/* Bottom row: arrow centered + PDF at end */}
+                      <div className="flex items-center justify-between w-full mt-2">
+                        <div className="flex-1" />
+                        <ChevronDown
+                          className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
                         />
+                        <div className="flex-1 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-10 px-4 text-sm font-bold gap-1.5"
+                            type="button"
+                            disabled={downloadingMonth === month}
+                            onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
+                          >
+                            {downloadingMonth === month
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Download className="h-4 w-4" />}
+                            {downloadingMonth === month ? "…" : "PDF"}
+                          </Button>
+                        </div>
                       </div>
                     </button>
 
@@ -560,9 +568,9 @@ export default function CashiersPage() {
                         <AlertDialogTitle>Delete {c.username}?</AlertDialogTitle>
                         <AlertDialogDescription>Any wallet balance will be transferred to your account first, then the account is removed permanently.</AlertDialogDescription>
                       </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(c)}>Delete</AlertDialogAction>
+                      <AlertDialogFooter className="flex-row gap-3 mt-2">
+                        <AlertDialogCancel className="flex-1 h-14 text-base font-black m-0">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDelete(c)} className="flex-1 h-14 text-base font-black bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown } from "lucide-react";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -395,6 +395,7 @@ export default function ProductsPage() {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [editItem, setEditItem] = useState<Product | null>(null);
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
 
@@ -536,7 +537,17 @@ export default function ProductsPage() {
                     <span className="text-base font-black text-white leading-none">{p.stock_qty ?? 0}</span>
                   </button>
 
-                  {/* LOW stock badge — shows when stock is 1–5 */}
+                  {/* Edit button — bottom-left, orange circle, same size as qty button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditItem(p); }}
+                    className="absolute bottom-1.5 left-1.5 h-10 w-10 rounded-full flex items-center justify-center active:scale-95 transition shadow z-10"
+                    style={{ background: "var(--gradient-hero)" }}
+                    title="Edit item"
+                  >
+                    <Pencil className="h-4 w-4 text-white" />
+                  </button>
+
+                  {/* LOW stock badge — shows when stock is 1–5, shifted down to not overlap edit btn */}
                   {(p.stock_qty ?? 0) > 0 && (p.stock_qty ?? 0) <= 5 && (
                     <div className="absolute top-1.5 right-1.5 z-10 bg-red-600 rounded-md px-1.5 py-0.5 shadow">
                       <span className="text-white text-[9px] font-black uppercase tracking-wider leading-none">LOW</span>
@@ -591,19 +602,36 @@ export default function ProductsPage() {
           }}
         />
       )}
+
+      {/* Edit Item Dialog */}
+      {editItem && (
+        <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
+          <AddItemDialog
+            key={`edit-${editItem.id}`}
+            ownerId={profile.id}
+            editProduct={editItem}
+            onDone={() => { setEditItem(null); load(); }}
+            onSaved={(updated) => {
+              setItems((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p));
+              setEditItem(null);
+            }}
+          />
+        </Dialog>
+      )}
     </div>
   );
 }
 
 // ─── Add Item Dialog ──────────────────────────────────────────────────────────
-function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSaved: (product: Product) => void; ownerId: string }) {
+function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () => void; onSaved: (product: Product) => void; ownerId: string; editProduct?: Product | null }) {
   const { profile } = useAuth();
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState<string>("beers");
+  const isEdit = !!editProduct;
+  const [name, setName] = useState(editProduct?.name ?? "");
+  const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
+  const [category, setCategory] = useState<string>(editProduct?.category ?? "beers");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [templateUrl, setTemplateUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
+  const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   // which category tab is active inside the template picker
@@ -653,16 +681,36 @@ function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSav
       const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+    } else if (isEdit) {
+      // keep the existing image if no new one was picked
+      image_url = editProduct?.image_url ?? null;
     }
-    const { data: inserted, error } = await supabase.from("products").insert({
-      owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
-    }).select("*").single();
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Item added");
-    setName(""); setPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
-    onDone();
-    onSaved(inserted);
+
+    if (isEdit && editProduct) {
+      // ── UPDATE existing product ──────────────────────────────────────────
+      const { data: updated, error } = await supabase
+        .from("products")
+        .update({ name: name.trim(), price: Number(price), image_url, category })
+        .eq("id", editProduct.id)
+        .select("*")
+        .single();
+      setBusy(false);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Item updated");
+      onDone();
+      onSaved(updated);
+    } else {
+      // ── INSERT new product ───────────────────────────────────────────────
+      const { data: inserted, error } = await supabase.from("products").insert({
+        owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
+      }).select("*").single();
+      setBusy(false);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Item added");
+      setName(""); setPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
+      onDone();
+      onSaved(inserted);
+    }
   };
 
   return (
@@ -677,7 +725,7 @@ function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSav
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <DialogTitle>{showTemplates ? "Choose Template" : "Add Bar Item"}</DialogTitle>
+          <DialogTitle>{showTemplates ? "Choose Template" : isEdit ? "Edit Bar Item" : "Add Bar Item"}</DialogTitle>
         </div>
       </DialogHeader>
 
@@ -821,7 +869,7 @@ function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSav
       {!showTemplates && (
         <div className="pt-3">
           <Button onClick={submit} disabled={busy || !name || !price} className="w-full font-bold h-11 shrink-0" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Next →"}
           </Button>
         </div>
       )}
