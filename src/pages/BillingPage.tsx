@@ -256,9 +256,9 @@ export default function BillingPage() {
                     onClick={() => setShowRenewal(true)}
                     disabled={loading || !canRenew}
                     variant={isOverdue ? "destructive" : "default"}
-                    className="w-full font-bold"
+                    className="w-full font-bold h-12 text-base"
                   >
-                    {isOverdue ? "⚠️ Overdue — Pay Now" : "Pay Renewal Fee"}
+                    {isOverdue ? "⚠️ Overdue — Pay Now" : "Pay Renewal Fee — $750 TT"}
                   </Button>
                   {!canRenew && daysUntilDue !== null && daysUntilDue > 7 && (
                     <p className="text-xs text-muted-foreground text-center">

@@ -388,6 +388,15 @@ function OpenedTab({ accounts, loading, onRefresh }: {
       .eq("id", tx.id);
     if (error) { toast.error(error.message); setDeletingId(null); return; }
 
+    // Remove matching wallet_transactions (type='credit_charge') created within
+    // 10 seconds of this charge — covers both owner and cashier wallet records
+    await supabase
+      .from("wallet_transactions")
+      .delete()
+      .eq("type", "credit_charge")
+      .gte("created_at", new Date(new Date(tx.created_at).getTime() - 10000).toISOString())
+      .lte("created_at", new Date(new Date(tx.created_at).getTime() + 10000).toISOString());
+
     const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
       p_credit_account_id: tx.credit_account_id,
       p_amount: tx.amount,

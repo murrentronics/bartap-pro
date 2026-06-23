@@ -113,7 +113,10 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
     setHistoryState(prev => {
-      const updated = [{ ...item, playedAt: Date.now() }, ...prev.filter(h => h.id !== item.id)].slice(0, HISTORY_MAX);
+      // If already in the list, keep it exactly where it is — no reorder
+      if (prev.some(h => h.id === item.id)) return prev;
+      // New save — prepend to top so newest appears first
+      const updated = [{ ...item, playedAt: Date.now() }, ...prev].slice(0, HISTORY_MAX);
       saveHistory(updated);
       return updated;
     });
@@ -145,12 +148,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     setVideoIdRaw(next.id);
     setIsPlaylist(next.kind === "youtube#playlist");
     setNowPlayingTitle(next.title);
-    // Move to top of history
-    setHistoryState(prev => {
-      const updated = [{ ...next, playedAt: Date.now() }, ...prev.filter(h => h.id !== next.id)].slice(0, HISTORY_MAX);
-      saveHistory(updated);
-      return updated;
-    });
+    // Do NOT touch the list — position stays exactly as-is
   }, []);
 
   const search = useCallback(async (q: string) => {
