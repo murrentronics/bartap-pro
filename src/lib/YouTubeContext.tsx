@@ -113,10 +113,10 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   const addToHistory = useCallback((item: Omit<YTHistoryItem, "playedAt">) => {
     setHistoryState(prev => {
-      // If already in the list, keep it exactly where it is — no reorder
-      if (prev.some(h => h.id === item.id)) return prev;
-      // New save — prepend to top so newest appears first
-      const updated = [{ ...item, playedAt: Date.now() }, ...prev].slice(0, HISTORY_MAX);
+      // Always remove any existing entry with the same id first, then prepend
+      // This prevents duplicates when removing and re-saving the same track
+      const filtered = prev.filter(h => h.id !== item.id);
+      const updated = [{ ...item, playedAt: Date.now() }, ...filtered].slice(0, HISTORY_MAX);
       saveHistory(updated);
       return updated;
     });
