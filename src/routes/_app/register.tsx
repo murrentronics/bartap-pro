@@ -943,7 +943,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? "📄 Select Paper Pack" : "🚬 Select Cigarette Pack"}</span>
+              <span className="text-base font-black">{packType === "paper" ? "📄 Select Cigarette or Paper" : "🚬 Select Cigarette or Paper"}</span>
               <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -1272,8 +1272,8 @@ function CashOverlay({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
-                  <button onClick={onClearCart} className="text-xs text-destructive hover:underline flex items-center gap-1">
-                    <Trash2 className="h-3 w-3" /> Clear
+                  <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                    <Trash2 className="h-4 w-4" /> Clear all
                   </button>
                 </div>
                 {cart.map((i) => (
@@ -1293,8 +1293,8 @@ function CashOverlay({
                       {/* Title row — full width */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
-                          <X className="h-3.5 w-3.5" />
+                        <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
+                          <X className="h-5 w-5" />
                         </Button>
                       </div>
                       {/* Price + controls row */}
@@ -1567,8 +1567,8 @@ function CreditSaleOverlay({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
-                  <button onClick={onClearCart} className="text-xs text-destructive hover:underline flex items-center gap-1">
-                    <Trash2 className="h-3 w-3" /> Clear
+                  <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                    <Trash2 className="h-4 w-4" /> Clear all
                   </button>
                 </div>
                 {cart.map((i) => (
@@ -1585,8 +1585,8 @@ function CreditSaleOverlay({
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
-                          <X className="h-3.5 w-3.5" />
+                        <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
+                          <X className="h-5 w-5" />
                         </Button>
                       </div>
                       <div className="flex items-center justify-between mt-3">

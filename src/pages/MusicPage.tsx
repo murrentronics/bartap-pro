@@ -378,7 +378,7 @@ export default function MusicPage() {
               backdropFilter: "blur(8px)",
             }}
           >
-            <div className="flex items-center gap-2 px-3 h-14 justify-end">
+            <div className="flex items-center gap-3 px-4 h-28 justify-end">
               {/* Save button */}
               {(() => {
                 const alreadySaved = yt.videoId ? yt.history.some(h => h.id === yt.videoId) : false;
@@ -396,7 +396,7 @@ export default function MusicPage() {
                         duration:  yt.currentItem?.duration ?? null,
                       });
                     }}
-                    className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition disabled:opacity-70"
+                    className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition disabled:opacity-70"
                     style={{ background: alreadySaved ? "rgba(22,163,74,0.6)" : "rgba(22,163,74,0.85)" }}
                   >
                     {alreadySaved ? "✓ Saved" : "+ Save"}
@@ -409,10 +409,10 @@ export default function MusicPage() {
                   setShowYTFullscreen(false);
                   setLastMainTab("youtube");
                 }}
-                className="h-9 px-3 rounded-lg flex items-center gap-1.5 text-xs font-bold text-white shrink-0 active:scale-95 transition"
+                className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(180,0,0,0.85)" }}
               >
-                <X className="h-3.5 w-3.5" /> Exit
+                <X className="h-5 w-5" /> Exit
               </button>
             </div>
             <style>{`
@@ -764,14 +764,14 @@ export default function MusicPage() {
                   )}
                   {!yt.searching && yt.results.length > 0 && (
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between py-3 mb-1">
                         <p className="text-white/40 text-xs font-bold uppercase tracking-wider">
                           Results for "{yt.query}"
                         </p>
                         <button
                           onClick={() => { yt.clearResults(); yt.setQuery(""); setSearchInput(""); }}
-                          className="text-xs font-bold active:scale-90 transition"
-                          style={{ color: "rgba(239,68,68,0.7)" }}>
+                          className="h-9 px-4 rounded-xl text-sm font-black active:scale-90 transition"
+                          style={{ background: "rgba(239,68,68,0.15)", color: "rgba(239,68,68,0.9)", border: "1px solid rgba(239,68,68,0.3)" }}>
                           Clear
                         </button>
                       </div>
@@ -831,15 +831,15 @@ export default function MusicPage() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {/* Row 1: title + limit */}
-                      <div className="flex items-center justify-between mb-1 mt-4">
-                        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
-                      </div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px]">
-                          <span className="text-white/30">Limit: </span>
-                          <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
-                        </p>
+                      {/* Single row: SAVED + limit + Tips + Clear All */}
+                      <div className="flex items-center justify-between mt-4 mb-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
+                          <p className="text-[10px]">
+                            <span className="text-white/30">· Limit: </span>
+                            <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
+                          </p>
+                        </div>
                         <div className="flex items-center gap-3">
                           <button onClick={() => setShowTips(true)}
                             className="flex items-center gap-1.5 active:scale-90 transition"

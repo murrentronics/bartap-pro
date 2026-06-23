@@ -273,7 +273,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                         <span className="font-black text-sm">{month}</span>
                         {hasCleared && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-semibold">
-                            Cleared
+                            Sales
                           </span>
                         )}
                       </div>
@@ -550,20 +550,10 @@ export default function CashiersPage() {
                       Balance: <span className="text-primary font-black">${Number(c.wallet_balance).toFixed(2)}</span>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <Button size="sm" variant="outline" className="flex-1 h-9" onClick={() => setStatementCashier(c)}>
-                    <FileText className="h-4 w-4 mr-1" /> Statement
-                  </Button>
-                  <Button size="sm" variant="secondary" className="flex-1 h-9" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
-                    <Eraser className="h-4 w-4 mr-1" /> Clear
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1 h-9" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
-                    <KeyRound className="h-4 w-4 mr-1" /> Password
-                  </Button>
+                  {/* Delete button — top right */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="destructive" className="h-9 w-9 p-0"><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="destructive" className="h-9 w-9 p-0 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
@@ -576,6 +566,17 @@ export default function CashiersPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <Button size="sm" variant="outline" className="flex-1 h-12 text-sm font-black" onClick={() => setStatementCashier(c)}>
+                    <FileText className="h-5 w-5 mr-1.5" /> Statement
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1 h-12 text-sm font-black" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
+                    <Eraser className="h-5 w-5 mr-1.5" /> Clear
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 h-12 text-sm font-black" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
+                    <KeyRound className="h-5 w-5 mr-1.5" /> Password
+                  </Button>
                 </div>
               </div>
             ))}
