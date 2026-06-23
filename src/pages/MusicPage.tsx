@@ -25,7 +25,7 @@ import { useYouTube } from "@/lib/YouTubeContext";
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music2, Youtube, FolderOpen, ListMusic,
-  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo, HelpCircle, Lightbulb,
+  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo, HelpCircle, Lightbulb, Trash2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -285,21 +285,28 @@ export default function MusicPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            {/* Quota bar */}
-            <div className="flex items-center justify-between px-4 pb-2 shrink-0">
-              <span className="text-xs">
-                {yt.searchesRemaining > 0
-                  ? <><span className={`font-bold ${yt.searchesRemaining <= 10 ? "text-yellow-400" : "text-green-400"}`}>{yt.searchesRemaining}</span><span className="text-white/30"> searches left</span></>
-                  : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
-                }
-              </span>
-              <div className="h-1 w-20 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${(yt.searchesRemaining / 75) * 100}%`,
-                    background: yt.searchesRemaining <= 10 ? "#eab308" : "#22c55e",
-                  }} />
-              </div>
+            {/* Quota bar — full pill, colored fill shows % remaining, text inside */}
+            <div className="px-4 pb-2 shrink-0">
+              {yt.searchesRemaining > 0 ? (
+                <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full transition-all"
+                    style={{
+                      width: `${(yt.searchesRemaining / 75) * 100}%`,
+                      background: yt.searchesRemaining <= 10 ? "#eab308" : "#22c55e",
+                    }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-white drop-shadow">
+                    {yt.searchesRemaining} searches left today
+                  </span>
+                </div>
+              ) : (
+                <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.25)" }}>
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-red-400 drop-shadow">
+                    Limit reached — resets in {yt.searchResetTime}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Results list */}
@@ -379,27 +386,30 @@ export default function MusicPage() {
             }}
           >
             <div className="flex items-center gap-3 px-4 h-28 justify-end">
-              {/* Save button */}
+              {/* Save / Remove button */}
               {(() => {
                 const alreadySaved = yt.videoId ? yt.history.some(h => h.id === yt.videoId) : false;
                 return (
                   <button
-                    disabled={alreadySaved}
                     onClick={() => {
-                      if (!yt.videoId || alreadySaved) return;
-                      yt.addToHistory({
-                        id:        yt.videoId,
-                        kind:      yt.currentItem?.kind ?? (yt.isPlaylist ? "youtube#playlist" : "youtube#video"),
-                        title:     yt.currentItem?.title ?? yt.nowPlayingTitle,
-                        channel:   yt.currentItem?.channel ?? "",
-                        thumbnail: yt.currentItem?.thumbnail ?? "",
-                        duration:  yt.currentItem?.duration ?? null,
-                      });
+                      if (!yt.videoId) return;
+                      if (alreadySaved) {
+                        yt.removeFromHistory(yt.videoId);
+                      } else {
+                        yt.addToHistory({
+                          id:        yt.videoId,
+                          kind:      yt.currentItem?.kind ?? (yt.isPlaylist ? "youtube#playlist" : "youtube#video"),
+                          title:     yt.currentItem?.title ?? yt.nowPlayingTitle,
+                          channel:   yt.currentItem?.channel ?? "",
+                          thumbnail: yt.currentItem?.thumbnail ?? "",
+                          duration:  yt.currentItem?.duration ?? null,
+                        });
+                      }
                     }}
-                    className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition disabled:opacity-70"
-                    style={{ background: alreadySaved ? "rgba(22,163,74,0.6)" : "rgba(22,163,74,0.85)" }}
+                    className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
+                    style={{ background: alreadySaved ? "rgba(180,0,0,0.85)" : "rgba(22,163,74,0.85)" }}
                   >
-                    {alreadySaved ? "✓ Saved" : "+ Save"}
+                    {alreadySaved ? "✕ Remove" : "+ Save"}
                   </button>
                 );
               })()}
@@ -439,11 +449,12 @@ export default function MusicPage() {
       {onYouTubeTab ? (
         /* YouTube mini now-playing strip */
         <div
-          className="px-4 py-3 mt-2"
+          className="px-4 py-3 mt-2 cursor-pointer active:opacity-80 transition"
           style={{
             background: "linear-gradient(180deg, #1a0808 0%, #0d0a0a 100%)",
             borderBottom: "1px solid rgba(239,68,68,0.2)",
           }}
+          onClick={() => yt.nowPlayingTitle && setShowYTFullscreen(true)}
         >
           {yt.nowPlayingTitle ? (
             <div className="flex items-center gap-3">
@@ -462,14 +473,13 @@ export default function MusicPage() {
                 <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
                 <p className="text-red-400/60 text-[10px] mt-0.5">YouTube playing in background</p>
               </div>
-              {/* Tap to go back to fullscreen */}
-              <button
-                onClick={() => setShowYTFullscreen(true)}
-                className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 active:scale-95 transition"
+              {/* Visual cue — not a separate tap target anymore */}
+              <div
+                className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 flex items-center pointer-events-none"
                 style={{ background: "rgba(239,68,68,0.6)" }}
               >
                 ▶ Resume
-              </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-2 gap-2 text-white/30">
@@ -693,20 +703,27 @@ export default function MusicPage() {
               </div>
 
               {/* Quota */}
-              <div className="flex items-center justify-between px-1">
-                <span className="text-white/30 text-xs">
-                  {yt.searchesRemaining > 0
-                    ? <><span className="text-white/40">Searches left today: </span><span className={`font-bold ${yt.searchesRemaining <= 5 ? "text-yellow-400" : yt.searchesRemaining <= 10 ? "text-orange-400" : "text-green-400"}`}>{yt.searchesRemaining}</span></>
-                    : <span className="text-red-400 font-bold">Limit reached — resets in {yt.searchResetTime}</span>
-                  }
-                </span>
-                <div className="h-1 w-24 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${(yt.searchesRemaining / 40) * 100}%`,
-                      background: yt.searchesRemaining <= 5 ? "#eab308" : yt.searchesRemaining <= 10 ? "#f97316" : "#22c55e",
-                    }} />
-                </div>
+              <div className="px-1">
+                {yt.searchesRemaining > 0 ? (
+                  <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all"
+                      style={{
+                        width: `${(yt.searchesRemaining / 40) * 100}%`,
+                        background: yt.searchesRemaining <= 5 ? "#eab308" : yt.searchesRemaining <= 10 ? "#f97316" : "#22c55e",
+                      }}
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-white drop-shadow">
+                      {yt.searchesRemaining} searches left today
+                    </span>
+                  </div>
+                ) : (
+                  <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.25)" }}>
+                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-red-400 drop-shadow">
+                      Limit reached — resets in {yt.searchResetTime}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Sub-tabs: Results | History */}
@@ -832,7 +849,7 @@ export default function MusicPage() {
                   ) : (
                     <div className="space-y-1">
                       {/* Single row: SAVED + limit + Tips + Clear All */}
-                      <div className="flex items-center justify-between mt-4 mb-2">
+                      <div className="flex items-center justify-between mt-4 mb-4">
                         <div className="flex items-center gap-2">
                           <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
                           <p className="text-[10px]">
@@ -877,8 +894,8 @@ export default function MusicPage() {
                             <p className="text-white/40 text-[10px] mt-0.5 truncate">{decodeHtml(item.channel)}</p>
                           </div>
                           <button onClick={e => { e.stopPropagation(); yt.removeFromHistory(item.id); }}
-                            className="text-white/20 hover:text-white/50 p-1.5 transition shrink-0">
-                            <X className="h-3.5 w-3.5" />
+                            className="p-2 rounded-full active:scale-90 transition shrink-0 text-red-500 hover:text-red-400">
+                            <Trash2 className="h-5 w-5" />
                           </button>
                         </button>
                       ))}

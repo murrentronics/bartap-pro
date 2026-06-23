@@ -106,6 +106,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playlistRef    = useRef(playlist);
   const indexRef       = useRef(currentIndex);
   const modeRef        = useRef(playMode);
+  const playTrackRef   = useRef<(index: number) => void>(() => {});
 
   // Keep refs in sync
   useEffect(() => { playlistRef.current = playlist; }, [playlist]);
@@ -156,6 +157,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const pl   = playlistRef.current;
     const idx  = indexRef.current;
     const mode = modeRef.current;
+    const play = playTrackRef.current;
 
     if (mode === "repeat-one") {
       const a = audioRef.current;
@@ -163,16 +165,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (mode === "shuffle") {
-      playTrack(Math.floor(Math.random() * pl.length));
+      play(Math.floor(Math.random() * pl.length));
       return;
     }
+    // normal or repeat-all: always advance to next, wrap at end
     const next = idx + 1;
     if (next < pl.length) {
-      playTrack(next);
-    } else if (mode === "repeat-all" && pl.length > 0) {
-      playTrack(0);
+      play(next);
     } else {
-      setPlayerState("idle");
+      // last song done — wrap back to top and keep playing
+      play(0);
     }
   }
 
@@ -227,6 +229,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muted]);
+
+  // Keep playTrackRef pointing at the latest version so handleEnded (mounted once) always calls current logic
+  useEffect(() => { playTrackRef.current = playTrack; }, [playTrack]);
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current!;
