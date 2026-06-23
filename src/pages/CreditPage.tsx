@@ -485,21 +485,21 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                   {/* Tappable amount display — opens numpad */}
                   <button
                     onClick={() => setPadOpen((o) => !o)}
-                    className="flex items-center flex-1 h-10 rounded-lg border border-input bg-background px-3 gap-1 text-left"
+                    className="flex items-center flex-[2] h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left"
                   >
-                    <span className="text-sm font-bold text-muted-foreground">$</span>
-                    <span className={`text-base font-black flex-1 ${payAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                    <span className="text-base font-bold text-muted-foreground">$</span>
+                    <span className={`text-xl font-black flex-1 ${payAmount ? "text-foreground" : "text-muted-foreground"}`}>
                       {payAmount || `0.00`}
                     </span>
                     <span className="text-[10px] text-muted-foreground">max ${Number(a.balance_owed).toFixed(2)}</span>
                   </button>
                   <Button
-                    className="h-10 px-4 font-black text-sm shrink-0"
+                    className="h-14 px-6 font-black text-base shrink-0 rounded-xl"
                     disabled={paying || !payAmount}
                     onClick={() => { setPadOpen(false); submitPayment(a); }}
                     style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
                   >
-                    {paying ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : "Pay"}
+                    {paying ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : "Pay"}
                   </Button>
                 </div>
 

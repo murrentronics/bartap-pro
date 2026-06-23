@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { createCashier, deleteCashier } from "@/lib/cashiers.functions";
+import { createCashier, deleteCashier, resetCashierPassword } from "@/lib/cashiers.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronLeft,
-  ChevronRight, Receipt, ArrowDownLeft, X, Download,
+  ChevronRight, Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -361,6 +361,10 @@ export default function CashiersPage() {
   const [busy, setBusy] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [statementCashier, setStatementCashier] = useState<Cashier | null>(null);
+  const [resetPwCashier, setResetPwCashier] = useState<Cashier | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [resettingPw, setResettingPw] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const create = createCashier;
@@ -439,6 +443,22 @@ export default function CashiersPage() {
     } else {
       load();
       refreshProfile();
+    }
+  };
+
+  const onResetPassword = async () => {
+    if (!resetPwCashier || newPw.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    setResettingPw(true);
+    try {
+      await resetCashierPassword({ cashier_id: resetPwCashier.id, new_password: newPw });
+      toast.success(`Password updated for ${resetPwCashier.username}`);
+      setResetPwCashier(null);
+      setNewPw("");
+      setShowNewPw(false);
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to reset password");
+    } finally {
+      setResettingPw(false);
     }
   };
 
@@ -538,6 +558,9 @@ export default function CashiersPage() {
                   <Button size="sm" variant="secondary" className="flex-1 h-9" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
                     <Eraser className="h-4 w-4 mr-1" /> Clear
                   </Button>
+                  <Button size="sm" variant="outline" className="flex-1 h-9" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
+                    <KeyRound className="h-4 w-4 mr-1" /> Password
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button size="sm" variant="destructive" className="h-9 w-9 p-0"><Trash2 className="h-4 w-4" /></Button>
@@ -566,6 +589,50 @@ export default function CashiersPage() {
           ownerName={profile.username}
           onClose={() => setStatementCashier(null)}
         />
+      )}
+
+      {/* ── Reset Password Modal ── */}
+      {resetPwCashier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}>
+                <KeyRound className="h-6 w-6" style={{ color: "var(--primary)" }} />
+              </div>
+              <h3 className="font-black text-base">Reset Password</h3>
+              <p className="text-xs text-muted-foreground mt-1">Set a new password for <span className="font-bold text-foreground">{resetPwCashier.username}</span></p>
+            </div>
+            <div className="px-6 pb-6 pt-4 space-y-4">
+              <div className="relative">
+                <Input
+                  type={showNewPw ? "text" : "password"}
+                  placeholder="New password (min 6 chars)"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  className="pr-10 h-11"
+                  minLength={6}
+                />
+                <button type="button" onClick={() => setShowNewPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                  {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1 h-11" onClick={() => { setResetPwCashier(null); setNewPw(""); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 h-11 font-black"
+                  disabled={resettingPw || newPw.length < 6}
+                  onClick={onResetPassword}
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
+                  {resettingPw ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </div>

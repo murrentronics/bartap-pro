@@ -819,9 +819,11 @@ function AddItemDialog({ onDone, onSaved, ownerId }: { onDone: () => void; onSav
       </div>
 
       {!showTemplates && (
-        <Button onClick={submit} disabled={busy || !name || !price} className="font-bold h-11 shrink-0" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
-        </Button>
+        <div className="pt-3">
+          <Button onClick={submit} disabled={busy || !name || !price} className="w-full font-bold h-11 shrink-0" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
+          </Button>
+        </div>
       )}
     </DialogContent>
   );
