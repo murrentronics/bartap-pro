@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  UserPlus, X, ChevronRight, CheckCircle2,
+  UserPlus, X, ChevronRight, ChevronDown, CheckCircle2,
   ClipboardList, Trash2, FileDown, Loader2, Share2,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
@@ -432,30 +432,45 @@ function OpenedTab({ accounts, loading, onRefresh }: {
           className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          {/* Account row — tap left side to expand, Bill button on right */}
-          <div className="flex items-center justify-between p-4">
-            <button
-              className="flex-1 text-left"
-              onClick={() => toggleExpand(a.id)}
-            >
-              <p className="font-black text-base">{a.full_name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-            </button>
-            <div className="flex flex-col items-end gap-1.5 ml-2 shrink-0">
-              <button className="flex items-center gap-1.5" onClick={() => toggleExpand(a.id)}>
-                <span className="text-base font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
-                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-90" : ""}`} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition"
-                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
-              >
-                <FileDown className="h-3 w-3" />
-                Bill
-              </button>
+          {/* Account row */}
+          <div
+            className="p-4 cursor-pointer"
+            onClick={() => toggleExpand(a.id)}
+          >
+            <div className="flex items-start justify-between gap-3">
+              {/* Left: name + details */}
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-base">{a.full_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+                {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+              </div>
+
+              {/* Right: two big square boxes */}
+              <div className="flex items-stretch gap-2 shrink-0">
+                {/* Amount owed box */}
+                <div className="w-20 h-16 rounded-2xl flex items-center justify-center border border-red-400/30"
+                  style={{ background: "rgba(248,113,113,0.08)" }}>
+                  <span className="text-sm font-black text-red-400 text-center leading-tight px-1">
+                    ${Number(a.balance_owed).toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Bill button box */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition shrink-0"
+                  style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
+                >
+                  <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                  <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Chevron centered at bottom */}
+            <div className="flex justify-center mt-2">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-180" : ""}`} />
             </div>
           </div>
 
@@ -671,38 +686,46 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
           className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div className="flex items-center justify-between p-4">
-            <button
-              onClick={() => toggleExpand(a.id)}
-              className="flex-1 text-left"
-            >
-              <p className="font-black text-base">{a.full_name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-            </button>
-            <div className="flex flex-col items-end gap-2 ml-2 shrink-0">
-              <div className="flex items-center gap-2.5">
+          <div
+            className="p-4 cursor-pointer"
+            onClick={() => toggleExpand(a.id)}
+          >
+            <div className="flex items-start justify-between gap-3">
+              {/* Left: name + details */}
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-base">{a.full_name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+                {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+              </div>
+
+              {/* Right: Bill box + Delete box */}
+              <div className="flex items-stretch gap-2 shrink-0">
+                {/* Bill button box */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 transition"
-                  style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
+                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
+                  style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
                 >
-                  <FileDown className="h-3.5 w-3.5" />
-                  Bill
+                  <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                  <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
                 </button>
+
+                {/* Delete button box */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                  className="h-9 w-9 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition"
+                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
                 >
-                  <Trash2 className="h-4.5 w-4.5" />
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                  <span className="text-xs font-black text-destructive">Delete</span>
                 </button>
-                <ChevronRight
-                  onClick={() => toggleExpand(a.id)}
-                  className={`h-4 w-4 text-muted-foreground transition-transform cursor-pointer ${expanded === a.id ? "rotate-90" : ""}`}
-                />
               </div>
-              <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+            </div>
+
+            {/* Chevron centered at bottom */}
+            <div className="flex justify-center mt-2">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded === a.id ? "rotate-180" : ""}`} />
             </div>
           </div>
 

@@ -208,21 +208,21 @@ export default function AppLayout() {
           <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
+              className="flex items-center gap-2 px-4 h-10 rounded-lg font-black text-sm transition text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
             >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               Menu
             </button>
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+6px)] w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
+                className="absolute right-0 top-[calc(100%+6px)] w-64 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
                 style={{ background: "var(--gradient-card)" }}
               >
                 {/* Owner name — small, at the top of the menu */}
-                <div className="px-4 py-2.5 border-b border-border/50">
-                  <span className="text-[11px] font-semibold text-muted-foreground truncate block">{profile.username}</span>
+                <div className="px-5 py-3 border-b border-border/50">
+                  <span className="text-xs font-semibold text-muted-foreground truncate block">{profile.username}</span>
                 </div>
 
                 {navItems.map((it) => {
@@ -232,20 +232,20 @@ export default function AppLayout() {
                     <Link
                       key={it.to}
                       to={it.to}
-                      className={`flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 ${
+                      className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
                         active ? "text-primary" : "text-foreground hover:bg-muted/50"
                       }`}
                     >
-                      <Icon className="h-5 w-5 shrink-0" />
+                      <Icon className="h-6 w-6 shrink-0" />
                       {it.label}
                     </Link>
                   );
                 })}
                 <button
                   onClick={() => { signOut(); nav("/login"); }}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                  className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
-                  <X className="h-5 w-5 shrink-0" />
+                  <X className="h-6 w-6 shrink-0" />
                   Logout / Salir
                 </button>
               </div>

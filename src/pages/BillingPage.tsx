@@ -186,7 +186,18 @@ export default function BillingPage() {
 
         {/* ── Status card ── */}
         <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">Subscription Status</h2>
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-xl font-bold">Subscription Status</h2>
+            {hasActivePlan && lastPaidPayment && (() => {
+              const plan = plans.find(p => p.id === lastPaidPayment.plan_id);
+              return plan ? (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Renewal fee</p>
+                  <p className="text-lg font-black text-primary">${plan.amount.toFixed(0)} TT</p>
+                </div>
+              ) : null;
+            })()}
+          </div>
 
           {isOverdueRenew ? (
             <div className="flex items-start gap-3">
