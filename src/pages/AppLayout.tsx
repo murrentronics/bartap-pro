@@ -196,7 +196,7 @@ export default function AppLayout() {
           {hasMusic && (
             <Link
               to={isOnMusic ? "/register" : "/music"}
-              className="h-8 px-3 rounded-lg flex items-center justify-center font-black text-xs transition active:scale-95 text-primary-foreground"
+              className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
               title={isOnMusic ? "Back to Bar" : "Open Music Player"}
             >
