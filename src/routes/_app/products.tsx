@@ -537,28 +537,32 @@ export default function ProductsPage() {
                     <span className="text-base font-black text-white leading-none">{p.stock_qty ?? 0}</span>
                   </button>
 
-                  {/* Edit button — bottom-left, orange circle, same size as qty button */}
+                  {/* Edit button — bottom-left orange circle */}
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditItem(p); }}
-                    className="absolute bottom-1.5 left-1.5 h-10 w-10 rounded-full flex items-center justify-center active:scale-95 transition shadow z-10"
+                    className="absolute bottom-1.5 left-1.5 h-10 w-10 rounded-full flex items-center justify-center active:scale-95 transition shadow z-20"
                     style={{ background: "var(--gradient-hero)" }}
                     title="Edit item"
                   >
-                    <Pencil className="h-4 w-4 text-white" />
+                    <Pencil className="h-4 w-4 text-black" />
                   </button>
 
-                  {/* LOW stock badge — shows when stock is 1–5, shifted down to not overlap edit btn */}
+                  {/* LOW stock badge — top-right */}
                   {(p.stock_qty ?? 0) > 0 && (p.stock_qty ?? 0) <= 5 && (
                     <div className="absolute top-1.5 right-1.5 z-10 bg-red-600 rounded-md px-1.5 py-0.5 shadow">
                       <span className="text-white text-[9px] font-black uppercase tracking-wider leading-none">LOW</span>
                     </div>
                   )}
-                  {/* Delete button on image bottom-right, price moves to footer */}
-                  <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 z-10 flex justify-end">
+
+                  {/* Delete button — bottom-right red circle, same size as edit */}
+                  <div className="absolute bottom-1.5 right-1.5 z-20">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <button className="p-1 rounded text-white/70 hover:text-destructive bg-black/50 rounded-lg">
-                          <Trash2 className="h-4 w-4" />
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-10 w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shadow"
+                        >
+                          <Trash2 className="h-4 w-4 text-white" />
                         </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -566,12 +570,15 @@ export default function ProductsPage() {
                           <AlertDialogTitle>Delete {p.name}?</AlertDialogTitle>
                           <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={async () => {
-                            await supabase.from("products").delete().eq("id", p.id);
-                            load();
-                          }}>Delete</AlertDialogAction>
+                        <AlertDialogFooter className="flex-row gap-3 mt-2">
+                          <AlertDialogCancel className="flex-1 h-14 text-base font-black m-0">Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="flex-1 h-14 text-base font-black bg-destructive hover:bg-destructive/90"
+                            onClick={async () => {
+                              await supabase.from("products").delete().eq("id", p.id);
+                              load();
+                            }}
+                          >Delete</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -579,7 +586,7 @@ export default function ProductsPage() {
                 </div>
 
                 {/* ── Title + price below image ── */}
-                <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
+                <div className="px-1.5 py-1.5 pointer-events-none select-none" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
                   <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
                   <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
                 </div>
