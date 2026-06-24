@@ -1386,11 +1386,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     return () => { supabase.removeChannel(ch); };
   }, [profile.id, loadSummary]);
 
-  const totalExpenses = financialSummary ? financialSummary.initialExpense + financialSummary.monthlyExpenses : 0;
+  const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const netProfit = totalIncome - totalExpenses;
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
-  const hasFinancials = financialSummary !== null && (financialSummary.initialExpense > 0 || financialSummary.monthlyExpenses > 0);
+  const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
     <div className="space-y-5">

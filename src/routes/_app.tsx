@@ -29,11 +29,7 @@ function AppLayout() {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
       nav({ to: "/admin" as "/" });
     }
-    // ADMIN-ONLY WEB: Block non-admin users
-    if (!loading && profile && profile.role !== "admin") {
-      signOut().then(() => nav({ to: "/login" }));
-    }
-  }, [loading, profile, loc.pathname, nav, signOut]);
+  }, [loading, profile, loc.pathname, nav]);
 
   // Close menu on outside click
   useEffect(() => {

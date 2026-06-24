@@ -448,7 +448,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden"
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden"
       style={{ background: "var(--background)" }}>
       {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-3 border-b border-border bg-background/95 backdrop-blur z-10"

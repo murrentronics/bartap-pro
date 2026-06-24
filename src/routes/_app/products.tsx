@@ -76,7 +76,7 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
         .insert({
           owner_id: ownerId,
           amount: expenseAmount,
-          description: productName,
+          description: `${productName} ×${addAmount}`,
           expense_date: today,
         })
         .select("id")
