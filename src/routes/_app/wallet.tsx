@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
   ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X,
-  TrendingUp, TrendingDown, DollarSign, PlusCircle, ChevronDown,
-  BarChart3, List, Calculator, Pencil, Trash2,
+  TrendingUp, TrendingDown, DollarSign, ChevronDown,
+  BarChart3, List, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -720,40 +720,21 @@ function NumPad({
 
 // ─── Financials Tab ───────────────────────────────────────────────────────────
 function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string; totalIncome: number; onDataChange?: () => void }) {
-  const [financials, setFinancials] = useState<OwnerFinancials | null>(null);
   const [expenses, setExpenses] = useState<OwnerExpense[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
-
-  // Initial expense
-  const [editingInitial, setEditingInitial] = useState(false);
-  const [initialInput, setInitialInput] = useState("");
-  const [showInitialPad, setShowInitialPad] = useState(false);
-  const [savingInitial, setSavingInitial] = useState(false);
-
-  // Monthly expense form
-  const [expAmount, setExpAmount] = useState("");
-  const [expDesc, setExpDesc] = useState("");
-  const [expDate, setExpDate] = useState(todayISO());
-  const [showExpPad, setShowExpPad] = useState(false);
-  const [savingExp, setSavingExp] = useState(false);
-
-  // Add expense form open/closed
-  const [expFormOpen, setExpFormOpen] = useState(false);
 
   // Accordion
   const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
-    const [finRes, expRes, ordRes] = await Promise.all([
-      sb.from("owner_financials").select("*").eq("owner_id", ownerId).maybeSingle(),
+    const [expRes, ordRes] = await Promise.all([
       sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
       // Fetch ALL orders for this owner (owner's own + all cashiers) — for monthly income breakdown
       supabase.from("orders").select("total, created_at").eq("owner_id", ownerId),
     ]);
-    setFinancials(finRes.data as OwnerFinancials | null);
     setExpenses((expRes.data ?? []) as OwnerExpense[]);
     // Build per-month income map from all owner orders
     const incomeMap: Record<string, number> = {};
@@ -779,9 +760,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   }, [ownerId, loadData]);
 
   // ── Derived totals ────────────────────────────────────────────────────────
-  const initialExpense = financials ? Number(financials.initial_expense) : 0;
-  const monthlyExpensesTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
-  const totalExpenses = initialExpense + monthlyExpensesTotal;
+  const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const netProfit = totalIncome - totalExpenses;
 
   // ── Group expenses by month ───────────────────────────────────────────────
@@ -792,58 +771,6 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     expensesByMonth[key].push(e);
   });
   const expenseMonths = Object.keys(expensesByMonth).sort((a, b) => b.localeCompare(a));
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleSaveInitial = async () => {
-    const val = parseFloat(initialInput);
-    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
-    setSavingInitial(true);
-    if (financials) {
-      const { error } = await sb.from("owner_financials")
-        .update({ initial_expense: val }).eq("id", financials.id);
-      if (error) { toast.error(error.message); setSavingInitial(false); return; }
-    } else {
-      const { error } = await sb.from("owner_financials")
-        .insert({ owner_id: ownerId, initial_expense: val });
-      if (error) { toast.error(error.message); setSavingInitial(false); return; }
-    }
-    setSavingInitial(false);
-    setInitialInput("");
-    setEditingInitial(false);
-    toast.success("Initial expense saved");
-    await loadData();
-    onDataChange?.();
-  };
-
-  const handleSaveExpense = async () => {
-    const val = parseFloat(expAmount);
-    if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
-    if (!expDate) { toast.error("Select a date"); return; }
-    setSavingExp(true);
-    const { error } = await sb.from("owner_expenses").insert({
-      owner_id: ownerId,
-      amount: val,
-      description: expDesc.trim() || null,
-      expense_date: expDate,
-    });
-    if (error) { toast.error(error.message); setSavingExp(false); return; }
-    setSavingExp(false);
-    setExpAmount("");
-    setExpDesc("");
-    setExpDate(todayISO());
-    toast.success("Expense recorded");
-    setOpenMonth(monthKey(expDate));
-    await loadData();
-    onDataChange?.();
-  };
-
-  const handleDeleteExpense = async (id: string) => {
-    const { error } = await sb.from("owner_expenses").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Expense removed");
-    await loadData();
-    onDataChange?.();
-  };
 
   const handleDownloadExpenseSheet = async (mk: string) => {
     if (downloadingMonth) return;
@@ -859,17 +786,14 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       const mIncome   = monthlyIncome[mk] ?? 0;
       // All-time totals for net profit
       const allTimeIncome   = Object.values(monthlyIncome).reduce((s, v) => s + v, 0);
-      const allTimeExpenses = initialExpense + monthlyExpensesTotal;
+      const allTimeExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
       const allTimeNet      = allTimeIncome - allTimeExpenses;
 
       let y = await drawHeader(doc, "Owner Financials", "Expense Report", label, generated);
 
-      // ── Last modified line ────────────────────────────────────────────────
-      const lastModified = financials?.updated_at
-        ? new Date(financials.updated_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "short", year: "numeric" })
-        : generated;
+      // ── Generated timestamp ───────────────────────────────────────────────
       doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(150, 100, 30);
-      doc.text("Last modified: " + lastModified + "  |  This document is system-generated and tamper-evident.", LM, y);
+      doc.text("Generated: " + generated + "  |  This document is system-generated and tamper-evident.", LM, y);
       doc.setTextColor(0, 0, 0); y += 5;
 
       // ── Summary box ──────────────────────────────────────────────────────
@@ -883,7 +807,6 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
 
       const cols = [
         { label: "This Month Income",  value: "$" + fmt(mIncome),        color: [40, 140, 40]  as [number,number,number] },
-        { label: "Initial Investment", value: "$" + fmt(initialExpense),  color: [180, 40, 40]  as [number,number,number] },
         { label: "Total Expenses",     value: "$" + fmt(allTimeExpenses), color: [180, 40, 40]  as [number,number,number] },
         { label: "Net Profit",         value: (allTimeNet >= 0 ? "+" : "") + "$" + fmt(allTimeNet), color: (allTimeNet >= 0 ? [40,140,40] : [180,40,40]) as [number,number,number] },
       ];
@@ -956,142 +879,11 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     );
   }
 
-  const currentMonthKey = monthKey(todayISO());
-  const currentMonthExpenses = expensesByMonth[currentMonthKey] ?? [];
-  const currentMonthTotal = currentMonthExpenses.reduce((s, e) => s + Number(e.amount), 0);
-
   return (
     <div className="space-y-5 pt-2 pb-24">
 
-      {/* ── Setup / Initial Expense ───────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border p-4 space-y-3"
-        style={{ background: "var(--gradient-card)" }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calculator className="h-4 w-4 text-primary" />
-            <h3 className="font-black text-sm">Initial Bar Setup Cost</h3>
-          </div>
-        </div>
-
-        {/* Show current value with Edit button — no edit form by default */}
-        <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
-          <span className="text-sm text-muted-foreground">Initial expense</span>
-          <div className="flex items-center gap-2">
-            <span className="font-black text-primary text-base">
-              {financials && Number(financials.initial_expense) > 0
-                ? `$${fmt(Number(financials.initial_expense))}`
-                : "Not set"}
-            </span>
-            <button
-              onClick={() => {
-                setInitialInput(financials ? String(financials.initial_expense) : "");
-                setEditingInitial(true);
-                setShowInitialPad(true);
-              }}
-              className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary/15 hover:bg-primary/25 transition active:scale-95"
-              title="Edit initial expense">
-              <Pencil className="h-3.5 w-3.5 text-primary" />
-            </button>
-          </div>
-        </div>
-
-        {!financials && (
-          <p className="text-xs text-muted-foreground">
-            Tap the edit button to enter the total cost of all items currently stocked in your bar.
-          </p>
-        )}
-
-        {/* Inline edit form — only shows when editing */}
-        {editingInitial && (
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
-              <input
-                readOnly
-                value={initialInput}
-                onFocus={() => setShowInitialPad(true)}
-                onClick={() => setShowInitialPad(true)}
-                placeholder="0.00"
-                className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-              />
-            </div>
-            <Button onClick={handleSaveInitial} disabled={savingInitial || !initialInput} className="shrink-0">
-              {savingInitial ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-            </Button>
-            <Button variant="ghost" onClick={() => { setEditingInitial(false); setInitialInput(""); }} className="shrink-0 px-2">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* ── This Month's Expenses ─────────────────────────────────────────── */}
-      {financials !== null && (
-        <div className="rounded-2xl border border-border overflow-hidden"
-          style={{ background: "var(--gradient-card)" }}>
-          {/* Header row — always visible, click to toggle form */}
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
-            onClick={() => setExpFormOpen(o => !o)}>
-            <div className="flex items-center gap-2">
-              <PlusCircle className="h-4 w-4 text-primary" />
-              <h3 className="font-black text-sm">Add Expense</h3>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-              </span>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expFormOpen ? "rotate-180" : ""}`} />
-            </div>
-          </button>
-
-          {/* Collapsible form body */}
-          {expFormOpen && (
-            <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
-              {currentMonthTotal > 0 && (
-                <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2.5">
-                  <span className="text-sm text-red-300">This month's expenses</span>
-                  <span className="font-black text-red-400">${fmt(currentMonthTotal)}</span>
-                </div>
-              )}
-              <div className="space-y-2">
-                {/* Amount — taps open numpad */}
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold pointer-events-none">$</span>
-                  <input
-                    readOnly
-                    value={expAmount}
-                    onClick={() => setShowExpPad(true)}
-                    placeholder="Total purchase amount"
-                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold focus:outline-none cursor-pointer"
-                    style={{ caretColor: "transparent" }}
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Description (optional)"
-                  value={expDesc}
-                  onChange={(e) => setExpDesc(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <input
-                  type="date"
-                  value={expDate}
-                  onChange={(e) => setExpDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-              <Button onClick={handleSaveExpense} disabled={savingExp || !expAmount} className="w-full">
-                {savingExp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
-                Record Expense
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Expense History by Month ──────────────────────────────────────── */}
-      {expenseMonths.length > 0 && (
+      {expenseMonths.length > 0 ? (
         <div className="space-y-2">
           <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>
           {expenseMonths.map((mk) => {
@@ -1102,7 +894,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
             const allIncomeToMonth = Object.entries(monthlyIncome)
               .filter(([k]) => k <= mk)
               .reduce((s, [, v]) => s + v, 0);
-            const allExpenses = initialExpense + monthlyExpensesTotal;
+            const allExpenses = totalExpenses;
             const runningNet = allIncomeToMonth - allExpenses;
             const isOpen = openMonth === mk;
             return (
@@ -1135,26 +927,21 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                 {isOpen && (
                   <div className="border-t border-border divide-y divide-border/50">
                     {mExpenses.map((e) => (
-                      <div key={e.id} className="px-4 py-3 flex items-center gap-3">
+                      <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">${fmt(Number(e.amount))}</span>
-                            {e.description && (
-                              <span className="text-xs text-muted-foreground truncate">· {e.description}</span>
-                            )}
+                          <div className="font-semibold text-sm truncate">
+                            {e.description ?? "Stock expense"}
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+                            {new Date(e.created_at).toLocaleString("en-GB", {
                               day: "numeric", month: "short", year: "numeric",
+                              hour: "2-digit", minute: "2-digit", hour12: true,
                             })}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteExpense(e.id)}
-                          className="h-7 w-7 rounded-lg flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition shrink-0"
-                          title="Remove expense">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        <span className="font-black text-sm text-red-400 shrink-0">
+                          -${fmt(Number(e.amount))}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1163,34 +950,13 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
             );
           })}
         </div>
-      )}
-
-      {/* Empty state */}
-      {financials === null && (
-        <p className="text-center text-sm text-muted-foreground py-4">
-          Tap the edit button on Initial Bar Setup Cost to start tracking your financials.
+      ) : (
+        <p className="text-center text-sm text-muted-foreground py-8">
+          No expenses yet. Expenses are auto-generated when you add stock to items with a Cost Price set.
         </p>
       )}
 
-      {/* ── Number Pads ──────────────────────────────────────────────────── */}
-      {showInitialPad && (
-        <NumPad
-          label="Initial Bar Setup Cost"
-          value={initialInput}
-          onChange={setInitialInput}
-          onDone={() => setShowInitialPad(false)}
-          onCancel={() => setShowInitialPad(false)}
-        />
-      )}
-      {showExpPad && (
-        <NumPad
-          label="Expense Amount"
-          value={expAmount}
-          onChange={setExpAmount}
-          onDone={() => setShowExpPad(false)}
-          onCancel={() => setShowExpPad(false)}
-        />
-      )}
+      {/* empty bottom spacer */}
     </div>
   );
 }
@@ -1215,6 +981,8 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  // Locked snapshot of the newest order id — set once on first load, cleared after delete
+  const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -1223,7 +991,17 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
       supabase.from("orders").select("*")
         .eq("owner_id", profile.id).eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
-        .then(({ data }) => setAllOrders((data ?? []) as unknown as Order[])),
+        .then(({ data }) => {
+          const orders = (data ?? []) as unknown as Order[];
+          setAllOrders(orders);
+          // Lock the newest id only on the very first fetch (undefined = not yet set)
+          if (lockedNewestOrderIdRef.current === undefined) {
+            const newest = orders.length > 0
+              ? orders.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+              : null;
+            lockedNewestOrderIdRef.current = newest?.id ?? null;
+          }
+        }),
       // Fetch ALL wallet txs (no range limit)
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
@@ -1271,16 +1049,16 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
     if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
     toast.success("Sale record removed");
     setDeletingOrderId(null);
+    // Clear the lock so the button disappears and doesn't drop to the next order
+    lockedNewestOrderIdRef.current = null;
     fetchData();
   };
 
   const handlePrev = () => { setPage((p) => Math.max(0, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
-  // Find the newest order id so we only show delete on that one
-  const newestOrderId = allOrders.length > 0
-    ? allOrders.reduce((newest, o) => new Date(o.created_at) > new Date(newest.created_at) ? o : newest).id
-    : null;
+  // Use the locked snapshot — never moves after first load
+  const newestOrderId = lockedNewestOrderIdRef.current ?? null;
 
   return (
     <div className="space-y-3 pt-2">

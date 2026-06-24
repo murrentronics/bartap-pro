@@ -20,11 +20,13 @@ type Product = {
   id: string;
   name: string;
   price: number;
+  cost_price: number;
   image_url: string | null;
   category?: string;
   stock_qty: number;
-  stock_qty_undo: number | null;      // qty BEFORE the last add (revert target)
+  stock_qty_undo: number | null;       // qty BEFORE the last add (revert target)
   stock_qty_undo_saved: number | null; // qty AFTER the last add (baseline to detect sales)
+  stock_last_expense_id: string | null; // auto-generated expense from last stock add
 };
 
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
@@ -34,13 +36,17 @@ const STOCK_BTNS = [
   { qty: 10 }, { qty: 6  }, { qty: 1  },
 ];
 
-function StockNumpad({ productId, currentQty, stockQtyUndo, stockQtyUndoSaved, onClose, onSaved }: {
+function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, stockQtyUndo, stockQtyUndoSaved, lastExpenseId, onClose, onSaved }: {
   productId: string;
+  productName: string;
+  ownerId: string;
   currentQty: number;
+  costPrice: number;
   stockQtyUndo: number | null;
   stockQtyUndoSaved: number | null;
+  lastExpenseId: string | null;
   onClose: () => void;
-  onSaved: (patch: Partial<Pick<Product, "stock_qty" | "stock_qty_undo" | "stock_qty_undo_saved">>) => void;
+  onSaved: (patch: Partial<Pick<Product, "stock_qty" | "stock_qty_undo" | "stock_qty_undo_saved" | "stock_last_expense_id">>) => void;
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
   const [busy, setBusy] = useState(false);
@@ -59,15 +65,40 @@ function StockNumpad({ productId, currentQty, stockQtyUndo, stockQtyUndoSaved, o
   const save = async () => {
     if (addAmount === 0) return;
     setBusy(true);
+
+    // Auto-generate expense record if cost_price is set
+    let newExpenseId: string | null = null;
+    if (costPrice > 0) {
+      const expenseAmount = costPrice * addAmount;
+      const today = new Date().toISOString().split("T")[0];
+      const { data: expData, error: expErr } = await supabase
+        .from("owner_expenses")
+        .insert({
+          owner_id: ownerId,
+          amount: expenseAmount,
+          description: productName,
+          expense_date: today,
+        })
+        .select("id")
+        .single();
+      if (expErr) { toast.error(expErr.message); setBusy(false); return; }
+      newExpenseId = expData?.id ?? null;
+    }
+
     // stock_qty_undo = what qty was before this add (for reverting)
     // stock_qty_undo_saved = what qty became after this add (to detect any sales)
     const { error } = await supabase
       .from("products")
-      .update({ stock_qty: newTotal, stock_qty_undo: currentQty, stock_qty_undo_saved: newTotal })
+      .update({
+        stock_qty: newTotal,
+        stock_qty_undo: currentQty,
+        stock_qty_undo_saved: newTotal,
+        stock_last_expense_id: newExpenseId,
+      })
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    onSaved({ stock_qty: newTotal, stock_qty_undo: currentQty, stock_qty_undo_saved: newTotal });
+    onSaved({ stock_qty: newTotal, stock_qty_undo: currentQty, stock_qty_undo_saved: newTotal, stock_last_expense_id: newExpenseId });
     reset();
     onClose();
   };
@@ -83,13 +114,19 @@ function StockNumpad({ productId, currentQty, stockQtyUndo, stockQtyUndoSaved, o
     });
     if (!ok) return;
     setBusy(true);
+
+    // Delete the linked auto-generated expense record
+    if (lastExpenseId) {
+      await supabase.from("owner_expenses").delete().eq("id", lastExpenseId);
+    }
+
     const { error } = await supabase
       .from("products")
-      .update({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null })
+      .update({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null, stock_last_expense_id: null })
       .eq("id", productId);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    onSaved({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null });
+    onSaved({ stock_qty: stockQtyUndo, stock_qty_undo: null, stock_qty_undo_saved: null, stock_last_expense_id: null });
     toast.success("Last stock edit undone");
     onClose();
   };
@@ -600,9 +637,13 @@ export default function ProductsPage() {
       {stockNumpadId && stockNumpadProduct && (
         <StockNumpad
           productId={stockNumpadId}
+          productName={stockNumpadProduct.name}
+          ownerId={profile.id}
           currentQty={stockNumpadProduct.stock_qty ?? 0}
+          costPrice={stockNumpadProduct.cost_price ?? 0}
           stockQtyUndo={stockNumpadProduct.stock_qty_undo ?? null}
           stockQtyUndoSaved={stockNumpadProduct.stock_qty_undo_saved ?? null}
+          lastExpenseId={stockNumpadProduct.stock_last_expense_id ?? null}
           onClose={() => setStockNumpadId(null)}
           onSaved={(patch) => {
             setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, ...patch } : p));
@@ -635,12 +676,15 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const isEdit = !!editProduct;
   const [name, setName] = useState(editProduct?.name ?? "");
   const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
+  const [costPrice, setCostPrice] = useState(editProduct ? String(editProduct.cost_price ?? "") : "");
   const [category, setCategory] = useState<string>(editProduct?.category ?? "beers");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  // which field the numpad is for: "selling" | "cost" | null
+  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | null>(null);
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
@@ -669,11 +713,13 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
 
   const handleNumpad = (k: string) => {
-    if (k === "⌫") { setPrice((v) => v.slice(0, -1)); return; }
-    if (k === ".") { if (!price.includes(".")) setPrice((v) => v + "."); return; }
-    const dotIdx = price.indexOf(".");
-    if (dotIdx !== -1 && price.length - dotIdx > 2) return;
-    setPrice((v) => (v === "0" ? k : v + k));
+    const setter = activeNumpad === "cost" ? setCostPrice : setPrice;
+    const current = activeNumpad === "cost" ? costPrice : price;
+    if (k === "⌫") { setter(current.slice(0, -1)); return; }
+    if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
+    const dotIdx = current.indexOf(".");
+    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    setter(current === "0" ? k : current + k);
   };
 
   const submit = async () => {
@@ -693,11 +739,13 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       image_url = editProduct?.image_url ?? null;
     }
 
+    const costVal = parseFloat(costPrice) || 0;
+
     if (isEdit && editProduct) {
       // ── UPDATE existing product ──────────────────────────────────────────
       const { data: updated, error } = await supabase
         .from("products")
-        .update({ name: name.trim(), price: Number(price), image_url, category })
+        .update({ name: name.trim(), price: Number(price), cost_price: costVal, image_url, category })
         .eq("id", editProduct.id)
         .select("*")
         .single();
@@ -709,12 +757,12 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     } else {
       // ── INSERT new product ───────────────────────────────────────────────
       const { data: inserted, error } = await supabase.from("products").insert({
-        owner_id: profile.id, name: name.trim(), price: Number(price), image_url, category,
+        owner_id: profile.id, name: name.trim(), price: Number(price), cost_price: costVal, image_url, category,
       }).select("*").single();
       setBusy(false);
       if (error) { toast.error(error.message); return; }
       toast.success("Item added");
-      setName(""); setPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
+      setName(""); setPrice(""); setCostPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
       onSaved(inserted);
     }
@@ -836,38 +884,63 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Heineken 330ml" className="h-9" />
             </div>
 
-            {/* Category */}
-            <div>
-              <Label className="text-xs">Category</Label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
-                ))}
-              </select>
+            {/* Category + Cost Price side by side */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label className="text-xs">Category</Label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs">Cost Price</Label>
+                <div
+                  className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                  onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
+                >
+                  <span className={`text-base font-black ${activeNumpad === "cost" ? "text-primary" : "text-muted-foreground"}`}>
+                    ${costPrice || "0.00"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Price */}
+            {/* Selling Price */}
             <div>
-              <Label className="text-xs">Price</Label>
-              <div className="h-10 rounded-lg border border-border bg-muted/30 flex items-center px-3 mb-2">
-                <span className="text-lg font-black text-primary">${price || "0.00"}</span>
+              <Label className="text-xs">Selling Price</Label>
+              <div
+                className="h-10 rounded-lg border border-border bg-muted/30 flex items-center px-3 mb-2 cursor-pointer active:bg-muted/50 transition"
+                onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}
+              >
+                <span className={`text-lg font-black ${activeNumpad === "selling" ? "text-primary" : "text-muted-foreground"}`}>
+                  ${price || "0.00"}
+                </span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => handleNumpad(k)}
-                    className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
-                      k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
-                    }`}
-                  >{k}</button>
-                ))}
-              </div>
+              {activeNumpad !== null && (
+                <div className="space-y-1">
+                  <div className="text-xs text-center text-muted-foreground font-semibold pb-1">
+                    {activeNumpad === "selling" ? "Selling Price" : "Cost Price"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => handleNumpad(k)}
+                        className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
+                          k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
+                        }`}
+                      >{k}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

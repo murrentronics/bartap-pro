@@ -10,6 +10,7 @@ export type Profile = {
   parent_id: string | null;
   wallet_balance: number;
   status: UserStatus;
+  is_active?: boolean;
   phone?: string;
   address?: string;
   music_addon?: boolean;
@@ -44,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("*")
         .eq("id", uid)
         .maybeSingle();
-      setProfile(data ? (data as unknown as Profile) : null);
+      const p = data ? (data as unknown as Profile) : null;
+      setProfile(p);
+      // Mark cashier as active when their session loads
+      if (p?.role === "cashier") {
+        await supabase.from("profiles").update({ is_active: true }).eq("id", uid);
+      }
     } finally {
       profileFetching.current = false;
       setLoading(false);
@@ -69,7 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (s?.user) {
         loadProfile(s.user.id);
       } else {
-        setProfile(null);
+        // Session ended — clear is_active for any cashier that was logged in
+        setProfile((prev) => {
+          if (prev?.role === "cashier" && prev?.id) {
+            supabase.from("profiles").update({ is_active: false }).eq("id", prev.id);
+          }
+          return null;
+        });
         setLoading(false);
       }
     });
@@ -112,6 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) await loadProfile(session.user.id);
     },
     signOut: async () => {
+      // Clear active flag for cashiers before signing out
+      const uid = session?.user?.id;
+      if (uid && profile?.role === "cashier") {
+        await supabase.from("profiles").update({ is_active: false }).eq("id", uid);
+      }
       await supabase.auth.signOut();
     },
   };
