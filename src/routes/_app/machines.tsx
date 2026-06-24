@@ -286,10 +286,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
   // ── Session totals — payouts/income since the last machine clear (income entry).
   // If there's never been a clear, counts everything (anchor = null = all time).
   const sessionPayouts = entries
-    .filter(e => e.type === "payout" && (!sessionAnchor || e.created_at > sessionAnchor))
+    .filter(e => e.type === "payout" && (!sessionAnchor || new Date(e.created_at) > new Date(sessionAnchor)))
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionIncome = entries
-    .filter(e => e.type === "income" && (!sessionAnchor || e.created_at > sessionAnchor))
+    .filter(e => e.type === "income" && (!sessionAnchor || new Date(e.created_at) > new Date(sessionAnchor)))
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
 
@@ -632,8 +632,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
                     <span className="text-sm">📁</span>
                   </div>
                   <div>
-                    <div className="font-black text-sm">Keep Records</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Delete the machine but keep all history records intact.</div>
+                    <div className="font-black text-sm">Remove Card Only</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Remove this machine from the app. All payout/income totals stay intact in All History.</div>
                   </div>
                 </button>
                 <button
@@ -644,8 +644,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </div>
                   <div>
-                    <div className="font-black text-sm text-red-400">Wipe All Records</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Delete the machine and remove all payout/income history. Cannot be undone.</div>
+                    <div className="font-black text-sm text-red-400">Delete Everything</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Remove the machine card AND wipe all its payout/income history. Cannot be undone.</div>
                   </div>
                 </button>
               </div>
@@ -1227,32 +1227,19 @@ export default function MachinesPage() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, load, loadFloat, loadActiveCashier]);
 
-  // Session payouts = all payouts across all machines since float was last set
+  // Session payouts = all payouts across ALL machines (owner + cashier) since float was last set
   const sessionPayouts = floatSession
     ? entries
-        .filter(e => e.type === "payout" && e.created_at >= floatSession.set_at)
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
         .reduce((s, e) => s + Number(e.amount), 0)
     : 0;
   const remainingFloat = floatSession ? Number(floatSession.amount) - sessionPayouts : null;
 
   if (!profile) return null;
 
-  // Show machine detail full-screen
-  if (selected) {
-    const screenNumber = [...machines]
-      .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      .findIndex(m => m.id === selected.id) + 1;
-    return (
-      <MachineDetail
-        machine={selected}
-        screenNumber={screenNumber}
-        ownerId={ownerId}
-        profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined }}
-        onBack={() => setSelected(null)}
-        onDeleted={() => { setSelected(null); load(); }}
-      />
-    );
-  }
+  const screenNumber = selected
+    ? [...machines].sort((a, b) => a.created_at.localeCompare(b.created_at)).findIndex(m => m.id === selected.id) + 1
+    : 0;
 
   const tabs = [
     { key: "screens", label: `Screens${machines.length ? ` (${machines.length})` : ""}` },
@@ -1261,7 +1248,22 @@ export default function MachinesPage() {
   ] as const;
 
   return (
-    <div className="py-3 space-y-4">
+    <>
+      {/* MachineDetail overlays the list but keeps MachinesPage mounted so
+          realtime channels stay alive and float/entries update in the background */}
+      {selected && (
+        <MachineDetail
+          machine={selected}
+          screenNumber={screenNumber}
+          ownerId={ownerId}
+          profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined }}
+          onBack={() => { setSelected(null); load(); }}
+          onDeleted={() => { setSelected(null); load(); }}
+        />
+      )}
+
+      {/* List view — always mounted, hidden behind MachineDetail when a machine is selected */}
+      <div className="py-3 space-y-4" style={selected ? { visibility: "hidden", pointerEvents: "none" } : {}}>
       <h1 className="text-2xl font-black">Machines</h1>
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
@@ -1326,8 +1328,8 @@ export default function MachinesPage() {
                     <span className="text-sm">📁</span>
                   </div>
                   <div>
-                    <div className="font-black text-sm">Keep Records</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Delete the machine but keep all history records intact.</div>
+                    <div className="font-black text-sm">Remove Card Only</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Remove this machine from the app. All payout/income totals stay intact in All History.</div>
                   </div>
                 </button>
                 <button disabled={deletingMachine} onClick={() => handleGridDeleteMachine(true)}
@@ -1336,8 +1338,8 @@ export default function MachinesPage() {
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </div>
                   <div>
-                    <div className="font-black text-sm text-red-400">Wipe All Records</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Delete the machine and remove all payout/income history. Cannot be undone.</div>
+                    <div className="font-black text-sm text-red-400">Delete Everything</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Remove the machine card AND wipe all its payout/income history. Cannot be undone.</div>
                   </div>
                 </button>
               </div>
@@ -1412,5 +1414,6 @@ export default function MachinesPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

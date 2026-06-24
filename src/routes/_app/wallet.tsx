@@ -752,6 +752,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-financials-${ownerId}`)
+      // All orders for this owner (cashier + direct)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${ownerId}` }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${ownerId}` }, () => loadData())
       .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${ownerId}` }, () => loadData())
@@ -987,17 +988,19 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
   const fetchData = useCallback(() => {
     setLoading(true);
     Promise.all([
-      // Fetch ALL owner-direct orders (no range limit)
+      // ALL orders for this owner — both owner-direct and cashier sales
       supabase.from("orders").select("*")
-        .eq("owner_id", profile.id).eq("cashier_id", profile.id)
+        .eq("owner_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => {
           const orders = (data ?? []) as unknown as Order[];
-          setAllOrders(orders);
           // Lock the newest id only on the very first fetch (undefined = not yet set)
+          // Only lock owner-direct orders (cashier_id = owner) for the delete button
+          const ownerOrders = orders.filter((o: any) => o.cashier_id === profile.id);
+          setAllOrders(orders);
           if (lockedNewestOrderIdRef.current === undefined) {
-            const newest = orders.length > 0
-              ? orders.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+            const newest = ownerOrders.length > 0
+              ? ownerOrders.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
               : null;
             lockedNewestOrderIdRef.current = newest?.id ?? null;
           }
@@ -1013,11 +1016,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Realtime — refresh when new orders or wallet transactions come in
+  // Realtime — refresh when new orders or wallet transactions come in (owner or cashier sales)
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-tx-${profile.id}`)
+      // All orders under this owner — fires on both owner-direct and cashier sales
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => fetchData())
+      // Owner's wallet transactions (cashier_sale mirror txs, transfer_in, etc.)
       .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => fetchData())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -1329,13 +1334,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, transfersRes, ownerOrdersRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       // Transfer-in: cashier balances cleared to owner
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
       // Owner's own direct orders (where owner is also cashier)
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
+      // Cashier orders — all orders under this owner where a cashier (not the owner) made the sale
+      supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
       // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
       // All products with stock: price × qty
@@ -1349,11 +1356,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
-    // Income = transfers in + owner's own orders + credit payments owner collected directly
+    // Income = transfers in + owner's own direct orders + all cashier orders + credit payments owner collected directly
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    const cashierOrdersIncome = (cashierOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
+    const totalIncome = transfersIncome + ownerOrdersIncome + cashierOrdersIncome + creditPaymentsIncome;
 
     // Closed stock: sum of price × stock_qty for all products
     const closedStockValue = (productsRes.data ?? []).reduce(
@@ -1376,12 +1384,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
-  // Realtime — refresh hero when orders or wallet transactions change
+  // Realtime — refresh hero when orders, wallet transactions, expenses, or products change
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-summary-${profile.id}`)
+      // All orders for this owner (owner direct + cashier sales)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
+      // Owner's own wallet transactions (transfer_in, credit_payment, etc.)
       .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadSummary())
+      // Expenses (auto-created on stock add, manual entries)
+      .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
+      // Products stock changes affect Stock Resale card
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id, loadSummary]);
