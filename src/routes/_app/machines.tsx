@@ -725,6 +725,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
+  // Session payouts since float was last set — resets to $0 when a new float is set
+  const sessionPayouts = floatSession
+    ? entries
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .reduce((s, e) => s + Number(e.amount), 0)
+    : 0;
+
   // Local ordered list — initialise from sort_order then created_at
   const sorted = [...initialMachines].sort((a, b) =>
     a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
@@ -805,14 +812,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
         </div>
         {/* Float row */}
         <div className="relative grid grid-cols-3 gap-2">
-          <div className="rounded-xl px-2 py-2 flex flex-col items-center justify-center text-center gap-0.5"
-            style={{ background: "oklch(0.22 0.02 60)" }}>
-            <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Cashier</span>
-            <span className="font-black text-[10px] leading-tight"
-              style={{ color: activeCashier ? "#fbbf24" : "oklch(0.45 0.02 60)" }}>
-              {activeCashier ? activeCashier.username : "—"}
-            </span>
-          </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Float Set</div>
@@ -822,10 +821,17 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Session Payout</div>
+            <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+              {floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+            </div>
+          </div>
+          <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+            style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Remaining</div>
             <div className="font-black text-xs"
-              style={{ color: !activeCashier || remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
-              {!activeCashier || remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              style={{ color: remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
+              {remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
             </div>
           </div>
         </div>
