@@ -1447,14 +1447,30 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           )}
 
-          {/* Stock Resale Value — full width row */}
-          <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
-              <BarChart3 className="h-3.5 w-3.5" /> Total Stock Resale Value
+          {/* Stock Resale + Expected Profit — 2 cards */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center justify-between rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <BarChart3 className="h-3 w-3" /> Stock Resale Cost
+                </div>
+                <span className="font-black text-sm" style={{ color: "#eab308" }}>
+                  ${fmt(stockResaleValue)}
+                </span>
+              </div>
             </div>
-            <span className="font-black text-sm" style={{ color: "#eab308" }}>
-              ${fmt(stockResaleValue)}
-            </span>
+            <div className="flex items-center justify-between rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingUp className="h-3 w-3" /> Expected Profit
+                </div>
+                <span className="font-black text-sm" style={{
+                  color: (stockResaleValue - totalExpenses) >= 0 ? "#86efac" : "#fca5a5"
+                }}>
+                  {(stockResaleValue - totalExpenses) >= 0 ? "+" : ""}${fmt(stockResaleValue - totalExpenses)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Income — full width row (replaces Available Balance) */}

@@ -167,6 +167,124 @@ export type Database = {
           },
         ]
       }
+      machine_float_sessions: {
+        Row: {
+          id: string
+          owner_id: string
+          amount: number
+          set_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          amount: number
+          set_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          amount?: number
+          set_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_float_sessions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_entries: {
+        Row: {
+          id: string
+          machine_id: string
+          owner_id: string
+          type: string
+          amount: number
+          note: string | null
+          entry_date: string
+          created_at: string
+          cashier_id: string | null
+          cashier_name: string | null
+        }
+        Insert: {
+          id?: string
+          machine_id: string
+          owner_id: string
+          type: string
+          amount: number
+          note?: string | null
+          entry_date: string
+          created_at?: string
+          cashier_id?: string | null
+          cashier_name?: string | null
+        }
+        Update: {
+          id?: string
+          machine_id?: string
+          owner_id?: string
+          type?: string
+          amount?: number
+          note?: string | null
+          entry_date?: string
+          created_at?: string
+          cashier_id?: string | null
+          cashier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_entries_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_entries_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machines: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          created_at: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name: string
+          created_at?: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          created_at?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machines_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
@@ -176,7 +294,12 @@ export type Database = {
           name: string
           owner_id: string
           price: number
+          cost_price: number
           stock_qty: number
+          sort_order: number
+          stock_qty_undo: number | null
+          stock_qty_undo_saved: number | null
+          stock_last_expense_id: string | null
         }
         Insert: {
           category?: string
@@ -186,7 +309,12 @@ export type Database = {
           name: string
           owner_id: string
           price: number
+          cost_price?: number
           stock_qty?: number
+          sort_order?: number
+          stock_qty_undo?: number | null
+          stock_qty_undo_saved?: number | null
+          stock_last_expense_id?: string | null
         }
         Update: {
           category?: string
@@ -196,7 +324,12 @@ export type Database = {
           name?: string
           owner_id?: string
           price?: number
+          cost_price?: number
           stock_qty?: number
+          sort_order?: number
+          stock_qty_undo?: number | null
+          stock_qty_undo_saved?: number | null
+          stock_last_expense_id?: string | null
         }
         Relationships: [
           {

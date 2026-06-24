@@ -24,9 +24,10 @@ type Product = {
   image_url: string | null;
   category?: string;
   stock_qty: number;
-  stock_qty_undo: number | null;       // qty BEFORE the last add (revert target)
-  stock_qty_undo_saved: number | null; // qty AFTER the last add (baseline to detect sales)
-  stock_last_expense_id: string | null; // auto-generated expense from last stock add
+  sort_order: number;
+  stock_qty_undo: number | null;
+  stock_qty_undo_saved: number | null;
+  stock_last_expense_id: string | null;
 };
 
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
@@ -436,8 +437,58 @@ export default function ProductsPage() {
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
 
+  // Drag-to-reorder state
+  const [editMode, setEditMode] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
+
+  // Reset edit mode when category changes
+  useEffect(() => { setEditMode(false); }, [category]);
+
+  const saveProductOrder = async (reordered: Product[]) => {
+    setSavingOrder(true);
+    await Promise.all(
+      reordered.map((p, idx) =>
+        supabase.from("products").update({ sort_order: idx }).eq("id", p.id)
+      )
+    );
+    setSavingOrder(false);
+  };
+
+  const handleDragStart = (id: string) => setDraggingId(id);
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggingId || draggingId === targetId) return;
+    setItems(prev => {
+      const next = [...prev];
+      const catItems = next.filter(p => (p.category || "beers") === category);
+      const others   = next.filter(p => (p.category || "beers") !== category);
+      const from = catItems.findIndex(p => p.id === draggingId);
+      const to   = catItems.findIndex(p => p.id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const [item] = catItems.splice(from, 1);
+      catItems.splice(to, 0, item);
+      return [...others, ...catItems];
+    });
+  };
+
+  const handleDrop = async () => {
+    setDraggingId(null);
+    const catItems = items.filter(p => (p.category || "beers") === category);
+    await saveProductOrder(catItems);
+  };
+
+  const startLongPress = () => {
+    longPressTimer.current = setTimeout(() => setEditMode(true), 600);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
 
   const load = useCallback(async () => {
     const p = profileRef.current;
@@ -446,6 +497,7 @@ export default function ProductsPage() {
       .from("products")
       .select("*")
       .eq("owner_id", p.id)
+      .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
     setItems((data ?? []) as Product[]);
     setLoading(false);
@@ -525,14 +577,40 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="pt-3">        {loading ? (
+      <div className="pt-3">
+        {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No {CATEGORIES.find(c=>c.value===category)?.label ?? category} yet — tap Add Item.</div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
+          <>
+            {/* Edit mode toolbar */}
+            {editMode && (
+              <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-3 border border-amber-500/40"
+                style={{ background: "oklch(0.20 0.05 60)" }}>
+                <span className="text-xs font-black text-amber-400">
+                  {savingOrder ? "Saving…" : "Hold & drag to reorder"}
+                </span>
+                <button onClick={() => setEditMode(false)}
+                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
+                  Done
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-2">
             {filtered.map((p) => (
-              <div key={p.id} className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
+              <div key={p.id}
+                className="relative"
+                draggable={editMode}
+                onDragStart={() => handleDragStart(p.id)}
+                onDragOver={(e) => handleDragOver(e, p.id)}
+                onDrop={handleDrop}
+                onDragEnd={() => setDraggingId(null)}
+                onPointerDown={startLongPress}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                style={{ opacity: draggingId === p.id ? 0.4 : 1, transition: "opacity 0.15s" }}>
+              <div className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
                 <div className="aspect-[3/4] relative w-full">
                   {p.image_url ? (
                     <img
@@ -629,8 +707,10 @@ export default function ProductsPage() {
                 </div>
 
               </div>
+            </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
