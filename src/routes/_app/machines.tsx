@@ -28,7 +28,7 @@ type MachineEntry = {
   cashier_id: string | null; cashier_name: string | null;
 };
 type FloatSession = {
-  id: string; machine_id: string; owner_id: string;
+  id: string; owner_id: string;
   amount: number; set_at: string; created_at: string;
 };
 
@@ -89,7 +89,8 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
 
   // Sort all entries newest first
   const allSorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  // The globally newest entry id — only this one gets the delete button
+  // The globally newest entry — only this one gets the undo/delete button.
+  // Once it's deleted it's gone from entries so the button naturally disappears.
   const newestId = allSorted[0]?.id ?? null;
 
   // Group by YYYY-MM
@@ -198,13 +199,16 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                           )}
                           {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
                         </div>
-                        {isNewest && (
-                          <button onClick={() => onDelete(e.id)} disabled={deletingId === e.id}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0 disabled:opacity-50">
-                            {deletingId === e.id
-                              ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                              : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                        {isNewest && !deletingId && (
+                          <button onClick={() => onDelete(e.id)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0">
+                            <Trash2 className="h-3.5 w-3.5 text-white" />
                           </button>
+                        )}
+                        {isNewest && deletingId === e.id && (
+                          <div className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50">
+                            <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                          </div>
                         )}
                       </div>
                     );
@@ -236,32 +240,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
   const [deletingMachine, setDeletingMachine] = useState(false);
 
-  // Float session
-  const [floatSession, setFloatSession] = useState<FloatSession | null>(null);
-  const [floatAmount, setFloatAmount] = useState("");
-  const [showSetFloat, setShowSetFloat] = useState(false);
-  const [savingFloat, setSavingFloat] = useState(false);
-
-  // Active cashier (the one currently logged in under this owner)
-  const [activeCashier, setActiveCashier] = useState<{ id: string; username: string } | null>(null);
-
-  const loadActiveCashier = useCallback(async () => {
-    const { data } = await sb.from("profiles")
-      .select("id, username")
-      .eq("parent_id", ownerId)
-      .eq("role", "cashier")
-      .eq("is_active", true)
-      .maybeSingle();
-    setActiveCashier(data as { id: string; username: string } | null);
-  }, [ownerId]);
-
-  const loadFloat = useCallback(async () => {
-    const { data } = await sb.from("machine_float_sessions")
-      .select("*").eq("machine_id", machine.id)
-      .order("set_at", { ascending: false }).limit(1).maybeSingle();
-    setFloatSession(data as FloatSession | null);
-  }, [machine.id]);
-
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await sb.from("machine_entries").select("*")
@@ -271,75 +249,30 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
     setLoading(false);
   }, [machine.id]);
 
-  useEffect(() => { load(); loadFloat(); loadActiveCashier(); }, [load, loadFloat, loadActiveCashier]);
+  useEffect(() => { load(); }, [load]);
 
-  // Realtime — entries + float sessions + active cashier changes
+  // Realtime — entries only (float lives on the screens page)
   useEffect(() => {
     const ch = supabase.channel(`machine-${machine.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries",
         filter: `machine_id=eq.${machine.id}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "machine_float_sessions",
-        filter: `machine_id=eq.${machine.id}` }, () => loadFloat())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" },
-        (payload) => {
-          // Only re-fetch if a cashier under this owner changed their is_active flag
-          const row = payload.new as { parent_id?: string; role?: string; is_active?: boolean };
-          if (row.parent_id === ownerId && row.role === "cashier") loadActiveCashier();
-        })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [machine.id, ownerId, load, loadFloat, loadActiveCashier]);
-
-  const handleSetFloat = async () => {
-    const val = parseFloat(floatAmount);
-    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
-    setSavingFloat(true);
-    const { error } = await sb.from("machine_float_sessions").insert({
-      machine_id: machine.id,
-      owner_id: ownerId,
-      amount: val,
-      set_at: new Date().toISOString(),
-    });
-    setSavingFloat(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Float set");
-    setFloatAmount("");
-    setShowSetFloat(false);
-    loadFloat();
-  };
+  }, [machine.id, load]);
 
   // ── All-time totals ────────────────────────────────────────────────────────
   const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-  // Profit = machine earnings (income cleared by owner) minus payouts given to players.
-  // Float money never appears here — it lives only in machine_float_sessions.
   const totalProfit = totalIncome - totalPayout;
 
-  // ── Session totals (since float was last set) ──────────────────────────────
-  // "Session" = everything after the most recent float set_at.
-  // If no float has ever been set, session === all-time.
-  const sessionStart = floatSession?.set_at ?? null;
-  const sessionEntries = sessionStart
-    ? entries.filter(e => e.created_at >= sessionStart)
-    : entries;
-
-  // Payouts this session — what the cashier paid out from the float
-  const sessionPayouts = sessionEntries
-    .filter(e => e.type === "payout")
+  // ── Session totals — payouts/income since the most recent entry_date boundary ─
+  // On the individual machine page we show a simple today-by-calendar-date split
+  const today = todayISO();
+  const sessionPayouts = entries.filter(e => e.type === "payout" && e.entry_date === today)
     .reduce((s, e) => s + Number(e.amount), 0);
-
-  // Income this session — what the owner cleared from the machine this session
-  const sessionIncome = sessionEntries
-    .filter(e => e.type === "income")
+  const sessionIncome = entries.filter(e => e.type === "income" && e.entry_date === today)
     .reduce((s, e) => s + Number(e.amount), 0);
-
-  // Session profit = what the machine earned minus what was paid out to players.
-  // This is pure machine profit. The float is NOT deducted here — float is a cash
-  // advance to the cashier, not a cost. Remaining float is tracked separately below.
   const sessionProfit = sessionIncome - sessionPayouts;
-
-  // Remaining float = what the cashier should still have in hand
-  const remainingFloat = floatSession ? Number(floatSession.amount) - sessionPayouts : null;
 
   const handleSave = async () => {
     const val = parseFloat(amount);
@@ -359,6 +292,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
     if (error) { toast.error(error.message); return; }
     toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
     setAmount("");
+    load(); // explicit refresh in case realtime is slow
   };
 
   const handleDelete = async (id: string) => {
@@ -553,48 +487,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
               value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
               color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
-
-          {/* Float row */}
-          <div className="relative grid grid-cols-3 gap-2">
-            {/* Card 1 — active cashier name */}
-            <div className="rounded-xl px-2 py-2 flex flex-col items-center justify-center text-center gap-0.5"
-              style={{ background: "oklch(0.22 0.02 60)" }}>
-              <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Cashier</span>
-              <span className="font-black text-[10px] leading-tight"
-                style={{ color: activeCashier ? "#fbbf24" : "oklch(0.45 0.02 60)" }}>
-                {activeCashier ? activeCashier.username : "—"}
-              </span>
-            </div>
-            {/* Card 2 — float set by owner */}
-            <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
-              style={{ background: "oklch(0.22 0.02 60)" }}>
-              <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Float Set</div>
-              <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
-                {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
-              </div>
-            </div>
-            {/* Card 3 — remaining */}
-            <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
-              style={{ background: "oklch(0.22 0.02 60)" }}>
-              <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Remaining</div>
-              <div className="font-black text-xs"
-                style={{ color: !activeCashier || remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
-                {!activeCashier || remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
-              </div>
-            </div>
-          </div>
-
-          {/* Set Float button — owner only */}
-          {!isCashier && (
-            <div className="relative">
-              <button
-                onClick={() => { setFloatAmount(""); setShowSetFloat(true); }}
-                className="w-full py-2 rounded-xl text-xs font-black active:scale-95 transition"
-                style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1px solid oklch(0.38 0.10 60)" }}>
-                {floatSession ? "Update Float" : "Set Float"}
-              </button>
-            </div>
-          )}
         </section>
 
         {/* Tabs */}
@@ -683,74 +575,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
         )}
       </div>
 
-      {/* Set Float modal */}
-      {showSetFloat && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
-            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}>
-            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
-              Set Cashier Float — {machine.name}
-            </p>
-            {/* Display */}
-            <div className="rounded-2xl px-5 py-4 text-right"
-              style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
-              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
-                ${floatAmount === "" ? "0" : floatAmount}
-              </span>
-            </div>
-            {/* Numpad */}
-            <div className="grid grid-cols-3 gap-2">
-              {["7","8","9","4","5","6","1","2","3"].map(k => (
-                <button key={k} type="button"
-                  onClick={() => {
-                    const parts = floatAmount.split(".");
-                    if (parts[1] !== undefined && parts[1].length >= 2) return;
-                    setFloatAmount(prev => prev + k);
-                  }}
-                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                  style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                  {k}
-                </button>
-              ))}
-              <button type="button"
-                onClick={() => { if (!floatAmount.includes(".")) setFloatAmount(prev => prev + "."); }}
-                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                .
-              </button>
-              <button type="button"
-                onClick={() => {
-                  const parts = floatAmount.split(".");
-                  if (parts[1] !== undefined && parts[1].length >= 2) return;
-                  setFloatAmount(prev => prev + "0");
-                }}
-                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                0
-              </button>
-              <button type="button"
-                onClick={() => setFloatAmount(prev => prev.slice(0, -1))}
-                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
-                ⌫
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowSetFloat(false)}
-                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition border"
-                style={{ background: "transparent", color: "#fff", borderColor: "oklch(0.35 0.06 60)" }}>
-                Cancel
-              </button>
-              <button onClick={handleSetFloat} disabled={savingFloat || !floatAmount}
-                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
-                style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
-                {savingFloat ? "Saving…" : "Confirm Float"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete machine confirm modal */}
       {showDeleteMachine && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
@@ -822,9 +646,14 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 }
 
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
-function ScreensTab({ machines, entries, ownerId, onSelect }: {
+function ScreensTab({ machines, entries, ownerId, onSelect, activeCashier, floatSession, remainingFloat, isCashier, onSetFloat }: {
   machines: Machine[]; entries: MachineEntry[];
   ownerId: string; onSelect: (m: Machine) => void;
+  activeCashier: { id: string; username: string } | null;
+  floatSession: FloatSession | null;
+  remainingFloat: number | null;
+  isCashier: boolean;
+  onSetFloat: () => void;
 }) {
   const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
@@ -843,7 +672,7 @@ function ScreensTab({ machines, entries, ownerId, onSelect }: {
   return (
     <div className="space-y-4">
       {/* All-machines hero */}
-      <section className="rounded-3xl p-5 relative overflow-hidden"
+      <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         <div className="relative grid grid-cols-3 gap-2">
@@ -853,6 +682,42 @@ function ScreensTab({ machines, entries, ownerId, onSelect }: {
             value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
             color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
         </div>
+        {/* Float row */}
+        <div className="relative grid grid-cols-3 gap-2">
+          <div className="rounded-xl px-2 py-2 flex flex-col items-center justify-center text-center gap-0.5"
+            style={{ background: "oklch(0.22 0.02 60)" }}>
+            <span className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Cashier</span>
+            <span className="font-black text-[10px] leading-tight"
+              style={{ color: activeCashier ? "#fbbf24" : "oklch(0.45 0.02 60)" }}>
+              {activeCashier ? activeCashier.username : "—"}
+            </span>
+          </div>
+          <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+            style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Float Set</div>
+            <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
+              {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
+            </div>
+          </div>
+          <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+            style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Remaining</div>
+            <div className="font-black text-xs"
+              style={{ color: !activeCashier || remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
+              {!activeCashier || remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+            </div>
+          </div>
+        </div>
+        {/* Set Float button — owner only */}
+        {!isCashier && (
+          <div className="relative">
+            <button onClick={onSetFloat}
+              className="w-full py-2 rounded-xl text-xs font-black active:scale-95 transition"
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1px solid oklch(0.38 0.10 60)" }}>
+              {floatSession ? "Update Float" : "Set Float"}
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Machine grid — 3 per row mobile, 5 per row tablet, sorted by created_at for stable numbers */}
@@ -1083,37 +948,100 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"screens" | "payouts" | "create">("screens");
   const [selected, setSelected] = useState<Machine | null>(null);
+
   // Cashiers see their owner's machines; owners see their own
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
+  const isOwner = profile?.role === "owner";
+
+  // Float — one session covers ALL machines for this owner
+  const [floatSession, setFloatSession] = useState<FloatSession | null>(null);
+  const [activeCashier, setActiveCashier] = useState<{ id: string; username: string } | null>(null);
+  const [showSetFloat, setShowSetFloat] = useState(false);
+  const [floatAmount, setFloatAmount] = useState("");
+  const [savingFloat, setSavingFloat] = useState(false);
+
+  const loadFloat = useCallback(async () => {
+    if (!ownerId) return;
+    const { data } = await sb.from("machine_float_sessions")
+      .select("*").eq("owner_id", ownerId)
+      .order("set_at", { ascending: false }).limit(1).maybeSingle();
+    setFloatSession(data as FloatSession | null);
+  }, [ownerId]);
+
+  const loadActiveCashier = useCallback(async () => {
+    if (!ownerId) return;
+    const { data } = await sb.from("profiles")
+      .select("id, username")
+      .eq("parent_id", ownerId)
+      .eq("role", "cashier")
+      .eq("is_active", true)
+      .maybeSingle();
+    setActiveCashier(data as { id: string; username: string } | null);
+  }, [ownerId]);
+
+  const handleSetFloat = async () => {
+    const val = parseFloat(floatAmount);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSavingFloat(true);
+    const { error } = await sb.from("machine_float_sessions").insert({
+      owner_id: ownerId,
+      amount: val,
+      set_at: new Date().toISOString(),
+    });
+    setSavingFloat(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Float set");
+    setFloatAmount(""); setShowSetFloat(false);
+    loadFloat();
+  };
 
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
     const [mRes, eRes] = await Promise.all([
       sb.from("machines").select("*").eq("owner_id", ownerId).order("name"),
-      sb.from("machine_entries").select("*").eq("owner_id", ownerId).order("entry_date", { ascending: false }),
+      sb.from("machine_entries").select("*").eq("owner_id", ownerId)
+        .order("entry_date", { ascending: false }),
     ]);
     setMachines((mRes.data ?? []) as Machine[]);
     setEntries((eRes.data ?? []) as MachineEntry[]);
     setLoading(false);
   }, [ownerId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadFloat(); loadActiveCashier(); }, [load, loadFloat, loadActiveCashier]);
 
   useEffect(() => {
     if (!ownerId) return;
     const ch = supabase.channel(`machines-page-${ownerId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "machines", filter: `owner_id=eq.${ownerId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries", filter: `owner_id=eq.${ownerId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "machines",
+        filter: `owner_id=eq.${ownerId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries",
+        filter: `owner_id=eq.${ownerId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "machine_float_sessions",
+        filter: `owner_id=eq.${ownerId}` }, () => loadFloat())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" },
+        (payload) => {
+          const row = payload.new as { parent_id?: string; role?: string };
+          if (row.parent_id === ownerId && row.role === "cashier") loadActiveCashier();
+        })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [ownerId, load]);
+  }, [ownerId, load, loadFloat, loadActiveCashier]);
+
+  // Session payouts = all payouts across all machines since float was last set
+  const sessionPayouts = floatSession
+    ? entries
+        .filter(e => e.type === "payout" && e.created_at >= floatSession.set_at)
+        .reduce((s, e) => s + Number(e.amount), 0)
+    : 0;
+  const remainingFloat = floatSession ? Number(floatSession.amount) - sessionPayouts : null;
 
   if (!profile) return null;
 
   // Show machine detail full-screen
   if (selected) {
-    const screenNumber = [...machines].sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const screenNumber = [...machines]
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .findIndex(m => m.id === selected.id) + 1;
     return (
       <MachineDetail
@@ -1126,8 +1054,6 @@ export default function MachinesPage() {
       />
     );
   }
-
-  const isOwner = profile?.role === "owner";
 
   const tabs = [
     { key: "screens", label: `Screens${machines.length ? ` (${machines.length})` : ""}` },
@@ -1151,13 +1077,87 @@ export default function MachinesPage() {
         ))}
       </div>
       {loading ? (
-        <div className="grid grid-cols-3 gap-2">{[0,1,2].map(i => <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />)}</div>
+        <div className="grid grid-cols-3 gap-2">
+          {[0,1,2].map(i => <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />)}
+        </div>
       ) : (
         <>
-          {tab === "screens" && <ScreensTab machines={machines} entries={entries} ownerId={ownerId} onSelect={setSelected} />}
+          {tab === "screens" && (
+            <ScreensTab
+              machines={machines} entries={entries} ownerId={ownerId} onSelect={setSelected}
+              activeCashier={activeCashier} floatSession={floatSession}
+              remainingFloat={remainingFloat} isCashier={!isOwner}
+              onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
+            />
+          )}
           {tab === "payouts" && <AllHistoryTab entries={entries} machines={machines} />}
-          {tab === "create"  && <CreateTab ownerId={ownerId} onCreated={(m) => { setMachines(p => [...p, m].sort((a,b) => a.name.localeCompare(b.name))); setTab("screens"); }} />}
+          {tab === "create" && (
+            <CreateTab ownerId={ownerId} onCreated={(m) => {
+              setMachines(p => [...p, m].sort((a, b) => a.name.localeCompare(b.name)));
+              setTab("screens");
+            }} />
+          )}
         </>
+      )}
+
+      {/* Set Float modal */}
+      {showSetFloat && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}>
+            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
+              Set Cashier Float — All Machines
+            </p>
+            <div className="rounded-2xl px-5 py-4 text-right"
+              style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+                ${floatAmount === "" ? "0" : floatAmount}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+                <button key={k} type="button"
+                  onClick={() => {
+                    const parts = floatAmount.split(".");
+                    if (parts[1] !== undefined && parts[1].length >= 2) return;
+                    setFloatAmount(prev => prev + k);
+                  }}
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                  style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                  {k}
+                </button>
+              ))}
+              <button type="button"
+                onClick={() => { if (!floatAmount.includes(".")) setFloatAmount(prev => prev + "."); }}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+              <button type="button"
+                onClick={() => {
+                  const parts = floatAmount.split(".");
+                  if (parts[1] !== undefined && parts[1].length >= 2) return;
+                  setFloatAmount(prev => prev + "0");
+                }}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+              <button type="button"
+                onClick={() => setFloatAmount(prev => prev.slice(0, -1))}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowSetFloat(false)}
+                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition border"
+                style={{ background: "transparent", color: "#fff", borderColor: "oklch(0.35 0.06 60)" }}>
+                Cancel
+              </button>
+              <button onClick={handleSetFloat} disabled={savingFloat || !floatAmount}
+                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
+                style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+                {savingFloat ? "Saving…" : "Confirm Float"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
