@@ -295,6 +295,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
 
+  // Remaining float — computed from local entries + floatSession prop so it
+  // updates immediately when a payout is saved without waiting for the parent to reload.
+  const localRemainingFloat = floatSession
+    ? Number(floatSession.amount) - entries
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .reduce((s, e) => s + Number(e.amount), 0)
+    : null;
+
   const handleSave = async () => {
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
@@ -518,8 +526,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
             <SmallStat label="Session Payout" value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
             <SmallStat label="Remaining"
-              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
-              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
+              value={localRemainingFloat === null ? "—" : (localRemainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(localRemainingFloat))}
+              color={localRemainingFloat === null ? "oklch(0.45 0.02 60)" : localRemainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
         </section>
 
