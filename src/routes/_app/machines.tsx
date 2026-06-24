@@ -198,6 +198,11 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                             <div className="text-xs font-semibold text-green-400/70 mt-0.5">Machine cleared by owner</div>
                           )}
                           {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
+                          {e.cashier_name && (
+                            <div className="text-[10px] text-white/30 mt-0.5">
+                              {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
+                            </div>
+                          )}
                         </div>
                         {isNewest && !deletingId && (
                           <button onClick={() => onDelete(e.id)}
@@ -910,6 +915,11 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   <div className="text-xs font-semibold text-green-400/70 mt-0.5">Machine cleared by owner</div>
                 )}
                 {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
+                {e.cashier_name && (
+                  <div className="text-[10px] text-white/30 mt-0.5">
+                    {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
+                  </div>
+                )}
               </div>
             </div>
           );
