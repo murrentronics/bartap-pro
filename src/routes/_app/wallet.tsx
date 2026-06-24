@@ -757,10 +757,18 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     setRestarting(true);
     try {
       // 1. Delete ALL existing expense records for this owner
-      const { error: delErr } = await sb.from("owner_expenses").delete().eq("owner_id", ownerId);
-      if (delErr) { toast.error("Failed to clear expenses: " + delErr.message); return; }
+      const { error: delExpErr } = await sb.from("owner_expenses").delete().eq("owner_id", ownerId);
+      if (delExpErr) { toast.error("Failed to clear expenses: " + delExpErr.message); return; }
 
-      // 2. Fetch all products with cost_price > 0 and stock_qty > 0
+      // 2. Delete ALL orders for this owner (resets income to $0)
+      const { error: delOrdErr } = await supabase.from("orders").delete().eq("owner_id", ownerId);
+      if (delOrdErr) { toast.error("Failed to clear orders: " + delOrdErr.message); return; }
+
+      // 3. Delete ALL wallet transactions for this owner (transfer_in, cashier_sale, etc.)
+      const { error: delTxErr } = await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
+      if (delTxErr) { toast.error("Failed to clear wallet: " + delTxErr.message); return; }
+
+      // 4. Fetch all products with cost_price > 0 and stock_qty > 0
       const { data: products, error: prodErr } = await supabase
         .from("products")
         .select("id, name, cost_price, stock_qty")
@@ -769,7 +777,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         .gt("stock_qty", 0);
       if (prodErr) { toast.error("Failed to fetch products: " + prodErr.message); return; }
 
-      // 3. Insert one expense row per product (cost_price × stock_qty)
+      // 5. Insert one expense row per product (cost_price × stock_qty)
       const today = new Date().toISOString().split("T")[0];
       const rows = (products ?? []).map((p: { id: string; name: string; cost_price: number; stock_qty: number }) => ({
         owner_id:     ownerId,
@@ -783,10 +791,10 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         if (insErr) { toast.error("Failed to create expenses: " + insErr.message); return; }
       }
 
-      // 4. Mark done — never show again
+      // 6. Mark done — never show again
       localStorage.setItem(restartKey, "1");
       setRestartDone(true);
-      toast.success(`Expenses recalculated — ${rows.length} item${rows.length !== 1 ? "s" : ""} updated`);
+      toast.success(`Reset complete — income cleared, ${rows.length} expense${rows.length !== 1 ? "s" : ""} rebuilt`);
       loadData();
       onDataChange?.();
     } finally {
