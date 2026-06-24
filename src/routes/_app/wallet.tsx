@@ -724,6 +724,11 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   const [monthlyIncome, setMonthlyIncome] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
+
+  // One-time restart flag — keyed per owner so it's independent per account
+  const restartKey = `expenses_restart_done_${ownerId}`;
+  const [restartDone, setRestartDone] = useState(() => !!localStorage.getItem(restartKey));
 
   // Accordion
   const [openMonth, setOpenMonth] = useState<string | null>(null);
@@ -747,6 +752,47 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   }, [ownerId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleRestart = async () => {
+    setRestarting(true);
+    try {
+      // 1. Delete ALL existing expense records for this owner
+      const { error: delErr } = await sb.from("owner_expenses").delete().eq("owner_id", ownerId);
+      if (delErr) { toast.error("Failed to clear expenses: " + delErr.message); return; }
+
+      // 2. Fetch all products with cost_price > 0 and stock_qty > 0
+      const { data: products, error: prodErr } = await supabase
+        .from("products")
+        .select("id, name, cost_price, stock_qty")
+        .eq("owner_id", ownerId)
+        .gt("cost_price", 0)
+        .gt("stock_qty", 0);
+      if (prodErr) { toast.error("Failed to fetch products: " + prodErr.message); return; }
+
+      // 3. Insert one expense row per product (cost_price × stock_qty)
+      const today = new Date().toISOString().split("T")[0];
+      const rows = (products ?? []).map((p: { id: string; name: string; cost_price: number; stock_qty: number }) => ({
+        owner_id:     ownerId,
+        amount:       Number(p.cost_price) * Number(p.stock_qty),
+        description:  `${p.name} ×${p.stock_qty}`,
+        expense_date: today,
+      }));
+
+      if (rows.length > 0) {
+        const { error: insErr } = await supabase.from("owner_expenses").insert(rows);
+        if (insErr) { toast.error("Failed to create expenses: " + insErr.message); return; }
+      }
+
+      // 4. Mark done — never show again
+      localStorage.setItem(restartKey, "1");
+      setRestartDone(true);
+      toast.success(`Expenses recalculated — ${rows.length} item${rows.length !== 1 ? "s" : ""} updated`);
+      loadData();
+      onDataChange?.();
+    } finally {
+      setRestarting(false);
+    }
+  };
 
   // Realtime — refresh financials when orders or expenses change
   useEffect(() => {
@@ -884,6 +930,26 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     <div className="space-y-5 pt-2 pb-24">
 
       {/* ── Expense History by Month ──────────────────────────────────────── */}
+      {!restartDone && (
+        <div className="flex items-center justify-between rounded-2xl px-4 py-3 border border-amber-500/30"
+          style={{ background: "oklch(0.18 0.05 70 / 0.4)" }}>
+          <div className="flex-1 min-w-0 mr-3">
+            <p className="text-xs font-black text-amber-300">Recalculate Expenses</p>
+            <p className="text-[10px] text-amber-200/60 mt-0.5 leading-snug">
+              Rebuilds expense history from current stock × cost price. Clears old entries first.
+            </p>
+          </div>
+          <button
+            onClick={handleRestart}
+            disabled={restarting}
+            className="shrink-0 px-4 py-2 rounded-xl text-xs font-black active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
+            style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
+          >
+            {restarting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            {restarting ? "Working…" : "Restart"}
+          </button>
+        </div>
+      )}
       {expenseMonths.length > 0 ? (
         <div className="space-y-2">
           <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>

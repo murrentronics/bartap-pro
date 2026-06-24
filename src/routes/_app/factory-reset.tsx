@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app/factory-reset")({
 type ResetTarget = "bar" | "machines" | "both" | null;
 
 export default function FactoryResetPage() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const nav = useNavigate();
 
   // Step 1 — choose what to reset
@@ -85,10 +85,13 @@ export default function FactoryResetPage() {
       setBusy(false);
       setShowConfirm(false);
 
-      // Sign out only on full reset
-      if (target === "both" || target === "bar") {
-        await signOut();
-        nav("/login");
+      if (target === "machines") {
+        nav("/machines");
+      } else if (target === "bar") {
+        nav("/register");
+      } else {
+        // both — full wipe including cashiers, go back to bar
+        nav("/register");
       }
     } catch (err: any) {
       toast.error("Reset failed: " + (err?.message ?? "unknown error"));
