@@ -1083,7 +1083,8 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"screens" | "payouts" | "create">("screens");
   const [selected, setSelected] = useState<Machine | null>(null);
-  const ownerId = profile?.id ?? "";
+  // Cashiers see their owner's machines; owners see their own
+  const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
 
   const load = useCallback(async () => {
     if (!ownerId) return;
@@ -1108,9 +1109,7 @@ export default function MachinesPage() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, load]);
 
-  if (profile?.role !== "owner") {
-    return <div className="text-center text-muted-foreground py-20">Only owners can manage machines.</div>;
-  }
+  if (!profile) return null;
 
   // Show machine detail full-screen
   if (selected) {
@@ -1128,10 +1127,12 @@ export default function MachinesPage() {
     );
   }
 
+  const isOwner = profile?.role === "owner";
+
   const tabs = [
     { key: "screens", label: `Screens${machines.length ? ` (${machines.length})` : ""}` },
     { key: "payouts", label: "All History" },
-    { key: "create",  label: "Create" },
+    ...(isOwner ? [{ key: "create", label: "Create" }] : []),
   ] as const;
 
   return (
