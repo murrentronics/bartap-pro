@@ -372,6 +372,7 @@ export default function CashiersPage() {
   const [resetPwCashier, setResetPwCashier] = useState<Cashier | null>(null);
   const [newPw, setNewPw] = useState("");
   const [showNewPw, setShowNewPw] = useState(false);
+  const [showCreatePw, setShowCreatePw] = useState(false);
   const [resettingPw, setResettingPw] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -535,7 +536,13 @@ export default function CashiersPage() {
             </div>
             <div>
               <Label>Password</Label>
-              <Input type="password" value={p} onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" />
+              <div className="relative mt-1">
+                <Input type={showCreatePw ? "text" : "password"} value={p} onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" className="pr-10" />
+                <button type="button" onClick={() => setShowCreatePw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                  {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" disabled={busy || !!usernameError} className="w-full h-12 font-black" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
               {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : <><UserPlus className="h-4 w-4 mr-2" /> Create Cashier</>}
