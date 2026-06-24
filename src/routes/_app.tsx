@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app")({
@@ -27,7 +27,7 @@ function AppLayout() {
 
   useEffect(() => {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
-      nav({ to: "/admin" });
+      nav({ to: "/admin" as "/" });
     }
     // ADMIN-ONLY WEB: Block non-admin users
     if (!loading && profile && profile.role !== "admin") {
@@ -72,7 +72,7 @@ function AppLayout() {
       return <FullScreenStatus icon={Ban} title="Account suspended"
         message="Your subscription has expired or your account has been suspended. Please renew your subscription or contact admin."
         onSignOut={() => { signOut(); nav({ to: "/login" }); }}
-        showBillingButton={() => nav({ to: "/billing" })} />;
+        showBillingButton={() => nav({ to: "/billing" as "/" })} />;
     }
     if (profile.status === "pending") {
       return <FullScreenStatus icon={ShieldAlert} title="Awaiting approval"
@@ -84,11 +84,12 @@ function AppLayout() {
   const navItems = isAdmin
     ? [{ to: "/admin", label: "Users", icon: Users }]
     : [
-        { to: "/register", label: "Cashier", icon: Wine },
-        ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users }] : []),
-        { to: "/wallet", label: "Wallet", icon: Wallet },
-        { to: "/credit", label: "Credit", icon: Receipt },
+        { to: "/register", label: "Cashier",  icon: Wine },
+        { to: "/credit",   label: "Credit",   icon: Receipt },
+        ...(isOwner ? [{ to: "/machines", label: "Machines", icon: Gamepad2 }] : []),
+        ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
+        { to: "/wallet",   label: "Wallet",   icon: Wallet },
       ];
 
   return (

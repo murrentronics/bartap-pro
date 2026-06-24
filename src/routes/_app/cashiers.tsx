@@ -386,7 +386,7 @@ export default function CashiersPage() {
       .select("id,username,wallet_balance")
       .eq("parent_id", profile.id)
       .order("created_at", { ascending: false });
-    setList((data ?? []) as Cashier[]);
+    setList(((data ?? []) as Cashier[]).sort((a, b) => a.username.localeCompare(b.username)));
   };
 
   useEffect(() => { load(); }, [profile?.id]);

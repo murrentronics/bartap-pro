@@ -5,7 +5,7 @@ import {
   Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
   ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X,
   TrendingUp, TrendingDown, DollarSign, PlusCircle, ChevronDown,
-  BarChart3, List, Calculator, Pencil,
+  BarChart3, List, Calculator, Pencil, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ type WalletTx = {
 type OwnerFinancials = {
   id: string;
   initial_expense: number;
+  updated_at?: string;
 };
 
 type OwnerExpense = {
@@ -75,16 +76,17 @@ function PaginationBar({
 }: {
   page: number; totalPages: number; total: number; onPrev: () => void; onNext: () => void;
 }) {
-  if (totalPages <= 1) return null;
+  if (total <= 100) return null;
   return (
-    <div className="flex items-center justify-between">
-      <Button variant="outline" size="sm" disabled={page === 0} onClick={onPrev}>
+    <div className="flex items-center justify-between rounded-xl px-3 py-2.5 border border-border"
+      style={{ background: "var(--gradient-card)" }}>
+      <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page === 0} onClick={onPrev}>
         <ChevronLeft className="h-4 w-4 mr-1" /> Prev
       </Button>
-      <span className="text-sm text-muted-foreground">
-        Page {page + 1} of {totalPages} · {total} records
+      <span className="text-sm font-semibold text-muted-foreground">
+        Page {page + 1} of {totalPages} · <span className="text-foreground font-black">{total}</span> records
       </span>
-      <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={onNext}>
+      <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page >= totalPages - 1} onClick={onNext}>
         Next <ChevronRight className="h-4 w-4 ml-1" />
       </Button>
     </div>
@@ -1206,25 +1208,35 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
 
   const fetchData = useCallback(() => {
     setLoading(true);
-    // Only owner's own direct orders (where owner is also cashier) — cashier orders show as cashier_sale tx
-    supabase.from("orders").select("id", { count: "exact", head: true })
-      .eq("owner_id", profile.id)
-      .eq("cashier_id", profile.id)
-      .then(({ count }) => setTotal(count ?? 0));
+    // Fetch counts for both orders and wallet txs to get accurate total
+    Promise.all([
+      supabase.from("orders").select("id", { count: "exact", head: true })
+        .eq("owner_id", profile.id).eq("cashier_id", profile.id)
+        .then(({ count }) => count ?? 0),
+      supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
+        .eq("profile_id", profile.id)
+        .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
+        .then(({ count }) => count ?? 0),
+    ]).then(([orderCount, txCount]) => setTotal(orderCount + txCount));
+
+    // Fetch paginated orders
     supabase.from("orders").select("*")
-      .eq("owner_id", profile.id)
-      .eq("cashier_id", profile.id)
+      .eq("owner_id", profile.id).eq("cashier_id", profile.id)
       .order("created_at", { ascending: false })
       .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
       .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
+
+    // Fetch paginated wallet txs
     supabase.from("wallet_transactions").select("*")
       .eq("profile_id", profile.id)
       .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
       .order("created_at", { ascending: false })
+      .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
       .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
   }, [profile.id, page]);
 
@@ -1240,6 +1252,21 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
     return () => { supabase.removeChannel(ch); };
   }, [profile.id, fetchData]);
 
+  const deleteLatestOrder = async (order: Order) => {
+    setDeletingOrderId(order.id);
+    // Delete the order — triggers cascade on wallet_transactions via order_id FK
+    const { error } = await supabase.from("orders").delete().eq("id", order.id);
+    if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
+    // Also remove the sale wallet_tx that may not have order_id set
+    await supabase.from("wallet_transactions").delete()
+      .eq("profile_id", profile.id).eq("type", "sale")
+      .gte("created_at", new Date(new Date(order.created_at).getTime() - 10000).toISOString())
+      .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
+    toast.success("Sale record removed");
+    setDeletingOrderId(null);
+    fetchData();
+  };
+
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -1248,6 +1275,11 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
     ...orders.map((o): FlatRecord => ({ kind: "order", data: o, ts: new Date(o.created_at).getTime() })),
     ...txs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts);
+
+  // Find the newest order id so we only show delete on that one
+  const newestOrderId = orders.length > 0
+    ? orders.reduce((newest, o) => new Date(o.created_at) > new Date(newest.created_at) ? o : newest).id
+    : null;
 
   return (
     <div className="space-y-3 pt-2">
@@ -1460,6 +1492,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               );
             }
             const o = rec.data as Order;
+            const isNewest = o.id === newestOrderId;
             return (
               <div key={o.id} className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
                 style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}>
@@ -1474,7 +1507,21 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                   </div>
                 </div>
-                <span className="font-black text-lg shrink-0 text-green-400">+${fmt(Number(o.total))}</span>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className="font-black text-lg text-green-400">+${fmt(Number(o.total))}</span>
+                  {isNewest && (
+                    <button
+                      onClick={() => deleteLatestOrder(o)}
+                      disabled={deletingOrderId === o.id}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
+                      title="Delete this sale"
+                    >
+                      {deletingOrderId === o.id
+                        ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
