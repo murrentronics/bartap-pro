@@ -943,98 +943,124 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
 }
 
 // ── All History Tab ────────────────────────────────────────────────────────────
-const ALL_HISTORY_PAGE_SIZE = 20;
-
 function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machines: Machine[] }) {
-  const [page, setPage] = useState(0);
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
 
-  // All records sorted by created_at descending
+  // All records sorted newest first
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  const total = sorted.length;
-  const totalPages = Math.max(1, Math.ceil(total / ALL_HISTORY_PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const pageRecords = sorted.slice(safePage * ALL_HISTORY_PAGE_SIZE, safePage * ALL_HISTORY_PAGE_SIZE + ALL_HISTORY_PAGE_SIZE);
+  // Group by YYYY-MM
+  const byMonth: Record<string, MachineEntry[]> = {};
+  sorted.forEach(e => {
+    const mk = e.created_at.slice(0, 7);
+    if (!byMonth[mk]) byMonth[mk] = [];
+    byMonth[mk].push(e);
+  });
+  const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
 
-  // Totals across all entries
+  const monthLabel = (mk: string) => {
+    const [yr, mo] = mk.split("-");
+    return new Date(Number(yr), Number(mo) - 1, 1)
+      .toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  };
+
+  // All-time totals
   const totalPayout = sorted.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = sorted.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
-  const handleDownloadPdf = async () => {
+  const buildPdf = async (
+    rows: MachineEntry[],
+    title: string,
+    subtitle: string,
+  ) => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const generated = new Date().toLocaleString("en-GB", {
+      hour: "2-digit", minute: "2-digit", hour12: true,
+      day: "numeric", month: "short", year: "numeric",
+    });
+    let y = await drawHeader(doc, "All Machines", title, subtitle, generated);
+    const bw = RM - LM;
+    const mPayout = rows.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+    const mIncome = rows.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+    const mProfit = mIncome - mPayout;
+    doc.setFillColor(245, 240, 230);
+    doc.roundedRect(LM, y, bw, 26, 2, 2, "F");
+    doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+    doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
+    const cols = [
+      { label: "Total Payout", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
+      { label: "Total Income", value: "+$" + fmt(mIncome), r: 40,  g: 140, b: 40 },
+      { label: "Net Profit",   value: (mProfit >= 0 ? "+" : "") + "$" + fmt(mProfit),
+        r: mProfit >= 0 ? 40 : 180, g: mProfit >= 0 ? 140 : 40, b: 40 },
+    ];
+    const cw = bw / 3;
+    cols.forEach((c, i) => {
+      const cx = LM + i * cw + cw / 2;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+      doc.text(c.label, cx, y + 10, { align: "center" });
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.setTextColor(c.r, c.g, c.b);
+      doc.text(c.value, cx, y + 19, { align: "center" });
+    });
+    doc.setTextColor(0, 0, 0); y += 32;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
+    doc.text("DATE / TIME", LM, y);
+    doc.text("MACHINE", LM + 55, y);
+    doc.text("TYPE", LM + 110, y);
+    doc.text("AMOUNT", RM, y, { align: "right" });
+    y += 3; doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+    rows.forEach(e => {
+      if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+      const m = machines.find(x => x.id === e.machine_id);
+      const isPayout = e.type === "payout";
+      const dateStr = new Date(e.created_at).toLocaleString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true,
+      });
+      doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0);
+      doc.text(dateStr, LM, y);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(m?.name ?? "—", LM + 55, y);
+      doc.setFontSize(9);
+      doc.setTextColor(isPayout ? 180 : 40, isPayout ? 40 : 140, 40);
+      doc.text(e.type.toUpperCase(), LM + 110, y);
+      doc.text((isPayout ? "-" : "+") + "$" + fmt(Number(e.amount)), RM, y, { align: "right" });
+      doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 5;
+      if (e.note) {
+        doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+        doc.text("  " + e.note, LM, y); doc.setFontSize(9); doc.setTextColor(0, 0, 0); y += 4;
+      }
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
+    });
+    addFootersToAllPages(doc);
+    return doc;
+  };
+
+  const handleDownloadAll = async () => {
     if (downloading || sorted.length === 0) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const generated = new Date().toLocaleString("en-GB", {
-        hour: "2-digit", minute: "2-digit", hour12: true,
-        day: "numeric", month: "short", year: "numeric",
-      });
-      let y = await drawHeader(doc, "All Machines", "Full History", "All Records", generated);
-
-      // Summary box
-      const bw = RM - LM;
-      doc.setFillColor(245, 240, 230);
-      doc.roundedRect(LM, y, bw, 26, 2, 2, "F");
-      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
-      doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
-      const cols = [
-        { label: "Total Payout", value: "-$" + fmt(totalPayout), r: 180, g: 40, b: 40 },
-        { label: "Total Income", value: "+$" + fmt(totalIncome), r: 40,  g: 140, b: 40 },
-        { label: "Net Profit",   value: (totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit),
-          r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
-      ];
-      const cw = bw / 3;
-      cols.forEach((c, i) => {
-        const cx = LM + i * cw + cw / 2;
-        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
-        doc.text(c.label, cx, y + 10, { align: "center" });
-        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-        doc.setTextColor(c.r, c.g, c.b);
-        doc.text(c.value, cx, y + 19, { align: "center" });
-      });
-      doc.setTextColor(0, 0, 0); y += 32;
-
-      // Column headers
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
-      doc.text("DATE / TIME", LM, y);
-      doc.text("MACHINE", LM + 55, y);
-      doc.text("TYPE", LM + 110, y);
-      doc.text("AMOUNT", RM, y, { align: "right" });
-      y += 3; doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
-      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
-
-      sorted.forEach((e) => {
-        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
-        const m = machines.find(x => x.id === e.machine_id);
-        const isPayout = e.type === "payout";
-        const dateStr = new Date(e.created_at).toLocaleString("en-GB", {
-          day: "numeric", month: "short", year: "numeric",
-          hour: "2-digit", minute: "2-digit", hour12: true,
-        });
-        doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0);
-        doc.text(dateStr, LM, y);
-        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-        doc.text(m?.name ?? "—", LM + 55, y);
-        doc.setFontSize(9);
-        doc.setTextColor(isPayout ? 180 : 40, isPayout ? 40 : 140, 40);
-        doc.text(e.type.toUpperCase(), LM + 110, y);
-        doc.text((isPayout ? "-" : "+") + "$" + fmt(Number(e.amount)), RM, y, { align: "right" });
-        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 5;
-        if (e.note) {
-          doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-          doc.text("  " + e.note, LM, y); doc.setFontSize(9); doc.setTextColor(0, 0, 0); y += 4;
-        }
-        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
-      });
-
-      addFootersToAllPages(doc);
+      const doc = await buildPdf(sorted, "Full History", "All Records");
       await downloadPdf("machines-all-history.pdf", doc.output("datauristring"));
-      toast.success("PDF saved to Downloads");
+      toast.success("PDF saved");
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
     finally { setDownloading(false); }
+  };
+
+  const handleDownloadMonth = async (mk: string) => {
+    if (downloadingMonth) return;
+    setDownloadingMonth(mk);
+    try {
+      const doc = await buildPdf(byMonth[mk], monthLabel(mk), monthLabel(mk));
+      await downloadPdf(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc.output("datauristring"));
+      toast.success("PDF saved");
+    } catch (err: any) { toast.error("PDF failed: " + err?.message); }
+    finally { setDownloadingMonth(null); }
   };
 
   if (sorted.length === 0) {
@@ -1043,76 +1069,126 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
   return (
     <div className="space-y-3">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{total} records</span>
-        <Button size="sm" variant="outline" className="h-9 gap-1.5 font-bold"
-          disabled={downloading} onClick={handleDownloadPdf}>
-          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-          PDF
-        </Button>
+      {/* Header — all-time totals + Download All */}
+      <div className="rounded-2xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{sorted.length} records</span>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
+            disabled={downloading} onClick={handleDownloadAll}>
+            {downloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+            All PDF
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Payout</div>
+            <div className="font-black text-xs text-red-400">${fmtWhole(totalPayout)}</div>
+          </div>
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Income</div>
+            <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
+          </div>
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Profit</div>
+            <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+              {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Records */}
+      {/* Month accordions */}
       <div className="space-y-2">
-        {pageRecords.map((e) => {
-          const m = machines.find(x => x.id === e.machine_id);
-          const isPayout = e.type === "payout";
+        {monthKeys.map(mk => {
+          const mEntries = byMonth[mk];
+          const mPayout = mEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+          const mIncome = mEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+          const mProfit = mIncome - mPayout;
+          const isOpen = openMonth === mk;
           return (
-            <div key={e.id} className={`rounded-xl p-4 border flex items-start gap-3 ${
-              isPayout ? "border-red-500/25" : "border-green-500/25"
-            }`} style={{ background: isPayout ? "oklch(0.20 0.04 10 / 0.25)" : "oklch(0.20 0.05 145 / 0.25)" }}>
-              <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border text-sm font-black ${
-                isPayout ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-green-500/15 border-green-500/30 text-green-400"
-              }`}>
-                {isPayout ? "P" : "I"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground">
-                  {new Date(e.created_at).toLocaleString("en-GB", {
-                    day: "numeric", month: "short", year: "numeric",
-                    hour: "2-digit", minute: "2-digit", hour12: true,
+            <div key={mk} className="rounded-2xl border border-border overflow-hidden"
+              style={{ background: "var(--gradient-card)" }}>
+              {/* Month header */}
+              <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition"
+                onClick={() => setOpenMonth(isOpen ? null : mk)}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-black text-sm">{monthLabel(mk)}</span>
+                  <span className="text-xs text-muted-foreground">{mEntries.length} records</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
+                  </span>
+                  <button
+                    onClick={ev => { ev.stopPropagation(); handleDownloadMonth(mk); }}
+                    disabled={downloadingMonth === mk}
+                    className="h-7 px-2 rounded-lg flex items-center gap-1 text-xs font-bold border border-border hover:bg-muted/50 transition disabled:opacity-50">
+                    {downloadingMonth === mk
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <Download className="h-3 w-3" />}
+                    PDF
+                  </button>
+                  <span className={`text-muted-foreground text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                </div>
+              </button>
+
+              {/* Expanded rows */}
+              {isOpen && (
+                <div className="border-t border-border divide-y divide-border/40">
+                  {/* Month summary strip */}
+                  <div className="grid grid-cols-3 gap-2 px-4 py-2">
+                    <div className="text-center">
+                      <div className="text-[9px] text-muted-foreground">Payout</div>
+                      <div className="font-black text-xs text-red-400">${fmtWhole(mPayout)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[9px] text-muted-foreground">Income</div>
+                      <div className="font-black text-xs text-green-400">${fmtWhole(mIncome)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[9px] text-muted-foreground">Profit</div>
+                      <div className="font-black text-xs" style={{ color: mProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
+                      </div>
+                    </div>
+                  </div>
+                  {mEntries.map(e => {
+                    const m = machines.find(x => x.id === e.machine_id);
+                    const isPayout = e.type === "payout";
+                    return (
+                      <div key={e.id} className="px-4 py-3 flex items-start gap-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border text-xs font-black ${
+                          isPayout ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-green-500/15 border-green-500/30 text-green-400"
+                        }`}>
+                          {isPayout ? "P" : "I"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(e.created_at).toLocaleString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric",
+                              hour: "2-digit", minute: "2-digit", hour12: true,
+                            })}
+                          </div>
+                          <div className={`font-black text-sm ${isPayout ? "text-red-400" : "text-green-400"}`}>
+                            {isPayout ? "-" : "+"}${fmt(Number(e.amount))}
+                          </div>
+                          {m && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{m.name}</div>}
+                          {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
+                          {e.cashier_name && (
+                            <div className="text-[10px] text-white/30 mt-0.5">
+                              {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
-                <div className={`font-black text-sm ${isPayout ? "text-red-400" : "text-green-400"}`}>
-                  {isPayout ? "-" : "+"}${fmt(Number(e.amount))}
-                </div>
-                {m && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{m.name}</div>}
-                {!isPayout && (
-                  <div className="text-xs font-semibold text-green-400/70 mt-0.5">Machine cleared by owner</div>
-                )}
-                {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
-                {e.cashier_name && (
-                  <div className="text-[10px] text-white/30 mt-0.5">
-                    {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           );
         })}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 border border-border"
-          style={{ background: "var(--gradient-card)" }}>
-          <Button variant="outline" size="sm" className="h-9 font-bold"
-            disabled={safePage === 0}
-            onClick={() => { setPage(p => Math.max(0, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-            ‹ Prev
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {safePage + 1} of {totalPages}
-            <span className="text-muted-foreground/60 ml-1">({total} total)</span>
-          </span>
-          <Button variant="outline" size="sm" className="h-9 font-bold"
-            disabled={safePage >= totalPages - 1}
-            onClick={() => { setPage(p => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-            Next ›
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

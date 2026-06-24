@@ -1416,6 +1416,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     monthlyExpenses: number;
     totalIncome: number;
     stockResaleValue: number;
+    stockExpectedProfit: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
@@ -1432,8 +1433,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
       // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
-      // All products with stock: price × qty
-      supabase.from("products").select("price, stock_qty"),
+      // All products with stock: price × qty and cost_price × qty
+      supabase.from("products").select("price, cost_price, stock_qty"),
       // Currently open bottles
       sb.from("opened_bottles")
         .select("revenue, product_id, products(price)")
@@ -1450,9 +1451,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const totalIncome = transfersIncome + ownerOrdersIncome + cashierOrdersIncome + creditPaymentsIncome;
 
-    // Closed stock: sum of price × stock_qty for all products
+    // Closed stock: sum of price × stock_qty (resale) and cost_price × stock_qty (cost)
     const closedStockValue = (productsRes.data ?? []).reduce(
-      (s: number, p: { price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty),
+      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty),
+      0
+    );
+    const closedStockCost = (productsRes.data ?? []).reduce(
+      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.cost_price) * Number(p.stock_qty),
       0
     );
     // Opened bottles: base cost (product price) minus shots revenue already collected
@@ -1464,8 +1469,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     }, 0);
 
     const stockResaleValue = closedStockValue + openedBottlesNetValue;
+    // Expected profit = what you'd make selling all stock at retail minus what it cost to buy
+    const stockExpectedProfit = stockResaleValue - closedStockCost;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue });
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -1491,6 +1498,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const netProfit = totalIncome - totalExpenses;
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
+  const stockExpectedProfit = financialSummary ? financialSummary.stockExpectedProfit : 0;
   const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
@@ -1563,9 +1571,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 <TrendingUp className="h-3 w-3" /> Expected Profit
               </div>
               <span className="font-black text-sm" style={{
-                color: (stockResaleValue - totalExpenses) >= 0 ? "#86efac" : "#fca5a5"
+                color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5"
               }}>
-                {(stockResaleValue - totalExpenses) >= 0 ? "+" : ""}${fmt(stockResaleValue - totalExpenses)}
+                {stockExpectedProfit >= 0 ? "+" : ""}${fmt(stockExpectedProfit)}
               </span>
             </div>
           </div>
