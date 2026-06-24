@@ -271,7 +271,6 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                    <div className="text-sm font-black text-green-400 mt-0.5">+${fmt(Number(o.total))}</div>
                     <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                     <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
@@ -280,6 +279,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                     </div>
                   </div>
+                  <span className="font-black text-sm text-green-400 shrink-0">+${fmt(Number(o.total))}</span>
                 </div>
               );
             })}
@@ -1082,7 +1082,6 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
           {flatRecords.map((rec) => {
             if (rec.kind === "tx") {
               const tx = rec.data;
-              const isReset = tx.type === "wallet_reset";
               const isBottle = tx.type === "bottle_finished";
               const isCashierSale = tx.type === "cashier_sale";
 
@@ -1091,6 +1090,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                 const cashierLabel = parts[0] ?? "Cashier";
                 const totalStr     = parts[1] ?? "";
                 const itemsStr     = parts.slice(2).join(", ") ?? "";
+                // Parse paid/change from totalStr e.g. "Total: $X · Paid: $Y · Change: $Z"
+                const paidMatch   = totalStr.match(/Paid:\s*\$([\d.]+)/);
+                const changeMatch = totalStr.match(/Change:\s*\$([\d.]+)/);
+                const totalMatch  = totalStr.match(/Total:\s*\$([\d.]+)/);
+                const paidStr     = paidMatch   ? `Paid $${fmt(parseFloat(paidMatch[1]))}` : "";
+                const changeStr   = changeMatch ? `Change $${fmt(parseFloat(changeMatch[1]))}` : "";
+                const saleTotal   = totalMatch  ? `+$${fmt(parseFloat(totalMatch[1]))}` : "";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-blue-500/20 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.04 240 / 0.30)" }}>
@@ -1098,8 +1104,13 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-black text-blue-300 mt-0.5">{cashierLabel}</div>
-                      {totalStr && <div className="text-xs font-bold text-blue-200 mt-0.5">Sale: {totalStr}</div>}
+                      {saleTotal && <div className="text-sm font-black text-green-400 mt-0.5">{saleTotal}</div>}
                       {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsStr}</div>}
+                      {(paidStr || changeStr) && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {[paidStr, changeStr].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
                     </div>
                     <CashierBadge />
                   </div>
@@ -1276,6 +1287,8 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
               );
             }
             const o = rec.data as Order;
+            // Cashier orders are already shown via cashier_sale wallet_transaction — skip them here
+            if ((o as any).cashier_id !== profile.id) return null;
             const isNewest = o.id === newestOrderId;
             return (
               <div key={o.id} className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
@@ -1463,27 +1476,23 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
           {/* Stock Resale + Expected Profit — 2 cards */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <BarChart3 className="h-3 w-3" /> Stock Resale Cost
-                </div>
-                <span className="font-black text-sm" style={{ color: "#eab308" }}>
-                  ${fmt(stockResaleValue)}
-                </span>
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <BarChart3 className="h-3 w-3" /> Stock Resale Cost
               </div>
+              <span className="font-black text-sm" style={{ color: "#eab308" }}>
+                ${fmt(stockResaleValue)}
+              </span>
             </div>
-            <div className="flex items-center justify-between rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3" /> Expected Profit
-                </div>
-                <span className="font-black text-sm" style={{
-                  color: (stockResaleValue - totalExpenses) >= 0 ? "#86efac" : "#fca5a5"
-                }}>
-                  {(stockResaleValue - totalExpenses) >= 0 ? "+" : ""}${fmt(stockResaleValue - totalExpenses)}
-                </span>
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <TrendingUp className="h-3 w-3" /> Expected Profit
               </div>
+              <span className="font-black text-sm" style={{
+                color: (stockResaleValue - totalExpenses) >= 0 ? "#86efac" : "#fca5a5"
+              }}>
+                {(stockResaleValue - totalExpenses) >= 0 ? "+" : ""}${fmt(stockResaleValue - totalExpenses)}
+              </span>
             </div>
           </div>
 

@@ -229,9 +229,11 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
 }
 
 // ── Machine Detail Page ────────────────────────────────────────────────────────
-function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDeleted }: {
+function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, onBack, onDeleted }: {
   machine: Machine; screenNumber: number; ownerId: string;
   profile: { id: string; username?: string; role?: string };
+  floatSession: FloatSession | null;
+  remainingFloat: number | null;
   onBack: () => void; onDeleted: () => void;
 }) {
   const [entries, setEntries] = useState<MachineEntry[]>([]);
@@ -513,11 +515,11 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, onBack, onDele
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
           </div>
           <div className="relative grid grid-cols-3 gap-2">
+            <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
             <SmallStat label="Session Payout" value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
-            <SmallStat label="Session Income" value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
-            <SmallStat label="Session Profit"
-              value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
-              color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+            <SmallStat label="Remaining"
+              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
         </section>
 
@@ -1238,7 +1240,9 @@ export default function MachinesPage() {
   if (!profile) return null;
 
   const screenNumber = selected
-    ? [...machines].sort((a, b) => a.created_at.localeCompare(b.created_at)).findIndex(m => m.id === selected.id) + 1
+    ? [...machines]
+        .sort((a, b) => a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at))
+        .findIndex(m => m.id === selected.id) + 1
     : 0;
 
   const tabs = [
@@ -1257,6 +1261,8 @@ export default function MachinesPage() {
           screenNumber={screenNumber}
           ownerId={ownerId}
           profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined }}
+          floatSession={floatSession}
+          remainingFloat={remainingFloat}
           onBack={() => { setSelected(null); load(); }}
           onDeleted={() => { setSelected(null); load(); }}
         />
