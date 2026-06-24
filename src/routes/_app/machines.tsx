@@ -516,7 +516,7 @@ function PayoutsTab({ entries, machines }: { entries: MachineEntry[]; machines: 
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
-function MachinesPage() {
+export default function MachinesPage() {
   const { profile } = useAuth();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [entries, setEntries] = useState<MachineEntry[]>([]);

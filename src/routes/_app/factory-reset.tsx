@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/_app/factory-reset")({
   component: FactoryResetPage,
 });
 
-function FactoryResetPage() {
+export default function FactoryResetPage() {
   const { profile, signOut } = useAuth();
   const nav = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -72,7 +73,7 @@ function FactoryResetPage() {
 
       // Sign out so they start fresh
       await signOut();
-      nav({ to: "/login" as "/" });
+      nav("/login");
     } catch (err: any) {
       toast.error("Reset failed: " + (err?.message ?? "unknown error"));
       setBusy(false);

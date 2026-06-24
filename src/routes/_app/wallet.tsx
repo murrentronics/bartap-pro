@@ -72,23 +72,30 @@ function todayISO() {
 
 // ─── Pagination Bar ──────────────────────────────────────────────────────────
 function PaginationBar({
-  page, totalPages, total, onPrev, onNext,
+  page, totalPages, total, pageCount, onPrev, onNext,
 }: {
-  page: number; totalPages: number; total: number; onPrev: () => void; onNext: () => void;
+  page: number; totalPages: number; total: number; pageCount?: number; onPrev: () => void; onNext: () => void;
 }) {
   if (total <= 100) return null;
   return (
-    <div className="flex items-center justify-between rounded-xl px-3 py-2.5 border border-border"
+    <div className="flex flex-col gap-1 rounded-xl px-3 py-2.5 border border-border"
       style={{ background: "var(--gradient-card)" }}>
-      <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page === 0} onClick={onPrev}>
-        <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-      </Button>
-      <span className="text-sm font-semibold text-muted-foreground">
-        Page {page + 1} of {totalPages} · <span className="text-foreground font-black">{total}</span> records
-      </span>
-      <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page >= totalPages - 1} onClick={onNext}>
-        Next <ChevronRight className="h-4 w-4 ml-1" />
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page === 0} onClick={onPrev}>
+          <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+        </Button>
+        <span className="text-sm font-semibold text-muted-foreground">
+          Page {page + 1} of {totalPages} · <span className="text-foreground font-black">{total}</span> records
+        </span>
+        <Button variant="outline" size="sm" className="h-9 font-bold" disabled={page >= totalPages - 1} onClick={onNext}>
+          Next <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+      {pageCount !== undefined && (
+        <p className="text-center text-xs text-muted-foreground">
+          Showing <span className="font-black text-foreground">{pageCount}</span> records on this page
+        </p>
+      )}
     </div>
   );
 }
@@ -1203,42 +1210,28 @@ function CashierBadge() {
 }
 
 function TransactionsTab({ profile }: { profile: { id: string } }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [txs, setTxs] = useState<WalletTx[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [allTxs, setAllTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
 
   const fetchData = useCallback(() => {
     setLoading(true);
-    // Fetch counts for both orders and wallet txs to get accurate total
     Promise.all([
-      supabase.from("orders").select("id", { count: "exact", head: true })
+      // Fetch ALL owner-direct orders (no range limit)
+      supabase.from("orders").select("*")
         .eq("owner_id", profile.id).eq("cashier_id", profile.id)
-        .then(({ count }) => count ?? 0),
-      supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setAllOrders((data ?? []) as unknown as Order[])),
+      // Fetch ALL wallet txs (no range limit)
+      supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
         .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
-        .then(({ count }) => count ?? 0),
-    ]).then(([orderCount, txCount]) => setTotal(orderCount + txCount));
-
-    // Fetch paginated orders
-    supabase.from("orders").select("*")
-      .eq("owner_id", profile.id).eq("cashier_id", profile.id)
-      .order("created_at", { ascending: false })
-      .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
-      .then(({ data }) => { setOrders((data ?? []) as unknown as Order[]); setLoading(false); });
-
-    // Fetch paginated wallet txs
-    supabase.from("wallet_transactions").select("*")
-      .eq("profile_id", profile.id)
-      .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
-      .order("created_at", { ascending: false })
-      .range(page * TX_PAGE_SIZE, page * TX_PAGE_SIZE + TX_PAGE_SIZE - 1)
-      .then(({ data }) => setTxs((data ?? []) as WalletTx[]));
-  }, [profile.id, page]);
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setAllTxs((data ?? []) as WalletTx[])),
+    ]).finally(() => setLoading(false));
+  }, [profile.id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -1252,42 +1245,50 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
     return () => { supabase.removeChannel(ch); };
   }, [profile.id, fetchData]);
 
+  // Merge ALL records sorted by date, then paginate client-side
+  const allFlat: FlatRecord[] = [
+    ...allOrders.map((o): FlatRecord => ({ kind: "order", data: o, ts: new Date(o.created_at).getTime() })),
+    ...allTxs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
+  ].sort((a, b) => b.ts - a.ts);
+
+  const total = allFlat.length;
+  const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const flatRecords = allFlat.slice(safePage * TX_PAGE_SIZE, safePage * TX_PAGE_SIZE + TX_PAGE_SIZE);
+  const pageRecordCount = flatRecords.length;
+
   const deleteLatestOrder = async (order: Order) => {
     setDeletingOrderId(order.id);
-    // Delete the order — triggers cascade on wallet_transactions via order_id FK
-    const { error } = await supabase.from("orders").delete().eq("id", order.id);
-    if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
-    // Also remove the sale wallet_tx that may not have order_id set
+    // Delete wallet_transactions linked to this order first (sale tx on cashier profile)
+    await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
+    // Also catch any unlinked sale tx within 10s window (older records may not have order_id)
     await supabase.from("wallet_transactions").delete()
-      .eq("profile_id", profile.id).eq("type", "sale")
+      .eq("type", "sale")
       .gte("created_at", new Date(new Date(order.created_at).getTime() - 10000).toISOString())
       .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
+    // Delete the order itself
+    const { error } = await supabase.from("orders").delete().eq("id", order.id);
+    if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
     toast.success("Sale record removed");
     setDeletingOrderId(null);
     fetchData();
   };
 
-  const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
-
-  // Merge orders and txs for the current page's date range
-  const flatRecords: FlatRecord[] = [
-    ...orders.map((o): FlatRecord => ({ kind: "order", data: o, ts: new Date(o.created_at).getTime() })),
-    ...txs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
-  ].sort((a, b) => b.ts - a.ts);
+  const handlePrev = () => { setPage((p) => Math.max(0, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const handleNext = () => { setPage((p) => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   // Find the newest order id so we only show delete on that one
-  const newestOrderId = orders.length > 0
-    ? orders.reduce((newest, o) => new Date(o.created_at) > new Date(newest.created_at) ? o : newest).id
+  const newestOrderId = allOrders.length > 0
+    ? allOrders.reduce((newest, o) => new Date(o.created_at) > new Date(newest.created_at) ? o : newest).id
     : null;
 
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{flatRecords.length} records</span>
+        <span className="text-sm text-muted-foreground">{total} total records</span>
       </div>
 
-      <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+      <PaginationBar page={safePage} totalPages={totalPages} total={total} pageCount={pageRecordCount} onPrev={handlePrev} onNext={handleNext} />
 
       {loading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
@@ -1528,7 +1529,7 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
         </div>
       )}
 
-      <PaginationBar page={page} totalPages={totalPages} total={total} onPrev={handlePrev} onNext={handleNext} />
+      <PaginationBar page={safePage} totalPages={totalPages} total={total} pageCount={pageRecordCount} onPrev={handlePrev} onNext={handleNext} />
     </div>
   );
 }

@@ -19,6 +19,8 @@ import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 import ProfilePage from "@/pages/ProfilePage";
 import MusicPage from "@/pages/MusicPage";
 import CreditPage from "@/pages/CreditPage";
+import MachinesPage from "@/pages/MachinesPage";
+import FactoryResetPage from "@/pages/FactoryResetPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 
@@ -40,6 +42,8 @@ function AppWithUpdateCheck() {
             <Route path="profile" element={<ProfilePage />} />
             <Route path="music" element={<MusicPage />} />
             <Route path="credit" element={<CreditPage />} />
+            <Route path="machines" element={<MachinesPage />} />
+            <Route path="factory-reset" element={<FactoryResetPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />
