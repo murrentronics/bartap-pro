@@ -76,7 +76,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
 }
 
 // ── History Month Accordion ────────────────────────────────────────────────────
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDownloadAll, onDownloadMonth, onDelete, onLightbox }: {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier }: {
   entries: MachineEntry[];
   loading: boolean;
   downloading: boolean;
@@ -85,6 +85,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
   onDownloadMonth: (monthKey: string, monthEntries: MachineEntry[]) => void;
   onDelete: (id: string) => void;
   onLightbox: (url: string) => void;
+  isCashier: boolean;
 }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
@@ -222,13 +223,13 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                             <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
                           </button>
                         )}
-                        {isNewest && !deletingId && (
+                        {isNewest && !deletingId && isPayout && !isCashier && (
                           <button onClick={() => onDelete(e.id)}
                             className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0">
                             <Trash2 className="h-3.5 w-3.5 text-white" />
                           </button>
                         )}
-                        {isNewest && deletingId === e.id && (
+                        {isNewest && deletingId === e.id && isPayout && !isCashier && (
                           <div className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50">
                             <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
                           </div>
@@ -737,6 +738,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             onDownloadMonth={handleDownloadMonthPdf}
             onDelete={handleDelete}
             onLightbox={(url) => setLightboxUrl(url)}
+            isCashier={isCashier}
           />
         )}
       </div>
