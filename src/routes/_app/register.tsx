@@ -85,6 +85,7 @@ export default function RegisterPage() {
   }, [profile?.id]);
 
   const barStartLongPress = () => {
+    if (barEditMode) return; // Don't start another long-press if already in edit mode
     barLongPressTimer.current = setTimeout(() => setBarEditMode(true), 600);
   };
   const barCancelLongPress = () => {
@@ -525,7 +526,7 @@ export default function RegisterPage() {
                 <button
                   onClick={() => !outOfStock && !barEditMode && addToCart(p)}
                   disabled={outOfStock}
-                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
+                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab active:cursor-grabbing" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
@@ -1608,7 +1609,7 @@ function CreditSaleOverlay({
   const chargeAccount = async (account: CreditAccount) => {
     if (!profile) return;
     setBusy(true);
-    const itemsDesc = cart.map((c) => `${c.qty}├ù ${c.name}`).join(", ");
+    const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
@@ -1640,7 +1641,7 @@ function CreditSaleOverlay({
       .single();
     if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
     // Charge it
-    const itemsDesc = cart.map((c) => `${c.qty}├ù ${c.name}`).join(", ");
+    const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
       p_cashier_id: profile.id,

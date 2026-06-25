@@ -735,17 +735,29 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
-    const [expRes, ordRes] = await Promise.all([
+    const [expRes, ownerOrdRes, transfersRes, creditRes] = await Promise.all([
       sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false }),
-      // Fetch ALL orders for this owner (owner's own + all cashiers) — for monthly income breakdown
-      supabase.from("orders").select("total, created_at").eq("owner_id", ownerId),
+      // Only owner's OWN direct orders (not cashier orders — cash still with cashier until cleared)
+      supabase.from("orders").select("total, created_at").eq("owner_id", ownerId).eq("cashier_id", ownerId),
+      // Transfer-in: cashier balances cleared to owner
+      supabase.from("wallet_transactions").select("amount, created_at").eq("profile_id", ownerId).eq("type", "transfer_in"),
+      // Credit payments collected directly by the owner
+      supabase.from("wallet_transactions").select("amount, created_at").eq("profile_id", ownerId).eq("type", "credit_payment").gt("amount", 0),
     ]);
     setExpenses((expRes.data ?? []) as OwnerExpense[]);
-    // Build per-month income map from all owner orders
+    // Build per-month income map: owner direct sales + transfers in + credit payments
     const incomeMap: Record<string, number> = {};
-    for (const o of (ordRes.data ?? []) as { total: number; created_at: string }[]) {
+    for (const o of (ownerOrdRes.data ?? []) as { total: number; created_at: string }[]) {
       const mk = monthKey(o.created_at);
       incomeMap[mk] = (incomeMap[mk] ?? 0) + Number(o.total);
+    }
+    for (const t of (transfersRes.data ?? []) as { amount: number; created_at: string }[]) {
+      const mk = monthKey(t.created_at);
+      incomeMap[mk] = (incomeMap[mk] ?? 0) + Number(t.amount);
+    }
+    for (const t of (creditRes.data ?? []) as { amount: number; created_at: string }[]) {
+      const mk = monthKey(t.created_at);
+      incomeMap[mk] = (incomeMap[mk] ?? 0) + Number(t.amount);
     }
     setMonthlyIncome(incomeMap);
     setLoadingData(false);
@@ -1473,12 +1485,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
-    // Income = transfers in + owner's own direct orders + all cashier orders + credit payments owner collected directly
+    // Income = only money the owner has actually received in hand:
+    // - transfers_in: cashier balances cleared to owner
+    // - owner's own direct orders (owner rang the sale themselves)
+    // - credit payments collected directly by the owner
+    // Cashier orders are NOT counted here — that cash is still with the cashier until cleared
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
-    const cashierOrdersIncome = (cashierOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const totalIncome = transfersIncome + ownerOrdersIncome + cashierOrdersIncome + creditPaymentsIncome;
+    const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
 
     // Closed stock: sum of price × stock_qty (resale) and cost_price × stock_qty (cost)
     const closedStockValue = (productsRes.data ?? []).reduce(

@@ -926,9 +926,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               </div>
               {activeNumpad !== null && (
                 <div className="space-y-1">
-                  <div className="text-xs text-center text-muted-foreground font-semibold pb-1">
-                    {activeNumpad === "selling" ? "Selling Price" : "Cost Price"}
-                  </div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                       <button
