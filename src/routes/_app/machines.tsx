@@ -208,10 +208,11 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                           {/* Proof photo or unverified badge — payouts only */}
                           {isPayout && (
                             hasProof ? (
-                              <a href={e.proof_image_url!} target="_blank" rel="noopener noreferrer"
-                                className="block mt-1.5 rounded-xl overflow-hidden border border-green-500/30 max-w-[120px]">
+                              <button
+                                onClick={() => setLightboxUrl(e.proof_image_url!)}
+                                className="block mt-1.5 rounded-xl overflow-hidden border border-green-500/30 max-w-[120px] active:opacity-80 transition">
                                 <img src={e.proof_image_url!} alt="proof" className="w-full object-cover" />
-                              </a>
+                              </button>
                             ) : (
                               <div className="flex items-center gap-1 mt-1">
                                 <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
@@ -269,6 +270,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const proofCamRef = useRef<HTMLInputElement>(null);
+  // Lightbox — in-app full-screen image viewer
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,9 +293,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   useEffect(() => { load(); }, [load]);
 
-  // Realtime — entries only (float lives on the screens page)
+  // Realtime — entries for this machine + float sessions so the second row stays live
   useEffect(() => {
-    const ch = supabase.channel(`machine-${machine.id}`)
+    const ch = supabase.channel(`machine-detail-${machine.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries",
         filter: `machine_id=eq.${machine.id}` }, () => load())
       .subscribe();
@@ -314,13 +317,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
 
-  // Remaining float — computed from local entries + floatSession prop so it
-  // updates immediately when a payout is saved without waiting for the parent to reload.
-  const localRemainingFloat = floatSession
-    ? Number(floatSession.amount) - entries
-        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
-        .reduce((s, e) => s + Number(e.amount), 0)
-    : null;
+  // Remaining float — use the owner-wide remainingFloat prop (all machines combined).
+  // This is kept live by the parent's realtime channel on machine_float_sessions + machine_entries.
+  // We do NOT recompute locally — that would only subtract THIS machine's payouts which is wrong.
 
   const handleSave = async () => {
     const val = parseFloat(amount);
@@ -565,8 +564,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
             <SmallStat label="Session Payout" value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
             <SmallStat label="Remaining"
-              value={localRemainingFloat === null ? "—" : (localRemainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(localRemainingFloat))}
-              color={localRemainingFloat === null ? "oklch(0.45 0.02 60)" : localRemainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
+              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
         </section>
 
@@ -752,6 +751,28 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Lightbox ── */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt="proof"
+            className="rounded-2xl shadow-2xl"
+            style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 h-10 w-10 rounded-full flex items-center justify-center bg-black/60 border border-white/20 text-white active:scale-90 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       )}
     </div>

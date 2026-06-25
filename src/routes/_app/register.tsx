@@ -423,7 +423,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
                 >
-                  ≡ƒÑâ Shot from Opened Bottle
+                  🥃 Shot from Opened Bottle
                   {openedBottles.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -442,7 +442,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
                 >
-                  ≡ƒÜ¼ Retail Cigarette &amp; Paper
+                  🚬 Retail Cigarette &amp; Paper
                   {openedPacks.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -463,11 +463,12 @@ export default function RegisterPage() {
               <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
                 style={{ background: "oklch(0.20 0.05 60)" }}>
                 <span className="text-xs font-black text-amber-400">
-                  {barSavingOrder ? "Saving…" : "Hold & drag to reorder"}
+                  {barSavingOrder ? "Saving..." : "Hold & drag to reorder"}
                 </span>
                 <button
                   onClick={async () => {
                     setBarEditMode(false);
+                    setBarDraggingId(null);
                     const localOrder = barLocalOrder[category];
                     if (localOrder && localOrder.length > 0) {
                       const allSaved = Object.entries(barSortMap).sort((a,b) => a[1]-b[1]).map(([id]) => id);
@@ -505,9 +506,22 @@ export default function RegisterPage() {
                       return { ...prev, [category]: next };
                     });
                   }}
-                  onDrop={() => setBarDraggingId(null)}
+                  onDrop={async () => {
+                    setBarDraggingId(null);
+                    const localOrder = barLocalOrder[category];
+                    if (localOrder && localOrder.length > 0) {
+                      const allSaved = Object.entries(barSortMap).sort((a,b) => a[1]-b[1]).map(([id]) => id);
+                      const otherIds = allSaved.filter(id => !localOrder.includes(id));
+                      await saveBarSort([...localOrder, ...otherIds]);
+                      setBarLocalOrder(prev => { const n = {...prev}; delete n[category]; return n; });
+                    }
+                    setBarEditMode(false);
+                  }}
                   onDragEnd={() => setBarDraggingId(null)}
-                  onPointerDown={() => { barLongPressTimer.current = setTimeout(() => setBarEditMode(true), 600); }}
+                  onPointerDown={() => {
+                    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
+                    barLongPressTimer.current = setTimeout(() => setBarEditMode(true), 600);
+                  }}
                   onPointerUp={() => { if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current); }}
                   onPointerLeave={() => { if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current); }}
                   style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}
