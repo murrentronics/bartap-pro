@@ -937,10 +937,21 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       { owner_id: profileId, order_json: orderedIds, updated_at: new Date().toISOString() },
       { onConflict: "owner_id" }
     );
-    const map: Record<string, number> = {};
-    orderedIds.forEach((id, i) => { map[id] = i; });
-    setSortMap(map);
     setSavingOrder(false);
+    // Do NOT setSortMap here — that triggers orderedMachines reset mid-edit.
+    // Map reloads when user taps Done.
+  };
+
+  const handleDone = async () => {
+    setEditMode(false);
+    // Reload sort map now that edit is complete
+    const { data } = await (supabase as any).from("machine_sort_order")
+      .select("order_json").eq("owner_id", profileId).maybeSingle();
+    if (data?.order_json && Array.isArray(data.order_json)) {
+      const map: Record<string, number> = {};
+      data.order_json.forEach((id: string, i: number) => { map[id] = i; });
+      setSortMap(map);
+    }
   };
 
   const handleDragStart = (id: string) => setDraggingId(id);
@@ -1037,7 +1048,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           <span className="text-xs font-black text-amber-400">
             {savingOrder ? "Saving…" : "Hold & drag to reorder"}
           </span>
-          <button onClick={() => setEditMode(false)}
+          <button onClick={handleDone}
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
             Done
           </button>

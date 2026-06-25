@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -78,12 +78,16 @@ export default function RegisterPage() {
       { owner_id: profile.id, order_json: orderedIds, updated_at: new Date().toISOString() },
       { onConflict: "owner_id" }
     );
-    // Update the map without triggering a barOrdered reset (edit mode guard handles it)
-    const map: Record<string, number> = {};
-    orderedIds.forEach((pid, i) => { map[pid] = i; });
-    setBarSortMap(map);
     setBarSavingOrder(false);
+    // Do NOT update barSortMap here — that would trigger a barOrdered reset mid-edit.
+    // The map gets refreshed when the user taps Done (exits edit mode).
   }, [profile?.id]);
+
+  const handleBarDone = useCallback(async () => {
+    setBarEditMode(false);
+    // Now safe to reload sort map — edit mode is exiting
+    await loadBarSort();
+  }, [loadBarSort]);
 
   const barStartLongPress = () => {
     if (barEditMode) return; // Don't start another long-press if already in edit mode
@@ -191,7 +195,7 @@ export default function RegisterPage() {
 
   const removeItem = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
 
-  // ΓöÇΓöÇ Opened Bottles state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // -- Opened Bottles state ------------------------------------------------
   const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
   const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
   const [shotModalOpen, setShotModalOpen]       = useState(false);
@@ -207,7 +211,7 @@ export default function RegisterPage() {
   const [markEmptyBottleId, setMarkEmptyBottleId] = useState<string | null>(null); // confirm modal
   const [cancelBottleId, setCancelBottleId]       = useState<string | null>(null); // confirm modal
 
-  // ΓöÇΓöÇ Opened Packs state (cigarettes retail + rolling paper) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // -- Opened Packs state (cigarettes retail + rolling paper) --------------
   type OpenedPack = {
     id: string; owner_id: string; product_id: string; product_name: string;
     pack_type: "retail" | "paper"; unit_price: number; units_sold: number;
@@ -455,7 +459,7 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            {/* ΓöÇΓöÇ Shot button  —  liquor tab only ΓöÇΓöÇ */}
+            {/* -- Shot button  —  liquor tab only -- */}
             {category === "liquor" && (
               <div className="mb-3">
                 <button
@@ -474,7 +478,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* ΓöÇΓöÇ Cigarette pack button  —  cigarettes tab only ΓöÇΓöÇ */}
+            {/* -- Cigarette pack button  —  cigarettes tab only -- */}
             {category === "cigarettes" && (
               <div className="mb-3">
                 <button
@@ -506,7 +510,7 @@ export default function RegisterPage() {
                   {barSavingOrder ? "Saving..." : "Hold & drag to reorder"}
                 </span>
                 <button
-                  onClick={() => setBarEditMode(false)}
+                  onClick={handleBarDone}
                   className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
                   Done
                 </button>
@@ -542,7 +546,7 @@ export default function RegisterPage() {
                     pointerEvents: barEditMode ? "none" : "auto",
                   }}
                 >
-                  {/* ΓöÇΓöÇ Image area ΓöÇΓöÇ */}
+                  {/* -- Image area -- */}
                   <div className="aspect-[3/4] relative w-full">
                     {p.image_url ? (
                       <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
@@ -615,7 +619,7 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* ΓöÇΓöÇ Title + price strip below image ΓöÇΓöÇ */}
+                  {/* -- Title + price strip below image -- */}
                   <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
                     <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
                     <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
@@ -706,7 +710,7 @@ export default function RegisterPage() {
         />
       )}
 
-      {/* ΓöÇΓöÇ Shot Modal  —  Step 1: Select Liquor (3-column card grid) ΓöÇΓöÇΓöÇΓöÇ */}
+      {/* -- Shot Modal  —  Step 1: Select Liquor (3-column card grid) ---- */}
       {shotModalOpen && shotStep === "select" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}>
@@ -841,7 +845,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Shot Step 2: Price entry  —  bottom-sheet modal ΓöÇΓöÇ */}
+      {/* -- Shot Step 2: Price entry  —  bottom-sheet modal -- */}
       {shotStep === "price" && shotBottleId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}>
@@ -871,7 +875,7 @@ export default function RegisterPage() {
                         <div className="aspect-[3/4] relative w-full">
                           {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                           <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
-                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>Γ£ô</div>}
+                          {isSelected && <div className="absolute inset-0 flex items-center justify-center font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}><CheckCircle2 className="h-10 w-10" /></div>}
                         </div>
                         <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                           <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
@@ -917,7 +921,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Mark Empty Confirm Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+      {/* -- Mark Empty Confirm Modal -------------------------------------- */}
       {markEmptyBottleId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
@@ -954,7 +958,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Cancel Bottle Confirm Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+      {/* -- Cancel Bottle Confirm Modal ------------------------------------ */}
       {cancelBottleId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
@@ -991,7 +995,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Opened Bottles Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+      {/* -- Opened Bottles Modal ------------------------------------------ */}
       {bottlesModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setBottlesModalOpen(false)}>
@@ -1059,7 +1063,7 @@ export default function RegisterPage() {
 
       {/* ΓòÉΓòÉ PACK MODALS (cigarettes / rolling papers) ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
 
-      {/* ΓöÇΓöÇ Pack Step 1: Select open pack + open new ΓöÇΓöÇ */}
+      {/* -- Pack Step 1: Select open pack + open new -- */}
       {packModalOpen && packStep === "select" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}>
@@ -1067,7 +1071,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? "≡ƒôä Select Paper Pack" : "🚬 Select Cigarette Pack"}</span>
+              <span className="text-base font-black">{packType === "paper" ? "📄 Select Paper Pack" : "🚬 Select Cigarette Pack"}</span>
               <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -1101,7 +1105,7 @@ export default function RegisterPage() {
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
+                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                               </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1154,7 +1158,7 @@ export default function RegisterPage() {
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
+                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
                             {packBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                           </div>
@@ -1172,7 +1176,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Pack Step 2: Price entry numpad ΓöÇΓöÇ */}
+      {/* -- Pack Step 2: Price entry numpad -- */}
       {packStep === "price" && packPackId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); }}>
@@ -1201,9 +1205,9 @@ export default function RegisterPage() {
                       <div className="aspect-[3/4] relative w-full">
                         {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                         <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "≡ƒôä" : "🚬"}</div>
-                        {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black"
-                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>Γ£ô</div>}
+                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
+                        {isSelected && <div className="absolute inset-0 flex items-center justify-center font-black"
+                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}><CheckCircle2 className="h-10 w-10" /></div>}
                       </div>
                       <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                         <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1262,7 +1266,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Mark Pack Empty Confirm ΓöÇΓöÇ */}
+      {/* -- Mark Pack Empty Confirm -- */}
       {markEmptyPackId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
@@ -1283,7 +1287,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Cancel Pack Confirm ΓöÇΓöÇ */}
+      {/* -- Cancel Pack Confirm -- */}
       {cancelPackId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
@@ -1308,7 +1312,7 @@ export default function RegisterPage() {
   );
 }
 
-// ΓöÇΓöÇΓöÇ Cash Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// --- Cash Overlay -------------------------------------------------------------
 function CashOverlay({
   total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess,
 }: {
@@ -1560,7 +1564,7 @@ function SaleSuccessBanner({ paid, change, onOk }: { paid: number; change: numbe
   );
 }
 
-// ΓöÇΓöÇ Credit Sale Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// -- Credit Sale Overlay --------------------------------------------------------
 // Step 1: Order review ΓåÆ Step 2: Pick/create credit account ΓåÆ confirm
 type CreditAccount = {
   id: string; full_name: string; contact_number: string | null;
@@ -1677,7 +1681,7 @@ function CreditSaleOverlay({
           </button>
         </div>
 
-        {/* ΓöÇΓöÇ Step 1: Order review ΓöÇΓöÇ */}
+        {/* -- Step 1: Order review -- */}
         {step === "review" && (
           <>
             <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
@@ -1746,7 +1750,7 @@ function CreditSaleOverlay({
           </>
         )}
 
-        {/* ΓöÇΓöÇ Step 2: Pick account ΓöÇΓöÇ */}
+        {/* -- Step 2: Pick account -- */}
         {step === "pick" && (
           <>
             <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
@@ -1795,7 +1799,7 @@ function CreditSaleOverlay({
           </>
         )}
 
-        {/* ΓöÇΓöÇ Step 2b: Confirm account selection ΓöÇΓöÇ */}
+        {/* -- Step 2b: Confirm account selection -- */}
         {confirmPick && (
           <div className="absolute inset-0 z-10 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm rounded-3xl">
             <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl p-6 space-y-4 text-center" style={{ background: "var(--gradient-card)" }}>
@@ -1907,7 +1911,7 @@ function CreditSaleOverlay({
   );
 }
 
-// ΓöÇΓöÇ Credit form keyboard helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// -- Credit form keyboard helpers ----------------------------------------------
 function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
   value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
 }) {
