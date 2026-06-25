@@ -947,6 +947,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     // Order already saved on each drop — no need to save again here
   };
 
+  const justDraggedRef = useRef(false);
+
   const handleDragStart = (id: string) => {
     draggingRef.current = id;
     setDraggingId(id);
@@ -970,7 +972,15 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const handleDrop = () => {
     draggingRef.current = null;
     setDraggingId(null);
+    justDraggedRef.current = true;
+    setTimeout(() => { justDraggedRef.current = false; }, 400);
     saveOrder(orderedRef.current);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    justDraggedRef.current = true;
+    setTimeout(() => { justDraggedRef.current = false; }, 400);
   };
 
   const startLongPress = () => {
@@ -1052,7 +1062,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 border border-amber-500/40"
           style={{ background: "oklch(0.20 0.05 60)" }}>
           <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
-          <button onClick={handleDone}
+          <button
+            onClick={() => { if (justDraggedRef.current) return; handleDone(); }}
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
             Done
           </button>
@@ -1074,7 +1085,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               onDragStart={() => handleDragStart(m.id)}
               onDragOver={(e) => handleDragOver(e, m.id)}
               onDrop={handleDrop}
-              onDragEnd={() => setDraggingId(null)}
+              onDragEnd={handleDragEnd}
               onPointerDown={startLongPress}
               onPointerUp={cancelLongPress}
               onPointerLeave={cancelLongPress}

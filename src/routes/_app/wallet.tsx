@@ -1575,10 +1575,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-summary-${profile.id}`)
+      // Any order (owner or cashier sale) → income + stock changes
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      // Wallet transactions: transfers_in, credit_payments → income changes
       .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      // Expenses added/removed → expenses + net profit cards
       .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      // Stock added/removed/updated → stock resale + expected profit cards
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      // Opened/finished bottles → stock resale value changes
+      .on("postgres_changes", { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);
