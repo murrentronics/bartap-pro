@@ -524,12 +524,13 @@ export default function RegisterPage() {
                 >
                 <button
                   onClick={() => !outOfStock && !barEditMode && addToCart(p)}
-                  disabled={outOfStock && !barEditMode}
+                  disabled={outOfStock}
                   className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
                     borderColor: barEditMode ? "rgba(251,146,60,0.8)" : inCart ? "var(--primary)" : "var(--border)",
+                    pointerEvents: barEditMode ? "none" : "auto",
                   }}
                 >
                   {/* ΓöÇΓöÇ Image area ΓöÇΓöÇ */}
