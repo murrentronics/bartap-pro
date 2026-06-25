@@ -929,6 +929,15 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
 
+  // Reset edit state on mount (user navigated to this tab/page)
+  useEffect(() => {
+    editModeRef.current = false;
+    setEditMode(false);
+    draggingRef.current = null;
+    setDraggingId(null);
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Apply user's sort map once loaded
   useEffect(() => {
     if (sortMapLoaded) {

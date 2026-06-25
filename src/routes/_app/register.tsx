@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,20 @@ export default function RegisterPage() {
   useEffect(() => () => {
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
   }, []);
+
+  // Reset bar edit state whenever this page becomes active (user navigated back)
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname === "/register") {
+      // Cancel any stale long-press timer
+      if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
+      // Reset edit mode so long-press works fresh every time
+      barEditModeRef.current = false;
+      setBarEditMode(false);
+      barDraggingRef.current = null;
+      setBarDraggingId(null);
+    }
+  }, [location.pathname]);
 
   const loadBarSort = async () => {
     const pid = profileIdRef.current;
