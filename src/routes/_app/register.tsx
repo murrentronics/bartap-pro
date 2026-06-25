@@ -112,6 +112,9 @@ export default function RegisterPage() {
     await saveBarSort(barOrdered.map(p => p.id));
   };
 
+  const barEditModeRef = useRef(barEditMode);
+  useEffect(() => { barEditModeRef.current = barEditMode; }, [barEditMode]);
+
   useEffect(() => {
     if (!ownerId) return;
     fetchProducts();
@@ -120,6 +123,8 @@ export default function RegisterPage() {
       .channel(`products-register-${ownerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
         (payload) => {
+          // Never disrupt the drag — skip realtime updates while in edit/drag mode
+          if (barEditModeRef.current) return;
           if (payload.eventType === "DELETE") {
             if (payload.old?.owner_id && payload.old.owner_id !== ownerId) return;
             setProducts((prev) => prev.filter((p) => p.id !== payload.old?.id));
@@ -132,6 +137,13 @@ export default function RegisterPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, fetchProducts, loadBarSort]);
+
+  // When edit mode exits, do a fresh fetch to pick up any stock changes missed during drag
+  useEffect(() => {
+    if (!barEditMode && ownerId) {
+      fetchProducts();
+    }
+  }, [barEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
     const cat = products.filter((p) => (p.category || "beers") === category);

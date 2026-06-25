@@ -77,6 +77,7 @@ public class MainActivity extends BridgeActivity {
         if (controller != null) {
             controller.setAppearanceLightStatusBars(false);
             controller.setAppearanceLightNavigationBars(false);
+            controller.hide(WindowInsetsCompat.Type.statusBars());
             controller.hide(WindowInsetsCompat.Type.navigationBars());
             controller.setSystemBarsBehavior(
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

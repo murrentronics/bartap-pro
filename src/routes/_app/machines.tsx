@@ -885,9 +885,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editModeRef = useRef(editMode);
+  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
 
-  // Sync when prop machines change (e.g. after realtime update)
+  // Sync when prop machines change (e.g. after realtime update) — but never during drag/edit
   useEffect(() => {
+    if (editModeRef.current) return;
     setOrderedMachines(
       [...initialMachines].sort((a, b) =>
         a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
