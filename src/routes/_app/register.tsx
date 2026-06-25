@@ -29,7 +29,7 @@ export default function RegisterPage() {
 
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
-  // Stable fetch ΓÇö always reads latest ownerId via ref
+  // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
 
@@ -51,7 +51,7 @@ export default function RegisterPage() {
     fetchProducts();
 
     // Realtime: re-fetch on any product change for this owner
-    // Note: no filter on DELETE events ΓÇö deleted rows can't match column filters
+    // Note: no filter on DELETE events — deleted rows can't match column filters
     const ch = supabase
       .channel(`products-register-${ownerId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
@@ -169,12 +169,12 @@ export default function RegisterPage() {
     if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
   };
 
-  const handleBarDone = async () => {
+  const handleBarDone = () => {
     barEditModeRef.current = false;
     setBarEditMode(false);
     barDraggingRef.current = null;
     setBarDraggingId(null);
-    await loadBarSort();
+    // Order already saved on each drop — no reload needed
   };
 
   // Load bar sort on mount and sync barOrdered when products/category/sort changes
@@ -310,7 +310,7 @@ export default function RegisterPage() {
     const { error } = await supabase.rpc("finish_pack", { p_pack_id: packId, p_cashier_id: profile.id });
     setPackBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Pack marked empty ΓÇö revenue recorded");
+    toast.success("Pack marked empty — revenue recorded");
     await fetchOpenedPacks();
     refreshProfile();
   };
@@ -320,7 +320,7 @@ export default function RegisterPage() {
     const { error } = await supabase.rpc("cancel_pack", { p_pack_id: packId });
     setPackBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Pack cancelled ΓÇö stock restored");
+    toast.success("Pack cancelled — stock restored");
     await fetchOpenedPacks();
     await fetchProducts();
   };
@@ -361,7 +361,7 @@ export default function RegisterPage() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, fetchOpenedBottles]);
 
-  /** Open a new bottle ΓÇö deducts 1 stock, creates opened_bottles row */
+  /** Open a new bottle — deducts 1 stock, creates opened_bottles row */
   const handleOpenNewBottle = async () => {
     if (!newBottleProductId || !newBottlePrice) return;
     setBottleBusy(true);
@@ -425,13 +425,13 @@ export default function RegisterPage() {
       }, 100);
     }
   }, [shotStep, shotBottleId]);
-  /** Cancel an open bottle ΓÇö only if 0 shots sold, restores 1 stock */
+  /** Cancel an open bottle — only if 0 shots sold, restores 1 stock */
   const handleCancelBottle = async (bottleId: string) => {
     setBottleBusy(true);
     const { error } = await supabase.rpc("cancel_bottle", { p_bottle_id: bottleId });
     setBottleBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Bottle cancelled ΓÇö stock restored");
+    toast.success("Bottle cancelled — stock restored");
     await fetchOpenedBottles();
     await fetchProducts();
   };
@@ -445,7 +445,7 @@ export default function RegisterPage() {
     });
     setBottleBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Bottle marked finished ΓÇö revenue recorded");
+    toast.success("Bottle marked finished — revenue recorded");
     await fetchOpenedBottles();
     refreshProfile();
   };
@@ -454,9 +454,9 @@ export default function RegisterPage() {
 
   return (
     <>
-      {/* Sticky category tabs ΓÇö sits below the app header */}
+      {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        {/* Category tabs ΓÇö icons only, 5 across */}
+        {/* Category tabs — icons only, 5 across */}
         <div className="max-w-2xl mx-auto grid grid-cols-5 gap-2">
           {CATEGORIES.map((cat) => (
             <button
@@ -485,7 +485,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Items grid ΓÇö bottom padding clears the fixed CASH + CREDIT buttons */}
+      {/* Items grid — bottom padding clears the fixed CASH + CREDIT buttons */}
       <div className="pt-4 pb-36">
         {loading ? (
           <div className="flex justify-center py-20">
@@ -493,7 +493,7 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            {/* ΓöÇΓöÇ Shot button ΓÇö liquor tab only ΓöÇΓöÇ */}
+            {/* ΓöÇΓöÇ Shot button — liquor tab only ΓöÇΓöÇ */}
             {category === "liquor" && (
               <div className="mb-3">
                 <button
@@ -512,7 +512,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* ΓöÇΓöÇ Cigarette pack button ΓÇö cigarettes tab only ΓöÇΓöÇ */}
+            {/* ΓöÇΓöÇ Cigarette pack button — cigarettes tab only ΓöÇΓöÇ */}
             {category === "cigarettes" && (
               <div className="mb-3">
                 <button
@@ -666,7 +666,7 @@ export default function RegisterPage() {
         )}
       </div>
 
-      {/* Sticky CASH + CREDIT buttons ΓÇö fixed at bottom */}
+      {/* Sticky CASH + CREDIT buttons — fixed at bottom */}
       {cartCount > 0 && (
         <div
           className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none"
@@ -732,7 +732,7 @@ export default function RegisterPage() {
         />
       )}
 
-      {/* ΓöÇΓöÇ Shot Modal ΓÇö Step 1: Select Liquor (3-column card grid) ΓöÇΓöÇΓöÇΓöÇ */}
+      {/* ΓöÇΓöÇ Shot Modal — Step 1: Select Liquor (3-column card grid) ΓöÇΓöÇΓöÇΓöÇ */}
       {shotModalOpen && shotStep === "select" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}>
@@ -750,7 +750,7 @@ export default function RegisterPage() {
 
               {!showNewBottleGrid ? (
                 <>
-                  {/* Currently open ΓÇö 3-col card grid */}
+                  {/* Currently open — 3-col card grid */}
                   {openedBottles.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
@@ -759,7 +759,7 @@ export default function RegisterPage() {
                           const prod = products.find(p => p.id === b.product_id);
                           return (
                             <div key={b.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
-                              {/* Top action bar ΓÇö Mark Empty (shots > 0) OR Cancel (0 shots) */}
+                              {/* Top action bar — Mark Empty (shots > 0) OR Cancel (0 shots) */}
                               {b.shots_sold > 0 ? (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
@@ -775,7 +775,7 @@ export default function RegisterPage() {
                                   className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
                                   style={{ background: "#374151" }}
                                 >
-                                  Γ£ò Cancel
+                                  ✗ Cancel
                                 </button>
                               )}
                               {/* Tap image area to sell a shot */}
@@ -784,7 +784,7 @@ export default function RegisterPage() {
                                 className="aspect-[3/4] relative w-full active:scale-95 transition"
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                                <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>≡ƒì╛</div>
+                                <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
                               </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
@@ -849,7 +849,7 @@ export default function RegisterPage() {
                           className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>≡ƒì╛</div>
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>🍾</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
                             {bottleBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                           </div>
@@ -867,7 +867,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Shot Step 2: Price entry ΓÇö bottom-sheet modal ΓöÇΓöÇ */}
+      {/* ΓöÇΓöÇ Shot Step 2: Price entry — bottom-sheet modal ΓöÇΓöÇ */}
       {shotStep === "price" && shotBottleId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}>
@@ -882,7 +882,7 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* 3-col card grid ΓÇö all open bottles, selected one highlighted */}
+            {/* 3-col card grid — all open bottles, selected one highlighted */}
             <div className="px-4 pb-2">
               <div className="grid grid-cols-3 gap-2">
                 {openedBottles.map((b) => {
@@ -896,8 +896,8 @@ export default function RegisterPage() {
                         style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
                         <div className="aspect-[3/4] relative w-full">
                           {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                          <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>≡ƒì╛</div>
-                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>Γ£ô</div>}
+                          <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
+                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
                         </div>
                         <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                           <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
@@ -949,7 +949,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
             style={{ background: "var(--gradient-card)" }}>
             <div className="px-5 pt-6 pb-4 text-center">
-              <div className="text-3xl mb-2">≡ƒì╛</div>
+              <div className="text-3xl mb-2">🍾</div>
               <div className="font-black text-base">Mark Bottle Empty?</div>
               <div className="text-xs text-muted-foreground mt-1">
                 This will close the bottle and record the wallet entry.
@@ -986,7 +986,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
             style={{ background: "var(--gradient-card)" }}>
             <div className="px-5 pt-6 pb-4 text-center">
-              <div className="text-3xl mb-2">≡ƒì╛</div>
+              <div className="text-3xl mb-2">🍾</div>
               <div className="font-black text-base">Cancel Bottle?</div>
               <div className="text-xs text-muted-foreground mt-1">
                 This will remove the bottle and restore 1 to stock.
@@ -1027,7 +1027,7 @@ export default function RegisterPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">≡ƒì╛ Opened Bottles</span>
+              <span className="text-base font-black">🍾 Opened Bottles</span>
               <button onClick={() => setBottlesModalOpen(false)}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -1050,7 +1050,7 @@ export default function RegisterPage() {
                         {prod?.image_url
                           ? <img src={prod.image_url} alt="" className="h-full w-full object-cover"
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                          : <span className="text-3xl">≡ƒì╛</span>}
+                          : <span className="text-3xl">🍾</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-black text-sm leading-tight truncate">{b.product_name}</div>
@@ -1063,7 +1063,7 @@ export default function RegisterPage() {
                         </div>
                       </div>
                     </div>
-                    {/* Single centered button ΓÇö Cancel if 0 shots, Mark Bottle Empty if shots sold */}
+                    {/* Single centered button — Cancel if 0 shots, Mark Bottle Empty if shots sold */}
                     <div className="flex justify-center py-2">
                       <button
                         onClick={() => b.shots_sold === 0 ? handleCancelBottle(b.id) : handleFinishBottle(b.id)}
@@ -1071,7 +1071,7 @@ export default function RegisterPage() {
                         className="px-6 h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
                         style={{ background: b.shots_sold === 0 ? "linear-gradient(135deg,#374151,#1f2937)" : "linear-gradient(135deg,#dc2626,#991b1b)" }}
                       >
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : b.shots_sold === 0 ? "Γ£ò Cancel" : "Mark Bottle Empty"}
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : b.shots_sold === 0 ? "✗ Cancel" : "Mark Bottle Empty"}
                       </button>
                     </div>
                   </div>
@@ -1093,7 +1093,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? "≡ƒôä Select Cigarette or Paper" : "🚬 Select Cigarette or Paper"}</span>
+              <span className="text-base font-black">{packType === "paper" ? "📄 Select Cigarette or Paper" : "🚬 Select Cigarette or Paper"}</span>
               <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -1119,7 +1119,7 @@ export default function RegisterPage() {
                                 <button onClick={(e) => { e.stopPropagation(); setCancelPackId(pk.id); }}
                                   disabled={packBusy}
                                   className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
-                                  style={{ background: "#374151" }}>Γ£ò Cancel</button>
+                                  style={{ background: "#374151" }}>✗ Cancel</button>
                               )}
                               <button
                                 onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }}
@@ -1127,7 +1127,7 @@ export default function RegisterPage() {
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
+                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                               </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1180,7 +1180,7 @@ export default function RegisterPage() {
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
+                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
                             {packBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                           </div>
@@ -1213,7 +1213,7 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Pack grid ΓÇö all open packs, selected highlighted with orange border + checkmark */}
+            {/* Pack grid — all open packs, selected highlighted with orange border + checkmark */}
             <div className="px-4 pb-2">
               <div className="grid grid-cols-3 gap-2">
                 {openedPacks.map((pk) => {
@@ -1227,9 +1227,9 @@ export default function RegisterPage() {
                       <div className="aspect-[3/4] relative w-full">
                         {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                         <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "≡ƒôä" : "🚬"}</div>
+                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
                         {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black"
-                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>Γ£ô</div>}
+                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
                       </div>
                       <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                         <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1248,13 +1248,13 @@ export default function RegisterPage() {
                 <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
               </div>
 
-              {/* Qty stepper ΓÇö below price, full-height minus/plus buttons */}
+              {/* Qty stepper — below price, full-height minus/plus buttons */}
               <label className="text-xs font-semibold text-muted-foreground block">Qty</label>
               <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
                 <button type="button"
                   onClick={() => setPackQty(q => Math.max(1, q - 1))}
                   className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0"
-                  style={{ background: "var(--muted)" }}>ΓêÆ</button>
+                  style={{ background: "var(--muted)" }}>−</button>
                 <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
                 <button type="button"
                   onClick={() => setPackQty(q => q + 1)}
@@ -1368,7 +1368,7 @@ function CashOverlay({
     });
     if (error) { setBusy(false); toast.error(error.message); return; }
 
-    // 2. Decrement stock via RPC (SECURITY DEFINER ΓÇö works for both owners and cashiers)
+    // 2. Decrement stock via RPC (SECURITY DEFINER — works for both owners and cashiers)
     const { error: stockErr } = await supabase.rpc("decrement_stock_item", {
       p_items: cart.map((c) => ({ id: c.id, qty: c.qty })),
     });
@@ -1440,7 +1440,7 @@ function CashOverlay({
                     </div>
                     {/* Content */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      {/* Title row ΓÇö full width */}
+                      {/* Title row — full width */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
                         <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
@@ -1486,7 +1486,7 @@ function CashOverlay({
         {step === 2 && (
           <>
             <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
-              {/* Amount received ΓÇö smaller input display */}
+              {/* Amount received — smaller input display */}
               <div className="rounded-xl border border-green-500/30 px-4 py-3 text-center" style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}>
                 <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">Amount Received</div>
                 <div className="text-3xl font-black text-green-100">
@@ -1494,7 +1494,7 @@ function CashOverlay({
                 </div>
               </div>
 
-              {/* Change output ΓÇö bigger */}
+              {/* Change output — bigger */}
               <div className={`rounded-xl px-4 py-4 text-center border transition-all ${
                 Number(paid) === 0
                   ? "opacity-40 bg-green-500/10 border-green-500/20"
@@ -1643,7 +1643,7 @@ function CreditSaleOverlay({
   const chargeAccount = async (account: CreditAccount) => {
     if (!profile) return;
     setBusy(true);
-    const itemsDesc = cart.map((c) => `${c.qty}├ù ${c.name}`).join(", ");
+    const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
@@ -1675,7 +1675,7 @@ function CreditSaleOverlay({
       .single();
     if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
     // Charge it
-    const itemsDesc = cart.map((c) => `${c.qty}├ù ${c.name}`).join(", ");
+    const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
       p_cashier_id: profile.id,
@@ -1707,13 +1707,13 @@ function CreditSaleOverlay({
         {step === "review" && (
           <>
             <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
-              {/* Total banner ΓÇö brown/orange theme */}
+              {/* Total banner — brown/orange theme */}
               <div className="rounded-2xl p-5 text-center" style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}>
                 <div className="text-sm font-medium" style={{ color: "var(--primary)" }}>Total to Credit</div>
                 <div className="text-5xl font-black" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</div>
               </div>
 
-              {/* Order items ΓÇö same layout as Cash Order */}
+              {/* Order items — same layout as Cash Order */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
@@ -1809,7 +1809,7 @@ function CreditSaleOverlay({
               )}
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>ΓåÉ Back</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← Back</Button>
               <Button
                 className="h-12 px-5 font-black text-sm"
                 onClick={() => setStep("create")}
@@ -1924,7 +1924,7 @@ function CreditSaleOverlay({
               </Button>
             </form>
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
-              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>ΓåÉ Back to Accounts</Button>
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Accounts</Button>
             </div>
           </>
         )}

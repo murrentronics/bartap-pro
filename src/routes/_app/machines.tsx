@@ -902,6 +902,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const editModeRef = useRef(false);
   const orderedRef = useRef<Machine[]>(orderedMachines);
   const draggingRef = useRef<string | null>(null);
+  // Keep ref in sync with state so closures always read the current value
+  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
   useEffect(() => { orderedRef.current = orderedMachines; }, [orderedMachines]);
 
   // Clear timer on unmount
@@ -909,12 +911,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
 
-  // Reset on mount
+  // Reset on mount — covers tab switches where ScreensTab remounts
   useEffect(() => {
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;
     setDraggingId(null);
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync when machines change — never during drag/edit
@@ -927,22 +930,21 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     setOrderedMachines(sorted);
   }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveOrder = async (newOrder: Machine[]) => {
-    setSavingOrder(true);
-    await Promise.all(
+  const saveOrder = (newOrder: Machine[]) => {
+    Promise.all(
       newOrder.map((m, idx) =>
         (supabase as any).from("machines").update({ sort_order: idx }).eq("id", m.id)
       )
-    );
-    setSavingOrder(false);
+    ).catch(() => {});
   };
 
-  const handleDone = async () => {
+  const handleDone = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;
     setDraggingId(null);
-    await saveOrder(orderedRef.current);
+    // Order already saved on each drop — no need to save again here
   };
 
   const handleDragStart = (id: string) => {

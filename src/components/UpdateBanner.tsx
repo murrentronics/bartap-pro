@@ -26,17 +26,18 @@ export function UpdateBanner({ update, onDismiss }: Props) {
     setDownloading(true);
     try {
       if (Capacitor.isNativePlatform()) {
+        // Use Capacitor FileOpener / direct APK URL to trigger the system installer
         const { Browser } = await import("@capacitor/browser");
         await Browser.open({
-          url: "https://bartendaz-pro.pages.dev",
+          url: update.apkUrl,
           presentationStyle: "fullscreen",
           toolbarColor: "#0a0a0a",
         });
       } else {
-        window.open("https://bartendaz-pro.pages.dev", "_blank");
+        window.open(update.apkUrl, "_blank");
       }
     } catch {
-      window.open("https://bartendaz-pro.pages.dev", "_blank");
+      window.open(update.apkUrl, "_blank");
     } finally {
       setDownloading(false);
     }
