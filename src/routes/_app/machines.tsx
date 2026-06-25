@@ -266,12 +266,49 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   // Session anchor — ISO timestamp of the last income entry (machine cleared).
   const [sessionAnchor, setSessionAnchor] = useState<string | null>(null);
 
-  // Proof photo — optional camera capture before saving a payout
+  // Proof photo — in-app camera using getUserMedia so music keeps playing
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
-  const proofCamRef = useRef<HTMLInputElement>(null);
+  const [camOpen, setCamOpen] = useState(false);
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const openCam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      setCamStream(stream);
+      setCamOpen(true);
+      setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); } }, 50);
+    } catch { toast.error("Camera not available"); }
+  };
+
+  const closeCam = () => {
+    camStream?.getTracks().forEach(t => t.stop());
+    setCamStream(null);
+    setCamOpen(false);
+  };
+
+  const snapPhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const file = new File([blob], `proof-${Date.now()}.jpg`, { type: "image/jpeg" });
+      setProofFile(file);
+      setProofPreview(URL.createObjectURL(file));
+      closeCam();
+    }, "image/jpeg", 0.85);
+  };
   // Lightbox — in-app full-screen image viewer
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Stop camera stream when component unmounts
+  useEffect(() => () => { camStream?.getTracks().forEach(t => t.stop()); }, [camStream]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -637,26 +674,29 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             {/* Proof photo — payout only, optional */}
             {tab === "payout" && (
               <div>
-                <input
-                  ref={proofCamRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    setProofFile(f);
-                    setProofPreview(URL.createObjectURL(f));
-                    e.target.value = "";
-                  }}
-                />
-                {proofPreview ? (
+                <canvas ref={canvasRef} className="hidden" />
+                {camOpen ? (
+                  <div className="rounded-2xl overflow-hidden border-2 border-amber-500/40 relative"
+                    style={{ background: "#000" }}>
+                    <video ref={videoRef} autoPlay playsInline muted
+                      className="w-full max-h-56 object-cover" />
+                    <div className="flex gap-2 p-2">
+                      <button type="button" onClick={closeCam}
+                        className="flex-1 h-10 rounded-xl font-black text-sm bg-muted text-muted-foreground active:scale-95 transition">
+                        Cancel
+                      </button>
+                      <button type="button" onClick={snapPhoto}
+                        className="flex-1 h-10 rounded-xl font-black text-sm text-white active:scale-95 transition"
+                        style={{ background: "var(--gradient-hero)" }}>
+                        📸 Snap
+                      </button>
+                    </div>
+                  </div>
+                ) : proofPreview ? (
                   <div className="relative rounded-2xl overflow-hidden border-2 border-green-500/40"
                     style={{ background: "oklch(0.18 0.04 145 / 0.3)" }}>
                     <img src={proofPreview} alt="proof" className="w-full max-h-40 object-cover" />
-                    <button
-                      type="button"
+                    <button type="button"
                       onClick={() => { setProofFile(null); setProofPreview(null); }}
                       className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center active:scale-90 transition">
                       <X className="h-3.5 w-3.5 text-white" />
@@ -667,9 +707,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     </div>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => proofCamRef.current?.click()}
+                  <button type="button" onClick={openCam}
                     className="w-full rounded-2xl py-3 flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-dashed"
                     style={{ borderColor: "oklch(0.38 0.08 60)", color: "oklch(0.65 0.12 65)", background: "oklch(0.18 0.03 60 / 0.4)" }}>
                     <Camera className="h-4 w-4" />

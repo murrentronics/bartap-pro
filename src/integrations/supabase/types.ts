@@ -724,6 +724,7 @@ export type Database = {
         }[]
       }
       decrement_stock_item: { Args: { p_items: Json }; Returns: undefined }
+      restore_stock_item: { Args: { p_items: Json }; Returns: undefined }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }

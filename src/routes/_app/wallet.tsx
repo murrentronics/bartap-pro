@@ -1050,7 +1050,7 @@ function CashierBadge() {
   );
 }
 
-function TransactionsTab({ profile }: { profile: { id: string } }) {
+function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDeleted?: () => void }) {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [allTxs, setAllTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
@@ -1116,21 +1116,33 @@ function TransactionsTab({ profile }: { profile: { id: string } }) {
 
   const deleteLatestOrder = async (order: Order) => {
     setDeletingOrderId(order.id);
-    // Delete wallet_transactions linked to this order first (sale tx on cashier profile)
+
+    // 1. Restore stock for every real product in the order (skip shot-xxx and pack-xxx)
+    const items = Array.isArray(order.items) ? order.items as { id: string; qty: number }[] : [];
+    const restorableItems = items.filter(i => !i.id.startsWith("shot-") && !i.id.startsWith("pack-"));
+    if (restorableItems.length > 0) {
+      await supabase.rpc("restore_stock_item", {
+        p_items: restorableItems.map(i => ({ id: i.id, qty: i.qty })),
+      });
+    }
+
+    // 2. Delete wallet_transactions linked to this order
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
-    // Also catch any unlinked sale tx within 10s window (older records may not have order_id)
+    // Also catch unlinked sale tx within 10s window
     await supabase.from("wallet_transactions").delete()
       .eq("type", "sale")
       .gte("created_at", new Date(new Date(order.created_at).getTime() - 10000).toISOString())
       .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
-    // Delete the order itself
+
+    // 3. Delete the order itself
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
-    toast.success("Sale record removed");
+
+    toast.success("Sale removed — stock restored");
     setDeletingOrderId(null);
-    // Clear the lock so the button disappears and doesn't drop to the next order
     lockedNewestOrderIdRef.current = null;
     fetchData();
+    onDeleted?.();
   };
 
   const handlePrev = () => { setPage((p) => Math.max(0, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -1612,7 +1624,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
       {/* ── Tab content ──────────────────────────────────────────────────── */}
       {activeTab === "transactions" ? (
-        <TransactionsTab profile={profile} />
+        <TransactionsTab profile={profile} onDeleted={loadSummary} />
       ) : (
         <FinancialsTab
           ownerId={profile.id}
