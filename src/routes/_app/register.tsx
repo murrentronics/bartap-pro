@@ -65,13 +65,11 @@ export default function RegisterPage() {
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
   }, []);
 
-  // Reset bar edit state whenever this page becomes active (user navigated back)
+  // Reset bar edit state whenever this page becomes active
   const location = useLocation();
   useEffect(() => {
     if (location.pathname === "/register") {
-      // Cancel any stale long-press timer
       if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
-      // Reset edit mode so long-press works fresh every time
       barEditModeRef.current = false;
       setBarEditMode(false);
       barDraggingRef.current = null;
@@ -91,6 +89,15 @@ export default function RegisterPage() {
     setBarSortMap(map);
   };
 
+  const saveBarSortIds = (ids: string[]) => {
+    const pid = profileIdRef.current;
+    if (!pid) return;
+    (supabase as any).from("bar_sort_order").upsert(
+      { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
+      { onConflict: "owner_id" }
+    ).then(() => {}).catch(() => {});
+  };
+
   const applyBarSort = (prods: Product[], cat: string, map: Record<string, number>) =>
     [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
       const ia = map[a.id] ?? Infinity;
@@ -99,7 +106,46 @@ export default function RegisterPage() {
       return a.name.localeCompare(b.name);
     });
 
-  const barStartLongPress = () => {
+  // Touch-based drag — works reliably on Android, no HTML5 drag API
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+
+  const handleBarTouchStart = (e: React.TouchEvent, id: string) => {
+    if (!barEditModeRef.current) return;
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+    barDraggingRef.current = id;
+    setBarDraggingId(id);
+  };
+
+  const handleBarTouchMove = (e: React.TouchEvent) => {
+    if (!barDraggingRef.current) return;
+    e.preventDefault(); // prevent scroll while dragging
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = el?.closest("[data-bar-id]");
+    const targetId = card?.getAttribute("data-bar-id");
+    if (!targetId || targetId === barDraggingRef.current) return;
+    const current = barOrderedRef.current;
+    const from = current.findIndex(p => p.id === barDraggingRef.current);
+    const to   = current.findIndex(p => p.id === targetId);
+    if (from === -1 || to === -1) return;
+    const next = [...current];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    barOrderedRef.current = next;
+    setBarOrdered(next);
+  };
+
+  const handleBarTouchEnd = () => {
+    if (!barDraggingRef.current) return;
+    const ids = barOrderedRef.current.map(p => p.id);
+    saveBarSortIds(ids);
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
+  };
+
+  const barStartLongPress = (e: React.TouchEvent | React.PointerEvent) => {
     if (barEditModeRef.current) return;
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
     barLongPressTimer.current = setTimeout(() => {
@@ -118,39 +164,6 @@ export default function RegisterPage() {
     barDraggingRef.current = null;
     setBarDraggingId(null);
     await loadBarSort();
-  };
-
-  const handleBarDragStart = (id: string) => {
-    barDraggingRef.current = id;
-    setBarDraggingId(id);
-  };
-
-  const handleBarDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const dragging = barDraggingRef.current;
-    if (!dragging || dragging === targetId) return;
-    const current = barOrderedRef.current;
-    const from = current.findIndex(p => p.id === dragging);
-    const to   = current.findIndex(p => p.id === targetId);
-    if (from === -1 || to === -1) return;
-    const next = [...current];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    barOrderedRef.current = next;
-    setBarOrdered(next);
-  };
-
-  const handleBarDrop = () => {
-    const pid = profileIdRef.current;
-    barDraggingRef.current = null;
-    setBarDraggingId(null);
-    if (!pid) return;
-    const ids = barOrderedRef.current.map(p => p.id);
-    // fire-and-forget — no await so it doesn't block or cause state issues
-    (supabase as any).from("bar_sort_order").upsert(
-      { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
-      { onConflict: "owner_id" }
-    ).then(() => {}).catch(() => {});
   };
 
   useEffect(() => {
@@ -536,29 +549,29 @@ export default function RegisterPage() {
                 </button>
               </div>
             )}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2" style={{ touchAction: barEditMode ? "none" : "auto" }}>
             {barOrdered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               const outOfStock = (p.stock_qty ?? 1) === 0;
               const isDragging = barDraggingId === p.id;
               return (
                 <div key={p.id}
+                  data-bar-id={p.id}
                   className="relative"
-                  draggable={barEditMode}
-                  onDragStart={() => handleBarDragStart(p.id)}
-                  onDragOver={(e) => handleBarDragOver(e, p.id)}
-                  onDrop={handleBarDrop}
-                  onDragEnd={() => setBarDraggingId(null)}
-                  onPointerDown={barStartLongPress}
-                  onPointerUp={barCancelLongPress}
-                  onPointerLeave={barCancelLongPress}
+                  onTouchStart={(e) => {
+                    barCancelLongPress();
+                    if (barEditModeRef.current) { handleBarTouchStart(e, p.id); }
+                    else { barStartLongPress(e); }
+                  }}
+                  onTouchMove={handleBarTouchMove}
+                  onTouchEnd={() => { barCancelLongPress(); handleBarTouchEnd(); }}
                   onContextMenu={(e) => e.preventDefault()}
                   style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none" }}
                 >
                 <button
                   onClick={() => !outOfStock && !barEditMode && addToCart(p)}
                   disabled={outOfStock}
-                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab active:cursor-grabbing" : "active:scale-95"}`}
+                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
