@@ -76,7 +76,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
 }
 
 // ── History Month Accordion ────────────────────────────────────────────────────
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDownloadAll, onDownloadMonth, onDelete }: {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDownloadAll, onDownloadMonth, onDelete, onLightbox }: {
   entries: MachineEntry[];
   loading: boolean;
   downloading: boolean;
@@ -84,6 +84,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
   onDownloadAll: () => void;
   onDownloadMonth: (monthKey: string, monthEntries: MachineEntry[]) => void;
   onDelete: (id: string) => void;
+  onLightbox: (url: string) => void;
 }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
@@ -205,22 +206,22 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                               {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
                             </div>
                           )}
-                          {/* Proof photo or unverified badge — payouts only */}
-                          {isPayout && (
-                            hasProof ? (
-                              <button
-                                onClick={() => setLightboxUrl(e.proof_image_url!)}
-                                className="block mt-1.5 rounded-xl overflow-hidden border border-green-500/30 max-w-[120px] active:opacity-80 transition">
-                                <img src={e.proof_image_url!} alt="proof" className="w-full object-cover" />
-                              </button>
-                            ) : (
-                              <div className="flex items-center gap-1 mt-1">
-                                <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
-                                <span className="text-[10px] font-bold text-amber-400">Unverified</span>
-                              </div>
-                            )
+                          {isPayout && !hasProof && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                              <span className="text-[10px] font-bold text-amber-400">Unverified</span>
+                            </div>
                           )}
                         </div>
+                        {/* Proof photo — landscape, right side */}
+                        {isPayout && hasProof && (
+                          <button
+                            onClick={() => onLightbox(e.proof_image_url!)}
+                            className="shrink-0 rounded-xl overflow-hidden border border-green-500/30 active:opacity-80 transition"
+                            style={{ width: 100, height: 65 }}>
+                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
+                          </button>
+                        )}
                         {isNewest && !deletingId && (
                           <button onClick={() => onDelete(e.id)}
                             className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0">
@@ -735,6 +736,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             onDownloadAll={handleDownloadPdf}
             onDownloadMonth={handleDownloadMonthPdf}
             onDelete={handleDelete}
+            onLightbox={(url) => setLightboxUrl(url)}
           />
         )}
       </div>
@@ -915,36 +917,46 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const [savingOrder, setSavingOrder] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editModeRef = useRef(editMode);
+  const orderedRef = useRef<Machine[]>(orderedMachines);
+  const draggingRef = useRef<string | null>(null);
   useEffect(() => { editModeRef.current = editMode; }, [editMode]);
+  useEffect(() => { orderedRef.current = orderedMachines; }, [orderedMachines]);
+
+  // Clear timer on unmount
+  useEffect(() => () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
 
   // Apply user's sort map once loaded
   useEffect(() => {
     if (sortMapLoaded) {
-      setOrderedMachines(applySort(initialMachines, sortMap));
+      const sorted = applySort(initialMachines, sortMap);
+      orderedRef.current = sorted;
+      setOrderedMachines(sorted);
     }
   }, [sortMapLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync when machines change — but never during drag/edit
   useEffect(() => {
     if (editModeRef.current) return;
-    setOrderedMachines(applySort(initialMachines, sortMap));
+    const sorted = applySort(initialMachines, sortMap);
+    orderedRef.current = sorted;
+    setOrderedMachines(sorted);
   }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveOrder = async (newOrder: Machine[]) => {
-    setSavingOrder(true);
+  const saveOrder = (newOrder: Machine[]) => {
     const orderedIds = newOrder.map(m => m.id);
-    await (supabase as any).from("machine_sort_order").upsert(
+    (supabase as any).from("machine_sort_order").upsert(
       { owner_id: profileId, order_json: orderedIds, updated_at: new Date().toISOString() },
       { onConflict: "owner_id" }
-    );
-    setSavingOrder(false);
-    // Do NOT setSortMap here — that triggers orderedMachines reset mid-edit.
-    // Map reloads when user taps Done.
+    ).then(() => {}).catch(() => {});
   };
 
   const handleDone = async () => {
+    editModeRef.current = false;
     setEditMode(false);
-    // Reload sort map now that edit is complete
+    draggingRef.current = null;
+    setDraggingId(null);
     const { data } = await (supabase as any).from("machine_sort_order")
       .select("order_json").eq("owner_id", profileId).maybeSingle();
     if (data?.order_json && Array.isArray(data.order_json)) {
@@ -954,31 +966,43 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     }
   };
 
-  const handleDragStart = (id: string) => setDraggingId(id);
+  const handleDragStart = (id: string) => {
+    draggingRef.current = id;
+    setDraggingId(id);
+  };
 
   const handleDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!draggingId || draggingId === targetId) return;
-    const from = orderedMachines.findIndex(m => m.id === draggingId);
-    const to   = orderedMachines.findIndex(m => m.id === targetId);
+    const dragging = draggingRef.current;
+    if (!dragging || dragging === targetId) return;
+    const current = orderedRef.current;
+    const from = current.findIndex(m => m.id === dragging);
+    const to   = current.findIndex(m => m.id === targetId);
     if (from === -1 || to === -1) return;
-    const next = [...orderedMachines];
+    const next = [...current];
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item);
+    orderedRef.current = next;
     setOrderedMachines(next);
   };
 
-  const handleDrop = async () => {
+  const handleDrop = () => {
+    draggingRef.current = null;
     setDraggingId(null);
-    await saveOrder(orderedMachines);
+    saveOrder(orderedRef.current);
   };
 
   const startLongPress = () => {
     if (editModeRef.current) return;
-    longPressTimer.current = setTimeout(() => setEditMode(true), 600);
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      editModeRef.current = true;
+      setEditMode(true);
+    }, 600);
   };
   const cancelLongPress = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   };
 
   if (initialMachines.length === 0) {
@@ -1045,9 +1069,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       {editMode && (
         <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 border border-amber-500/40"
           style={{ background: "oklch(0.20 0.05 60)" }}>
-          <span className="text-xs font-black text-amber-400">
-            {savingOrder ? "Saving…" : "Hold & drag to reorder"}
-          </span>
+          <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
           <button onClick={handleDone}
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
             Done

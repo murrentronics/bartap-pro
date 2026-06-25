@@ -50,13 +50,19 @@ export default function RegisterPage() {
   const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
   const [barEditMode, setBarEditMode] = useState(false);
   const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
-  const [barSavingOrder, setBarSavingOrder] = useState(false);
   const barLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
   const barEditModeRef = useRef(false);
   const barSortMapRef = useRef<Record<string, number>>({});
+  const barOrderedRef = useRef<Product[]>([]);
+  const barDraggingRef = useRef<string | null>(null);
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
+
+  // Clear timer on unmount
+  useEffect(() => () => {
+    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
+  }, []);
 
   const loadBarSort = async () => {
     const pid = profileIdRef.current;
@@ -80,7 +86,9 @@ export default function RegisterPage() {
 
   const barStartLongPress = () => {
     if (barEditModeRef.current) return;
+    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
     barLongPressTimer.current = setTimeout(() => {
+      barLongPressTimer.current = null;
       barEditModeRef.current = true;
       setBarEditMode(true);
     }, 600);
@@ -92,38 +100,42 @@ export default function RegisterPage() {
   const handleBarDone = async () => {
     barEditModeRef.current = false;
     setBarEditMode(false);
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
     await loadBarSort();
   };
 
-  const handleBarDragStart = (id: string) => setBarDraggingId(id);
+  const handleBarDragStart = (id: string) => {
+    barDraggingRef.current = id;
+    setBarDraggingId(id);
+  };
 
   const handleBarDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    setBarOrdered(prev => {
-      if (!barDraggingId || barDraggingId === targetId) return prev;
-      const from = prev.findIndex(p => p.id === barDraggingId);
-      const to   = prev.findIndex(p => p.id === targetId);
-      if (from === -1 || to === -1) return prev;
-      const next = [...prev];
-      const [item] = next.splice(from, 1);
-      next.splice(to, 0, item);
-      return next;
-    });
+    const dragging = barDraggingRef.current;
+    if (!dragging || dragging === targetId) return;
+    const current = barOrderedRef.current;
+    const from = current.findIndex(p => p.id === dragging);
+    const to   = current.findIndex(p => p.id === targetId);
+    if (from === -1 || to === -1) return;
+    const next = [...current];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    barOrderedRef.current = next;
+    setBarOrdered(next);
   };
 
-  const handleBarDrop = async () => {
-    setBarDraggingId(null);
+  const handleBarDrop = () => {
     const pid = profileIdRef.current;
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
     if (!pid) return;
-    setBarOrdered(current => {
-      const ids = current.map(p => p.id);
-      // fire-and-forget save
-      (supabase as any).from("bar_sort_order").upsert(
-        { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
-        { onConflict: "owner_id" }
-      );
-      return current;
-    });
+    const ids = barOrderedRef.current.map(p => p.id);
+    // fire-and-forget — no await so it doesn't block or cause state issues
+    (supabase as any).from("bar_sort_order").upsert(
+      { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
+      { onConflict: "owner_id" }
+    ).then(() => {}).catch(() => {});
   };
 
   useEffect(() => {
@@ -154,7 +166,10 @@ export default function RegisterPage() {
   // Sync barOrdered when products/category/sort changes — skip during edit mode
   useEffect(() => {
     if (barEditModeRef.current) return;
-    setBarOrdered(applyBarSort(products, category, barSortMapRef.current));
+    const sorted = applyBarSort(products, category, barSortMapRef.current);
+    barOrderedRef.current = sorted;
+    setBarOrdered(sorted);
+    barDraggingRef.current = null;
     setBarDraggingId(null);
   }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
