@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Plus, Loader2, ChevronLeft, Trash2, Download, X,
-  TrendingDown, TrendingUp, DollarSign, Gamepad2,
+  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
@@ -26,6 +26,7 @@ type MachineEntry = {
   type: "payout" | "income"; amount: number;
   note: string | null; entry_date: string; created_at: string;
   cashier_id: string | null; cashier_name: string | null;
+  proof_image_url: string | null;
 };
 type FloatSession = {
   id: string; owner_id: string;
@@ -177,6 +178,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                   {mEntries.map((e) => {
                     const isPayout = e.type === "payout";
                     const isNewest = e.id === newestId;
+                    const hasProof = !!e.proof_image_url;
                     return (
                       <div key={e.id} className="px-4 py-3 flex items-start gap-3">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border text-xs font-black ${
@@ -202,6 +204,20 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                             <div className="text-[10px] text-white/30 mt-0.5">
                               {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
                             </div>
+                          )}
+                          {/* Proof photo or unverified badge — payouts only */}
+                          {isPayout && (
+                            hasProof ? (
+                              <a href={e.proof_image_url!} target="_blank" rel="noopener noreferrer"
+                                className="block mt-1.5 rounded-xl overflow-hidden border border-green-500/30 max-w-[120px]">
+                                <img src={e.proof_image_url!} alt="proof" className="w-full object-cover" />
+                              </a>
+                            ) : (
+                              <div className="flex items-center gap-1 mt-1">
+                                <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                                <span className="text-[10px] font-bold text-amber-400">Unverified</span>
+                              </div>
+                            )
                           )}
                         </div>
                         {isNewest && !deletingId && (
@@ -247,9 +263,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
   const [deletingMachine, setDeletingMachine] = useState(false);
   // Session anchor — ISO timestamp of the last income entry (machine cleared).
-  // Session stats only count entries AFTER this point. Resets to null on mount
-  // (uses the most recent income entry's created_at if one exists).
   const [sessionAnchor, setSessionAnchor] = useState<string | null>(null);
+
+  // Proof photo — optional camera capture before saving a payout
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const proofCamRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -308,6 +327,23 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
     setBusy(true);
     const now = new Date();
+
+    // Upload proof photo if captured
+    let proof_image_url: string | null = null;
+    if (proofFile) {
+      const ext = proofFile.name.split(".").pop() || "jpg";
+      const path = `machine-payouts/${ownerId}/${machine.id}/${now.getTime()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, proofFile, { upsert: false });
+      if (upErr) {
+        toast.error("Photo upload failed: " + upErr.message);
+        setBusy(false);
+        return;
+      }
+      proof_image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+    }
+
     const { error } = await sb.from("machine_entries").insert({
       machine_id: machine.id, owner_id: ownerId,
       type: tab as "payout" | "income",
@@ -316,15 +352,18 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       created_at: now.toISOString(),
       cashier_id: profile.id,
       cashier_name: profile.username ?? null,
+      proof_image_url,
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
 
-    // When income is recorded (machine cleared), reset the session anchor so the
-    // session payout/income/profit cards in the hero go back to $0.
     if (tab === "income") {
       setSessionAnchor(now.toISOString());
     }
+
+    // Clear proof photo state
+    setProofFile(null);
+    setProofPreview(null);
 
     toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
     setAmount("");
@@ -595,6 +634,52 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 ⌫
               </button>
             </div>
+
+            {/* Proof photo — payout only, optional */}
+            {tab === "payout" && (
+              <div>
+                <input
+                  ref={proofCamRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setProofFile(f);
+                    setProofPreview(URL.createObjectURL(f));
+                    e.target.value = "";
+                  }}
+                />
+                {proofPreview ? (
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-green-500/40"
+                    style={{ background: "oklch(0.18 0.04 145 / 0.3)" }}>
+                    <img src={proofPreview} alt="proof" className="w-full max-h-40 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setProofFile(null); setProofPreview(null); }}
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center active:scale-90 transition">
+                      <X className="h-3.5 w-3.5 text-white" />
+                    </button>
+                    <div className="px-3 py-1.5 flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-green-400" />
+                      <span className="text-xs font-bold text-green-400">Photo captured</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => proofCamRef.current?.click()}
+                    className="w-full rounded-2xl py-3 flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-dashed"
+                    style={{ borderColor: "oklch(0.38 0.08 60)", color: "oklch(0.65 0.12 65)", background: "oklch(0.18 0.03 60 / 0.4)" }}>
+                    <Camera className="h-4 w-4" />
+                    Take Proof Photo <span className="text-xs font-normal opacity-60">(optional)</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             <Button onClick={handleSave} disabled={busy || !amount}
               className="w-full h-12 font-black text-base"
               style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>

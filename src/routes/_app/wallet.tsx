@@ -736,7 +736,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   const loadData = useCallback(async () => {
     setLoadingData(true);
     const [expRes, ordRes] = await Promise.all([
-      sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("expense_date", { ascending: false }),
+      sb.from("owner_expenses").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false }),
       // Fetch ALL orders for this owner (owner's own + all cashiers) — for monthly income breakdown
       supabase.from("orders").select("total, created_at").eq("owner_id", ownerId),
     ]);

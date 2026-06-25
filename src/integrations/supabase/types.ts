@@ -14,6 +14,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      bar_sort_order: {
+        Row: {
+          owner_id: string
+          order_json: Json
+          updated_at: string
+        }
+        Insert: {
+          owner_id: string
+          order_json?: Json
+          updated_at?: string
+        }
+        Update: {
+          owner_id?: string
+          order_json?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_sort_order_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_accounts: {
         Row: {
           id: string
@@ -167,6 +193,117 @@ export type Database = {
           },
         ]
       }
+      opened_bottles: {
+        Row: {
+          id: string
+          owner_id: string
+          product_id: string
+          product_name: string
+          shot_price: number
+          shots_sold: number
+          revenue: number
+          opened_at: string
+          finished_at: string | null
+          status: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          product_id: string
+          product_name: string
+          shot_price?: number
+          shots_sold?: number
+          revenue?: number
+          opened_at?: string
+          finished_at?: string | null
+          status?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          product_id?: string
+          product_name?: string
+          shot_price?: number
+          shots_sold?: number
+          revenue?: number
+          opened_at?: string
+          finished_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opened_bottles_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opened_bottles_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opened_packs: {
+        Row: {
+          id: string
+          owner_id: string
+          product_id: string
+          product_name: string
+          pack_type: string
+          unit_price: number
+          units_sold: number
+          revenue: number
+          opened_at: string
+          finished_at: string | null
+          status: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          product_id: string
+          product_name: string
+          pack_type?: string
+          unit_price?: number
+          units_sold?: number
+          revenue?: number
+          opened_at?: string
+          finished_at?: string | null
+          status?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          product_id?: string
+          product_name?: string
+          pack_type?: string
+          unit_price?: number
+          units_sold?: number
+          revenue?: number
+          opened_at?: string
+          finished_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opened_packs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opened_packs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_float_sessions: {
         Row: {
           id: string
@@ -211,6 +348,7 @@ export type Database = {
           created_at: string
           cashier_id: string | null
           cashier_name: string | null
+          proof_image_url: string | null
         }
         Insert: {
           id?: string
@@ -223,6 +361,7 @@ export type Database = {
           created_at?: string
           cashier_id?: string | null
           cashier_name?: string | null
+          proof_image_url?: string | null
         }
         Update: {
           id?: string
@@ -235,6 +374,7 @@ export type Database = {
           created_at?: string
           cashier_id?: string | null
           cashier_name?: string | null
+          proof_image_url?: string | null
         }
         Relationships: [
           {
@@ -593,6 +733,37 @@ export type Database = {
       }
       transfer_cashier_to_owner: {
         Args: { _cashier_id: string }
+        Returns: undefined
+      }
+      open_bottle: {
+        Args: { p_owner_id: string; p_product_id: string; p_shot_price: number }
+        Returns: string
+      }
+      cancel_bottle: { Args: { p_bottle_id: string }; Returns: undefined }
+      finish_bottle: {
+        Args: { p_bottle_id: string; p_cashier_id: string }
+        Returns: undefined
+      }
+      record_shot: {
+        Args: { p_bottle_id: string; p_qty: number; p_revenue: number }
+        Returns: undefined
+      }
+      open_pack: {
+        Args: {
+          p_owner_id: string
+          p_product_id: string
+          p_pack_type: string
+          p_unit_price: number
+        }
+        Returns: string
+      }
+      cancel_pack: { Args: { p_pack_id: string }; Returns: undefined }
+      finish_pack: {
+        Args: { p_pack_id: string; p_cashier_id: string }
+        Returns: undefined
+      }
+      record_pack_unit: {
+        Args: { p_pack_id: string; p_qty: number; p_revenue: number }
         Returns: undefined
       }
     }
