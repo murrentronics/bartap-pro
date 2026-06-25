@@ -278,7 +278,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const openCam = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      // Try rear camera first, fall back to any available camera
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } }, audio: false });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
       setCamStream(stream);
       setCamOpen(true);
       setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); } }, 50);
@@ -863,7 +869,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   machines: Machine[]; entries: MachineEntry[];
   ownerId: string;
   profileId: string;
-  onSelect: (m: Machine) => void;
+  onSelect: (m: Machine, screenNum: number) => void;
   floatSession: FloatSession | null;
   remainingFloat: number | null;
   isCashier: boolean;
@@ -874,40 +880,11 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
-  // Session payouts since float was last set
   const sessionPayouts = floatSession
     ? entries
         .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
         .reduce((s, e) => s + Number(e.amount), 0)
     : 0;
-
-  // Per-user sort order — each user stores their own order independently
-  const [sortMap, setSortMap] = useState<Record<string, number>>({});
-  const [sortMapLoaded, setSortMapLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!profileId) return;
-    (supabase as any).from("machine_sort_order")
-      .select("order_json")
-      .eq("owner_id", profileId)
-      .maybeSingle()
-      .then(({ data }: { data: { order_json: string[] } | null }) => {
-        if (data?.order_json && Array.isArray(data.order_json)) {
-          const map: Record<string, number> = {};
-          data.order_json.forEach((id: string, i: number) => { map[id] = i; });
-          setSortMap(map);
-        }
-        setSortMapLoaded(true);
-      });
-  }, [profileId]);
-
-  const applySort = (machines: Machine[], map: Record<string, number>) =>
-    [...machines].sort((a, b) => {
-      const ia = map[a.id] ?? a.sort_order ?? Infinity;
-      const ib = map[b.id] ?? b.sort_order ?? Infinity;
-      if (ia !== ib) return ia - ib;
-      return a.created_at.localeCompare(b.created_at);
-    });
 
   const [orderedMachines, setOrderedMachines] = useState<Machine[]>(() =>
     [...initialMachines].sort((a, b) =>
@@ -918,10 +895,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const editModeRef = useRef(editMode);
+  const editModeRef = useRef(false);
   const orderedRef = useRef<Machine[]>(orderedMachines);
   const draggingRef = useRef<string | null>(null);
-  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
   useEffect(() => { orderedRef.current = orderedMachines; }, [orderedMachines]);
 
   // Clear timer on unmount
@@ -929,38 +905,32 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
 
-  // Reset edit state on mount (user navigated to this tab/page)
+  // Reset on mount
   useEffect(() => {
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;
     setDraggingId(null);
-    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply user's sort map once loaded
-  useEffect(() => {
-    if (sortMapLoaded) {
-      const sorted = applySort(initialMachines, sortMap);
-      orderedRef.current = sorted;
-      setOrderedMachines(sorted);
-    }
-  }, [sortMapLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync when machines change — but never during drag/edit
+  // Sync when machines change — never during drag/edit
   useEffect(() => {
     if (editModeRef.current) return;
-    const sorted = applySort(initialMachines, sortMap);
+    const sorted = [...initialMachines].sort((a, b) =>
+      a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
+    );
     orderedRef.current = sorted;
     setOrderedMachines(sorted);
   }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveOrder = (newOrder: Machine[]) => {
-    const orderedIds = newOrder.map(m => m.id);
-    (supabase as any).from("machine_sort_order").upsert(
-      { owner_id: profileId, order_json: orderedIds, updated_at: new Date().toISOString() },
-      { onConflict: "owner_id" }
-    ).then(() => {}).catch(() => {});
+  const saveOrder = async (newOrder: Machine[]) => {
+    setSavingOrder(true);
+    await Promise.all(
+      newOrder.map((m, idx) =>
+        (supabase as any).from("machines").update({ sort_order: idx }).eq("id", m.id)
+      )
+    );
+    setSavingOrder(false);
   };
 
   const handleDone = async () => {
@@ -968,13 +938,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     setEditMode(false);
     draggingRef.current = null;
     setDraggingId(null);
-    const { data } = await (supabase as any).from("machine_sort_order")
-      .select("order_json").eq("owner_id", profileId).maybeSingle();
-    if (data?.order_json && Array.isArray(data.order_json)) {
-      const map: Record<string, number> = {};
-      data.order_json.forEach((id: string, i: number) => { map[id] = i; });
-      setSortMap(map);
-    }
+    await saveOrder(orderedRef.current);
   };
 
   const handleDragStart = (id: string) => {
@@ -1112,7 +1076,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
               {/* Base card button */}
               <button
-                onClick={() => !editMode && onSelect(m)}
+                onClick={() => !editMode && onSelect(m, screenNum)}
                 className="w-full relative flex flex-col items-center justify-between rounded-2xl overflow-hidden"
                 style={{
                   minHeight: "110px",
@@ -1435,6 +1399,7 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"screens" | "payouts" | "create">("screens");
   const [selected, setSelected] = useState<Machine | null>(null);
+  const [selectedScreenNum, setSelectedScreenNum] = useState(0);
 
   // Cashiers see their owner's machines; owners see their own
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
@@ -1526,11 +1491,7 @@ export default function MachinesPage() {
 
   if (!profile) return null;
 
-  const screenNumber = selected
-    ? [...machines]
-        .sort((a, b) => a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at))
-        .findIndex(m => m.id === selected.id) + 1
-    : 0;
+  const screenNumber = selectedScreenNum;
 
   const tabs = [
     { key: "screens", label: `Screens${machines.length ? ` (${machines.length})` : ""}` },
@@ -1578,7 +1539,7 @@ export default function MachinesPage() {
         <>
           {tab === "screens" && (
             <ScreensTab
-              machines={machines} entries={entries} ownerId={ownerId} profileId={profile.id} onSelect={setSelected}
+              machines={machines} entries={entries} ownerId={ownerId} profileId={profile.id} onSelect={(m, num) => { setSelected(m); setSelectedScreenNum(num); }}
               floatSession={floatSession}
               remainingFloat={remainingFloat} isCashier={!isOwner}
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
