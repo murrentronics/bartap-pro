@@ -78,6 +78,7 @@ export default function RegisterPage() {
       { owner_id: profile.id, order_json: orderedIds, updated_at: new Date().toISOString() },
       { onConflict: "owner_id" }
     );
+    // Update the map without triggering a barOrdered reset (edit mode guard handles it)
     const map: Record<string, number> = {};
     orderedIds.forEach((pid, i) => { map[pid] = i; });
     setBarSortMap(map);
@@ -142,8 +143,10 @@ export default function RegisterPage() {
     });
   }, [products, category, barSortMap]);
 
-  // Sync barOrdered when category changes or products update (mirrors machines orderedMachines sync)
+  // Sync barOrdered when category changes or products update — but NOT while dragging
   useEffect(() => {
+    // Don't reset the ordered list while user is actively in edit/drag mode
+    if (barEditMode) return;
     setBarOrdered(
       [...products.filter(p => (p.category || "beers") === category)].sort((a, b) => {
         const ia = barSortMap[a.id] ?? Infinity;
@@ -153,7 +156,7 @@ export default function RegisterPage() {
       })
     );
     setBarDraggingId(null);
-  }, [products, category, barSortMap]);
+  }, [products, category, barSortMap, barEditMode]);
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);

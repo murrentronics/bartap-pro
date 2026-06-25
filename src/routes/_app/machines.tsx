@@ -627,7 +627,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               {tab === "payout" ? "Record Payout" : "Record amount cleared from machine"}
             </h2>
             {/* Amount display */}
-            <div className="rounded-2xl px-5 py-4 text-right"
+            <div className="rounded-2xl px-5 py-4 text-center"
               style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
               <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
                 ${amount === "" ? "0" : amount}

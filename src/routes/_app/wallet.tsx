@@ -514,7 +514,8 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               const parts = (tx.note ?? "").split(" | ");
                               const cashierLabel = parts[0] ?? "Cashier sale";
                               const totalStr     = parts[1] ?? "";
-                              const itemsStr     = parts.slice(2).join(", ");
+                              const rawItems = parts.slice(2).join(", ");
+                              const itemsStr = rawItems.replace(/├ù/g, "x").replace(/\u00d7/g, "x");
                               return (
                                 <div key={tx.id} className="px-4 py-3 bg-blue-500/5 flex items-start gap-3">
                                   <div className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400">🧾</div>
@@ -1117,19 +1118,21 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     ]).finally(() => setLoading(false));
   }, [profile.id]);
 
+  // Keep a stable ref to fetchData so the realtime channel never needs to be recreated
+  const fetchDataRef = useRef(fetchData);
+  useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
+
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Realtime — refresh when new orders or wallet transactions come in (owner or cashier sales)
+  // Realtime — one stable channel per owner, never torn down on data refresh
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-tx-${profile.id}`)
-      // All orders under this owner — fires on both owner-direct and cashier sales
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => fetchData())
-      // Owner's wallet transactions (cashier_sale mirror txs, transfer_in, etc.)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => fetchDataRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => fetchDataRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [profile.id, fetchData]);
+  }, [profile.id]);
 
   // Merge ALL records sorted by date, then paginate client-side
   const allFlat: FlatRecord[] = [
@@ -1204,7 +1207,9 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 const parts = (tx.note ?? "").split(" | ");
                 const cashierLabel = parts[0] ?? "Cashier";
                 const totalStr     = parts[1] ?? "";
-                const itemsStr     = parts.slice(2).join(", ") ?? "";
+                // Clean up garbled × characters from old stored records
+                const rawItems = parts.slice(2).join(", ") ?? "";
+                const itemsStr = rawItems.replace(/├ù/g, "x").replace(/\u00d7/g, "x");
                 // Parse paid/change from totalStr e.g. "Total: $X · Paid: $Y · Change: $Z"
                 const paidMatch   = totalStr.match(/Paid:\s*\$([\d.]+)/);
                 const changeMatch = totalStr.match(/Change:\s*\$([\d.]+)/);
