@@ -902,7 +902,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const editModeRef = useRef(false);
   const orderedRef = useRef<Machine[]>(orderedMachines);
   const draggingRef = useRef<string | null>(null);
-  // Keep ref in sync with state so closures always read the current value
+  // Keep ref in sync with state so closures always see the latest value
   useEffect(() => { editModeRef.current = editMode; }, [editMode]);
   useEffect(() => { orderedRef.current = orderedMachines; }, [orderedMachines]);
 
@@ -911,7 +911,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
 
-  // Reset on mount — covers tab switches where ScreensTab remounts
+  // Reset edit state on mount (covers tab switches where ScreensTab remounts)
   useEffect(() => {
     editModeRef.current = false;
     setEditMode(false);
@@ -930,24 +930,24 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     setOrderedMachines(sorted);
   }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveOrder = (newOrder: Machine[]) => {
-    Promise.all(
+  // Save only called from handleDone — not on every drop
+  const saveOrder = async (newOrder: Machine[]) => {
+    setSavingOrder(true);
+    await Promise.all(
       newOrder.map((m, idx) =>
         (supabase as any).from("machines").update({ sort_order: idx }).eq("id", m.id)
       )
-    ).catch(() => {});
+    );
+    setSavingOrder(false);
   };
 
-  const handleDone = () => {
-    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  const handleDone = async () => {
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;
     setDraggingId(null);
-    // Order already saved on each drop — no need to save again here
+    await saveOrder(orderedRef.current);
   };
-
-  const justDraggedRef = useRef(false);
 
   const handleDragStart = (id: string) => {
     draggingRef.current = id;
@@ -972,15 +972,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const handleDrop = () => {
     draggingRef.current = null;
     setDraggingId(null);
-    justDraggedRef.current = true;
-    setTimeout(() => { justDraggedRef.current = false; }, 400);
-    saveOrder(orderedRef.current);
-  };
-
-  const handleDragEnd = () => {
-    setDraggingId(null);
-    justDraggedRef.current = true;
-    setTimeout(() => { justDraggedRef.current = false; }, 400);
+    // No save here — save happens on Done
   };
 
   const startLongPress = () => {
@@ -1063,7 +1055,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           style={{ background: "oklch(0.20 0.05 60)" }}>
           <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
           <button
-            onClick={() => { if (justDraggedRef.current) return; handleDone(); }}
+            onClick={handleDone}
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
             Done
           </button>
@@ -1085,7 +1077,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               onDragStart={() => handleDragStart(m.id)}
               onDragOver={(e) => handleDragOver(e, m.id)}
               onDrop={handleDrop}
-              onDragEnd={handleDragEnd}
+              onDragEnd={() => setDraggingId(null)}
               onPointerDown={startLongPress}
               onPointerUp={cancelLongPress}
               onPointerLeave={cancelLongPress}
