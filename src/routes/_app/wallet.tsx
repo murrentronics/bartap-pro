@@ -760,15 +760,32 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       const { error: delExpErr } = await sb.from("owner_expenses").delete().eq("owner_id", ownerId);
       if (delExpErr) { toast.error("Failed to clear expenses: " + delExpErr.message); return; }
 
-      // 2. Delete ALL orders for this owner (resets income to $0)
-      const { error: delOrdErr } = await supabase.from("orders").delete().eq("owner_id", ownerId);
-      if (delOrdErr) { toast.error("Failed to clear orders: " + delOrdErr.message); return; }
+      // 2. Clear the initial_expense from owner_financials (resets the opening balance)
+      const { error: delFinErr } = await supabase
+        .from("owner_financials")
+        .update({ initial_expense: 0 })
+        .eq("owner_id", ownerId);
+      if (delFinErr) { toast.error("Failed to clear initial expense: " + delFinErr.message); return; }
 
-      // 3. Delete ALL wallet transactions for this owner (transfer_in, cashier_sale, etc.)
+      // 3. Delete ALL wallet transactions for this owner
       const { error: delTxErr } = await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
       if (delTxErr) { toast.error("Failed to clear wallet: " + delTxErr.message); return; }
 
-      // 4. Fetch all products with cost_price > 0 and stock_qty > 0
+      // 4. Also delete wallet transactions on cashier profiles under this owner
+      const { data: cashiers } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("parent_id", ownerId)
+        .eq("role", "cashier");
+      for (const c of cashiers ?? []) {
+        await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
+      }
+
+      // 5. Delete ALL orders for this owner (clears income history)
+      const { error: delOrdErr } = await supabase.from("orders").delete().eq("owner_id", ownerId);
+      if (delOrdErr) { toast.error("Failed to clear orders: " + delOrdErr.message); return; }
+
+      // 6. Fetch all products with cost_price > 0 and stock_qty > 0
       const { data: products, error: prodErr } = await supabase
         .from("products")
         .select("id, name, cost_price, stock_qty")
@@ -777,12 +794,12 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         .gt("stock_qty", 0);
       if (prodErr) { toast.error("Failed to fetch products: " + prodErr.message); return; }
 
-      // 5. Insert one expense row per product (cost_price × stock_qty)
+      // 7. Insert one expense row per product: name ×qty @ cost_price each
       const today = new Date().toISOString().split("T")[0];
       const rows = (products ?? []).map((p: { id: string; name: string; cost_price: number; stock_qty: number }) => ({
         owner_id:     ownerId,
         amount:       Number(p.cost_price) * Number(p.stock_qty),
-        description:  `${p.name} ×${p.stock_qty}`,
+        description:  `${p.name} ×${p.stock_qty} @ $${Number(p.cost_price).toFixed(2)} each`,
         expense_date: today,
       }));
 
@@ -791,10 +808,10 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         if (insErr) { toast.error("Failed to create expenses: " + insErr.message); return; }
       }
 
-      // 6. Mark done — never show again
+      // 8. Mark done — never show again
       localStorage.setItem(restartKey, "1");
       setRestartDone(true);
-      toast.success(`Reset complete — income cleared, ${rows.length} expense${rows.length !== 1 ? "s" : ""} rebuilt`);
+      toast.success(`Done — ${rows.length} expense record${rows.length !== 1 ? "s" : ""} generated from current stock`);
       loadData();
       onDataChange?.();
     } finally {
@@ -942,9 +959,9 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
         <div className="flex items-center justify-between rounded-2xl px-4 py-3 border border-amber-500/30"
           style={{ background: "oklch(0.18 0.05 70 / 0.4)" }}>
           <div className="flex-1 min-w-0 mr-3">
-            <p className="text-xs font-black text-amber-300">Recalculate Expenses</p>
+            <p className="text-xs font-black text-amber-300">Setup Expenses</p>
             <p className="text-[10px] text-amber-200/60 mt-0.5 leading-snug">
-              Rebuilds expense history from current stock × cost price. Clears old entries first.
+              Clears all transactions, orders and old expense records. Generates a fresh expense entry for each bar item (qty × cost price). Cannot be undone.
             </p>
           </div>
           <button
@@ -954,7 +971,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
             style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
           >
             {restarting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            {restarting ? "Working…" : "Restart"}
+            {restarting ? "Working..." : "Setup"}
           </button>
         </div>
       )}

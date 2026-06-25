@@ -1773,7 +1773,7 @@ function CreditSaleOverlay({
               )}
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>ΓåÉ Back</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← Back</Button>
               <Button
                 className="h-12 px-5 font-black text-sm"
                 onClick={() => setStep("create")}
@@ -1888,7 +1888,7 @@ function CreditSaleOverlay({
               </Button>
             </form>
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
-              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>ΓåÉ Back to Accounts</Button>
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Accounts</Button>
             </div>
           </>
         )}
