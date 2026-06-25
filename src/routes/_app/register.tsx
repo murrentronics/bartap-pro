@@ -77,6 +77,120 @@ export default function RegisterPage() {
     return products.filter((p) => (p.category || "beers") === category);
   }, [products, category]);
 
+  // ── Bar sort order (touch-based drag) ────────────────────────────────────
+  const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
+  const [barEditMode, setBarEditMode] = useState(false);
+  const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
+  const barLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [barOrdered, setBarOrdered] = useState<Product[]>([]);
+  const barEditModeRef = useRef(false);
+  const barSortMapRef = useRef<Record<string, number>>({});
+  const barOrderedRef = useRef<Product[]>([]);
+  const barDraggingRef = useRef<string | null>(null);
+  const profileIdRef = useRef(profile?.id);
+  useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
+
+  useEffect(() => () => {
+    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
+  }, []);
+
+  const loadBarSort = async () => {
+    const pid = profileIdRef.current;
+    if (!pid) return;
+    const { data } = await (supabase as any)
+      .from("bar_sort_order").select("order_json").eq("owner_id", pid).maybeSingle();
+    const arr: string[] = data?.order_json && Array.isArray(data.order_json) ? data.order_json : [];
+    const map: Record<string, number> = {};
+    arr.forEach((id: string, i: number) => { map[id] = i; });
+    barSortMapRef.current = map;
+    setBarSortMap(map);
+  };
+
+  const saveBarSortIds = (ids: string[]) => {
+    const pid = profileIdRef.current;
+    if (!pid) return;
+    (supabase as any).from("bar_sort_order").upsert(
+      { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
+      { onConflict: "owner_id" }
+    ).then(() => {}).catch(() => {});
+  };
+
+  const applyBarSort = (prods: Product[], cat: string, map: Record<string, number>) =>
+    [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
+      const ia = map[a.id] ?? Infinity;
+      const ib = map[b.id] ?? Infinity;
+      if (ia !== ib) return ia - ib;
+      return a.name.localeCompare(b.name);
+    });
+
+  const handleBarTouchStart = (e: React.TouchEvent, id: string) => {
+    if (!barEditModeRef.current) return;
+    barDraggingRef.current = id;
+    setBarDraggingId(id);
+  };
+
+  const handleBarTouchMove = (e: React.TouchEvent) => {
+    if (!barDraggingRef.current) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = el?.closest("[data-bar-id]");
+    const targetId = card?.getAttribute("data-bar-id");
+    if (!targetId || targetId === barDraggingRef.current) return;
+    const current = barOrderedRef.current;
+    const from = current.findIndex(p => p.id === barDraggingRef.current);
+    const to   = current.findIndex(p => p.id === targetId);
+    if (from === -1 || to === -1) return;
+    const next = [...current];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    barOrderedRef.current = next;
+    setBarOrdered(next);
+  };
+
+  const handleBarTouchEnd = () => {
+    if (!barDraggingRef.current) return;
+    const ids = barOrderedRef.current.map(p => p.id);
+    saveBarSortIds(ids);
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
+  };
+
+  const barStartLongPress = (e: React.TouchEvent) => {
+    if (barEditModeRef.current) return;
+    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
+    barLongPressTimer.current = setTimeout(() => {
+      barLongPressTimer.current = null;
+      barEditModeRef.current = true;
+      setBarEditMode(true);
+    }, 600);
+  };
+  const barCancelLongPress = () => {
+    if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
+  };
+
+  const handleBarDone = async () => {
+    barEditModeRef.current = false;
+    setBarEditMode(false);
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
+    await loadBarSort();
+  };
+
+  // Load bar sort on mount and sync barOrdered when products/category/sort changes
+  useEffect(() => {
+    if (ownerId) loadBarSort();
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (barEditModeRef.current) return;
+    const sorted = applyBarSort(products, category, barSortMapRef.current);
+    barOrderedRef.current = sorted;
+    setBarOrdered(sorted);
+    barDraggingRef.current = null;
+    setBarDraggingId(null);
+  }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
 
@@ -387,7 +501,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
                 >
-                  ≡ƒÑâ Shot from Opened Bottle
+                  🥃 Shot from Opened Bottle
                   {openedBottles.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -406,7 +520,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
                 >
-                  ≡ƒÜ¼ Retail Cigarette &amp; Paper
+                  🚬 Retail Cigarette &amp; Paper
                   {openedPacks.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -422,23 +536,48 @@ export default function RegisterPage() {
                 {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
               </div>
             ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {filtered.map((p) => {
+          <div>
+            {barEditMode && (
+              <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
+                style={{ background: "oklch(0.20 0.05 60)" }}>
+                <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
+                <button onClick={handleBarDone}
+                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
+                  Done
+                </button>
+              </div>
+            )}
+          <div className="grid grid-cols-3 gap-2" style={{ touchAction: barEditMode ? "none" : "auto" }}>
+            {barOrdered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               const outOfStock = (p.stock_qty ?? 1) === 0;
+              const isDragging = barDraggingId === p.id;
               return (
+                <div key={p.id}
+                  data-bar-id={p.id}
+                  className="relative"
+                  onTouchStart={(e) => {
+                    barCancelLongPress();
+                    if (barEditModeRef.current) { handleBarTouchStart(e, p.id); }
+                    else { barStartLongPress(e); }
+                  }}
+                  onTouchMove={handleBarTouchMove}
+                  onTouchEnd={() => { barCancelLongPress(); handleBarTouchEnd(); }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none" } as React.CSSProperties}
+                >
                 <button
-                  key={p.id}
-                  onClick={() => !outOfStock && addToCart(p)}
+                  onClick={() => !outOfStock && !barEditMode && addToCart(p)}
                   disabled={outOfStock}
-                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition ${outOfStock ? "cursor-not-allowed" : "active:scale-95"}`}
+                  className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
                   style={{
                     background: "var(--gradient-card)",
                     boxShadow: "var(--shadow-elegant)",
-                    borderColor: inCart ? "var(--primary)" : "var(--border)",
+                    borderColor: barEditMode ? "rgba(251,146,60,0.8)" : inCart ? "var(--primary)" : "var(--border)",
+                    pointerEvents: barEditMode ? "none" : "auto",
                   }}
                 >
-                  {/* ΓöÇΓöÇ Image area ΓöÇΓöÇ */}
+                  {/* -- Image area -- */}
                   <div className="aspect-[3/4] relative w-full">
                     {p.image_url ? (
                       <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
@@ -463,7 +602,7 @@ export default function RegisterPage() {
                       </div>
                     )}
 
-                    {/* Red X remove button ΓÇö top-right, same size as minus/qty circles */}
+                    {/* Red X remove button -- top-right */}
                     {inCart && (
                       <button
                         onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
@@ -474,7 +613,7 @@ export default function RegisterPage() {
                       </button>
                     )}
 
-                    {/* Cart qty controls ΓÇö sits just below the top row (X + stock badge) */}
+                    {/* Cart qty controls */}
                     {inCart && (
                       <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
                         style={{ background: "rgba(0,0,0,0.75)" }}>
@@ -511,14 +650,16 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* ΓöÇΓöÇ Title + price strip below image ΓöÇΓöÇ */}
+                  {/* Title + price strip */}
                   <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
                     <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
                     <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
                   </div>
                 </button>
+                </div>
               );
             })}
+          </div>
           </div>
             )}
           </>
@@ -599,7 +740,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">≡ƒÑâ Select Liquor</span>
+              <span className="text-base font-black">🥃 Select Liquor</span>
               <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -734,7 +875,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">≡ƒÑâ Add Shot</span>
+              <span className="font-black text-base">🥃 Add Shot</span>
               <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); setShotModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
@@ -776,16 +917,16 @@ export default function RegisterPage() {
                 <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
               </div>
               <div className="grid grid-cols-3 gap-1.5">
-                {["1","2","3","4","5","6","7","8","9",".","0","Γî½"].map((k) => (
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                   <button key={k} type="button"
                     onClick={() => {
-                      if (k === "Γî½") { setShotPrice(v => v.slice(0,-1)); return; }
+                      if (k === "⌫") { setShotPrice(v => v.slice(0,-1)); return; }
                       if (k === ".") { if (!shotPrice.includes(".")) setShotPrice(v => v + "."); return; }
                       const dotIdx = shotPrice.indexOf(".");
                       if (dotIdx !== -1 && shotPrice.length - dotIdx > 2) return;
                       setShotPrice(v => v === "0" ? k : v + k);
                     }}
-                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "Γî½" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
                   >{k}</button>
                 ))}
               </div>
@@ -952,7 +1093,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? "≡ƒôä Select Cigarette or Paper" : "≡ƒÜ¼ Select Cigarette or Paper"}</span>
+              <span className="text-base font-black">{packType === "paper" ? "≡ƒôä Select Cigarette or Paper" : "🚬 Select Cigarette or Paper"}</span>
               <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -986,7 +1127,7 @@ export default function RegisterPage() {
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "≡ƒÜ¼"}</div>
+                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
                               </button>
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1039,7 +1180,7 @@ export default function RegisterPage() {
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "≡ƒÜ¼"}</div>
+                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "≡ƒôä" : "🚬"}</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
                             {packBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                           </div>
@@ -1065,7 +1206,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">≡ƒÜ¼ Add to Order</span>
+              <span className="font-black text-base">🚬 Add to Order</span>
               <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
@@ -1086,7 +1227,7 @@ export default function RegisterPage() {
                       <div className="aspect-[3/4] relative w-full">
                         {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                         <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "≡ƒôä" : "≡ƒÜ¼"}</div>
+                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "≡ƒôä" : "🚬"}</div>
                         {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black"
                           style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>Γ£ô</div>}
                       </div>
@@ -1123,16 +1264,16 @@ export default function RegisterPage() {
 
               {/* Numpad */}
               <div className="grid grid-cols-3 gap-1.5">
-                {["1","2","3","4","5","6","7","8","9",".","0","Γî½"].map((k) => (
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                   <button key={k} type="button"
                     onClick={() => {
-                      if (k === "Γî½") { setPackPrice(v => v.slice(0,-1)); return; }
+                      if (k === "⌫") { setPackPrice(v => v.slice(0,-1)); return; }
                       if (k === ".") { if (!packPrice.includes(".")) setPackPrice(v => v + "."); return; }
                       const dotIdx = packPrice.indexOf(".");
                       if (dotIdx !== -1 && packPrice.length - dotIdx > 2) return;
                       setPackPrice(v => v === "0" ? k : v + k);
                     }}
-                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "Γî½" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
                   >{k}</button>
                 ))}
               </div>
@@ -1152,7 +1293,7 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
             <div className="px-5 pt-6 pb-4 text-center">
-              <div className="text-3xl mb-2">≡ƒÜ¼</div>
+              <div className="text-3xl mb-2">🚬</div>
               <div className="font-black text-base">Mark Pack Empty?</div>
               <div className="text-xs text-muted-foreground mt-1">This will close the pack and record the wallet entry.</div>
             </div>
@@ -1173,7 +1314,7 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
             <div className="px-5 pt-6 pb-4 text-center">
-              <div className="text-3xl mb-2">≡ƒÜ¼</div>
+              <div className="text-3xl mb-2">🚬</div>
               <div className="font-black text-base">Cancel Pack?</div>
               <div className="text-xs text-muted-foreground mt-1">This will remove the pack and restore 1 to stock.</div>
             </div>
@@ -1292,7 +1433,7 @@ function CashOverlay({
                       {i.image_url ? (
                         <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
                       ) : i.id.startsWith("shot-") ? (
-                        <span className="text-2xl">≡ƒÑâ</span>
+                        <span className="text-2xl">🥃</span>
                       ) : (
                         <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>
                       )}
@@ -1371,12 +1512,12 @@ function CashOverlay({
 
               {/* Numpad */}
               <div className="grid grid-cols-3 gap-2">
-                {["1","2","3","4","5","6","7","8","9",".","0","Γî½"].map((k) => (
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
                   <button
                     key={k}
                     type="button"
                     onClick={() => {
-                      if (k === "Γî½") {
+                      if (k === "⌫") {
                         setPaid((v) => v.slice(0, -1));
                       } else if (k === ".") {
                         if (!paid.includes(".")) setPaid((v) => v + ".");
@@ -1388,7 +1529,7 @@ function CashOverlay({
                       }
                     }}
                     className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${
-                      k === "Γî½"
+                      k === "⌫"
                         ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
                         : "bg-muted hover:bg-muted/70 text-foreground"
                     }`}
@@ -1586,7 +1727,7 @@ function CreditSaleOverlay({
                       {i.image_url ? (
                         <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
                       ) : i.id.startsWith("shot-") ? (
-                        <span className="text-2xl">≡ƒÑâ</span>
+                        <span className="text-2xl">🥃</span>
                       ) : (
                         <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>
                       )}
@@ -1799,14 +1940,14 @@ function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
   return (
     <div className="mt-2 space-y-1.5">
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","","0","Γî½"].map((k, i) =>
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
           k === "" ? <div key={i} /> :
           <button key={k} type="button"
             onClick={() => {
-              if (k === "Γî½") onChange(value.slice(0, -1));
+              if (k === "⌫") onChange(value.slice(0, -1));
               else if (value.length < maxLen) onChange(value + k);
             }}
-            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "Γî½" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
           >{k}</button>
         )}
       </div>
@@ -1822,7 +1963,7 @@ function CreditContactPad({ value, onChange, onDone }: {
   value: string; onChange: (v: string) => void; onDone: () => void;
 }) {
   const handle = (k: string) => {
-    if (k === "Γî½") {
+    if (k === "⌫") {
       const digits = value.replace("-", "").slice(0, -1);
       onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
     } else {
@@ -1833,10 +1974,10 @@ function CreditContactPad({ value, onChange, onDone }: {
   return (
     <div className="mt-2 space-y-1.5">
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","","0","Γî½"].map((k, i) =>
+        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
           k === "" ? <div key={i} /> :
           <button key={k} type="button" onClick={() => handle(k)}
-            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "Γî½" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
           >{k}</button>
         )}
       </div>
@@ -1851,7 +1992,7 @@ function CreditContactPad({ value, onChange, onDone }: {
 const CREDIT_ALPHA_ROWS = [
   ["Q","W","E","R","T","Y","U","I","O","P"],
   ["A","S","D","F","G","H","J","K","L"],
-  ["Z","X","C","V","B","N","M","Γî½"],
+  ["Z","X","C","V","B","N","M","⌫"],
 ];
 
 function CreditAlphaKeyboard({ value, onChange, onDone }: {
@@ -1864,11 +2005,11 @@ function CreditAlphaKeyboard({ value, onChange, onDone }: {
           {row.map((k) => (
             <button key={k} type="button"
               onClick={() => {
-                if (k === "Γî½") onChange(value.slice(0, -1));
+                if (k === "⌫") onChange(value.slice(0, -1));
                 else onChange(value + k);
               }}
               className={`flex-1 h-10 rounded-lg font-bold text-sm transition active:scale-95 max-w-[38px] ${
-                k === "Γî½" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
+                k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
               }`}
             >{k}</button>
           ))}
