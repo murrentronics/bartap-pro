@@ -855,10 +855,11 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 }
 
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
-function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, activeCashier, floatSession, remainingFloat, isCashier, onSetFloat, onDeleteMachine }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, onSetFloat, onDeleteMachine }: {
   machines: Machine[]; entries: MachineEntry[];
-  ownerId: string; onSelect: (m: Machine) => void;
-  activeCashier: { id: string; username: string } | null;
+  ownerId: string;
+  profileId: string;
+  onSelect: (m: Machine) => void;
   floatSession: FloatSession | null;
   remainingFloat: number | null;
   isCashier: boolean;
@@ -869,18 +870,46 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
-  // Session payouts since float was last set — resets to $0 when a new float is set
+  // Session payouts since float was last set
   const sessionPayouts = floatSession
     ? entries
         .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
         .reduce((s, e) => s + Number(e.amount), 0)
     : 0;
 
-  // Local ordered list — initialise from sort_order then created_at
-  const sorted = [...initialMachines].sort((a, b) =>
-    a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
+  // Per-user sort order — each user stores their own order independently
+  const [sortMap, setSortMap] = useState<Record<string, number>>({});
+  const [sortMapLoaded, setSortMapLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!profileId) return;
+    (supabase as any).from("machine_sort_order")
+      .select("order_json")
+      .eq("owner_id", profileId)
+      .maybeSingle()
+      .then(({ data }: { data: { order_json: string[] } | null }) => {
+        if (data?.order_json && Array.isArray(data.order_json)) {
+          const map: Record<string, number> = {};
+          data.order_json.forEach((id: string, i: number) => { map[id] = i; });
+          setSortMap(map);
+        }
+        setSortMapLoaded(true);
+      });
+  }, [profileId]);
+
+  const applySort = (machines: Machine[], map: Record<string, number>) =>
+    [...machines].sort((a, b) => {
+      const ia = map[a.id] ?? a.sort_order ?? Infinity;
+      const ib = map[b.id] ?? b.sort_order ?? Infinity;
+      if (ia !== ib) return ia - ib;
+      return a.created_at.localeCompare(b.created_at);
+    });
+
+  const [orderedMachines, setOrderedMachines] = useState<Machine[]>(() =>
+    [...initialMachines].sort((a, b) =>
+      a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
+    )
   );
-  const [orderedMachines, setOrderedMachines] = useState<Machine[]>(sorted);
   const [editMode, setEditMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -888,23 +917,29 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
   const editModeRef = useRef(editMode);
   useEffect(() => { editModeRef.current = editMode; }, [editMode]);
 
-  // Sync when prop machines change (e.g. after realtime update) — but never during drag/edit
+  // Apply user's sort map once loaded
+  useEffect(() => {
+    if (sortMapLoaded) {
+      setOrderedMachines(applySort(initialMachines, sortMap));
+    }
+  }, [sortMapLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync when machines change — but never during drag/edit
   useEffect(() => {
     if (editModeRef.current) return;
-    setOrderedMachines(
-      [...initialMachines].sort((a, b) =>
-        a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.created_at.localeCompare(b.created_at)
-      )
-    );
-  }, [initialMachines]);
+    setOrderedMachines(applySort(initialMachines, sortMap));
+  }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveOrder = async (newOrder: Machine[]) => {
     setSavingOrder(true);
-    await Promise.all(
-      newOrder.map((m, idx) =>
-        (supabase as any).from("machines").update({ sort_order: idx }).eq("id", m.id)
-      )
+    const orderedIds = newOrder.map(m => m.id);
+    await (supabase as any).from("machine_sort_order").upsert(
+      { owner_id: profileId, order_json: orderedIds, updated_at: new Date().toISOString() },
+      { onConflict: "owner_id" }
     );
+    const map: Record<string, number> = {};
+    orderedIds.forEach((id, i) => { map[id] = i; });
+    setSortMap(map);
     setSavingOrder(false);
   };
 
@@ -928,6 +963,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
   };
 
   const startLongPress = () => {
+    if (editModeRef.current) return;
     longPressTimer.current = setTimeout(() => setEditMode(true), 600);
   };
   const cancelLongPress = () => {
@@ -1027,7 +1063,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, onSelect, act
               onPointerDown={startLongPress}
               onPointerUp={cancelLongPress}
               onPointerLeave={cancelLongPress}
-              style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none" } as React.CSSProperties}>
 
               {/* Base card button */}
               <button
@@ -1361,7 +1398,6 @@ export default function MachinesPage() {
 
   // Float — one session covers ALL machines for this owner
   const [floatSession, setFloatSession] = useState<FloatSession | null>(null);
-  const [activeCashier, setActiveCashier] = useState<{ id: string; username: string } | null>(null);
   const [showSetFloat, setShowSetFloat] = useState(false);
   const [floatAmount, setFloatAmount] = useState("");
   const [savingFloat, setSavingFloat] = useState(false);
@@ -1390,17 +1426,6 @@ export default function MachinesPage() {
       .select("*").eq("owner_id", ownerId)
       .order("set_at", { ascending: false }).limit(1).maybeSingle();
     setFloatSession(data as FloatSession | null);
-  }, [ownerId]);
-
-  const loadActiveCashier = useCallback(async () => {
-    if (!ownerId) return;
-    const { data } = await sb.from("profiles")
-      .select("id, username")
-      .eq("parent_id", ownerId)
-      .eq("role", "cashier")
-      .eq("is_active", true)
-      .maybeSingle();
-    setActiveCashier(data as { id: string; username: string } | null);
   }, [ownerId]);
 
   const handleSetFloat = async () => {
@@ -1432,18 +1457,7 @@ export default function MachinesPage() {
     setLoading(false);
   }, [ownerId]);
 
-  useEffect(() => { load(); loadFloat(); loadActiveCashier(); }, [load, loadFloat, loadActiveCashier]);
-
-  // Dedicated channel for cashier presence — separate from the main channel
-  // so profile updates aren't dropped due to channel multiplexing
-  useEffect(() => {
-    if (!ownerId) return;
-    const ch = supabase.channel(`machines-cashier-presence-${ownerId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" },
-        () => loadActiveCashier())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [ownerId, loadActiveCashier]);
+  useEffect(() => { load(); loadFloat(); }, [load, loadFloat]);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -1454,17 +1468,9 @@ export default function MachinesPage() {
         filter: `owner_id=eq.${ownerId}` }, () => { load(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "machine_float_sessions",
         filter: `owner_id=eq.${ownerId}` }, () => loadFloat())
-      // Watch ALL update/insert/delete on profiles — fire loadActiveCashier unconditionally.
-      // The query inside loadActiveCashier is already scoped to parent_id=ownerId so it's safe.
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" },
-        () => loadActiveCashier())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "profiles" },
-        () => loadActiveCashier())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "profiles" },
-        () => loadActiveCashier())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [ownerId, load, loadFloat, loadActiveCashier]);
+  }, [ownerId, load, loadFloat]);
 
   // Session payouts = all payouts across ALL machines (owner + cashier) since float was last set
   const sessionPayouts = floatSession
@@ -1528,8 +1534,8 @@ export default function MachinesPage() {
         <>
           {tab === "screens" && (
             <ScreensTab
-              machines={machines} entries={entries} ownerId={ownerId} onSelect={setSelected}
-              activeCashier={activeCashier} floatSession={floatSession}
+              machines={machines} entries={entries} ownerId={ownerId} profileId={profile.id} onSelect={setSelected}
+              floatSession={floatSession}
               remainingFloat={remainingFloat} isCashier={!isOwner}
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
               onDeleteMachine={(id) => {

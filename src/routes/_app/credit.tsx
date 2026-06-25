@@ -542,11 +542,39 @@ function PaymentOverlay({
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number }[] | null; created_at: string; cashier_id: string | null }[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const ownerName = profile?.username ?? "Bar";
   const amountNum = parseFloat(amount) || 0;
   const owed = Number(account.balance_owed);
   const tooMuch = amountNum > owed;
   const valid = amountNum > 0 && !tooMuch;
+
+  const loadCharges = useCallback(async () => {
+    const { data } = await supabase
+      .from("credit_transactions")
+      .select("id, amount, items, created_at, cashier_id")
+      .eq("credit_account_id", account.id)
+      .eq("type", "charge")
+      .order("created_at", { ascending: false });
+    setCharges((data ?? []) as any);
+  }, [account.id]);
+
+  useEffect(() => { loadCharges(); }, [loadCharges]);
+
+  const deleteCharge = async (chargeId: string) => {
+    if (!profile) return;
+    setDeletingId(chargeId);
+    const { error } = await supabase.rpc("delete_credit_charge", {
+      p_credit_tx_id: chargeId,
+      p_cashier_id: profile.id,
+    });
+    setDeletingId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Charge removed — stock restored");
+    await loadCharges();
+    onDone();
+  };
 
   const submit = async () => {
     if (!valid || !profile) return;
@@ -569,11 +597,11 @@ function PaymentOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div
-        className="w-full max-w-md rounded-3xl border border-border shadow-2xl overflow-hidden"
+        className="w-full max-w-md rounded-3xl border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
         style={{ background: "var(--gradient-card)" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           <div>
             <h2 className="text-xl font-black">{account.full_name}</h2>
             <p className="text-sm text-muted-foreground">Record payment toward balance</p>
@@ -597,7 +625,7 @@ function PaymentOverlay({
           </div>
         </div>
 
-        <div className="px-5 pb-5 space-y-4">
+        <div className="px-5 pb-5 space-y-4 overflow-y-auto flex-1">
           {/* Balance owed */}
           <div
             className="rounded-2xl p-4 text-center"
@@ -606,6 +634,46 @@ function PaymentOverlay({
             <p className="text-xs font-semibold text-primary-foreground/70 uppercase tracking-widest">Balance Owed</p>
             <p className="text-4xl font-black text-primary-foreground">${owed.toFixed(2)}</p>
           </div>
+
+          {/* Charge history with delete */}
+          {charges.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Charges</p>
+              {charges.map((c) => {
+                const itemsArr = Array.isArray(c.items) ? c.items : [];
+                const isNewest = c.id === charges[0].id;
+                return (
+                  <div key={c.id} className="flex items-start gap-3 rounded-xl px-3 py-2.5 border border-border"
+                    style={{ background: "oklch(0.20 0.04 45 / 0.30)" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                      </div>
+                      <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
+                        +${Number(c.amount).toFixed(2)}
+                      </div>
+                      {itemsArr.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          {itemsArr.map((i: any) => `${i.qty}x ${i.name}`).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                    {isNewest && (
+                      <button
+                        onClick={() => deleteCharge(c.id)}
+                        disabled={!!deletingId}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0 disabled:opacity-50"
+                      >
+                        {deletingId === c.id
+                          ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Amount input */}
           <div>
@@ -621,7 +689,6 @@ function PaymentOverlay({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                autoFocus
               />
             </div>
             {tooMuch && (

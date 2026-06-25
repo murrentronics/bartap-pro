@@ -128,15 +128,15 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .order("created_at", { ascending: false })
         .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
-      // Count wallet txs
+      // Count wallet txs — include transfer_out so cashier sees cleared-to-owner records
       supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
         .eq("profile_id", profile.id)
-        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
+        .in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .then(({ count }) => setTotalTxs(count ?? 0)),
-      // Fetch wallet txs (fetch enough for merged pagination — 2× page size)
+      // Fetch wallet txs
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
-        .in("type", ["transfer_in", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
+        .in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
@@ -148,6 +148,29 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
     ...txs.map((tx) => ({ kind: "tx" as const, data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts).slice(0, ORDERS_PAGE_SIZE);
+
+  // Realtime — stable channel, refreshes on any order or wallet_transaction change
+  const fetchRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    fetchRef.current = () => {
+      setLoading(true);
+      Promise.all([
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("cashier_id", profile.id).then(({ count }) => setTotalOrders(count ?? 0)),
+        supabase.from("orders").select("*").eq("cashier_id", profile.id).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
+        supabase.from("wallet_transactions").select("id", { count: "exact", head: true }).eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).then(({ count }) => setTotalTxs(count ?? 0)),
+        supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => setTxs((data ?? []) as WalletTx[])),
+      ]).finally(() => setLoading(false));
+    };
+  });
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`cashier-wallet-${profile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `cashier_id=eq.${profile.id}` }, () => fetchRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => fetchRef.current())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile.id]);
 
   return (
     <div className="space-y-5">
@@ -183,9 +206,26 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
               if (rec.kind === "tx") {
                 const tx = rec.data;
                 const isTransferIn = tx.type === "transfer_in";
+                const isTransferOut = tx.type === "transfer_out";
                 const isBottlePack = tx.type === "bottle_finished" || tx.type === "pack_finished";
                 const isCreditPay  = tx.type === "credit_payment";
                 const isCreditCharge = tx.type === "credit_charge";
+
+                if (isTransferOut) {
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-red-500/30 flex items-center gap-3"
+                      style={{ background: "oklch(0.20 0.05 27 / 0.35)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-red-500/20 border-red-500/30">
+                        <ArrowDownLeft className="h-4 w-4 text-red-400 rotate-180" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-semibold text-red-300">{tx.note ?? "Cleared to owner"}</div>
+                      </div>
+                      <div className="font-black text-lg shrink-0 text-red-400">${fmt(Math.abs(Number(tx.amount)))}</div>
+                    </div>
+                  );
+                }
 
                 if (isTransferIn) {
                   return (
@@ -1527,21 +1567,21 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
-  // Realtime — refresh hero when orders, wallet transactions, expenses, or products change
+  // Stable ref so the realtime channel never needs to be recreated when loadSummary re-runs
+  const loadSummaryRef = useRef(loadSummary);
+  useEffect(() => { loadSummaryRef.current = loadSummary; }, [loadSummary]);
+
+  // Realtime — one stable channel, never torn down on data refresh
   useEffect(() => {
     const ch = supabase
       .channel(`wallet-summary-${profile.id}`)
-      // All orders for this owner (owner direct + cashier sales)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
-      // Owner's own wallet transactions (transfer_in, credit_payment, etc.)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadSummary())
-      // Expenses (auto-created on stock add, manual entries)
-      .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
-      // Products stock changes affect Stock Resale card
-      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummary())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [profile.id, loadSummary]);
+  }, [profile.id]);
 
   const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;

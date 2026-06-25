@@ -123,7 +123,7 @@ export default function RegisterPage() {
       .channel(`products-register-${ownerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
         (payload) => {
-          // Never disrupt the drag — skip realtime updates while in edit/drag mode
+          // Never disrupt the drag/sort — skip realtime while in edit mode
           if (barEditModeRef.current) return;
           if (payload.eventType === "DELETE") {
             if (payload.old?.owner_id && payload.old.owner_id !== ownerId) return;
@@ -138,13 +138,6 @@ export default function RegisterPage() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, fetchProducts, loadBarSort]);
 
-  // When edit mode exits, do a fresh fetch to pick up any stock changes missed during drag
-  useEffect(() => {
-    if (!barEditMode && ownerId) {
-      fetchProducts();
-    }
-  }, [barEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const filtered = useMemo(() => {
     const cat = products.filter((p) => (p.category || "beers") === category);
     return [...cat].sort((a, b) => {
@@ -155,10 +148,9 @@ export default function RegisterPage() {
     });
   }, [products, category, barSortMap]);
 
-  // Sync barOrdered when category changes or products update — but NOT while dragging
+  // Sync barOrdered only when NOT in edit mode — never reset during drag/sort
   useEffect(() => {
-    // Don't reset the ordered list while user is actively in edit/drag mode
-    if (barEditMode) return;
+    if (barEditModeRef.current) return;
     setBarOrdered(
       [...products.filter(p => (p.category || "beers") === category)].sort((a, b) => {
         const ia = barSortMap[a.id] ?? Infinity;
@@ -168,7 +160,7 @@ export default function RegisterPage() {
       })
     );
     setBarDraggingId(null);
-  }, [products, category, barSortMap, barEditMode]);
+  }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
@@ -536,7 +528,8 @@ export default function RegisterPage() {
                   onPointerDown={barStartLongPress}
                   onPointerUp={barCancelLongPress}
                   onPointerLeave={barCancelLongPress}
-                  style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none" }}
                 >
                 <button
                   onClick={() => !outOfStock && !barEditMode && addToCart(p)}
