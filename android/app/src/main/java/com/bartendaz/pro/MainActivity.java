@@ -38,7 +38,15 @@ public class MainActivity extends BridgeActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            setupImmersiveMode();
+            // Only reapply the system bars behavior when focus returns
+            // Don't re-setup the entire immersive mode to avoid flashing
+            Window window = getWindow();
+            View decorView = window.getDecorView();
+            WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(window, decorView);
+            if (controller != null) {
+                controller.hide(WindowInsetsCompat.Type.navigationBars());
+            }
         }
     }
 
@@ -63,21 +71,18 @@ public class MainActivity extends BridgeActivity {
             window.setNavigationBarContrastEnforced(false);
         }
 
-        // Immersive sticky mode — hides nav bar, shows on swipe up
-        int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-        decorView.setSystemUiVisibility(flags);
-
+        // Use only the modern WindowInsetsController API for cleaner behavior
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(window, decorView);
         if (controller != null) {
+            // Dark icons (light bars = false means dark background with light content)
             controller.setAppearanceLightStatusBars(false);
             controller.setAppearanceLightNavigationBars(false);
+            
+            // Hide navigation bar (bottom gesture bar)
             controller.hide(WindowInsetsCompat.Type.navigationBars());
+            
+            // Immersive sticky behavior — swipe up shows nav bar temporarily
             controller.setSystemBarsBehavior(
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             );
