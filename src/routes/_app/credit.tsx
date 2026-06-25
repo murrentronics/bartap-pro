@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, Camera, CheckCircle2,
-  DollarSign, ClipboardList, FileDown, Loader2, Trash2,
+  DollarSign, ClipboardList, FileDown, Loader2, Trash2, Pencil,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -208,6 +208,8 @@ function CreditPage() {
 
   // Payment card state
   const [payAccount, setPayAccount] = useState<CreditAccount | null>(null);
+  // Edit customer modal state
+  const [editAccount, setEditAccount] = useState<CreditAccount | null>(null);
 
   const fetchAccounts = useCallback(async () => {
     const id = ownerIdRef.current;
@@ -268,10 +270,11 @@ function CreditPage() {
           loading={loading}
           ownerName={ownerName}
           onSelect={setPayAccount}
+          onEdit={setEditAccount}
         />
       )}
       {tab === "closed" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} />
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -285,18 +288,32 @@ function CreditPage() {
           onDone={handlePaymentDone}
         />
       )}
+
+      {/* Edit customer modal */}
+      {editAccount && (
+        <EditCustomerModal
+          account={editAccount}
+          onClose={() => setEditAccount(null)}
+          onSaved={(updated) => {
+            setEditAccount(null);
+            setOpened((prev) => prev.map((a) => a.id === updated.id ? updated : a).sort((a, b) => a.full_name.localeCompare(b.full_name)));
+            setClosed((prev) => prev.map((a) => a.id === updated.id ? updated : a).sort((a, b) => a.full_name.localeCompare(b.full_name)));
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ── Opened Tab ─────────────────────────────────────────────────────────────────
 function OpenedTab({
-  accounts, loading, ownerName, onSelect,
+  accounts, loading, ownerName, onSelect, onEdit,
 }: {
   accounts: CreditAccount[];
   loading: boolean;
   ownerName: string;
   onSelect: (a: CreditAccount) => void;
+  onEdit: (a: CreditAccount) => void;
 }) {
   const [printing, setPrinting] = useState<string | null>(null);
 
@@ -319,7 +336,17 @@ function OpenedTab({
         >
           {/* Left — tap to pay */}
           <button className="flex-1 min-w-0 text-left active:scale-[0.98] transition" onClick={() => onSelect(a)}>
-            <p className="font-black text-base">{a.full_name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-black text-base">{a.full_name}</p>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(a); }}
+                className="h-6 w-6 rounded-lg flex items-center justify-center active:scale-90 transition shrink-0"
+                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)" }}
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
             {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
@@ -348,7 +375,7 @@ function OpenedTab({
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, ownerName }: { accounts: CreditAccount[]; loading: boolean; ownerName: string }) {
+function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void }) {
   const [printing, setPrinting] = useState<string | null>(null);
 
   if (loading) return <Spinner />;
@@ -369,7 +396,17 @@ function ClosedTab({ accounts, loading, ownerName }: { accounts: CreditAccount[]
           style={{ background: "var(--gradient-card)" }}
         >
           <div className="flex-1 min-w-0">
-            <p className="font-black text-base">{a.full_name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-black text-base">{a.full_name}</p>
+              <button
+                type="button"
+                onClick={() => onEdit(a)}
+                className="h-6 w-6 rounded-lg flex items-center justify-center active:scale-90 transition shrink-0"
+                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)" }}
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
             {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
@@ -388,6 +425,161 @@ function ClosedTab({ accounts, loading, ownerName }: { accounts: CreditAccount[]
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Edit Customer Modal ────────────────────────────────────────────────────────
+function EditCustomerModal({
+  account,
+  onClose,
+  onSaved,
+}: {
+  account: CreditAccount;
+  onClose: () => void;
+  onSaved: (updated: CreditAccount) => void;
+}) {
+  // Parse existing data back to form fields
+  const parseContact = (c: string | null) => {
+    if (!c) return "";
+    // Strip "868-" prefix
+    const stripped = c.replace(/^868-?/, "");
+    return stripped;
+  };
+  const parseIdType = (n: string | null): "drivers_permit" | "national_id" => {
+    if (!n) return "national_id";
+    return n.startsWith("DP:") ? "drivers_permit" : "national_id";
+  };
+  const parseIdNumber = (n: string | null) => {
+    if (!n) return "";
+    // Strip "DP: " or "NID: " prefix
+    return n.replace(/^(DP|NID):\s*/, "");
+  };
+
+  const [name, setName] = useState(account.full_name);
+  const [contact, setContact] = useState(parseContact(account.contact_number));
+  const [idType, setIdType] = useState<"drivers_permit" | "national_id">(parseIdType(account.id_number));
+  const [idNumber, setIdNumber] = useState(parseIdNumber(account.id_number));
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("credit_accounts")
+      .update({
+        full_name: name.trim(),
+        contact_number: contact.trim() ? "868-" + contact.trim() : null,
+        id_number: idNumber.trim() ? `${idType === "drivers_permit" ? "DP" : "NID"}: ${idNumber.trim()}` : null,
+      })
+      .eq("id", account.id)
+      .select()
+      .single();
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Customer updated");
+    onSaved(data as CreditAccount);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        className="w-full max-w-md rounded-3xl border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{ background: "var(--gradient-card)" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
+              <Pencil className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="font-black text-base">Edit Customer</h2>
+              <p className="text-xs text-muted-foreground">Update account details</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-5 overflow-y-auto flex-1">
+          <form onSubmit={submit} className="space-y-3">
+            {/* Full Name */}
+            <div>
+              <Label htmlFor="edit-credit-name">Full Name *</Label>
+              <Input
+                id="edit-credit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. John Smith"
+                required
+              />
+            </div>
+
+            {/* ID Type */}
+            <div>
+              <Label htmlFor="edit-credit-idtype">ID Type</Label>
+              <select
+                id="edit-credit-idtype"
+                value={idType}
+                onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+              >
+                <option value="drivers_permit">Driver's Permit</option>
+                <option value="national_id">National ID</option>
+              </select>
+            </div>
+
+            {/* ID Number */}
+            <div>
+              <Label htmlFor="edit-credit-idnum">ID Number</Label>
+              <Input
+                id="edit-credit-idnum"
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value)}
+                placeholder="e.g. 00000000"
+              />
+            </div>
+
+            {/* Contact */}
+            <div>
+              <Label htmlFor="edit-credit-contact">Contact Number</Label>
+              <div className="flex items-center gap-0 mt-1">
+                <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
+                  868
+                </span>
+                <Input
+                  id="edit-credit-contact"
+                  className="rounded-l-none"
+                  value={contact}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+                    const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                    setContact(formatted);
+                  }}
+                  placeholder="XXX-XXXX"
+                  maxLength={8}
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy || !name.trim()}
+              className="w-full h-12 font-black text-base"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : "Save Changes"}
+            </Button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
