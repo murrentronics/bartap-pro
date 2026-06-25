@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Trash2, Minus, Plus, Loader2, X, CheckCircle2,
+  Trash2, Minus, Plus, Loader2, X, CheckCircle2, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
@@ -52,72 +52,79 @@ export default function RegisterPage() {
   const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
   const [barSavingOrder, setBarSavingOrder] = useState(false);
   const barLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ordered list per category — mirrors how machines uses orderedMachines
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
+  const barEditModeRef = useRef(false);
+  const barSortMapRef = useRef<Record<string, number>>({});
+  const profileIdRef = useRef(profile?.id);
+  useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
 
-  const loadBarSort = useCallback(async () => {
-    const id = ownerIdRef.current;
-    if (!id) return;
+  const loadBarSort = async () => {
+    const pid = profileIdRef.current;
+    if (!pid) return;
     const { data } = await (supabase as any)
-      .from("bar_sort_order")
-      .select("order_json")
-      .eq("owner_id", profile?.id)
-      .maybeSingle();
-    if (data?.order_json) {
-      const arr: string[] = Array.isArray(data.order_json) ? data.order_json : [];
-      const map: Record<string, number> = {};
-      arr.forEach((pid: string, i: number) => { map[pid] = i; });
-      setBarSortMap(map);
-    }
-  }, [profile?.id]);
+      .from("bar_sort_order").select("order_json").eq("owner_id", pid).maybeSingle();
+    const arr: string[] = data?.order_json && Array.isArray(data.order_json) ? data.order_json : [];
+    const map: Record<string, number> = {};
+    arr.forEach((id: string, i: number) => { map[id] = i; });
+    barSortMapRef.current = map;
+    setBarSortMap(map);
+  };
 
-  const saveBarSort = useCallback(async (orderedIds: string[]) => {
-    if (!profile?.id) return;
-    setBarSavingOrder(true);
-    await (supabase as any).from("bar_sort_order").upsert(
-      { owner_id: profile.id, order_json: orderedIds, updated_at: new Date().toISOString() },
-      { onConflict: "owner_id" }
-    );
-    setBarSavingOrder(false);
-    // Do NOT update barSortMap here — that would trigger a barOrdered reset mid-edit.
-    // The map gets refreshed when the user taps Done (exits edit mode).
-  }, [profile?.id]);
-
-  const handleBarDone = useCallback(async () => {
-    setBarEditMode(false);
-    // Now safe to reload sort map — edit mode is exiting
-    await loadBarSort();
-  }, [loadBarSort]);
+  const applyBarSort = (prods: Product[], cat: string, map: Record<string, number>) =>
+    [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
+      const ia = map[a.id] ?? Infinity;
+      const ib = map[b.id] ?? Infinity;
+      if (ia !== ib) return ia - ib;
+      return a.name.localeCompare(b.name);
+    });
 
   const barStartLongPress = () => {
-    if (barEditMode) return; // Don't start another long-press if already in edit mode
-    barLongPressTimer.current = setTimeout(() => setBarEditMode(true), 600);
+    if (barEditModeRef.current) return;
+    barLongPressTimer.current = setTimeout(() => {
+      barEditModeRef.current = true;
+      setBarEditMode(true);
+    }, 600);
   };
   const barCancelLongPress = () => {
-    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
+    if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
+  };
+
+  const handleBarDone = async () => {
+    barEditModeRef.current = false;
+    setBarEditMode(false);
+    await loadBarSort();
   };
 
   const handleBarDragStart = (id: string) => setBarDraggingId(id);
 
   const handleBarDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!barDraggingId || barDraggingId === targetId) return;
-    const from = barOrdered.findIndex(p => p.id === barDraggingId);
-    const to   = barOrdered.findIndex(p => p.id === targetId);
-    if (from === -1 || to === -1) return;
-    const next = [...barOrdered];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    setBarOrdered(next);
+    setBarOrdered(prev => {
+      if (!barDraggingId || barDraggingId === targetId) return prev;
+      const from = prev.findIndex(p => p.id === barDraggingId);
+      const to   = prev.findIndex(p => p.id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
   };
 
   const handleBarDrop = async () => {
     setBarDraggingId(null);
-    await saveBarSort(barOrdered.map(p => p.id));
+    const pid = profileIdRef.current;
+    if (!pid) return;
+    setBarOrdered(current => {
+      const ids = current.map(p => p.id);
+      // fire-and-forget save
+      (supabase as any).from("bar_sort_order").upsert(
+        { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
+        { onConflict: "owner_id" }
+      );
+      return current;
+    });
   };
-
-  const barEditModeRef = useRef(barEditMode);
-  useEffect(() => { barEditModeRef.current = barEditMode; }, [barEditMode]);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -127,7 +134,6 @@ export default function RegisterPage() {
       .channel(`products-register-${ownerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
         (payload) => {
-          // Never disrupt the drag/sort — skip realtime while in edit mode
           if (barEditModeRef.current) return;
           if (payload.eventType === "DELETE") {
             if (payload.old?.owner_id && payload.old.owner_id !== ownerId) return;
@@ -140,29 +146,15 @@ export default function RegisterPage() {
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [ownerId, fetchProducts, loadBarSort]);
+  }, [ownerId, fetchProducts]); // loadBarSort intentionally excluded — it's a plain async fn, not a callback
 
-  const filtered = useMemo(() => {
-    const cat = products.filter((p) => (p.category || "beers") === category);
-    return [...cat].sort((a, b) => {
-      const ia = barSortMap[a.id] ?? Infinity;
-      const ib = barSortMap[b.id] ?? Infinity;
-      if (ia !== ib) return ia - ib;
-      return a.name.localeCompare(b.name);
-    });
-  }, [products, category, barSortMap]);
+  const filtered = useMemo(() => applyBarSort(products, category, barSortMap),
+    [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync barOrdered only when NOT in edit mode — never reset during drag/sort
+  // Sync barOrdered when products/category/sort changes — skip during edit mode
   useEffect(() => {
     if (barEditModeRef.current) return;
-    setBarOrdered(
-      [...products.filter(p => (p.category || "beers") === category)].sort((a, b) => {
-        const ia = barSortMap[a.id] ?? Infinity;
-        const ib = barSortMap[b.id] ?? Infinity;
-        if (ia !== ib) return ia - ib;
-        return a.name.localeCompare(b.name);
-      })
-    );
+    setBarOrdered(applyBarSort(products, category, barSortMapRef.current));
     setBarDraggingId(null);
   }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -506,9 +498,7 @@ export default function RegisterPage() {
             {barEditMode && (
               <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
                 style={{ background: "oklch(0.20 0.05 60)" }}>
-                <span className="text-xs font-black text-amber-400">
-                  {barSavingOrder ? "Saving..." : "Hold & drag to reorder"}
-                </span>
+                <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
                 <button
                   onClick={handleBarDone}
                   className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
@@ -875,7 +865,7 @@ export default function RegisterPage() {
                         <div className="aspect-[3/4] relative w-full">
                           {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                           <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
-                          {isSelected && <div className="absolute inset-0 flex items-center justify-center font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}><CheckCircle2 className="h-10 w-10" /></div>}
+                          {isSelected && <div className="absolute inset-0 flex items-center justify-center font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.50)", color: "var(--primary)" }}><Check className="h-16 w-16" strokeWidth={3} /></div>}
                         </div>
                         <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                           <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
@@ -1207,7 +1197,7 @@ export default function RegisterPage() {
                         <div className="absolute inset-0 flex items-center justify-center text-3xl"
                           style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
                         {isSelected && <div className="absolute inset-0 flex items-center justify-center font-black"
-                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}><CheckCircle2 className="h-10 w-10" /></div>}
+                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.50)", color: "var(--primary)" }}><Check className="h-16 w-16" strokeWidth={3} /></div>}
                       </div>
                       <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                         <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
@@ -1232,7 +1222,7 @@ export default function RegisterPage() {
                 <button type="button"
                   onClick={() => setPackQty(q => Math.max(1, q - 1))}
                   className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0"
-                  style={{ background: "var(--muted)" }}>ΓêÆ</button>
+                  style={{ background: "var(--muted)" }}>−</button>
                 <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
                 <button type="button"
                   onClick={() => setPackQty(q => q + 1)}
