@@ -133,12 +133,13 @@ export default function AdminBillingManagementPage() {
       if (plan) {
         const { data: ownerProfile } = await supabase
           .from("profiles")
-          .select("subscription_end_date, billing_status, premium_subscription_end_date")
+          .select("subscription_end_date, billing_status, premium_subscription_end_date, machines_addon_end_date")
           .eq("id", selectedPayment.owner_id)
           .single();
         
         const startDate = new Date();
         const isPremium = (plan as any).plan_type === "premium";
+        const isMachinesAddon = (plan as any).plan_type === "machines_addon";
 
         if (isPremium) {
           // Premium: extend premium_subscription_end_date independently
@@ -157,6 +158,24 @@ export default function AdminBillingManagementPage() {
           }).eq("id", selectedPayment.owner_id);
 
           updates.next_due_date = premiumEnd.toISOString();
+
+        } else if (isMachinesAddon) {
+          // Machines add-on: keep existing basic plan, just activate machines_addon
+          const addonBase = (ownerProfile as any)?.machines_addon_end_date
+            && new Date((ownerProfile as any).machines_addon_end_date) > startDate
+            ? new Date((ownerProfile as any).machines_addon_end_date)
+            : startDate;
+          const addonEnd = new Date(addonBase);
+          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
+
+          await supabase.from("profiles").update({
+            machines_addon_active: true,
+            machines_addon_start_date: startDate.toISOString(),
+            machines_addon_end_date: addonEnd.toISOString(),
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = addonEnd.toISOString();
+
         } else {
           // Basic: extend the main subscription dates
           const isActiveRenewal =

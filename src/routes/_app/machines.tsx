@@ -1621,7 +1621,7 @@ export default function MachinesPage() {
           {/* Option 1 — Machines Add-on */}
           <div>
             <p className="text-sm font-black text-white mb-2 px-1">Machines Add-on</p>
-            <a href="/billing"
+            <a href="/billing?upgrade=machines_addon"
               className="block rounded-2xl p-4 text-left space-y-2 active:scale-[0.98] transition"
               style={{
                 background: "rgba(251,146,60,0.08)",
@@ -1637,7 +1637,7 @@ export default function MachinesPage() {
           {/* Option 2 — Upgrade to Premium */}
           <div>
             <p className="text-sm font-black text-white mb-2 px-1">Upgrade to Premium</p>
-            <a href="/billing"
+            <a href="/billing?upgrade=premium"
               className="block rounded-2xl p-4 text-left space-y-2 active:scale-[0.98] transition"
               style={{
                 background: "rgba(251,146,60,0.05)",

@@ -53,6 +53,22 @@ export default function BillingPage() {
   useEffect(() => { loadAll(); }, [profile?.id]);
   useEffect(() => { if (profile?.id) loadPayments(); }, [historyPage]);
 
+  // ── Handle ?upgrade=machines_addon|premium from Machines page ────────────
+  useEffect(() => {
+    if (plans.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const upgrade = params.get("upgrade");
+    if (!upgrade) return;
+    const plan = plans.find(p => p.plan_type === upgrade);
+    if (plan) {
+      setSelectedPlan(plan);
+      setRenewMode(null);
+      setStep("payment");
+      // Clean the URL so back-nav doesn't re-trigger
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [plans]);
+
   const loadAll = async () => {
     const [, , , ] = await Promise.all([loadPlans(), loadPayments(), loadBankDetails(), loadFlags()]);
     const { data } = await supabase.auth.getUser();
