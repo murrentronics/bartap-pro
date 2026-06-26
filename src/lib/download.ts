@@ -1,43 +1,38 @@
 /**
  * Cross-platform download utility.
  *
- * On Android (Capacitor):
- *   - downloadPdf: writes to the public Documents directory and shows a toast
- *   - sharePdf:    writes to cache then opens the native share sheet (WhatsApp etc.)
+ * On Android (Capacitor): uses the native PdfDownloadPlugin which calls
+ * Android's DownloadManager — gives you the status bar progress notification,
+ * "Download complete" toast, and tap-to-open in the Downloads folder.
  *
  * On web: triggers a standard browser <a> download.
  */
 
 import { Capacitor } from "@capacitor/core";
+import { registerPlugin } from "@capacitor/core";
 
-/** Strip data URI prefix and validate base64 */
-function extractBase64(pdfBase64: string): string {
-  const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
-  if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-  return base64;
+interface PdfDownloadPlugin {
+  downloadPdf(options: { base64: string; filename: string }): Promise<void>;
 }
 
-/** Save PDF to device (Android) or trigger browser download (web) */
-export async function downloadPdf(filename: string, pdfBase64: string): Promise<void> {
-  const base64 = extractBase64(pdfBase64);
+// Register our native plugin
+const PdfDownload = registerPlugin<PdfDownloadPlugin>("PdfDownload");
 
+/** Download a PDF file (base64 data URI from jsPDF) */
+export async function downloadPdf(filename: string, pdfBase64: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    // Write to cache (no permissions needed on any Android version)
-    // then open share sheet so user can save to Downloads, Drive, etc.
-    const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { Share } = await import("@capacitor/share");
-    const writeResult = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true,
-    });
-    await Share.share({
-      title: filename,
-      url: writeResult.uri,
-      dialogTitle: "Save PDF",
-    });
+    // Strip data URI prefix if present — plugin handles it too but be safe
+    const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
+
+    if (!base64 || base64.length < 10) {
+      throw new Error("PDF generation produced empty output");
+    }
+
+    // Native plugin → DownloadManager → status bar notification + Downloads folder
+    await PdfDownload.downloadPdf({ base64, filename });
   } else {
+    // Web: decode base64 and trigger <a> download
+    const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     const byteChars = atob(base64);
     const bytes = new Uint8Array(byteChars.length);
     for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
@@ -51,50 +46,12 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
   }
 }
 
-/** Share PDF via native share sheet (WhatsApp, email, etc.) */
-export async function sharePdf(filename: string, pdfBase64: string, shareText?: string): Promise<void> {
-  const base64 = extractBase64(pdfBase64);
-
-  if (Capacitor.isNativePlatform()) {
-    const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { Share } = await import("@capacitor/share");
-
-    const writeResult = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true,
-    });
-
-    await Share.share({
-      title: filename,
-      text: shareText ?? "",
-      url: writeResult.uri,
-      dialogTitle: "Send Bill",
-    });
-  } else {
-    // On web, just download as fallback
-    await downloadPdf(filename, pdfBase64);
-  }
-}
-
 /** Download a plain-text file */
 export async function downloadText(filename: string, content: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { Share } = await import("@capacitor/share");
+    // Convert text to base64 and reuse the same native plugin
     const base64 = btoa(unescape(encodeURIComponent(content)));
-    const writeResult = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true,
-    });
-    await Share.share({
-      title: filename,
-      url: writeResult.uri,
-      dialogTitle: "Save file",
-    });
+    await PdfDownload.downloadPdf({ base64, filename });
   } else {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);

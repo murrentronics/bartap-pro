@@ -60,7 +60,6 @@ function AppWithUpdateCheck() {
   );
 }
 
-// Module-level flag — removed, was causing issues
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
