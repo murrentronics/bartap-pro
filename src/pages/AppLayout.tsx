@@ -121,7 +121,7 @@ export default function AppLayout() {
         icon={UserMinus}
         title="Account expelled"
         message="Your account has been expelled. You no longer have access to Bartendaz Pro."
-        onSignOut={() => { signOut(); nav("/login"); }}
+        onSignOut={() => signOut().then(() => nav("/login", { replace: true }))}
       />
     );
   }
@@ -132,7 +132,7 @@ export default function AppLayout() {
         icon={Ban}
         title="Account suspended"
         message="Your account is suspended. Please check your billing page or contact admin."
-        onSignOut={() => { signOut(); nav("/login"); }}
+        onSignOut={() => signOut().then(() => nav("/login", { replace: true }))}
         showBillingButton={() => nav("/billing")}
       />
     );
@@ -163,7 +163,7 @@ export default function AppLayout() {
                   <Link to="/billing" className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary">
                     <CreditCard className="h-5 w-5 shrink-0" /> Billing
                   </Link>
-                  <button onClick={() => { signOut(); nav("/login"); }}
+                  <button onClick={() => signOut().then(() => nav("/login", { replace: true }))}
                     className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition">
                     <X className="h-5 w-5 shrink-0" /> Logout / Salir
                   </button>
@@ -278,7 +278,7 @@ export default function AppLayout() {
                   </Link>
                 )}
                 <button
-                  onClick={() => { signOut(); nav("/login"); }}
+                  onClick={() => signOut().then(() => nav("/login", { replace: true }))}
                   className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
                   <X className="h-6 w-6 shrink-0" />

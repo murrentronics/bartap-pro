@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,20 @@ export default function FactoryResetPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Check if owner has machines access (premium or machines addon)
+  const [hasMachines, setHasMachines] = useState(false);
+  useEffect(() => {
+    if (!profile?.id) return;
+    (supabase as any)
+      .from("profiles")
+      .select("plan_type, machines_addon_active")
+      .eq("id", profile.id)
+      .single()
+      .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean } | null }) => {
+        setHasMachines(data?.plan_type === "premium" || !!data?.machines_addon_active);
+      });
+  }, [profile?.id]);
 
   if (profile?.role !== "owner") {
     return <div className="text-center text-muted-foreground py-20">Only owners can access this page.</div>;
@@ -152,10 +166,12 @@ export default function FactoryResetPage() {
       {/* Step 1 — pick target */}
       <div className="space-y-3">
         {[
-          { value: "bar" as ResetTarget,      icon: Wine,     label: "Bar",      desc: "Orders, products, cashiers, wallet, credit" },
-          { value: "machines" as ResetTarget, icon: Gamepad2, label: "Machines", desc: "Machine entries, payouts, floats" },
-          { value: "both" as ResetTarget,     icon: Trash2,   label: "Everything", desc: "Wipe both bar and machines completely" },
-        ].map(({ value, icon: Icon, label, desc }) => (
+          { value: "bar" as ResetTarget,      icon: Wine,     label: "Bar",        desc: "Orders, products, cashiers, wallet, credit",    machinesOnly: false },
+          { value: "machines" as ResetTarget, icon: Gamepad2, label: "Machines",   desc: "Machine entries, payouts, floats",              machinesOnly: true  },
+          { value: "both" as ResetTarget,     icon: Trash2,   label: "Everything", desc: "Wipe both bar and machines completely",         machinesOnly: true  },
+        ]
+        .filter(opt => !opt.machinesOnly || hasMachines)
+        .map(({ value, icon: Icon, label, desc }) => (
           <button key={value} onClick={() => setTarget(value)}
             className={`w-full flex items-center gap-4 rounded-2xl p-4 border text-left transition active:scale-[0.98] ${
               target === value

@@ -691,7 +691,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
-  const [templateKbOpen, setTemplateKbOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
@@ -710,7 +709,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     setCategory(templateCategory);
     setShowTemplates(false);
     setTemplateSearch("");
-    setTemplateKbOpen(false);
   };
 
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
@@ -777,7 +775,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
         <div className="flex items-center gap-3">
           {showTemplates && (
             <button
-              onClick={() => { setShowTemplates(false); setTemplateKbOpen(false); }}
+              onClick={() => { setShowTemplates(false); }}
               className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -790,26 +788,27 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         {showTemplates ? (
           <div className="flex flex-col h-full">
-            {/* Sticky search + category tabs — top:-1px bleeds over the gap */}
+            {/* Sticky search + category tabs */}
             <div className="sticky top-0 z-10 pb-2 space-y-2" style={{ background: "var(--background)", paddingTop: "1px" }}>
-              {/* Search */}
+              {/* Search — real input, device keyboard */}
               <div className="flex items-center gap-2">
-                <div
-                  className="flex-1 pl-8 h-8 text-sm rounded-md border border-border bg-background flex items-center cursor-pointer select-none relative"
-                  onPointerDown={(e) => { e.preventDefault(); setTemplateKbOpen(true); }}
-                >
+                <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <span className={templateSearch ? "text-foreground" : "text-muted-foreground"}>
-                    {templateSearch || "Search templates…"}
-                  </span>
+                  <input
+                    type="text"
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    placeholder="Search templates…"
+                    className="w-full pl-8 h-8 text-sm rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
                 {templateSearch && (
                   <button
-                    onPointerDown={(e) => { e.preventDefault(); setTemplateSearch(""); }}
+                    onClick={() => setTemplateSearch("")}
                     className="h-8 px-3 rounded-md text-xs font-black transition active:scale-95 shrink-0 border"
                     style={{ background: "#000", color: "#ef4444", borderColor: "#ef4444" }}
                   >
-                    Delete
+                    Clear
                   </button>
                 )}
               </div>
@@ -818,7 +817,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => { setTemplateCat(cat.value); setTemplateKbOpen(false); }}
+                    onClick={() => setTemplateCat(cat.value)}
                     className={`h-14 rounded-xl font-bold text-2xl transition ${
                       templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
@@ -830,26 +829,12 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                 ))}
               </div>
             </div>
-            {/* Scrollable grid — add bottom padding when keyboard is open */}
-            <div style={templateKbOpen ? { paddingBottom: "14rem" } : {}}>
-              <TemplatePicker
-                onSelect={onTemplateSelect}
-                ownerId={ownerId}
-                category={templateCat}
-                search={templateSearch}
-              />
-            </div>
-            {/* Custom keyboard — stop propagation so tapping keys doesn't dismiss */}
-            {templateKbOpen && (
-              <TemplateKeyboard
-                onKey={(k) => {
-                  if (k === "⌫") { setTemplateSearch((s) => s.slice(0, -1)); return; }
-                  if (k === "SPACE") { setTemplateSearch((s) => s + " "); return; }
-                  setTemplateSearch((s) => s + k.toLowerCase());
-                }}
-                onClose={() => setTemplateKbOpen(false)}
-              />
-            )}
+            <TemplatePicker
+              onSelect={onTemplateSelect}
+              ownerId={ownerId}
+              category={templateCat}
+              search={templateSearch}
+            />
           </div>
         ) : (
           <div className="space-y-3">
