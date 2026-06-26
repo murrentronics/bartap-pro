@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app/factory-reset")({
   component: FactoryResetPage,
 });
 
-type ResetTarget = "bar" | "machines" | "both" | null;
+type ResetTarget = "bar" | "bar_financials" | "machines" | "both" | null;
 
 export default function FactoryResetPage() {
   const { profile } = useAuth();
@@ -42,6 +42,48 @@ export default function FactoryResetPage() {
   if (profile?.role !== "owner") {
     return <div className="text-center text-muted-foreground py-20">Only owners can access this page.</div>;
   }
+
+  const resetBarFinancials = async (ownerId: string) => {
+    // Keeps all products and their stock quantities intact.
+    // Wipes all financial history so the owner can start fresh
+    // by entering cost prices on existing items.
+
+    // 1. Zero cashier wallets + clear their transaction history (keep cashier accounts)
+    const { data: cashiers } = await supabase
+      .from("profiles").select("id").eq("parent_id", ownerId);
+    if (cashiers?.length) {
+      for (const c of cashiers as { id: string }[]) {
+        await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", c.id);
+        await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
+      }
+    }
+
+    // 2. Delete owner wallet transactions
+    await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
+
+    // 3. Delete all orders
+    await supabase.from("orders").delete().eq("owner_id", ownerId);
+
+    // 4. Delete credit transactions and accounts
+    const { data: creditAccounts } = await supabase
+      .from("credit_accounts").select("id").eq("owner_id", ownerId);
+    if (creditAccounts?.length) {
+      const ids = creditAccounts.map((a: { id: string }) => a.id);
+      await supabase.from("credit_transactions").delete().in("credit_account_id", ids);
+      await supabase.from("credit_accounts").delete().eq("owner_id", ownerId);
+    }
+
+    // 5. Delete expense history + financials opening balance
+    await supabase.from("owner_expenses").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("owner_financials").delete().eq("owner_id", ownerId);
+
+    // 6. Reset owner wallet balance to 0
+    await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);
+
+    // 7. Clear cost_price on all products so owner re-enters them fresh
+    //    (stock_qty and selling price are kept)
+    await supabase.from("products").update({ cost_price: 0, stock_last_expense_id: null }).eq("owner_id", ownerId);
+  };
 
   const resetBar = async (ownerId: string) => {
     // 1. Delete cashiers FIRST — before touching owner wallet
@@ -105,11 +147,13 @@ export default function FactoryResetPage() {
     try {
       const ownerId = profile.id;
       if (target === "bar" || target === "both") await resetBar(ownerId);
+      if (target === "bar_financials") await resetBarFinancials(ownerId);
       if (target === "machines" || target === "both") await resetMachines(ownerId);
 
       toast.success(
-        target === "both" ? "Full reset complete."
-        : target === "bar" ? "Bar data reset."
+        target === "both"           ? "Full reset complete."
+        : target === "bar"          ? "Bar fully reset."
+        : target === "bar_financials" ? "Financials cleared — items and stock kept."
         : "Machines data reset."
       );
       setBusy(false);
@@ -117,10 +161,7 @@ export default function FactoryResetPage() {
 
       if (target === "machines") {
         nav("/machines");
-      } else if (target === "bar") {
-        nav("/register");
       } else {
-        // both — full wipe including cashiers, go back to bar
         nav("/register");
       }
     } catch (err: any) {
@@ -129,8 +170,16 @@ export default function FactoryResetPage() {
     }
   };
 
-  const targetLabel = target === "bar" ? "Bar" : target === "machines" ? "Machines" : "Everything";
+  const targetLabel = target === "bar" ? "Bar (Full)" : target === "bar_financials" ? "Bar Financials" : target === "machines" ? "Machines" : "Everything";
   const targetItems: Record<NonNullable<ResetTarget>, string[]> = {
+    bar_financials: [
+      "All sales orders and transaction history",
+      "All wallet and statement records",
+      "All credit accounts and bills",
+      "All financial expense records",
+      "All cost prices (re-enter to rebuild financials)",
+      "✓ Items and stock quantities are KEPT",
+    ],
     bar: [
       "All sales orders and transaction history",
       "All cashier accounts and their records",
@@ -166,9 +215,10 @@ export default function FactoryResetPage() {
       {/* Step 1 — pick target */}
       <div className="space-y-3">
         {[
-          { value: "bar" as ResetTarget,      icon: Wine,     label: "Bar",        desc: "Orders, products, cashiers, wallet, credit",    machinesOnly: false },
-          { value: "machines" as ResetTarget, icon: Gamepad2, label: "Machines",   desc: "Machine entries, payouts, floats",              machinesOnly: true  },
-          { value: "both" as ResetTarget,     icon: Trash2,   label: "Everything", desc: "Wipe both bar and machines completely",         machinesOnly: true  },
+          { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items & stock — wipe orders, wallet, expenses, credit. Re-enter cost prices to rebuild.", machinesOnly: false },
+          { value: "bar" as ResetTarget,            icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",                         machinesOnly: false },
+          { value: "machines" as ResetTarget,       icon: Gamepad2, label: "Machines",              desc: "Machine entries, payouts, floats",                                                             machinesOnly: true  },
+          { value: "both" as ResetTarget,           icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                                        machinesOnly: true  },
         ]
         .filter(opt => !opt.machinesOnly || hasMachines)
         .map(({ value, icon: Icon, label, desc }) => (
@@ -202,11 +252,15 @@ export default function FactoryResetPage() {
           style={{ background: "rgba(239,68,68,0.05)" }}>
           <p className="text-xs font-black text-red-400 uppercase tracking-wider">This will permanently delete:</p>
           <ul className="space-y-1.5">
-            {targetItems[target].map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <span className="text-red-400 mt-0.5 shrink-0">✕</span>{item}
-              </li>
-            ))}
+            {targetItems[target].map((item) => {
+              const isKept = item.startsWith("✓");
+              return (
+                <li key={item} className={`flex items-start gap-2 text-sm ${isKept ? "text-green-400 font-bold" : "text-muted-foreground"}`}>
+                  <span className={`mt-0.5 shrink-0 ${isKept ? "text-green-400" : "text-red-400"}`}>{isKept ? "✓" : "✕"}</span>
+                  {isKept ? item.replace("✓ ", "") : item}
+                </li>
+              );
+            })}
           </ul>
           <p className="text-xs font-black text-red-400 pt-1">This cannot be undone.</p>
         </div>
