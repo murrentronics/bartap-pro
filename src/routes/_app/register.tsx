@@ -89,6 +89,8 @@ export default function RegisterPage() {
   const barDraggingRef = useRef<string | null>(null);
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
+  // Always-current cart length ref so setTimeout callbacks see the live value
+  const cartLengthRef = useRef(0);
 
   useEffect(() => () => {
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
@@ -158,12 +160,13 @@ export default function RegisterPage() {
 
   const barStartLongPress = (e: React.TouchEvent) => {
     if (barEditModeRef.current) return;
-    // Block sort mode if there are items in the cart — prevents leaving
-    // barEditModeRef=true when navigating away mid-drag with a live order
-    if (cart.length > 0) return;
+    // Block if cart has items — checked via ref so the 600ms callback also sees live value
+    if (cartLengthRef.current > 0) return;
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
     barLongPressTimer.current = setTimeout(() => {
       barLongPressTimer.current = null;
+      // Double-check cart is still empty when the timer fires
+      if (cartLengthRef.current > 0) return;
       barEditModeRef.current = true;
       setBarEditMode(true);
     }, 600);
@@ -198,6 +201,7 @@ export default function RegisterPage() {
 
   // If items get added to cart while bar edit mode is active, cancel it immediately
   useEffect(() => {
+    cartLengthRef.current = cart.length;
     if (cart.length > 0 && barEditModeRef.current) {
       if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
       document.body.style.touchAction = "";
@@ -569,7 +573,11 @@ export default function RegisterPage() {
                 </button>
               </div>
             )}
-          <div className="grid grid-cols-3 gap-2" style={{ touchAction: barEditMode ? "none" : "auto" }}>
+          <div
+            className="grid grid-cols-3 gap-2"
+            style={{ touchAction: "none" }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
             {barOrdered.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               const outOfStock = (p.stock_qty ?? 1) === 0;
@@ -580,6 +588,7 @@ export default function RegisterPage() {
                   className="relative"
                   onTouchStart={(e) => {
                     barCancelLongPress();
+                    if (cartLengthRef.current > 0) return; // cart has items — no sort mode
                     if (barEditModeRef.current) { handleBarTouchStart(e, p.id); }
                     else { barStartLongPress(e); }
                   }}

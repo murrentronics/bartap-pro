@@ -362,9 +362,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
 
-  // Remaining float — use the owner-wide remainingFloat prop (all machines combined).
-  // This is kept live by the parent's realtime channel on machine_float_sessions + machine_entries.
-  // We do NOT recompute locally — that would only subtract THIS machine's payouts which is wrong.
+  // ── Float session payout — payouts for THIS machine since float was last set.
+  // Resets to $0 each time the float is updated. Feeds into the main page remaining calc.
+  const floatSessionPayout = floatSession
+    ? entries
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .reduce((s, e) => s + Number(e.amount), 0)
+    : null;
 
   const handleSave = async () => {
     const val = parseFloat(amount);
@@ -607,7 +611,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
           <div className="relative grid grid-cols-3 gap-2">
             <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-            <SmallStat label="Session Payout" value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
+            <SmallStat label="Session Payout"
+              value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
+              color="#fca5a5" />
             <SmallStat label="Remaining"
               value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
               color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
