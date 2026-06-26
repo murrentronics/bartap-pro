@@ -15,6 +15,10 @@ export type Profile = {
   music_addon?: boolean;
   billing_status?: string;
   subscription_end_date?: string;
+  subscription_start_date?: string;
+  plan_type?: "basic" | "premium";
+  premium_subscription_start_date?: string;
+  premium_subscription_end_date?: string;
 };
 
 type AuthCtx = {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { deleteCashier } from "@/lib/cashiers.functions";
 import { toast } from "sonner";
 import { AlertTriangle, Trash2, Loader2, Gamepad2, Wine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,15 +47,22 @@ export default function FactoryResetPage() {
     // Expenses & financials
     await supabase.from("owner_expenses").delete().eq("owner_id", ownerId);
     await (supabase as any).from("owner_financials").delete().eq("owner_id", ownerId);
-    // Cashier profiles
+    // Cashier profiles — delete wallet/orders first, then call deleteCashier
+    // which removes BOTH the profile row AND the auth.users entry
     const { data: cashiers } = await supabase
       .from("profiles").select("id").eq("parent_id", ownerId);
     if (cashiers?.length) {
       for (const c of cashiers as { id: string }[]) {
         await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
         await supabase.from("orders").delete().eq("cashier_id", c.id);
+        // This calls the edge function which deletes profile + auth user
+        try {
+          await deleteCashier({ cashier_id: c.id });
+        } catch {
+          // If edge function fails, still delete the profile row directly
+          await supabase.from("profiles").delete().eq("id", c.id);
+        }
       }
-      await supabase.from("profiles").delete().eq("parent_id", ownerId);
     }
     // Reset wallet balance
     await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);

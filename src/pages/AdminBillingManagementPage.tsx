@@ -19,7 +19,7 @@ import type { BillingPayment } from "@/types/billing";
 
 type PaymentWithOwner = BillingPayment & {
   profiles: { username: string } | null;
-  billing_plans: { name: string } | null;
+  billing_plans: { name: string; plan_type?: string } | null;
 };
 
 export default function AdminBillingManagementPage() {
@@ -70,7 +70,7 @@ export default function AdminBillingManagementPage() {
       .select(`
         *,
         profiles:owner_id (username),
-        billing_plans:plan_id (name)
+        billing_plans:plan_id (name, plan_type)
       `)
       .eq("status", filter)
       .order("created_at", { ascending: false })
@@ -124,55 +124,61 @@ export default function AdminBillingManagementPage() {
     if (status === "paid") {
       updates.payment_date = new Date().toISOString();
       
-      // Also update the owner's profile status to approved and set subscription dates
       const { data: plan } = await supabase
         .from("billing_plans")
-        .select("duration_months, name")
+        .select("duration_months, name, plan_type")
         .eq("id", selectedPayment.plan_id)
         .single();
       
       if (plan) {
-        // Get owner's current subscription end date
         const { data: ownerProfile } = await supabase
           .from("profiles")
-          .select("subscription_end_date, billing_status")
+          .select("subscription_end_date, billing_status, premium_subscription_end_date")
           .eq("id", selectedPayment.owner_id)
           .single();
         
         const startDate = new Date();
-        let endDate: Date;
-        
-        // Only extend from existing end date if subscription is currently active
-        // and the end date is in the future (genuine renewal).
-        const isActiveRenewal =
-          ownerProfile?.subscription_end_date &&
-          ownerProfile?.billing_status === "active" &&
-          new Date(ownerProfile.subscription_end_date) > startDate;
+        const isPremium = (plan as any).plan_type === "premium";
 
-        if (isActiveRenewal) {
-          endDate = new Date(ownerProfile.subscription_end_date!);
-          endDate.setMonth(endDate.getMonth() + plan.duration_months);
+        if (isPremium) {
+          // Premium: extend premium_subscription_end_date independently
+          const premiumBase = ownerProfile?.premium_subscription_end_date
+            && new Date(ownerProfile.premium_subscription_end_date) > startDate
+            ? new Date(ownerProfile.premium_subscription_end_date)
+            : startDate;
+          const premiumEnd = new Date(premiumBase);
+          premiumEnd.setMonth(premiumEnd.getMonth() + plan.duration_months);
+
+          await supabase.from("profiles").update({
+            plan_type: "premium",
+            premium_subscription_start_date: startDate.toISOString(),
+            premium_subscription_end_date: premiumEnd.toISOString(),
+            music_addon: true,
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = premiumEnd.toISOString();
         } else {
-          endDate = new Date();
-          endDate.setMonth(endDate.getMonth() + plan.duration_months);
-        }
+          // Basic: extend the main subscription dates
+          const isActiveRenewal =
+            ownerProfile?.subscription_end_date &&
+            ownerProfile?.billing_status === "active" &&
+            new Date(ownerProfile.subscription_end_date) > startDate;
 
-        // All plans include music — always grant it on approval
-        const profileUpdate: Record<string, unknown> = {
-          status: "approved",
-          billing_status: "active",
-          music_addon: true,
-          subscription_start_date: startDate.toISOString(),
-          subscription_end_date: endDate.toISOString(),
-        };
-        
-        await supabase
-          .from("profiles")
-          .update(profileUpdate)
-          .eq("id", selectedPayment.owner_id);
-        
-        // Set next due date in payment record
-        updates.next_due_date = endDate.toISOString();
+          const endDate = isActiveRenewal
+            ? (() => { const d = new Date(ownerProfile!.subscription_end_date!); d.setMonth(d.getMonth() + plan.duration_months); return d; })()
+            : (() => { const d = new Date(); d.setMonth(d.getMonth() + plan.duration_months); return d; })();
+
+          await supabase.from("profiles").update({
+            status: "approved",
+            billing_status: "active",
+            music_addon: true,
+            plan_type: "basic",
+            subscription_start_date: startDate.toISOString(),
+            subscription_end_date: endDate.toISOString(),
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = endDate.toISOString();
+        }
       }
     } else if (status === "rejected") {
       // Set owner status to suspended when payment is rejected

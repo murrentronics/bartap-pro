@@ -1074,6 +1074,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
       )}
 
+      {!editMode && (
+        <p className="text-xs text-center" style={{ color: "rgba(180,160,130,0.6)" }}>
+          Hold down any screen to sort order
+        </p>
+      )}
+
       {/* Machine grid */}
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {orderedMachines.map((m, idx) => {
@@ -1414,6 +1420,13 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
+
+/** Returns true if this owner has premium access (premium plan OR special-access account) */
+function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
+  if (!profile) return false;
+  return profile.plan_type === "premium";
+}
+
 export default function MachinesPage() {
   const { profile } = useAuth();
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -1426,6 +1439,20 @@ export default function MachinesPage() {
   // Cashiers see their owner's machines; owners see their own
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
   const isOwner = profile?.role === "owner";
+
+  // Premium gate — check owner's plan (cashiers inherit from owner)
+  const [ownerPlanType, setOwnerPlanType] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
+  useEffect(() => {
+    if (!ownerId) return;
+    (supabase as any).from("profiles").select("plan_type").eq("id", ownerId).single()
+      .then(({ data }: { data: { plan_type: string } | null }) => {
+        setOwnerPlanType(data?.plan_type ?? "basic");
+        setPlanLoading(false);
+      });
+  }, [ownerId]);
+
+  const isPremium = ownerPlanType === "premium";
 
   // Float — one session covers ALL machines for this owner
   const [floatSession, setFloatSession] = useState<FloatSession | null>(null);
@@ -1512,6 +1539,56 @@ export default function MachinesPage() {
   const remainingFloat = floatSession ? Number(floatSession.amount) - sessionPayouts : null;
 
   if (!profile) return null;
+
+  // Show loading while we check the plan
+  if (planLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Premium gate — basic plan users see an upgrade wall
+  if (!isPremium) {
+    return (
+      <div className="py-3 space-y-4">
+        <h1 className="text-2xl font-black">Machines</h1>
+        <div className="rounded-3xl border border-amber-500/30 overflow-hidden"
+          style={{ background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)" }}>
+          <div className="px-6 pt-8 pb-6 text-center space-y-4">
+            <div className="h-16 w-16 rounded-2xl flex items-center justify-center mx-auto"
+              style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.4)" }}>
+              <Gamepad2 className="h-8 w-8" style={{ color: "var(--primary)" }} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "rgba(251,146,60,0.6)" }}>
+                Premium Feature
+              </p>
+              <h2 className="text-xl font-black text-white">Machines Tracker</h2>
+              <p className="text-sm text-white/50 mt-2 leading-relaxed">
+                Track payouts, income and profit across all your gaming machines. Upgrade to the Premium Plan to unlock this feature.
+              </p>
+            </div>
+            <div className="rounded-2xl p-4 text-left space-y-2"
+              style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)" }}>
+              <p className="text-xs font-black text-white/70 uppercase tracking-wider">Premium Plan — $1,300 TT/yr</p>
+              {["Machine payout & income tracking", "Per-screen profit breakdown", "Float session management", "Full history with PDF export", "Everything in Basic"].map(f => (
+                <div key={f} className="flex items-center gap-2 text-sm text-white/70">
+                  <span className="text-green-400 font-black">✓</span> {f}
+                </div>
+              ))}
+            </div>
+            <a href="/billing"
+              className="block w-full py-4 rounded-2xl font-black text-base text-black active:scale-[0.98] transition"
+              style={{ background: "var(--gradient-hero)" }}>
+              Upgrade to Premium →
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const screenNumber = selectedScreenNum;
 

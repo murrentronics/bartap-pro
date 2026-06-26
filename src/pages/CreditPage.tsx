@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  UserPlus, X, ChevronRight, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Share2,
+  UserPlus, X, ChevronDown, CheckCircle2,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
@@ -240,6 +240,7 @@ export default function CreditPage() {
   const [opened, setOpened] = useState<CreditAccount[]>([]);
   const [closed, setClosed] = useState<CreditAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editAccount, setEditAccount] = useState<CreditAccount | null>(null);
 
   const fetchAccounts = useCallback(async () => {
     const id = ownerIdRef.current;
@@ -309,19 +310,34 @@ export default function CreditPage() {
           accounts={opened}
           loading={loading}
           onRefresh={fetchAccounts}
+          onEdit={setEditAccount}
         />
       )}
-      {tab === "closed" && <ClosedTab accounts={closed} loading={loading} onRefresh={fetchAccounts} />}
+      {tab === "closed" && <ClosedTab accounts={closed} loading={loading} onRefresh={fetchAccounts} onEdit={setEditAccount} />}
       {tab === "create" && <CreateTab ownerId={ownerId!} onCreated={handleCreated} />}
+
+      {/* Edit customer modal */}
+      {editAccount && (
+        <EditCustomerModal
+          account={editAccount}
+          onClose={() => setEditAccount(null)}
+          onSaved={(updated) => {
+            setEditAccount(null);
+            setOpened((prev) => prev.map((a) => a.id === updated.id ? updated : a).sort((a, b) => a.full_name.localeCompare(b.full_name)));
+            setClosed((prev) => prev.map((a) => a.id === updated.id ? updated : a).sort((a, b) => a.full_name.localeCompare(b.full_name)));
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ── Opened Tab ─────────────────────────────────────────────────────────────────
-function OpenedTab({ accounts, loading, onRefresh }: {
+function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
   accounts: CreditAccount[];
   loading: boolean;
   onRefresh: () => void;
+  onEdit: (a: CreditAccount) => void;
 }) {
   const { profile } = useAuth();
   const ownerName = profile?.username ?? "Bar";
@@ -455,7 +471,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                 {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
               </div>
 
-              {/* Right: two big square boxes */}
+              {/* Right: amount box + Bill + Edit stacked */}
               <div className="flex items-stretch gap-2 shrink-0">
                 {/* Amount owed box */}
                 <div className="w-20 h-16 rounded-2xl flex items-center justify-center border border-red-400/30"
@@ -465,15 +481,25 @@ function OpenedTab({ accounts, loading, onRefresh }: {
                   </span>
                 </div>
 
-                {/* Bill button box */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition shrink-0"
-                  style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
-                >
-                  <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
-                  <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
-                </button>
+                {/* Bill + Edit stacked */}
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition shrink-0"
+                    style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
+                  >
+                    <FileDown className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                    <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>Bill</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(a); }}
+                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition shrink-0"
+                    style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
+                  >
+                    <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                    <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>Edit</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -643,7 +669,7 @@ function OpenedTab({ accounts, loading, onRefresh }: {
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]; loading: boolean; onRefresh: () => void }) {
+function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditAccount[]; loading: boolean; onRefresh: () => void; onEdit: (a: CreditAccount) => void }) {
   const { profile } = useAuth();
   const ownerName = profile?.username ?? "Bar";
   const [expanded, setExpanded]   = useState<string | null>(null);
@@ -708,7 +734,7 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
                 {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
               </div>
 
-              {/* Right: Bill box + Delete box */}
+              {/* Right: Bill + Delete + Edit stacked */}
               <div className="flex items-stretch gap-2 shrink-0">
                 {/* Bill button box */}
                 <button
@@ -720,15 +746,25 @@ function ClosedTab({ accounts, loading, onRefresh }: { accounts: CreditAccount[]
                   <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
                 </button>
 
-                {/* Delete button box */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
-                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
-                >
-                  <Trash2 className="h-5 w-5 text-destructive" />
-                  <span className="text-xs font-black text-destructive">Delete</span>
-                </button>
+                {/* Delete + Edit stacked */}
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
+                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition"
+                    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <span className="text-[11px] font-black text-destructive">Delete</span>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(a); }}
+                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition"
+                    style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
+                  >
+                    <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                    <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>Edit</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -922,7 +958,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
           )}
         </div>
 
-        <Button type="submit" disabled={busy || !name.trim()} className="w-full h-12 font-black text-base"
+        <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)} className="w-full h-12 font-black text-base"
           style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
           {busy ? "Creating…" : "Create Account"}
         </Button>
@@ -960,17 +996,24 @@ function NumPad({ value, onChange, maxLen = 20, onDone }: {
 function ContactNumPad({ value, onChange, onDone }: {
   value: string; onChange: (v: string) => void; onDone: () => void;
 }) {
+  const digits = value.replace("-", "");
+  const complete = digits.length === 7;
   const handle = (k: string) => {
     if (k === "⌫") {
-      const digits = value.replace("-", "").slice(0, -1);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = value.replace("-", "").slice(0, -1);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     } else {
-      const digits = (value.replace("-", "") + k).slice(0, 7);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = (value.replace("-", "") + k).slice(0, 7);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
   return (
     <div className="mt-2 space-y-1.5">
+      {!complete && digits.length > 0 && (
+        <p className="text-xs font-semibold text-amber-400 text-center">
+          {7 - digits.length} more digit{7 - digits.length !== 1 ? "s" : ""} needed
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-1.5">
         {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
           k === "" ? <div key={i} /> :
@@ -979,8 +1022,9 @@ function ContactNumPad({ value, onChange, onDone }: {
           >{k}</button>
         )}
       </div>
-      <button type="button" onClick={onDone}
-        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
+      <button type="button" onClick={() => { if (complete) onDone(); }}
+        className={`w-full h-11 rounded-xl font-black text-sm transition ${complete ? "active:scale-95 text-primary-foreground" : "opacity-30 cursor-not-allowed text-muted-foreground bg-muted/50"}`}
+        style={complete ? { background: "var(--gradient-hero)" } : {}}>
         Done
       </button>
     </div>
@@ -1022,6 +1066,111 @@ function AlphaKeyboard({ value, onChange, onDone }: {
           className="w-20 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition">
           Done
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Customer Modal ────────────────────────────────────────────────────────
+function EditCustomerModal({ account, onClose, onSaved }: {
+  account: CreditAccount;
+  onClose: () => void;
+  onSaved: (updated: CreditAccount) => void;
+}) {
+  const parseContact = (c: string | null) => c ? c.replace(/^868-?/, "") : "";
+  const parseIdType = (n: string | null): "drivers_permit" | "national_id" =>
+    n?.startsWith("DP:") ? "drivers_permit" : "national_id";
+  const parseIdNumber = (n: string | null) => n ? n.replace(/^(DP|NID):\s*/, "") : "";
+
+  const [name, setName] = useState(account.full_name);
+  const [contact, setContact] = useState(parseContact(account.contact_number));
+  const [idType, setIdType] = useState<"drivers_permit" | "national_id">(parseIdType(account.id_number));
+  const [idNumber, setIdNumber] = useState(parseIdNumber(account.id_number));
+  const [busy, setBusy] = useState(false);
+  const [activeField, setActiveField] = useState<null | "name" | "idNumber" | "contact">(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("credit_accounts")
+      .update({
+        full_name: name.trim(),
+        contact_number: contact.trim() ? "868-" + contact.trim() : null,
+        id_number: idNumber.trim() ? `${idType === "drivers_permit" ? "DP" : "NID"}: ${idNumber.trim()}` : null,
+      })
+      .eq("id", account.id)
+      .select()
+      .single();
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Customer updated");
+    onSaved(data as CreditAccount);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{ background: "var(--gradient-card)" }}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
+              <Pencil className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="font-black text-base">Edit Customer</h2>
+              <p className="text-xs text-muted-foreground">Update account details</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 overflow-y-auto flex-1">
+          <form onSubmit={submit} className="space-y-3">
+            <div>
+              <Label>Full Name *</Label>
+              <button type="button" onClick={() => setActiveField(f => f === "name" ? null : "name")}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                <span className={`text-sm font-black ${name ? "text-foreground" : "text-muted-foreground"}`}>{name || "e.g. John Smith"}</span>
+              </button>
+              {activeField === "name" && <AlphaKeyboard value={name} onChange={setName} onDone={() => setActiveField(null)} />}
+            </div>
+            <div>
+              <Label>ID Type</Label>
+              <select value={idType} onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
+                <option value="drivers_permit">Driver's Permit</option>
+                <option value="national_id">National ID</option>
+              </select>
+            </div>
+            <div>
+              <Label>ID Number</Label>
+              <button type="button" onClick={() => setActiveField(f => f === "idNumber" ? null : "idNumber")}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                <span className={`text-sm font-black ${idNumber ? "text-foreground" : "text-muted-foreground"}`}>{idNumber || "e.g. 00000000"}</span>
+              </button>
+              {activeField === "idNumber" && <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />}
+            </div>
+            <div>
+              <Label>Contact Number</Label>
+              <div className="flex items-center mt-1">
+                <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                <button type="button" onClick={() => setActiveField(f => f === "contact" ? null : "contact")}
+                  className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
+                  <span className={`text-sm font-black ${contact ? "text-foreground" : "text-muted-foreground"}`}>{contact || "XXX-XXXX"}</span>
+                </button>
+              </div>
+              {activeField === "contact" && <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />}
+            </div>
+            <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)}
+              className="w-full h-12 font-black text-base"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : "Save Changes"}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
