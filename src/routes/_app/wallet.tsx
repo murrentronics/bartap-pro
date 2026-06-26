@@ -1373,7 +1373,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 const shotsRevenue = parseFloat((sub2.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const diff = shotsRevenue - bottlePrice;
                 const hasNumbers = !isNaN(bottlePrice) && !isNaN(shotsRevenue) && (bottlePrice > 0 || shotsRevenue > 0);
-                const bottleCashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
+                const bottleByPart = noteParts.find(p => p.startsWith("By:") || p.startsWith("Cashier:")) ?? "";
+                const bottleCashierName = bottleByPart.replace(/^(By:|Cashier:)\s*/, "").trim();
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
@@ -1388,8 +1389,11 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                           {diff >= 0 ? `Gain: +$${fmt(diff)}` : `Loss: -$${Math.abs(diff).toFixed(2)}`}
                         </div>
                       )}
+                      {bottleCashierName && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Closed by: {bottleCashierName}</div>
+                      )}
                     </div>
-                    {bottleCashierPart && <CashierBadge />}
+                    {bottleCashierName && <CashierBadge />}
                   </div>
                 );
               }
@@ -1405,7 +1409,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 const packRevenue  = parseFloat((sub3.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
                 const diff       = packRevenue - packPrice;
                 const hasNumbers = !isNaN(packPrice) && !isNaN(packRevenue) && (packPrice > 0 || packRevenue > 0);
-                const packCashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
+                const packCashierPart = noteParts.find(p => p.startsWith("By:") || p.startsWith("Cashier:")) ?? "";
+                const packCashierName = packCashierPart.replace(/^(By:|Cashier:)\s*/, "").trim();
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.05 145 / 0.35)" }}>
@@ -1421,8 +1426,11 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                           {diff >= 0 ? `Gain: +$${fmt(diff)}` : `Loss: -$${Math.abs(diff).toFixed(2)}`}
                         </div>
                       )}
+                      {packCashierName && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Closed by: {packCashierName}</div>
+                      )}
                     </div>
-                    {packCashierPart && <CashierBadge />}
+                    {packCashierName && <CashierBadge />}
                   </div>
                 );
               }

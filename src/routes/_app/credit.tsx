@@ -331,40 +331,44 @@ function OpenedTab({
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="w-full flex items-center justify-between p-4 rounded-2xl border border-border text-left"
+          className="w-full rounded-2xl border border-border text-left overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          {/* Left — tap to pay */}
-          <button className="flex-1 min-w-0 text-left active:scale-[0.98] transition" onClick={() => onSelect(a)}>
-            <p className="font-black text-base">{a.full_name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-            {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-            {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-          </button>
+          {/* Card header — name info */}
+          <div className="px-4 pt-3 pb-2 border-b border-border/40">
+            <button className="w-full text-left active:scale-[0.98] transition" onClick={() => onSelect(a)}>
+              <p className="font-black text-base truncate">{a.full_name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+            </button>
+          </div>
 
-          {/* Right — balance + print bill + edit */}
-          <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
+          {/* Footer row — balance on left, Bill + Edit stacked on right */}
+          <div className="flex items-center justify-between px-4 py-2.5">
             <button className="flex items-center gap-1.5 active:scale-95 transition" onClick={() => onSelect(a)}>
               <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button
-              onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
-              disabled={printing === a.id}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
-            >
-              {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-              Bill
-            </button>
-            <button
-              onClick={() => onEdit(a)}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
-              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
-            >
-              <Pencil className="h-3 w-3" />
-              Edit
-            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                disabled={printing === a.id}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
+                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+              >
+                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                Bill
+              </button>
+              <button
+                onClick={() => onEdit(a)}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
+                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       ))}
@@ -390,34 +394,49 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
       {accounts.map((a) => (
         <div
           key={a.id}
-          className="flex items-center justify-between p-4 rounded-2xl border border-border"
+          className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--gradient-card)" }}
         >
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-base">{a.full_name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-            {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
-            {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
-          </div>
-          <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
-            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
-            <button
-              onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
-              disabled={printing === a.id}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
-            >
-              {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-              Bill
-            </button>
+          {/* Card header — name + edit pencil button */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/40">
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-base truncate">{a.full_name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+              {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
+              {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
+            </div>
             <button
               onClick={() => onEdit(a)}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
-              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+              className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ml-2 active:scale-90 transition"
+              style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
+              title="Edit customer"
             >
-              <Pencil className="h-3 w-3" />
-              Edit
+              <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
             </button>
+          </div>
+
+          {/* Footer row — settled badge + Bill + Edit stacked */}
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                disabled={printing === a.id}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
+                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+              >
+                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                Bill
+              </button>
+              <button
+                onClick={() => onEdit(a)}
+                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
+                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       ))}

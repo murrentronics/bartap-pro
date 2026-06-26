@@ -81,20 +81,16 @@ export default function RegisterPage() {
   const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
   const [barEditMode, setBarEditMode] = useState(false);
   const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
-  const barLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
   const barEditModeRef = useRef(false);
   const barSortMapRef = useRef<Record<string, number>>({});
   const barOrderedRef = useRef<Product[]>([]);
   const barDraggingRef = useRef<string | null>(null);
+  const barMoveRafRef = useRef<number | null>(null);
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
   // Always-current cart length ref so setTimeout callbacks see the live value
   const cartLengthRef = useRef(0);
-
-  useEffect(() => () => {
-    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
-  }, []);
 
   const loadBarSort = async () => {
     const pid = profileIdRef.current;
@@ -147,7 +143,13 @@ export default function RegisterPage() {
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item);
     barOrderedRef.current = next;
-    setBarOrdered(next);
+    // Throttle setState to avoid re-rendering grid on every pixel
+    if (!barMoveRafRef.current) {
+      barMoveRafRef.current = requestAnimationFrame(() => {
+        barMoveRafRef.current = null;
+        setBarOrdered([...barOrderedRef.current]);
+      });
+    }
   };
 
   const handleBarTouchEnd = () => {
@@ -158,31 +160,18 @@ export default function RegisterPage() {
     setBarDraggingId(null);
   };
 
-  const barStartLongPress = (e: React.TouchEvent) => {
+  const barEnterEditMode = () => {
     if (barEditModeRef.current) return;
-    // Block if cart has items — checked via ref so the 600ms callback also sees live value
-    if (cartLengthRef.current > 0) return;
-    if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
-    barLongPressTimer.current = setTimeout(() => {
-      barLongPressTimer.current = null;
-      // Double-check cart is still empty when the timer fires
-      if (cartLengthRef.current > 0) return;
-      barEditModeRef.current = true;
-      setBarEditMode(true);
-    }, 600);
-  };
-  const barCancelLongPress = () => {
-    if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
+    barEditModeRef.current = true;
+    setBarEditMode(true);
   };
 
   const handleBarDone = () => {
-    document.body.style.touchAction = "";
-    document.documentElement.style.touchAction = "";
+    if (barMoveRafRef.current) { cancelAnimationFrame(barMoveRafRef.current); barMoveRafRef.current = null; }
     barEditModeRef.current = false;
     setBarEditMode(false);
     barDraggingRef.current = null;
     setBarDraggingId(null);
-    // Order already saved on each drop — no reload needed
   };
 
   // Load bar sort on mount and sync barOrdered when products/category/sort changes
@@ -199,18 +188,9 @@ export default function RegisterPage() {
     setBarDraggingId(null);
   }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // If items get added to cart while bar edit mode is active, cancel it immediately
+  // Track cart length via ref so handlers always see live value
   useEffect(() => {
     cartLengthRef.current = cart.length;
-    if (cart.length > 0 && barEditModeRef.current) {
-      if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
-      document.body.style.touchAction = "";
-      document.documentElement.style.touchAction = "";
-      barEditModeRef.current = false;
-      setBarEditMode(false);
-      barDraggingRef.current = null;
-      setBarDraggingId(null);
-    }
   }, [cart.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
@@ -489,11 +469,7 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 // Reset bar edit state when switching category
-                if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
-                barEditModeRef.current = false;
-                setBarEditMode(false);
-                barDraggingRef.current = null;
-                setBarDraggingId(null);
+                handleBarDone();
                 setCategory(cat.value);
                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
               }}
@@ -566,9 +542,9 @@ export default function RegisterPage() {
             {barEditMode && (
               <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
                 style={{ background: "oklch(0.20 0.05 60)" }}>
-                <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
+                <span className="text-xs font-black text-amber-400">Drag items to reorder</span>
                 <button onClick={handleBarDone}
-                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
+                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
                   Done
                 </button>
               </div>
@@ -587,27 +563,10 @@ export default function RegisterPage() {
                   data-bar-id={p.id}
                   className="relative"
                   onTouchStart={(e) => {
-                    // Block Android WebView long-press haptic vibration entirely
-                    e.preventDefault();
-                    barCancelLongPress();
-                    if (barEditModeRef.current) { handleBarTouchStart(e, p.id); return; }
-                    if (cartLengthRef.current > 0) return; // cart has items — no sort mode, tap handled in onTouchEnd
-                    barStartLongPress(e);
+                    if (barEditModeRef.current) handleBarTouchStart(e, p.id);
                   }}
                   onTouchMove={handleBarTouchMove}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    const timerWasRunning = !!barLongPressTimer.current;
-                    barCancelLongPress();
-                    handleBarTouchEnd();
-                    // Short tap (timer was still running = never fired long-press) → add to cart
-                    // Also handle when cart already has items (timer never started)
-                    if (!barEditModeRef.current && !outOfStock) {
-                      if (timerWasRunning || cartLengthRef.current > 0) {
-                        addToCart(p);
-                      }
-                    }
-                  }}
+                  onTouchEnd={handleBarTouchEnd}
                   onContextMenu={(e) => e.preventDefault()}
                   style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
                 >
@@ -650,7 +609,6 @@ export default function RegisterPage() {
                     {/* Red X remove button -- top-right */}
                     {inCart && (
                       <button
-                        onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); removeItem(p.id); }}
                         onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
                         className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
                         style={{ background: "#dc2626" }}
@@ -664,7 +622,6 @@ export default function RegisterPage() {
                       <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
                         style={{ background: "rgba(0,0,0,0.75)" }}>
                         <button
-                          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); dec(p.id); }}
                           onClick={(e) => { e.stopPropagation(); dec(p.id); }}
                           className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
                           style={{ background: "#ef4444" }}
@@ -707,6 +664,28 @@ export default function RegisterPage() {
               );
             })}
           </div>
+          {/* Footer — Sort Item Order button, only for owner, only when cart is empty */}
+          {profile?.role === "owner" && cart.length === 0 && (
+            <div className="pt-3 pb-1">
+              {barEditMode ? (
+                <button
+                  onClick={handleBarDone}
+                  className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border border-amber-500/40"
+                  style={{ background: "oklch(0.20 0.05 60)", color: "#fbbf24" }}
+                >
+                  ✓ Done Sorting
+                </button>
+              ) : (
+                <button
+                  onClick={barEnterEditMode}
+                  className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border"
+                  style={{ background: "rgba(251,146,60,0.08)", color: "var(--primary)", borderColor: "rgba(251,146,60,0.30)" }}
+                >
+                  ⇅ Sort Item Order
+                </button>
+              )}
+            </div>
+          )}
           </div>
             )}
           </>
