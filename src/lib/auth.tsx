@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 
 export type UserStatus = "pending" | "approved" | "suspended" | "expelled";
@@ -121,6 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) await loadProfile(session.user.id);
     },
     signOut: async () => {
+      // Remove push notification listeners before signing out to prevent
+      // the cleanup race on Android that causes the brown screen crash
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { PushNotifications } = await import("@capacitor/push-notifications");
+          await PushNotifications.removeAllListeners();
+        } catch { /* ignore — listeners may not be registered */ }
+      }
       await supabase.auth.signOut();
     },
   };

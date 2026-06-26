@@ -4,6 +4,7 @@
  */
 
 import type { jsPDF } from "jspdf";
+import { Capacitor } from "@capacitor/core";
 
 const BRAND_ORANGE = [232, 146, 42] as const;
 const PAGE_H = 297;
@@ -13,17 +14,23 @@ export const RM = 195;  // right margin
 /** Fetch logo.png and return a base64 data URL for jsPDF */
 async function getLogoDataUrl(): Promise<string | null> {
   try {
-    const res = await fetch("/logo.png");
+    // On native Android the WebView serves assets from the Capacitor URL scheme,
+    // not from plain "/". Build the correct URL so the fetch doesn't hang/crash.
+    const logoUrl = Capacitor.isNativePlatform()
+      ? Capacitor.convertFileSrc("public/logo.png")   // maps to capacitor://localhost/logo.png
+      : "/logo.png";
+
+    const res = await fetch(logoUrl);
     if (!res.ok) return null;
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
+      reader.onerror  = () => resolve(null);
       reader.readAsDataURL(blob);
     });
   } catch {
-    return null;
+    return null;  // logo is optional — PDF still builds without it
   }
 }
 

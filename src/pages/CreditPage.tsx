@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Pencil,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
@@ -134,21 +134,28 @@ function BillModal({ account, ownerName, onClose }: {
 
   const handleDownload = async () => {
     setBusy("download");
-    const b64 = await buildBillPdf(account, ownerName);
-    if (b64) {
-      await downloadPdf(filename, b64);
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 5000);
+    try {
+      const b64 = await buildBillPdf(account, ownerName);
+      if (b64) {
+        await downloadPdf(filename, b64);
+        setDownloaded(true);
+        setTimeout(() => setDownloaded(false), 5000);
+      }
+    } catch (e: any) {
+      // Don't crash if user dismisses share sheet or any native error occurs
+      if (!String(e?.message ?? "").includes("cancel")) {
+        toast.error("Download failed: " + (e?.message ?? "unknown"));
+      }
     }
     setBusy(null);
   };
 
   const handleShare = async () => {
     setBusy("share");
-    const b64 = await buildBillPdf(account, ownerName);
-    if (!b64) { setBusy(null); return; }
-
     try {
+      const b64 = await buildBillPdf(account, ownerName);
+      if (!b64) { setBusy(null); return; }
+
       if (Capacitor.isNativePlatform()) {
         const { Filesystem, Directory } = await import("@capacitor/filesystem");
         const { Share } = await import("@capacitor/share");
@@ -160,7 +167,6 @@ function BillModal({ account, ownerName, onClose }: {
           directory: Directory.Cache,
         });
 
-        const rawNum = (account.contact_number ?? "").replace(/\D/g, "");
         const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
 
         await Share.share({

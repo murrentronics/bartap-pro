@@ -55,7 +55,8 @@ export function usePushNotifications(ownerId: string | null | undefined) {
     register();
 
     return () => {
-      // Clean up listeners on unmount
+      // Listeners are cleaned up by signOut() before logout.
+      // This is a safety net for non-logout unmounts (e.g. dev hot-reload).
       if (Capacitor.isNativePlatform()) {
         import("@capacitor/push-notifications")
           .then(({ PushNotifications }) => PushNotifications.removeAllListeners())
