@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
-const SETUP_FEE  = 250;
+const SETUP_FEE  = 200;
 const TABLET_FEE = 600;
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
 
@@ -117,7 +117,7 @@ export default function BillingPage() {
     const amount    = selectedPlan.amount + addons;
 
     const notesParts: string[] = [];
-    if (isFirst && includeSetup)  notesParts.push("Includes $250 agent setup & training visit");
+    if (isFirst && includeSetup)  notesParts.push("Includes $200 agent setup & training visit");
     if (!isRenewal && includeTablet) notesParts.push("Includes $600 Android tablet pre-installed");
 
     let dueDate = new Date();
@@ -452,7 +452,7 @@ export default function BillingPage() {
                   <p className="text-xs text-gray-400 mt-0.5 mb-4">Billed annually</p>
 
                   <ul className="space-y-2 flex-1 mb-5">
-                    {["Register / POS system", "Credit account management", "Cashier management", "Wallet & sales history", "Music player", "Annual renewal $750 TT"].map(f => (
+                    {["Register / POS system", "Credit account management", "Cashier management", "Wallet & sales history", "Music player", "Annual renewal $800 TT"].map(f => (
                       <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                         <Check className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                         {f}
@@ -527,7 +527,7 @@ export default function BillingPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="font-black text-gray-900 text-sm">Agent Setup &amp; Training Visit</p>
-                <span className="font-black text-orange-700 text-sm">+$250 TT</span>
+                <span className="font-black text-orange-700 text-sm">+$200 TT</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">An agent visits your venue to install, configure and train your team on-site.</p>
             </div>
@@ -548,7 +548,7 @@ export default function BillingPage() {
           {/* Total */}
           <div className="rounded-2xl bg-white border border-gray-200 p-4 space-y-2 shadow-sm">
             <div className="flex justify-between text-sm text-gray-600"><span>{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
-            {includeSetup   && <div className="flex justify-between text-sm text-gray-600"><span>Agent setup &amp; training</span><span className="font-bold">$250 TT</span></div>}
+            {includeSetup   && <div className="flex justify-between text-sm text-gray-600"><span>Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
             {includeTablet  && <div className="flex justify-between text-sm text-gray-600"><span>Android tablet</span><span className="font-bold">$600 TT</span></div>}
             <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2"><span>Total due now</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span></div>
           </div>
@@ -610,7 +610,7 @@ export default function BillingPage() {
             <h3 className="font-black text-gray-900">Order Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
-              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Agent setup &amp; training</span><span className="font-bold">$250 TT</span></div>}
+              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
               {includeTablet && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Android tablet</span><span className="font-bold">$600 TT</span></div>}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
                 <span>Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
