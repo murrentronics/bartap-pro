@@ -711,6 +711,11 @@ function CreateTab({
               {contact || "XXX-XXXX"}
             </button>
           </div>
+          {contact.replace("-", "").length > 0 && contact.replace("-", "").length < 7 && (
+            <p className="text-xs font-semibold text-amber-400 mt-1">
+              {7 - contact.replace("-", "").length} more digit{7 - contact.replace("-", "").length !== 1 ? "s" : ""} needed
+            </p>
+          )}
           {activeField === "contact" && (
             <CreditContactPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
           )}
@@ -718,7 +723,7 @@ function CreateTab({
 
         <Button
           type="submit"
-          disabled={busy || !name.trim() || (contact.trim() !== "" && contact.replace("-", "").length < 7)}
+          disabled={busy || !name.trim() || (contact.replace("-", "").length > 0 && contact.replace("-", "").length < 7)}
           className="w-full h-12 font-black text-base"
           style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
         >
