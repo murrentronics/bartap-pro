@@ -350,7 +350,7 @@ export default function BillingPage() {
                       <Gamepad2 className="h-5 w-5 text-orange-700" />
                       <div>
                         <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
-                        <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $550 TT/yr separate</p>
+                        <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $600 TT/yr separate</p>
                       </div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -608,9 +608,9 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-5 space-y-3 shadow-sm">
             <h3 className="font-black text-gray-900">Order Summary</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="font-black text-gray-900">{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
-              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
-              {includeTablet && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Android tablet</span><span className="font-bold">$600 TT</span></div>}
+              <div className="flex justify-between"><span className="font-black text-gray-900">{selectedPlan.name}</span><span className="font-bold text-gray-900">${selectedPlan.amount.toFixed(0)} TT</span></div>
+              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Agent setup &amp; training</span><span className="font-bold text-gray-900">$200 TT</span></div>}
+              {includeTablet && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Android tablet</span><span className="font-bold text-gray-900">$600 TT</span></div>}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
                 <span className="text-gray-900">Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
               </div>

@@ -1588,41 +1588,69 @@ export default function MachinesPage() {
     return (
       <div className="py-3 space-y-4">
         <h1 className="text-2xl font-black">Machines</h1>
+
+        {/* ── Hero card ─────────────────────────────────────────────────── */}
         <div className="rounded-3xl border border-amber-500/30 overflow-hidden"
           style={{ background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)" }}>
-          <div className="px-6 pt-8 pb-6 text-center space-y-4">
+          <div className="px-6 pt-8 pb-6 text-center space-y-3">
             <div className="h-16 w-16 rounded-2xl flex items-center justify-center mx-auto"
               style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.4)" }}>
               <Gamepad2 className="h-8 w-8" style={{ color: "var(--primary)" }} />
             </div>
+            {/* Active badge */}
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider"
+              style={{ background: "rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.9)", border: "1px solid rgba(251,146,60,0.35)" }}>
+              Basic Plan — Active
+            </span>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "rgba(251,146,60,0.6)" }}>
-                Premium Feature
-              </p>
               <h2 className="text-xl font-black text-white">Machines Tracker</h2>
               <p className="text-sm text-white/50 mt-2 leading-relaxed">
-                Track payouts, income and profit across all your gaming machines. Upgrade to the Premium Plan to unlock this feature.
+                Track payouts, income and profit across all your gaming machines. Upgrade to unlock this feature.
               </p>
             </div>
-            <div className="rounded-2xl p-4 text-left space-y-2"
-              style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)" }}>
-              <p className="text-xs font-black text-white/70 uppercase tracking-wider">Option 1 — Machines Add-on</p>
-              <p className="text-2xl font-black" style={{ color: "var(--primary)" }}>$550 TT/yr</p>
-              <p className="text-xs text-white/50">Add Machines Tracker to your existing Basic plan. You'll have two separate subscriptions.</p>
-            </div>
-            <div className="rounded-2xl p-4 text-left space-y-2 border border-amber-500/30"
-              style={{ background: "rgba(251,146,60,0.05)" }}>
-              <p className="text-xs font-black text-amber-400/80 uppercase tracking-wider">Option 2 — Upgrade to Premium</p>
-              <p className="text-2xl font-black text-amber-400">$1,300 TT/yr</p>
-              <p className="text-xs text-white/50">Replace your Basic plan with one Premium subscription covering everything.</p>
-            </div>
+          </div>
+        </div>
+
+        {/* ── Upgrade section ───────────────────────────────────────────── */}
+        <div className="mt-6 space-y-3">
+          <p className="text-xs font-black uppercase tracking-widest px-1"
+            style={{ color: "rgba(251,146,60,0.7)" }}>
+            Upgrade
+          </p>
+
+          {/* Option 1 — Machines Add-on */}
+          <div>
+            <p className="text-sm font-black text-white mb-2 px-1">Machines Add-on</p>
             <a href="/billing"
-              className="block w-full py-4 rounded-2xl font-black text-base text-black active:scale-[0.98] transition text-center"
-              style={{ background: "var(--gradient-hero)" }}>
-              Go to Billing →
+              className="block rounded-2xl p-4 text-left space-y-2 active:scale-[0.98] transition"
+              style={{
+                background: "rgba(251,146,60,0.08)",
+                border: "1.5px solid rgba(251,146,60,0.6)",
+                boxShadow: "0 0 18px 2px rgba(251,146,60,0.25)",
+              }}>
+              <p className="text-2xl font-black" style={{ color: "var(--primary)" }}>$600 TT/yr</p>
+              <p className="text-xs text-white/60">Add Machines Tracker to your existing Basic plan. You'll have two separate subscriptions.</p>
+              <p className="text-xs font-black mt-1" style={{ color: "var(--primary)" }}>Tap to go to Billing →</p>
+            </a>
+          </div>
+
+          {/* Option 2 — Upgrade to Premium */}
+          <div>
+            <p className="text-sm font-black text-white mb-2 px-1">Upgrade to Premium</p>
+            <a href="/billing"
+              className="block rounded-2xl p-4 text-left space-y-2 active:scale-[0.98] transition"
+              style={{
+                background: "rgba(251,146,60,0.05)",
+                border: "1.5px solid rgba(251,146,60,0.6)",
+                boxShadow: "0 0 18px 2px rgba(251,146,60,0.25)",
+              }}>
+              <p className="text-2xl font-black text-amber-400">$1,300 TT/yr</p>
+              <p className="text-xs text-white/60">Replace your Basic plan with one Premium subscription covering everything.</p>
+              <p className="text-xs font-black text-amber-400 mt-1">Tap to go to Billing →</p>
             </a>
           </div>
         </div>
+
       </div>
     );
   }
