@@ -380,9 +380,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
-    // Block payout if remaining float is 0 or less
-    if (tab === "payout" && remainingFloat !== null && remainingFloat <= 0) {
-      toast.error("Float is empty — set a new float before recording a payout");
+    // Block payout if the entered amount exceeds the remaining float
+    if (tab === "payout" && remainingFloat !== null && val > remainingFloat) {
+      toast.error(`Payout $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
       return;
     }
 
@@ -780,13 +780,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 )}
                 {/* Save Payout button — right */}
                 {(() => {
-                  const floatEmpty = remainingFloat !== null && remainingFloat <= 0;
+                  const enteredVal = parseFloat(amount) || 0;
+                  const overFloat = remainingFloat !== null && enteredVal > remainingFloat && enteredVal > 0;
                   return (
-                    <Button onClick={handleSave} disabled={busy || !amount || floatEmpty}
+                    <Button onClick={handleSave} disabled={busy || !amount || overFloat}
                       className="flex-1 h-14 font-black text-base rounded-2xl"
-                      style={{ background: floatEmpty ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-                      title={floatEmpty ? "Float is empty — set a new float first" : undefined}>
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : floatEmpty ? "Float Empty" : "Save Payout"}
+                      style={{ background: overFloat ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                      title={overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : undefined}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : overFloat ? "Exceeds Float" : "Save Payout"}
                     </Button>
                   );
                 })()}

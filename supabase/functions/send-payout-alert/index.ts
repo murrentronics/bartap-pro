@@ -126,14 +126,9 @@ Deno.serve(async (req) => {
       return new Response("Not a payout", { status: 200 });
     }
 
-    const ownerId  = record.owner_id as string;
+    const ownerId   = record.owner_id  as string;
     const cashierId = record.cashier_id as string;
-    const amount   = Number(record.amount);
-
-    // Only alert for cashier payouts — not owner's own entries
-    if (cashierId === ownerId) {
-      return new Response("Owner payout — skipping", { status: 200 });
-    }
+    const amount    = Number(record.amount);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -150,10 +145,13 @@ Deno.serve(async (req) => {
     if (!alertSettings?.enabled) return new Response("Alerts disabled", { status: 200 });
     if (amount < Number(alertSettings.threshold)) return new Response("Below threshold", { status: 200 });
 
-    // Get cashier name
-    const { data: cashier } = await supabase
-      .from("profiles").select("username").eq("id", cashierId).single();
-    const cashierName = cashier?.username ?? "Cashier";
+    // Get cashier name — if owner recorded it themselves, label as "You"
+    let cashierName = "You";
+    if (cashierId !== ownerId) {
+      const { data: cashier } = await supabase
+        .from("profiles").select("username").eq("id", cashierId).single();
+      cashierName = cashier?.username ?? "Cashier";
+    }
 
     // Get owner's device tokens
     const { data: tokens } = await supabase
@@ -161,7 +159,9 @@ Deno.serve(async (req) => {
     if (!tokens?.length) return new Response("No tokens", { status: 200 });
 
     const title = `⚠️ Payout Alert — ${machineName}`;
-    const body  = `${cashierName} paid out $${amount.toFixed(2)} TT — exceeds your $${Number(alertSettings.threshold).toLocaleString()} TT alert.`;
+    const body  = cashierId === ownerId
+      ? `You paid out $${amount.toFixed(2)} TT — exceeds your $${Number(alertSettings.threshold).toLocaleString()} TT alert.`
+      : `${cashierName} paid out $${amount.toFixed(2)} TT — exceeds your $${Number(alertSettings.threshold).toLocaleString()} TT alert.`;
     const data  = {
       type: "payout_alert",
       machine_name: machineName,

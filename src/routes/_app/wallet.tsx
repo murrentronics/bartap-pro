@@ -1148,7 +1148,16 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     ...allTxs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts);
 
-  const total = allFlat.length;
+  // Cashier orders are displayed via their cashier_sale wallet_transaction — exclude them
+  // from the count so each sale only counts once, not twice.
+  const allFlatVisible = allFlat.filter((rec) => {
+    if (rec.kind === "order") {
+      return (rec.data as any).cashier_id === profile.id;
+    }
+    return true;
+  });
+
+  const total = allFlatVisible.length;
   const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const flatRecords = allFlat.slice(safePage * TX_PAGE_SIZE, safePage * TX_PAGE_SIZE + TX_PAGE_SIZE);
