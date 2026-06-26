@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Plus, Loader2, ChevronLeft, Trash2, Download, X,
   TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell,
@@ -227,13 +228,13 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                             <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
                           </button>
                         )}
-                        {isNewest && !deletingId && isPayout && !isCashier && (
+                        {isNewest && !deletingId && isPayout && (
                           <button onClick={() => onDelete(e.id)}
                             className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0">
                             <Trash2 className="h-3.5 w-3.5 text-white" />
                           </button>
                         )}
-                        {isNewest && deletingId === e.id && isPayout && !isCashier && (
+                        {isNewest && deletingId === e.id && isPayout && (
                           <div className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50">
                             <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
                           </div>
@@ -269,6 +270,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [downloading, setDownloading] = useState(false);
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
   const [deletingMachine, setDeletingMachine] = useState(false);
+  const confirm = useConfirm();
   // Session anchor — ISO timestamp of the last income entry (machine cleared).
   const [sessionAnchor, setSessionAnchor] = useState<string | null>(null);
 
@@ -377,6 +379,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleSave = async () => {
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
+
+    // Confirm before saving a payout
+    if (tab === "payout") {
+      const ok = await confirm({
+        title: "Save Payout?",
+        description: `Confirm saving a payout of $${val.toFixed(2)} for ${machine.name}.`,
+      });
+      if (!ok) return;
+    }
+
     setBusy(true);
     const now = new Date();
 
@@ -701,7 +713,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               </>
             )}
 
-            {/* Proof photo — payout only, optional */}
+            {/* Proof photo — payout only, camera view */}
             {tab === "payout" && (
               <div>
                 <canvas ref={canvasRef} className="hidden" />
@@ -736,22 +748,44 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                       <span className="text-xs font-bold text-green-400">Photo captured</span>
                     </div>
                   </div>
-                ) : (
-                  <button type="button" onClick={openCam}
-                    className="w-full rounded-2xl py-3 flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-dashed"
-                    style={{ borderColor: "oklch(0.38 0.08 60)", color: "oklch(0.65 0.12 65)", background: "oklch(0.18 0.03 60 / 0.4)" }}>
-                    <Camera className="h-4 w-4" />
-                    Take Proof Photo <span className="text-xs font-normal opacity-60">(optional)</span>
-                  </button>
-                )}
+                ) : null}
               </div>
             )}
 
-            <Button onClick={handleSave} disabled={busy || !amount}
-              className="w-full h-12 font-black text-base"
-              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : tab === "payout" ? "Save Payout" : "Save"}
-            </Button>
+            {/* Proof photo + Save — side by side on payout tab */}
+            {tab === "payout" ? (
+              <div className="flex gap-2">
+                {/* Take Proof Photo button — left */}
+                {!camOpen && !proofPreview && (
+                  <button type="button" onClick={openCam}
+                    className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-dashed"
+                    style={{ borderColor: "oklch(0.38 0.08 60)", color: "oklch(0.65 0.12 65)", background: "oklch(0.18 0.03 60 / 0.4)" }}>
+                    <Camera className="h-4 w-4" />
+                    Proof Photo
+                  </button>
+                )}
+                {proofPreview && (
+                  <button type="button" onClick={() => { setProofFile(null); setProofPreview(null); }}
+                    className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-green-500/40"
+                    style={{ background: "oklch(0.18 0.04 145 / 0.3)", color: "#4ade80" }}>
+                    <Camera className="h-4 w-4" />
+                    ✓ Photo
+                  </button>
+                )}
+                {/* Save Payout button — right */}
+                <Button onClick={handleSave} disabled={busy || !amount}
+                  className="flex-1 h-14 font-black text-base rounded-2xl"
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Payout"}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleSave} disabled={busy || !amount}
+                className="w-full h-12 font-black text-base"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+            )}
           </div>
         )}
 
@@ -1086,7 +1120,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
       )}
 
-      {!editMode && (
+      {!editMode && !isCashier && (
         <p className="text-xs text-center" style={{ color: "rgba(180,160,130,0.6)" }}>
           Hold down any screen to sort order
         </p>

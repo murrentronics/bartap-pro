@@ -664,8 +664,8 @@ export default function RegisterPage() {
               );
             })}
           </div>
-          {/* Footer — Sort Item Order button, only for owner, only when cart is empty */}
-          {profile?.role === "owner" && cart.length === 0 && (
+          {/* Footer — Sort Item Order button, owner and cashier, only when cart is empty */}
+          {cart.length === 0 && (
             <div className="pt-3 pb-1">
               {barEditMode ? (
                 <button
