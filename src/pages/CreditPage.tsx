@@ -472,32 +472,32 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
               </div>
 
               {/* Right: amount box + Bill + Edit stacked */}
-              <div className="flex items-stretch gap-2 shrink-0">
+              <div className="flex items-start gap-2 shrink-0">
                 {/* Amount owed box */}
-                <div className="w-20 h-16 rounded-2xl flex items-center justify-center border border-red-400/30"
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center border border-red-400/30"
                   style={{ background: "rgba(248,113,113,0.08)" }}>
                   <span className="text-sm font-black text-red-400 text-center leading-tight px-1">
                     ${Number(a.balance_owed).toFixed(2)}
                   </span>
                 </div>
 
-                {/* Bill + Edit stacked */}
+                {/* Bill + Edit stacked, same size as amount box */}
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition shrink-0"
+                    className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition shrink-0"
                     style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
                   >
-                    <FileDown className="h-4 w-4" style={{ color: "var(--primary)" }} />
-                    <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>Bill</span>
+                    <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(a); }}
-                    className="w-16 h-[2.9rem] rounded-2xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition shrink-0"
+                    className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition shrink-0"
                     style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
                   >
-                    <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
-                    <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>Edit</span>
+                    <Pencil className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Edit</span>
                   </button>
                 </div>
               </div>
