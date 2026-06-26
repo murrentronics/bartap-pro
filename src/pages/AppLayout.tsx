@@ -79,23 +79,7 @@ export default function AppLayout() {
   // Register FCM push token for the owner's device — must be before any early returns (Rules of Hooks)
   usePushNotifications(profile?.role === "owner" ? profile.id : null);
 
-  if (loading || !session || !profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const isOwner    = profile.role === "owner";
-  const isAdmin    = profile.role === "admin";
-  const isCashier  = profile.role === "cashier";
-  const isPending  = !isAdmin && !isCashier && profile.status === "pending";
-  const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
-  const hasMusic   = isOwner || isCashier;
-  const isOnMusic  = loc.pathname === "/music";
-
-  // Load owner plan to decide whether to show Machines in nav
+  // Load owner plan to decide whether to show Machines in nav — must be before early returns (Rules of Hooks)
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
   useEffect(() => {
@@ -113,6 +97,22 @@ export default function AppLayout() {
     };
     load();
   }, [profile?.id]);
+
+  if (loading || !session || !profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const isOwner    = profile.role === "owner";
+  const isAdmin    = profile.role === "admin";
+  const isCashier  = profile.role === "cashier";
+  const isPending  = !isAdmin && !isCashier && profile.status === "pending";
+  const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
+  const hasMusic   = isOwner || isCashier;
+  const isOnMusic  = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {
     return (
