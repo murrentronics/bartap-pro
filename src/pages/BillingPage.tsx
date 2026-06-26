@@ -344,17 +344,16 @@ export default function BillingPage() {
               {isBasic && !isSpecial && !pendingPayment && (
                 <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
                   disabled={!machinesAddonPlan}
-                  className="w-full rounded-2xl border-2 border-dashed border-primary/30 p-4 text-left active:scale-[0.98] transition disabled:opacity-50"
-                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.05)" }}>
+                  className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Gamepad2 className="h-5 w-5 text-orange-700" />
                       <div>
                         <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Keep Basic + add Machines — $550 TT/yr separate</p>
+                        <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $550 TT/yr separate</p>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-300" />
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
                 </button>
               )}
@@ -573,7 +572,7 @@ export default function BillingPage() {
             <p className="text-2xl font-black text-orange-700 mt-1">${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT</span></p>
           </div>
 
-          <p className="text-sm font-bold text-gray-700">How would you like to pay?</p>
+          <p className="text-sm font-black text-gray-900">How would you like to pay?</p>
 
           {/* Cash */}
           <button onClick={() => { setPayMethod("cash"); setStep("confirm"); }}
@@ -609,11 +608,11 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-5 space-y-3 shadow-sm">
             <h3 className="font-black text-gray-900">Order Summary</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
-              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
-              {includeTablet && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Android tablet</span><span className="font-bold">$600 TT</span></div>}
+              <div className="flex justify-between"><span className="font-black text-gray-900">{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
+              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
+              {includeTablet && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Android tablet</span><span className="font-bold">$600 TT</span></div>}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
-                <span>Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
+                <span className="text-gray-900">Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
               </div>
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-sm">
