@@ -158,6 +158,9 @@ export default function RegisterPage() {
 
   const barStartLongPress = (e: React.TouchEvent) => {
     if (barEditModeRef.current) return;
+    // Block sort mode if there are items in the cart — prevents leaving
+    // barEditModeRef=true when navigating away mid-drag with a live order
+    if (cart.length > 0) return;
     if (barLongPressTimer.current) clearTimeout(barLongPressTimer.current);
     barLongPressTimer.current = setTimeout(() => {
       barLongPressTimer.current = null;
@@ -170,6 +173,8 @@ export default function RegisterPage() {
   };
 
   const handleBarDone = () => {
+    document.body.style.touchAction = "";
+    document.documentElement.style.touchAction = "";
     barEditModeRef.current = false;
     setBarEditMode(false);
     barDraggingRef.current = null;
@@ -190,6 +195,19 @@ export default function RegisterPage() {
     barDraggingRef.current = null;
     setBarDraggingId(null);
   }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If items get added to cart while bar edit mode is active, cancel it immediately
+  useEffect(() => {
+    if (cart.length > 0 && barEditModeRef.current) {
+      if (barLongPressTimer.current) { clearTimeout(barLongPressTimer.current); barLongPressTimer.current = null; }
+      document.body.style.touchAction = "";
+      document.documentElement.style.touchAction = "";
+      barEditModeRef.current = false;
+      setBarEditMode(false);
+      barDraggingRef.current = null;
+      setBarDraggingId(null);
+    }
+  }, [cart.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
@@ -256,12 +274,13 @@ export default function RegisterPage() {
 
   const cigaretteProducts = useMemo(() => {
     const openedProductIds = new Set(openedPacks.map(p => p.product_id));
-    return products.filter((p) =>
-      (p.category || "beers") === "cigarettes" &&
-      (p.stock_qty ?? 0) > 0 &&
-      !openedProductIds.has(p.id)
-    );
-  }, [products, openedPacks]);
+    return products.filter((p) => {
+      if ((p.category || "beers") !== "cigarettes") return false;
+      if (openedProductIds.has(p.id)) return false;
+      const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
+      return (p.stock_qty ?? 0) - inCart > 0;
+    });
+  }, [products, openedPacks, cart]);
 
   const fetchOpenedPacks = useCallback(async () => {
     const id = ownerIdRef.current;
@@ -328,13 +347,16 @@ export default function RegisterPage() {
   const liquorProducts = useMemo(
     () => {
       const openedProductIds = new Set(openedBottles.map(b => b.product_id));
-      return products.filter((p) =>
-        (p.category || "beers") === "liquor" &&
-        (p.stock_qty ?? 0) > 0 &&
-        !openedProductIds.has(p.id)
-      );
+      return products.filter((p) => {
+        if ((p.category || "beers") !== "liquor") return false;
+        if (openedProductIds.has(p.id)) return false;
+        // Subtract how many are already in the cart so we don't show
+        // a bottle that's already been added as a whole-bottle sale
+        const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
+        return (p.stock_qty ?? 0) - inCart > 0;
+      });
     },
-    [products, openedBottles]
+    [products, openedBottles, cart]
   );
 
   const fetchOpenedBottles = useCallback(async () => {

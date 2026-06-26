@@ -912,7 +912,11 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   }, []);
 
   // Reset edit state on mount (covers tab switches where ScreensTab remounts)
+  // Also force-restore touch-action on the document in case a previous drag
+  // session on another page left it locked — this is the self-healing mechanism.
   useEffect(() => {
+    document.body.style.touchAction = "";
+    document.documentElement.style.touchAction = "";
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;
@@ -942,6 +946,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   };
 
   const handleDone = async () => {
+    document.body.style.touchAction = "";
+    document.documentElement.style.touchAction = "";
     editModeRef.current = false;
     setEditMode(false);
     draggingRef.current = null;

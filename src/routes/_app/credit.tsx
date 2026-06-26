@@ -598,6 +598,8 @@ function CreateTab({
   const [idNumber, setIdNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [activeField, setActiveField] = useState<null | "idNumber" | "contact">(null);
+  const toggle = (f: "idNumber" | "contact") => setActiveField(cur => cur === f ? null : f);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -622,6 +624,7 @@ function CreateTab({
     setContact("");
     setIdNumber("");
     setIdType("national_id");
+    setActiveField(null);
   };
 
   return (
@@ -673,38 +676,33 @@ function CreateTab({
           </select>
         </div>
 
-        {/* ID Number */}
+        {/* ID Number — tap to open numpad */}
         <div>
-          <Label htmlFor="credit-idnum">ID Number</Label>
-          <Input
-            id="credit-idnum"
-            value={idNumber}
-            onChange={(e) => setIdNumber(e.target.value)}
-            placeholder="e.g. 00000000"
-          />
+          <Label>ID Number</Label>
+          <button type="button" onClick={() => toggle("idNumber")}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-left mt-1 font-semibold"
+            style={{ color: idNumber ? "var(--foreground)" : "var(--muted-foreground)" }}>
+            {idNumber || "e.g. 00000000"}
+          </button>
+          {activeField === "idNumber" && (
+            <CreditNumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+          )}
         </div>
 
-        {/* Contact — 868 prefix, auto-hyphen after 3rd digit, 7 digits max */}
+        {/* Contact Number — tap to open numpad */}
         <div>
-          <Label htmlFor="credit-contact">Contact Number</Label>
+          <Label>Contact Number</Label>
           <div className="flex items-center gap-0 mt-1">
-            <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
-              868
-            </span>
-            <Input
-              id="credit-contact"
-              className="rounded-l-none"
-              value={contact}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
-                const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                setContact(formatted);
-              }}
-              placeholder="XXX-XXXX"
-              maxLength={8}
-              inputMode="numeric"
-            />
+            <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+            <button type="button" onClick={() => toggle("contact")}
+              className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-sm text-left font-semibold"
+              style={{ color: contact ? "var(--foreground)" : "var(--muted-foreground)" }}>
+              {contact || "XXX-XXXX"}
+            </button>
           </div>
+          {activeField === "contact" && (
+            <CreditContactPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+          )}
         </div>
 
         <Button
@@ -757,7 +755,7 @@ function PaymentOverlay({
   const deleteCharge = async (chargeId: string) => {
     if (!profile) return;
     setDeletingId(chargeId);
-    const { error } = await supabase.rpc("delete_credit_charge", {
+    const { error } = await (supabase as any).rpc("delete_credit_charge", {
       p_credit_tx_id: chargeId,
       p_cashier_id: profile.id,
     });
@@ -925,6 +923,60 @@ function Spinner() {
   return (
     <div className="flex justify-center py-12">
       <div className="h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+}
+
+// ── Credit Numpads ─────────────────────────────────────────────────────────────
+function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
+  value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
+}) {
+  return (
+    <div className="mt-2">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+          k === "done"
+            ? <button key="done" type="button" onClick={onDone}
+                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}>Done</button>
+            : <button key={k} type="button"
+                onClick={() => {
+                  if (k === "⌫") onChange(value.slice(0, -1));
+                  else if (value.length < maxLen) onChange(value + k);
+                }}
+                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+              >{k}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreditContactPad({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  const handle = (k: string) => {
+    if (k === "⌫") {
+      const digits = value.replace("-", "").slice(0, -1);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    } else {
+      const digits = (value.replace("-", "") + k).slice(0, 7);
+      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+    }
+  };
+  return (
+    <div className="mt-2">
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+          k === "done"
+            ? <button key="done" type="button" onClick={onDone}
+                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}>Done</button>
+            : <button key={k} type="button" onClick={() => handle(k)}
+                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+              >{k}</button>
+        )}
+      </div>
     </div>
   );
 }
