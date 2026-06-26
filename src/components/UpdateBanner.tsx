@@ -22,22 +22,23 @@ interface Props {
 export function UpdateBanner({ update, onDismiss }: Props) {
   const [downloading, setDownloading] = useState(false);
 
+  const DOWNLOAD_PAGE = "https://bartendaz-pro.pages.dev/download.html";
+
   const handleUpdate = async () => {
     setDownloading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        // Use Capacitor FileOpener / direct APK URL to trigger the system installer
         const { Browser } = await import("@capacitor/browser");
         await Browser.open({
-          url: update.apkUrl,
+          url: DOWNLOAD_PAGE,
           presentationStyle: "fullscreen",
-          toolbarColor: "#0a0a0a",
+          toolbarColor: "#0a0a02",
         });
       } else {
-        window.open(update.apkUrl, "_blank");
+        window.open(DOWNLOAD_PAGE, "_blank");
       }
     } catch {
-      window.open(update.apkUrl, "_blank");
+      window.open(DOWNLOAD_PAGE, "_blank");
     } finally {
       setDownloading(false);
     }

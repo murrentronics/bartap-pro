@@ -457,6 +457,7 @@ function EditCustomerModal({
   const [idType, setIdType] = useState<"drivers_permit" | "national_id">(parseIdType(account.id_number));
   const [idNumber, setIdNumber] = useState(parseIdNumber(account.id_number));
   const [busy, setBusy] = useState(false);
+  const [activeField, setActiveField] = useState<null | "idNumber" | "contact">(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -531,38 +532,33 @@ function EditCustomerModal({
               </select>
             </div>
 
-            {/* ID Number */}
+            {/* ID Number — tap to open numpad */}
             <div>
-              <Label htmlFor="edit-credit-idnum">ID Number</Label>
-              <Input
-                id="edit-credit-idnum"
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
-                placeholder="e.g. 00000000"
-              />
+              <Label>ID Number</Label>
+              <button type="button" onClick={() => setActiveField(f => f === "idNumber" ? null : "idNumber")}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-left mt-1 font-semibold"
+                style={{ color: idNumber ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                {idNumber || "e.g. 00000000"}
+              </button>
+              {activeField === "idNumber" && (
+                <CreditNumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+              )}
             </div>
 
-            {/* Contact */}
+            {/* Contact Number — tap to open numpad */}
             <div>
-              <Label htmlFor="edit-credit-contact">Contact Number</Label>
+              <Label>Contact Number</Label>
               <div className="flex items-center gap-0 mt-1">
-                <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
-                  868
-                </span>
-                <Input
-                  id="edit-credit-contact"
-                  className="rounded-l-none"
-                  value={contact}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
-                    const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                    setContact(formatted);
-                  }}
-                  placeholder="XXX-XXXX"
-                  maxLength={8}
-                  inputMode="numeric"
-                />
+                <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                <button type="button" onClick={() => setActiveField(f => f === "contact" ? null : "contact")}
+                  className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-sm text-left font-semibold"
+                  style={{ color: contact ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                  {contact || "XXX-XXXX"}
+                </button>
               </div>
+              {activeField === "contact" && (
+                <CreditContactPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+              )}
             </div>
 
             <Button

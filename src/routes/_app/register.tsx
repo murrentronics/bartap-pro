@@ -587,15 +587,29 @@ export default function RegisterPage() {
                   data-bar-id={p.id}
                   className="relative"
                   onTouchStart={(e) => {
+                    // Block Android WebView long-press haptic vibration entirely
+                    e.preventDefault();
                     barCancelLongPress();
-                    if (cartLengthRef.current > 0) return; // cart has items — no sort mode
-                    if (barEditModeRef.current) { handleBarTouchStart(e, p.id); }
-                    else { barStartLongPress(e); }
+                    if (barEditModeRef.current) { handleBarTouchStart(e, p.id); return; }
+                    if (cartLengthRef.current > 0) return; // cart has items — no sort mode, tap handled in onTouchEnd
+                    barStartLongPress(e);
                   }}
                   onTouchMove={handleBarTouchMove}
-                  onTouchEnd={() => { barCancelLongPress(); handleBarTouchEnd(); }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    const timerWasRunning = !!barLongPressTimer.current;
+                    barCancelLongPress();
+                    handleBarTouchEnd();
+                    // Short tap (timer was still running = never fired long-press) → add to cart
+                    // Also handle when cart already has items (timer never started)
+                    if (!barEditModeRef.current && !outOfStock) {
+                      if (timerWasRunning || cartLengthRef.current > 0) {
+                        addToCart(p);
+                      }
+                    }
+                  }}
                   onContextMenu={(e) => e.preventDefault()}
-                  style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none" } as React.CSSProperties}
+                  style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
                 >
                 <button
                   onClick={() => !outOfStock && !barEditMode && addToCart(p)}
@@ -636,6 +650,7 @@ export default function RegisterPage() {
                     {/* Red X remove button -- top-right */}
                     {inCart && (
                       <button
+                        onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); removeItem(p.id); }}
                         onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
                         className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
                         style={{ background: "#dc2626" }}
@@ -649,6 +664,7 @@ export default function RegisterPage() {
                       <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
                         style={{ background: "rgba(0,0,0,0.75)" }}>
                         <button
+                          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); dec(p.id); }}
                           onClick={(e) => { e.stopPropagation(); dec(p.id); }}
                           className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
                           style={{ background: "#ef4444" }}
