@@ -30,11 +30,33 @@ export default function FactoryResetPage() {
   }
 
   const resetBar = async (ownerId: string) => {
-    // Orders
-    await supabase.from("orders").delete().eq("owner_id", ownerId);
-    // Wallet transactions
+    // 1. Delete cashiers FIRST — before touching owner wallet
+    //    Wipe cashier wallet/orders first so the edge function doesn't
+    //    try to transfer their balance (which would create new owner wallet records)
+    const { data: cashiers } = await supabase
+      .from("profiles").select("id").eq("parent_id", ownerId);
+    if (cashiers?.length) {
+      for (const c of cashiers as { id: string }[]) {
+        // Zero out cashier balance so deleteCashier doesn't transfer anything
+        await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", c.id);
+        await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
+        await supabase.from("orders").delete().eq("cashier_id", c.id);
+        // Now delete profile + auth user via edge function (no balance to transfer)
+        try {
+          await deleteCashier({ cashier_id: c.id });
+        } catch {
+          await supabase.from("profiles").delete().eq("id", c.id);
+        }
+      }
+    }
+
+    // 2. Now wipe ALL owner wallet transactions (including any transfer_in records)
     await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
-    // Credit
+
+    // 3. Orders
+    await supabase.from("orders").delete().eq("owner_id", ownerId);
+
+    // 4. Credit
     const { data: creditAccounts } = await supabase
       .from("credit_accounts").select("id").eq("owner_id", ownerId);
     if (creditAccounts?.length) {
@@ -42,29 +64,15 @@ export default function FactoryResetPage() {
       await supabase.from("credit_transactions").delete().in("credit_account_id", ids);
       await supabase.from("credit_accounts").delete().eq("owner_id", ownerId);
     }
-    // Products / items
+
+    // 5. Products / items
     await supabase.from("products").delete().eq("owner_id", ownerId);
-    // Expenses & financials
+
+    // 6. Expenses & financials
     await supabase.from("owner_expenses").delete().eq("owner_id", ownerId);
     await (supabase as any).from("owner_financials").delete().eq("owner_id", ownerId);
-    // Cashier profiles — delete wallet/orders first, then call deleteCashier
-    // which removes BOTH the profile row AND the auth.users entry
-    const { data: cashiers } = await supabase
-      .from("profiles").select("id").eq("parent_id", ownerId);
-    if (cashiers?.length) {
-      for (const c of cashiers as { id: string }[]) {
-        await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
-        await supabase.from("orders").delete().eq("cashier_id", c.id);
-        // This calls the edge function which deletes profile + auth user
-        try {
-          await deleteCashier({ cashier_id: c.id });
-        } catch {
-          // If edge function fails, still delete the profile row directly
-          await supabase.from("profiles").delete().eq("id", c.id);
-        }
-      }
-    }
-    // Reset wallet balance
+
+    // 7. Reset owner wallet balance to 0
     await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);
   };
 

@@ -32,6 +32,27 @@ export function saveAlertSettings(settings: AlertSettings): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
+/** Sync alert settings to Supabase so the edge function can read them server-side. */
+export async function syncAlertSettingsToServer(
+  ownerId: string,
+  settings: AlertSettings
+): Promise<void> {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await (supabase as any).from("machine_alert_settings").upsert(
+      {
+        owner_id: ownerId,
+        enabled: settings.enabled,
+        threshold: settings.threshold,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "owner_id" }
+    );
+  } catch (e) {
+    console.warn("Failed to sync alert settings to server:", e);
+  }
+}
+
 /** Request notification permission (call once on first enable). */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
@@ -64,14 +85,23 @@ export async function checkAndFirePayoutAlert(
   if (Capacitor.isNativePlatform()) {
     try {
       const { LocalNotifications } = await import("@capacitor/local-notifications");
+      // Check/request permission right before firing in case it was never granted
+      const { display } = await LocalNotifications.checkPermissions();
+      if (display !== "granted") {
+        const { display: granted } = await LocalNotifications.requestPermissions();
+        if (granted !== "granted") return;
+      }
       await LocalNotifications.schedule({
         notifications: [{
-          id: Date.now(),
+          id: Date.now() % 2147483647, // keep within 32-bit int range
           title,
           body,
-          schedule: { at: new Date(Date.now() + 300) }, // ~300ms delay
-          smallIcon: "ic_stat_icon_config_sample",
+          schedule: { at: new Date(Date.now() + 500) },
+          smallIcon: "ic_launcher",
+          channelId: "payout_alerts",
           sound: "default",
+          actionTypeId: "",
+          extra: null,
         }],
       });
     } catch (e) {

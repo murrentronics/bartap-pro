@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "852566597428",
+    "project_id": "bartendazpro",
+    "storage_bucket": "bartendazpro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:852566597428:android:afaace9b5aca459984cf61",
+        "android_client_info": {
+          "package_name": "com.bartendaz.pro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXHcQCfKWoc3T0Bq52dL_0kStAeqO1ask"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

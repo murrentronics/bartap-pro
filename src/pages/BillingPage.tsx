@@ -198,7 +198,12 @@ export default function BillingPage() {
         {step !== "status" && (
           <div className="flex items-center gap-1.5 mt-2 ml-10">
             {(["choose","addons","payment","confirm"] as Step[])
-              .filter(s => renewMode ? s !== "addons" : true)
+              .filter(s => {
+                if (selectedPlan?.plan_type === "machines_addon" || renewMode) {
+                  return s !== "addons" && s !== "choose";
+                }
+                return true;
+              })
               .map((s, i, arr) => (
               <div key={s} className="flex items-center gap-1.5">
                 <div className={`h-2 w-2 rounded-full transition-all ${

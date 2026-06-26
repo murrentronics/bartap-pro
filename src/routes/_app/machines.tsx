@@ -15,7 +15,7 @@ import {
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 import {
-  loadAlertSettings, saveAlertSettings, requestNotificationPermission,
+  loadAlertSettings, saveAlertSettings, syncAlertSettingsToServer, requestNotificationPermission,
   checkAndFirePayoutAlert, THRESHOLD_OPTIONS, type AlertSettings,
 } from "@/lib/machineAlerts";
 
@@ -1457,7 +1457,6 @@ export default function MachinesPage() {
 
   const handleSaveAlerts = async (next: AlertSettings) => {
     if (next.enabled && !alertSettings.enabled) {
-      // First time enabling — request permission
       const granted = await requestNotificationPermission();
       if (!granted) {
         toast.error("Notification permission denied. Enable it in device settings.");
@@ -1466,6 +1465,8 @@ export default function MachinesPage() {
     }
     saveAlertSettings(next);
     setAlertSettings(next);
+    // Sync to Supabase so the edge function can read it server-side
+    await syncAlertSettingsToServer(ownerId, next);
     toast.success(next.enabled ? `Alert set — $${next.threshold.toLocaleString()} TT threshold` : "Alerts disabled");
     setShowAlertsModal(false);
   };

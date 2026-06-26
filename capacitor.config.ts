@@ -16,6 +16,11 @@ const config: CapacitorConfig = {
     Share: {},
     Browser: {},
     FileOpener: {},
+    LocalNotifications: {
+      smallIcon: "ic_stat_icon_config_sample",
+      iconColor: "#f97316",
+      sound: "default",
+    },
   },
   android: {
     backgroundColor: "#000000",

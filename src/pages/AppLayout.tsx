@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
+import { usePushNotifications } from "@/lib/usePushNotifications";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -90,6 +91,10 @@ export default function AppLayout() {
   const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
   const hasMusic   = isOwner || isCashier;
   const isOnMusic  = loc.pathname === "/music";
+
+  // Register FCM push token for the owner's device
+  const pushOwnerId = isOwner ? profile.id : null;
+  usePushNotifications(pushOwnerId);
 
   // Load owner plan to decide whether to show Machines in nav
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);

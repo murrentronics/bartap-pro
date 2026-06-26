@@ -7,47 +7,66 @@
 -- Special account: renard.sankersingh@gmail.com — full access, no upgrade prompts
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- 1. Add plan_type column to billing_plans
---    Drop old constraint first if it exists (may only have 'basic','premium')
+-- 1. Add plan_type column if it doesn't exist yet (no constraint yet)
 ALTER TABLE public.billing_plans
   ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'basic';
 
--- Drop the old check constraint if it exists (name varies by Supabase version)
+-- 2. Drop ALL existing check constraints on plan_type (brute-force by name patterns)
+ALTER TABLE public.billing_plans DROP CONSTRAINT IF EXISTS billing_plans_plan_type_check;
+ALTER TABLE public.billing_plans DROP CONSTRAINT IF EXISTS billing_plans_plan_type_check1;
+ALTER TABLE public.billing_plans DROP CONSTRAINT IF EXISTS billing_plans_plan_type_check2;
+
+-- Also drop via catalog in case the name differs
 DO $$
+DECLARE
+  r RECORD;
 BEGIN
-  ALTER TABLE public.billing_plans
-    DROP CONSTRAINT IF EXISTS billing_plans_plan_type_check;
-EXCEPTION WHEN OTHERS THEN NULL;
+  FOR r IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.billing_plans'::regclass
+      AND contype = 'c'
+      AND conname LIKE '%plan_type%'
+  LOOP
+    EXECUTE 'ALTER TABLE public.billing_plans DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+  END LOOP;
 END $$;
 
--- Add the correct constraint with all three values
+-- 3. Now add the correct constraint with all three values
 ALTER TABLE public.billing_plans
   ADD CONSTRAINT billing_plans_plan_type_check
   CHECK (plan_type IN ('basic', 'machines_addon', 'premium'));
 
--- 2. Mark existing Annual Plan as basic
+-- 4. Mark existing Annual Plan as basic
 UPDATE public.billing_plans
 SET plan_type = 'basic'
 WHERE name = 'Annual Plan'
   AND name NOT ILIKE '[Archived]%';
 
--- 3. Insert Machines Add-on plan ($550/yr)
+-- 5. Insert Machines Add-on plan ($550/yr) — idempotent
 INSERT INTO public.billing_plans (name, amount, duration_months, currency, plan_type)
-VALUES ('Machines Add-on', 550.00, 12, 'TT', 'machines_addon')
-ON CONFLICT DO NOTHING;
+SELECT 'Machines Add-on', 550.00, 12, 'TT', 'machines_addon'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.billing_plans WHERE name = 'Machines Add-on'
+);
 
--- 4. Insert Premium Plan ($1,300/yr — everything in one)
+-- 6. Insert Premium Plan ($1,300/yr) — idempotent
 INSERT INTO public.billing_plans (name, amount, duration_months, currency, plan_type)
-VALUES ('Premium Plan', 1300.00, 12, 'TT', 'premium')
-ON CONFLICT DO NOTHING;
+SELECT 'Premium Plan', 1300.00, 12, 'TT', 'premium'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.billing_plans WHERE name = 'Premium Plan'
+);
 
--- 5. Add plan_type to profiles (basic | premium)
---    machines_addon owners stay 'basic' but have machines_addon_active = true
+-- 7. Add plan_type to profiles
 ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'basic'
+  ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'basic';
+
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_plan_type_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_plan_type_check
   CHECK (plan_type IN ('basic', 'premium'));
 
--- 6. Track Machines Add-on subscription independently on the profile
+-- 8. Add machines add-on tracking columns to profiles
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS machines_addon_active     BOOLEAN     DEFAULT false;
 ALTER TABLE public.profiles
@@ -55,13 +74,13 @@ ALTER TABLE public.profiles
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS machines_addon_end_date   TIMESTAMPTZ;
 
--- 7. Track Premium subscription end date independently
+-- 9. Add premium subscription date columns
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS premium_subscription_start_date TIMESTAMPTZ;
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS premium_subscription_end_date   TIMESTAMPTZ;
 
--- 8. Grant special account full premium access permanently
+-- 10. Grant special account full premium access permanently
 UPDATE public.profiles
 SET plan_type = 'premium'
 WHERE id IN (
@@ -69,7 +88,7 @@ WHERE id IN (
   WHERE au.email = 'renard.sankersingh@gmail.com'
 );
 
--- 9. Replace check_overdue_payments to handle all three plan types
+-- 11. Replace check_overdue_payments function
 CREATE OR REPLACE FUNCTION public.check_overdue_payments()
 RETURNS void
 LANGUAGE plpgsql
@@ -78,11 +97,10 @@ SET search_path = public AS $$
 DECLARE
   special_id UUID;
 BEGIN
-  -- Get special account id (may not exist yet)
   SELECT au.id INTO special_id FROM auth.users au
   WHERE au.email = 'renard.sankersingh@gmail.com' LIMIT 1;
 
-  -- Suspend owners whose basic subscription expired with no pending basic payment
+  -- Suspend owners whose basic subscription expired with no pending payment
   UPDATE public.profiles
   SET status = 'suspended'
   WHERE role = 'owner'
@@ -98,7 +116,7 @@ BEGIN
         AND pl.plan_type IN ('basic', 'premium')
     );
 
-  -- Mark billing_status = expired for past-due active owners
+  -- Mark billing_status = expired
   UPDATE public.profiles
   SET billing_status = 'expired'
   WHERE role = 'owner'
@@ -107,7 +125,7 @@ BEGIN
     AND subscription_end_date < NOW()
     AND (special_id IS NULL OR id != special_id);
 
-  -- Revoke machines add-on when its subscription expires
+  -- Revoke machines add-on when it expires
   UPDATE public.profiles
   SET machines_addon_active = false
   WHERE role = 'owner'

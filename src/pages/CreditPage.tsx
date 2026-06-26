@@ -972,23 +972,22 @@ function NumPad({ value, onChange, maxLen = 20, onDone }: {
   value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
 }) {
   return (
-    <div className="mt-2 space-y-1.5">
+    <div className="mt-2">
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
-          k === "" ? <div key={i} /> :
-          <button key={k} type="button"
-            onClick={() => {
-              if (k === "⌫") onChange(value.slice(0, -1));
-              else if (value.length < maxLen) onChange(value + k);
-            }}
-            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
-          >{k}</button>
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+          k === "done"
+            ? <button key="done" type="button" onClick={onDone}
+                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}>Done</button>
+            : <button key={k + i} type="button"
+                onClick={() => {
+                  if (k === "⌫") onChange(value.slice(0, -1));
+                  else if (value.length < maxLen) onChange(value + k);
+                }}
+                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+              >{k}</button>
         )}
       </div>
-      <button type="button" onClick={onDone}
-        className="w-full h-9 rounded-xl text-xs font-bold text-muted-foreground bg-muted/50 active:scale-95 transition">
-        Done
-      </button>
     </div>
   );
 }
@@ -1008,25 +1007,24 @@ function ContactNumPad({ value, onChange, onDone }: {
     }
   };
   return (
-    <div className="mt-2 space-y-1.5">
+    <div className="mt-2">
       {!complete && digits.length > 0 && (
-        <p className="text-xs font-semibold text-amber-400 text-center">
-          {7 - digits.length} more digit{7 - digits.length !== 1 ? "s" : ""} needed
+        <p className="text-xs font-semibold text-amber-400 mb-1.5 text-center">
+          {7 - digits.length} digit{7 - digits.length !== 1 ? "s" : ""} remaining
         </p>
       )}
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) =>
-          k === "" ? <div key={i} /> :
-          <button key={k} type="button" onClick={() => handle(k)}
-            className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
-          >{k}</button>
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+          k === "done"
+            ? <button key="done" type="button"
+                onClick={() => { if (complete) onDone(); }}
+                className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
+                style={{ background: "var(--gradient-hero)" }}>Done</button>
+            : <button key={k + i} type="button" onClick={() => handle(k)}
+                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+              >{k}</button>
         )}
       </div>
-      <button type="button" onClick={() => { if (complete) onDone(); }}
-        className={`w-full h-11 rounded-xl font-black text-sm transition ${complete ? "active:scale-95 text-primary-foreground" : "opacity-30 cursor-not-allowed text-muted-foreground bg-muted/50"}`}
-        style={complete ? { background: "var(--gradient-hero)" } : {}}>
-        Done
-      </button>
     </div>
   );
 }

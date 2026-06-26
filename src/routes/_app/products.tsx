@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -269,15 +270,14 @@ const TMPL_ROWS = [
 ];
 
 function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onClose: () => void }) {
-  return (
+  return createPortal(
     <div
-      className="fixed bottom-0 inset-x-0 z-[80] bg-background/98 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
+      className="fixed bottom-0 inset-x-0 z-[200] bg-background/98 backdrop-blur border-t border-border px-1 pt-1.5 space-y-1"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)", boxShadow: "0 -4px 20px rgba(0,0,0,0.4)" }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Dismiss tab — sits above the keyboard top border.
-          Uses a full-width invisible hit area so nothing behind it gets tapped. */}
+      {/* Dismiss tab */}
       <div
         className="absolute inset-x-0 flex justify-center"
         style={{ top: "-28px", height: "28px", pointerEvents: "auto" }}
@@ -327,7 +327,8 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
           SPACE
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 function TemplatePicker({ onSelect, ownerId, category, search }: {
