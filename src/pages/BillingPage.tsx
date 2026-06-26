@@ -165,6 +165,7 @@ export default function BillingPage() {
   const isSpecial       = userEmail === SPECIAL_EMAIL;
   const isBasic         = !profile?.plan_type || profile.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium";
+  const hasMachinesAddon = !!profile?.machines_addon_active;
 
   const basicPlan         = plans.find(p => p.plan_type === "basic");
   const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
@@ -179,6 +180,11 @@ export default function BillingPage() {
   const premDaysLeft  = premEnd ? Math.ceil((premEnd.getTime() - Date.now()) / 86400000) : null;
   const premOverdue   = premEnd ? premEnd < new Date() : false;
   const premCanRenew  = premOverdue || (premDaysLeft !== null && premDaysLeft <= 7);
+
+  const addonEnd      = profile?.machines_addon_end_date ? new Date(profile.machines_addon_end_date) : null;
+  const addonDaysLeft = addonEnd ? Math.ceil((addonEnd.getTime() - Date.now()) / 86400000) : null;
+  const addonOverdue  = addonEnd ? addonEnd < new Date() : false;
+  const addonCanRenew = addonOverdue || (addonDaysLeft !== null && addonDaysLeft <= 7);
 
   const isNewSignup    = !pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired";
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
@@ -356,22 +362,58 @@ export default function BillingPage() {
                 </div>
               )}
 
-              {/* Add Machines Tracker — basic users only, not special */}
+              {/* Machines Add-on card — active card if subscribed, subscribe button if not */}
               {isBasic && !isSpecial && !pendingPayment && (
-                <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
-                  disabled={!machinesAddonPlan}
-                  className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Gamepad2 className="h-5 w-5 text-orange-700" />
-                      <div>
-                        <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
-                        <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $600 TT/yr separate</p>
+                hasMachinesAddon ? (
+                  /* ── Active machines addon card ── */
+                  <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <Gamepad2 className="h-4 w-4 text-orange-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Machines Add-on</p>
+                          <p className="text-xs text-gray-500">${machinesAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
+                        </div>
                       </div>
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                        {addonOverdue ? "OVERDUE" : "ACTIVE"}
+                      </span>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <div className="flex items-center justify-between text-sm mb-3">
+                      <span className="text-gray-500">Renews</span>
+                      <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                        {addonEnd ? addonEnd.toLocaleDateString("en-GB") : "—"}
+                        {addonDaysLeft !== null && !addonOverdue && addonDaysLeft <= 30 && ` (${addonDaysLeft}d)`}
+                      </span>
+                    </div>
+                    {addonCanRenew ? (
+                      <button onClick={() => { setSelectedPlan(machinesAddonPlan!); setRenewMode(null); setStep("payment"); }}
+                        className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${addonOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}>
+                        {addonOverdue ? "⚠️ Renew Now — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT" : "Renew Add-on — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT"}
+                      </button>
+                    ) : (
+                      <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
+                    )}
                   </div>
-                </button>
+                ) : (
+                  /* ── Subscribe button ── */
+                  <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                    disabled={!machinesAddonPlan}
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Gamepad2 className="h-5 w-5 text-orange-700" />
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
+                          <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $600 TT/yr separate</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                    </div>
+                  </button>
+                )
               )}
             </div>
           )}

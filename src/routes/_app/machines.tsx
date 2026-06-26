@@ -431,8 +431,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
     toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
 
-    // Fire payout alert if threshold is met (owner's device only)
-    if (tab === "payout") {
+    // Fire local payout alert only on the owner's device — not cashier devices
+    if (tab === "payout" && profile.role === "owner") {
       const alerts = loadAlertSettings();
       await checkAndFirePayoutAlert(val, machine.name, alerts);
     }

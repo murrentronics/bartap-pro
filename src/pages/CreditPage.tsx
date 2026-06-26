@@ -24,6 +24,7 @@ export type CreditAccount = {
   balance_owed: number;
   status: "open" | "closed";
   created_at: string;
+  tx_count?: number;
 };
 
 type CreditTx = {
@@ -139,10 +140,10 @@ function BillModal({ account, ownerName, onClose }: {
       if (b64) {
         await downloadPdf(filename, b64);
         setDownloaded(true);
+        toast.success(Capacitor.isNativePlatform() ? "Saved to Documents folder" : "PDF downloaded");
         setTimeout(() => setDownloaded(false), 5000);
       }
     } catch (e: any) {
-      // Don't crash if user dismisses share sheet or any native error occurs
       if (!String(e?.message ?? "").includes("cancel")) {
         toast.error("Download failed: " + (e?.message ?? "unknown"));
       }
@@ -254,10 +255,13 @@ export default function CreditPage() {
     setLoading(true);
     const { data } = await supabase
       .from("credit_accounts")
-      .select("*")
+      .select("*, credit_transactions(count)")
       .eq("owner_id", id)
       .order("updated_at", { ascending: false });
-    const all = (data ?? []) as CreditAccount[];
+    const all = ((data ?? []) as any[]).map((a) => ({
+      ...a,
+      tx_count: a.credit_transactions?.[0]?.count ?? 0,
+    })) as CreditAccount[];
     setOpened(all.filter((a) => a.status === "open").sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setClosed(all.filter((a) => a.status === "closed").sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setLoading(false);
@@ -742,15 +746,17 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
 
               {/* Right: Bill + Delete + Edit stacked */}
               <div className="flex items-stretch gap-2 shrink-0">
-                {/* Bill button box */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
-                  className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
-                  style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
-                >
-                  <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
-                  <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
-                </button>
+                {/* Bill button — only when account has records */}
+                {(a.tx_count ?? 0) > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                    className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
+                    style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
+                  >
+                    <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
+                  </button>
+                )}
 
                 {/* Delete + Edit stacked */}
                 <div className="flex flex-col gap-1.5">

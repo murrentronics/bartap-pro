@@ -6,10 +6,14 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
   if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
 
   if (Capacitor.isNativePlatform()) {
+    // Save directly to the device Documents folder — no share sheet
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { Share } = await import("@capacitor/share");
-    const result = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache, recursive: true });
-    await Share.share({ title: filename, url: result.uri, dialogTitle: "Save or share PDF" });
+    await Filesystem.writeFile({
+      path: filename,
+      data: base64,
+      directory: Directory.Documents,
+      recursive: true,
+    });
   } else {
     const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
