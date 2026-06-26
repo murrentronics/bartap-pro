@@ -17,6 +17,9 @@ export type Profile = {
   subscription_end_date?: string;
   subscription_start_date?: string;
   plan_type?: "basic" | "premium";
+  machines_addon_active?: boolean;
+  machines_addon_start_date?: string;
+  machines_addon_end_date?: string;
   premium_subscription_start_date?: string;
   premium_subscription_end_date?: string;
 };

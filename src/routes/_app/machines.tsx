@@ -10,10 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Plus, Loader2, ChevronLeft, Trash2, Download, X,
-  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle,
+  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import {
+  loadAlertSettings, saveAlertSettings, requestNotificationPermission,
+  checkAndFirePayoutAlert, THRESHOLD_OPTIONS, type AlertSettings,
+} from "@/lib/machineAlerts";
 
 export const Route = createFileRoute("/_app/machines")({
   component: MachinesPage,
@@ -414,6 +418,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setProofPreview(null);
 
     toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
+
+    // Fire payout alert if threshold is met (owner's device only)
+    if (tab === "payout") {
+      const alerts = loadAlertSettings();
+      await checkAndFirePayoutAlert(val, machine.name, alerts);
+    }
+
     setAmount("");
     load();
   };
@@ -1440,14 +1451,35 @@ export default function MachinesPage() {
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
   const isOwner = profile?.role === "owner";
 
+  // Payout alert settings (owner only)
+  const [showAlertsModal, setShowAlertsModal] = useState(false);
+  const [alertSettings, setAlertSettings] = useState<AlertSettings>(() => loadAlertSettings());
+
+  const handleSaveAlerts = async (next: AlertSettings) => {
+    if (next.enabled && !alertSettings.enabled) {
+      // First time enabling — request permission
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        toast.error("Notification permission denied. Enable it in device settings.");
+        return;
+      }
+    }
+    saveAlertSettings(next);
+    setAlertSettings(next);
+    toast.success(next.enabled ? `Alert set — $${next.threshold.toLocaleString()} TT threshold` : "Alerts disabled");
+    setShowAlertsModal(false);
+  };
+
   // Premium gate — check owner's plan (cashiers inherit from owner)
   const [ownerPlanType, setOwnerPlanType] = useState<string | null>(null);
+  const [ownerMachinesAddon, setOwnerMachinesAddon] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
   useEffect(() => {
     if (!ownerId) return;
-    (supabase as any).from("profiles").select("plan_type").eq("id", ownerId).single()
-      .then(({ data }: { data: { plan_type: string } | null }) => {
+    (supabase as any).from("profiles").select("plan_type, machines_addon_active").eq("id", ownerId).single()
+      .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean } | null }) => {
         setOwnerPlanType(data?.plan_type ?? "basic");
+        setOwnerMachinesAddon(data?.machines_addon_active ?? false);
         setPlanLoading(false);
       });
   }, [ownerId]);
@@ -1549,8 +1581,8 @@ export default function MachinesPage() {
     );
   }
 
-  // Premium gate — basic plan users see an upgrade wall
-  if (!isPremium) {
+  // Premium gate — basic plan users without machines add-on see an upgrade wall
+  if (!isPremium && !ownerMachinesAddon) {
     return (
       <div className="py-3 space-y-4">
         <h1 className="text-2xl font-black">Machines</h1>
@@ -1572,17 +1604,20 @@ export default function MachinesPage() {
             </div>
             <div className="rounded-2xl p-4 text-left space-y-2"
               style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)" }}>
-              <p className="text-xs font-black text-white/70 uppercase tracking-wider">Premium Plan — $1,300 TT/yr</p>
-              {["Machine payout & income tracking", "Per-screen profit breakdown", "Float session management", "Full history with PDF export", "Everything in Basic"].map(f => (
-                <div key={f} className="flex items-center gap-2 text-sm text-white/70">
-                  <span className="text-green-400 font-black">✓</span> {f}
-                </div>
-              ))}
+              <p className="text-xs font-black text-white/70 uppercase tracking-wider">Option 1 — Machines Add-on</p>
+              <p className="text-2xl font-black" style={{ color: "var(--primary)" }}>$550 TT/yr</p>
+              <p className="text-xs text-white/50">Add Machines Tracker to your existing Basic plan. You'll have two separate subscriptions.</p>
+            </div>
+            <div className="rounded-2xl p-4 text-left space-y-2 border border-amber-500/30"
+              style={{ background: "rgba(251,146,60,0.05)" }}>
+              <p className="text-xs font-black text-amber-400/80 uppercase tracking-wider">Option 2 — Upgrade to Premium</p>
+              <p className="text-2xl font-black text-amber-400">$1,300 TT/yr</p>
+              <p className="text-xs text-white/50">Replace your Basic plan with one Premium subscription covering everything.</p>
             </div>
             <a href="/billing"
-              className="block w-full py-4 rounded-2xl font-black text-base text-black active:scale-[0.98] transition"
+              className="block w-full py-4 rounded-2xl font-black text-base text-black active:scale-[0.98] transition text-center"
               style={{ background: "var(--gradient-hero)" }}>
-              Upgrade to Premium →
+              Go to Billing →
             </a>
           </div>
         </div>
@@ -1617,7 +1652,29 @@ export default function MachinesPage() {
 
       {/* List view — always mounted, hidden behind MachineDetail when a machine is selected */}
       <div className="py-3 space-y-4" style={selected ? { visibility: "hidden", pointerEvents: "none" } : {}}>
-      <h1 className="text-2xl font-black">Machines</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-black">Machines</h1>
+        {isOwner && (
+          <button
+            onClick={() => setShowAlertsModal(true)}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-xl font-bold text-xs transition active:scale-95"
+            style={{
+              background: alertSettings.enabled ? "rgba(251,146,60,0.18)" : "var(--gradient-card)",
+              color: alertSettings.enabled ? "var(--primary)" : "var(--muted-foreground)",
+              border: alertSettings.enabled ? "1px solid rgba(251,146,60,0.4)" : "1px solid var(--border)",
+            }}
+          >
+            <Bell className={`h-3.5 w-3.5 ${alertSettings.enabled ? "fill-current" : ""}`} />
+            Set Alerts
+            {alertSettings.enabled && (
+              <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
+                style={{ background: "var(--gradient-hero)" }}>
+                ✓
+              </span>
+            )}
+          </button>
+        )}
+      </div>
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
         {tabs.map((t) => (
@@ -1766,7 +1823,124 @@ export default function MachinesPage() {
           </div>
         </div>
       )}
+      {/* Set Alerts modal */}
+      {showAlertsModal && (
+        <SetAlertsModal
+          settings={alertSettings}
+          onSave={handleSaveAlerts}
+          onClose={() => setShowAlertsModal(false)}
+        />
+      )}
     </div>
     </>
+  );
+}
+
+// ── Set Alerts Modal ───────────────────────────────────────────────────────────
+function SetAlertsModal({
+  settings,
+  onSave,
+  onClose,
+}: {
+  settings: AlertSettings;
+  onSave: (next: AlertSettings) => void;
+  onClose: () => void;
+}) {
+  const [enabled, setEnabled] = useState(settings.enabled);
+  const [threshold, setThreshold] = useState(settings.threshold);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl overflow-hidden"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/40">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "var(--gradient-hero)" }}>
+              <Bell className="h-5 w-5 text-black" />
+            </div>
+            <div>
+              <h2 className="font-black text-base">Payout Alerts</h2>
+              <p className="text-xs text-muted-foreground">Get notified when a payout hits your threshold</p>
+            </div>
+          </div>
+          <button onClick={onClose}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-5 py-5 space-y-5">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-black text-sm">Enable Payout Alerts</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Send a notification when any payout meets or exceeds the threshold
+              </p>
+            </div>
+            <button
+              onClick={() => setEnabled((v) => !v)}
+              className="relative h-7 w-12 rounded-full transition-colors shrink-0"
+              style={{ background: enabled ? "var(--gradient-hero)" : "var(--muted)" }}
+            >
+              <span
+                className="absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all"
+                style={{ left: enabled ? "calc(100% - 1.5rem)" : "0.25rem" }}
+              />
+            </button>
+          </div>
+
+          {/* Threshold options — only visible when enabled */}
+          {enabled && (
+            <div className="space-y-2">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                Alert Threshold
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {THRESHOLD_OPTIONS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setThreshold(t)}
+                    className={`h-12 rounded-xl font-black text-sm transition active:scale-95 ${
+                      threshold === t
+                        ? "text-black"
+                        : "text-muted-foreground"
+                    }`}
+                    style={threshold === t
+                      ? { background: "var(--gradient-hero)", border: "none" }
+                      : { background: "var(--muted)", border: "1px solid var(--border)" }
+                    }
+                  >
+                    ${t >= 1000 ? (t / 1000) + "k" : t}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground text-center pt-1">
+                You'll be alerted when a payout of{" "}
+                <span className="font-black" style={{ color: "var(--primary)" }}>
+                  ${threshold.toLocaleString()} TT
+                </span>{" "}
+                or more is recorded
+              </p>
+            </div>
+          )}
+
+          {/* Save button */}
+          <button
+            onClick={() => onSave({ enabled, threshold })}
+            className="w-full h-12 rounded-2xl font-black text-base text-black active:scale-[0.98] transition"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            {enabled ? `Save — Alert at $${threshold.toLocaleString()} TT` : "Save — Alerts Off"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,25 @@ export default function AppLayout() {
   const hasMusic   = isOwner || isCashier;
   const isOnMusic  = loc.pathname === "/music";
 
+  // Load owner plan to decide whether to show Machines in nav
+  const [ownerHasMachines, setOwnerHasMachines] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState("");
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setOwnerEmail(user?.email ?? "");
+      if (!profile?.id) return;
+      const ownerId = profile.role === "cashier" ? profile.parent_id : profile.id;
+      if (!ownerId) return;
+      const { data } = await (supabase as any).from("profiles")
+        .select("plan_type, machines_addon_active").eq("id", ownerId).single();
+      const planType = data?.plan_type ?? "basic";
+      const addonActive = data?.machines_addon_active ?? false;
+      setOwnerHasMachines(planType === "premium" || addonActive || user?.email === "renard.sankersingh@gmail.com");
+    };
+    load();
+  }, [profile?.id]);
+
   if (!isAdmin && !isCashier && profile.status === "expelled") {
     return (
       <FullScreenStatus
@@ -172,7 +192,7 @@ export default function AppLayout() {
     : [
         { to: "/register", label: "Bar",      icon: Wine },
         { to: "/credit",   label: "Credit",   icon: Receipt },
-        { to: "/machines", label: "Machines", icon: Gamepad2 },
+        ...(ownerHasMachines ? [{ to: "/machines", label: "Machines", icon: Gamepad2 }] : []),
         ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
         { to: "/wallet",   label: "Wallet",   icon: Wallet },

@@ -150,8 +150,9 @@ export default function BillingPage() {
   const isBasic         = !profile?.plan_type || profile.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium";
 
-  const basicPlan   = plans.find(p => p.plan_type === "basic");
-  const premiumPlan = plans.find(p => p.plan_type === "premium");
+  const basicPlan         = plans.find(p => p.plan_type === "basic");
+  const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
+  const premiumPlan       = plans.find(p => p.plan_type === "premium");
 
   const basicEnd      = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const basicDaysLeft = basicEnd ? Math.ceil((basicEnd.getTime() - Date.now()) / 86400000) : null;
@@ -183,7 +184,7 @@ export default function BillingPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <CreditCard className="h-5 w-5 text-primary" />
+          <CreditCard className="h-5 w-5 text-orange-700" />
           <h1 className="text-lg font-black">
             {step === "status"  ? "Billing"
             : step === "choose"  ? "Choose Your Plan"
@@ -236,7 +237,7 @@ export default function BillingPage() {
                 </div>
                 <button onClick={() => copy(pendingPayment.reference_number)}
                   className="h-9 w-9 rounded-xl bg-orange-100 flex items-center justify-center active:scale-90 transition">
-                  <Copy className="h-4 w-4 text-orange-600" />
+                  <Copy className="h-4 w-4 text-orange-700" />
                 </button>
               </div>
               {pendingPayment.payment_method === "bank" && bankDetails && (
@@ -277,7 +278,7 @@ export default function BillingPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
                   <span className="text-gray-500">Renews</span>
-                  <span className={`font-bold ${basicOverdue ? "text-red-500" : basicDaysLeft !== null && basicDaysLeft <= 30 ? "text-orange-500" : "text-gray-800"}`}>
+                  <span className={`font-bold ${basicOverdue ? "text-red-500" : basicDaysLeft !== null && basicDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
                     {basicEnd ? basicEnd.toLocaleDateString("en-GB") : "—"}
                     {basicDaysLeft !== null && !basicOverdue && basicDaysLeft <= 30 && ` (${basicDaysLeft}d)`}
                   </span>
@@ -300,23 +301,23 @@ export default function BillingPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <Star className="h-4 w-4 text-amber-600" />
+                        <Star className="h-4 w-4 text-amber-800" />
                       </div>
                       <div>
                         <p className="font-black text-gray-900 text-sm">Premium Plan</p>
                         <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "1300"} TT / year</p>
                       </div>
                     </div>
-                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-700"}`}>
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-800"}`}>
                       {premOverdue ? "OVERDUE" : "ACTIVE"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-amber-700 mb-3">
+                  <div className="flex items-center gap-1 text-xs text-amber-800 mb-3">
                     <Gamepad2 className="h-3 w-3" /> Machines Tracker included
                   </div>
                   <div className="flex items-center justify-between text-sm mb-3">
                     <span className="text-gray-500">Renews</span>
-                    <span className={`font-bold ${premOverdue ? "text-red-500" : premDaysLeft !== null && premDaysLeft <= 30 ? "text-orange-500" : "text-gray-800"}`}>
+                    <span className={`font-bold ${premOverdue ? "text-red-500" : premDaysLeft !== null && premDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
                       {premEnd ? premEnd.toLocaleDateString("en-GB") : "—"}
                       {premDaysLeft !== null && !premOverdue && premDaysLeft <= 30 && ` (${premDaysLeft}d)`}
                     </span>
@@ -328,26 +329,27 @@ export default function BillingPage() {
                         {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT" : "Renew Premium — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT"}
                       </button>
                     ) : (
-                      <p className="text-xs text-center text-amber-600/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
+                      <p className="text-xs text-center text-amber-800/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
                     )
                   )}
                 </div>
               )}
 
-              {/* Upgrade to Premium — basic users only, not special */}
+              {/* Add Machines Tracker — basic users only, not special */}
               {isBasic && !isSpecial && !pendingPayment && (
-                <button onClick={() => { setSelectedPlan(premiumPlan ?? null); setRenewMode(null); setStep("addons"); }}
-                  disabled={!premiumPlan}
-                  className="w-full rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-4 text-left active:scale-[0.98] transition disabled:opacity-50">
+                <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                  disabled={!machinesAddonPlan}
+                  className="w-full rounded-2xl border-2 border-dashed border-primary/30 p-4 text-left active:scale-[0.98] transition disabled:opacity-50"
+                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.05)" }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Star className="h-5 w-5 text-amber-500" />
+                      <Gamepad2 className="h-5 w-5 text-orange-700" />
                       <div>
-                        <p className="font-black text-amber-800 text-sm">Upgrade to Premium</p>
-                        <p className="text-xs text-amber-600 mt-0.5">Unlock Machines Tracker — $1,300 TT/yr</p>
+                        <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Keep Basic + add Machines — $550 TT/yr separate</p>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-amber-400" />
+                    <ChevronRight className="h-5 w-5 text-gray-300" />
                   </div>
                 </button>
               )}
@@ -358,7 +360,7 @@ export default function BillingPage() {
           {(isNewSignup || isExpiredRenew) && !pendingPayment && (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center space-y-4 shadow-sm">
               <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
-                <CreditCard className="h-7 w-7 text-orange-500" />
+                <CreditCard className="h-7 w-7 text-orange-700" />
               </div>
               <div>
                 <h2 className="font-black text-gray-900 text-lg">
@@ -393,7 +395,7 @@ export default function BillingPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-gray-900">{plan?.name ?? "Plan"}</p>
                         <p className="font-mono text-xs text-gray-400 mt-0.5">{p.reference_number}</p>
-                        {p.notes && <p className="text-xs text-orange-600 mt-0.5">{p.notes}</p>}
+                        {p.notes && <p className="text-xs text-orange-700 mt-0.5">{p.notes}</p>}
                         <p className="text-xs text-gray-400 mt-0.5">{new Date(p.created_at).toLocaleDateString("en-GB")}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -411,10 +413,10 @@ export default function BillingPage() {
             {histPages > 1 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
                 <button disabled={historyPage === 0} onClick={() => setHistoryPage(p => p - 1)}
-                  className="text-xs font-bold text-orange-600 disabled:text-gray-300">← Prev</button>
+                  className="text-xs font-bold text-orange-700 disabled:text-gray-300">← Prev</button>
                 <span className="text-xs text-gray-400">{historyPage + 1} / {histPages}</span>
                 <button disabled={historyPage >= histPages - 1} onClick={() => setHistoryPage(p => p + 1)}
-                  className="text-xs font-bold text-orange-600 disabled:text-gray-300">Next →</button>
+                  className="text-xs font-bold text-orange-700 disabled:text-gray-300">Next →</button>
               </div>
             )}
           </div>
@@ -472,11 +474,11 @@ export default function BillingPage() {
                 <div className="p-5 flex-1 flex flex-col">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                      <Star className="h-4 w-4 text-amber-600" />
+                      <Star className="h-4 w-4 text-amber-800" />
                     </div>
                     <h3 className="font-black text-gray-900 text-lg">Premium</h3>
                   </div>
-                  <p className="text-3xl font-black text-amber-600 mt-2">${premiumPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                  <p className="text-3xl font-black text-amber-800 mt-2">${premiumPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
                   <p className="text-xs text-gray-400 mt-0.5 mb-4">Billed annually</p>
 
                   <ul className="space-y-2 flex-1 mb-5">
@@ -509,7 +511,7 @@ export default function BillingPage() {
             <h3 className="font-black text-gray-900 mb-1">
               {selectedPlan.plan_type === "premium" ? "⭐ " : ""}{selectedPlan.name}
             </h3>
-            <p className="text-2xl font-black text-orange-500">${selectedPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT/yr</span></p>
+            <p className="text-2xl font-black text-orange-700">${selectedPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT/yr</span></p>
           </div>
 
           <p className="text-sm font-bold text-gray-700">Optional add-ons for your first payment only:</p>
@@ -520,7 +522,7 @@ export default function BillingPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="font-black text-gray-900 text-sm">Agent Setup &amp; Training Visit</p>
-                <span className="font-black text-orange-600 text-sm">+$250 TT</span>
+                <span className="font-black text-orange-700 text-sm">+$250 TT</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">An agent visits your venue to install, configure and train your team on-site.</p>
             </div>
@@ -532,7 +534,7 @@ export default function BillingPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="font-black text-gray-900 text-sm">Android Tablet (Pre-installed)</p>
-                <span className="font-black text-orange-600 text-sm">+$600 TT</span>
+                <span className="font-black text-orange-700 text-sm">+$600 TT</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">Receive a ready-to-use Android tablet with Bartendaz Pro pre-configured.</p>
             </div>
@@ -543,7 +545,7 @@ export default function BillingPage() {
             <div className="flex justify-between text-sm text-gray-600"><span>{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
             {includeSetup   && <div className="flex justify-between text-sm text-gray-600"><span>Agent setup &amp; training</span><span className="font-bold">$250 TT</span></div>}
             {includeTablet  && <div className="flex justify-between text-sm text-gray-600"><span>Android tablet</span><span className="font-bold">$600 TT</span></div>}
-            <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2"><span>Total due now</span><span className="text-orange-600">${totalDue.toFixed(0)} TT</span></div>
+            <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2"><span>Total due now</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span></div>
           </div>
 
           <button onClick={() => setStep("payment")}
@@ -563,7 +565,7 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">{renewMode ? "Renewing" : "Subscribing to"}</p>
             <p className="font-black text-gray-900">{selectedPlan.name}</p>
-            <p className="text-2xl font-black text-orange-500 mt-1">${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT</span></p>
+            <p className="text-2xl font-black text-orange-700 mt-1">${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT</span></p>
           </div>
 
           <p className="text-sm font-bold text-gray-700">How would you like to pay?</p>
@@ -606,7 +608,7 @@ export default function BillingPage() {
               {includeSetup  && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Agent setup &amp; training</span><span className="font-bold">$250 TT</span></div>}
               {includeTablet && !renewMode && <div className="flex justify-between"><span className="text-gray-500">Android tablet</span><span className="font-bold">$600 TT</span></div>}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
-                <span>Total</span><span className="text-orange-600">${totalDue.toFixed(0)} TT</span>
+                <span>Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
               </div>
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-sm">

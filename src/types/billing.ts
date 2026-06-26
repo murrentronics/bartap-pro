@@ -4,7 +4,7 @@ export type BillingPlan = {
   amount: number;
   duration_months: number;
   currency: string;
-  plan_type: "basic" | "premium";
+  plan_type: "basic" | "machines_addon" | "premium";
   created_at: string;
 };
 
