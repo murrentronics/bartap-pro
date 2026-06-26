@@ -744,15 +744,62 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
 
     if (isEdit && editProduct) {
       // ── UPDATE existing product ──────────────────────────────────────────
+      const prevCostPrice = Number(editProduct.cost_price ?? 0);
+      const costChanged   = costVal !== prevCostPrice;
+      const stockQty      = Number(editProduct.stock_qty ?? 0);
+
+      // If cost_price changed and stock exists, refresh the opening expense record.
+      // This is the key path for old accounts migrating to the new financials system:
+      // owner edits an existing item, sets the cost price, hits save — one expense
+      // record is created for (cost_price × stock_qty) so financials are correct.
+      let newExpenseId: string | null = editProduct.stock_last_expense_id ?? null;
+      if (costChanged && stockQty > 0) {
+        // Delete the old stock-linked expense record if present
+        if (editProduct.stock_last_expense_id) {
+          await supabase.from("owner_expenses").delete().eq("id", editProduct.stock_last_expense_id);
+        }
+
+        if (costVal > 0) {
+          // Insert a fresh expense record: cost_price × current stock_qty
+          const today = new Date().toISOString().split("T")[0];
+          const { data: expData, error: expErr } = await supabase
+            .from("owner_expenses")
+            .insert({
+              owner_id:     profile.id,
+              amount:       costVal * stockQty,
+              description:  `${name.trim()} ×${stockQty} @ $${costVal.toFixed(2)} each`,
+              expense_date: today,
+            })
+            .select("id")
+            .single();
+          if (expErr) {
+            toast.error("Saved item but could not create expense record: " + expErr.message);
+          } else {
+            newExpenseId = expData?.id ?? null;
+          }
+        } else {
+          // cost_price set to 0 — clear the expense link
+          newExpenseId = null;
+        }
+      }
+
       const { data: updated, error } = await supabase
         .from("products")
-        .update({ name: name.trim(), price: Number(price), cost_price: costVal, image_url, category })
+        .update({
+          name: name.trim(),
+          price: Number(price),
+          cost_price: costVal,
+          image_url,
+          category,
+          // Keep expense link in sync so undo/redo still works
+          ...(costChanged ? { stock_last_expense_id: newExpenseId } : {}),
+        })
         .eq("id", editProduct.id)
         .select("*")
         .single();
       setBusy(false);
       if (error) { toast.error(error.message); return; }
-      toast.success("Item updated");
+      toast.success(costChanged && stockQty > 0 && costVal > 0 ? "Item updated — expense record created" : "Item updated");
       onDone();
       onSaved(updated);
     } else {
