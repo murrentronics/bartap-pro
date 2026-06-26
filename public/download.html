@@ -1027,7 +1027,7 @@
     <p class="tagline">The fast, simple bar POS for owners and cashiers. Manage products, wallets, and staff — all from your Android device.</p>
 
     <div class="cta-wrap">
-      <a href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download">
+      <a id="btn-download-hero" href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -1035,7 +1035,7 @@
         </svg>
         Download for Android
       </a>
-      <span class="dl-note">APK · Android 7.0+</span>
+      <span id="dl-note-hero" class="dl-note">APK · Android 7.0+</span>
     </div>
 
   </section>
@@ -1162,7 +1162,7 @@
   <section class="bottom-cta">
     <h2>Ready to run your bar smarter?</h2>
     <p>Download now and choose your plan after signing up. Starting at $300 TT for 6 months.</p>
-    <a href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download">
+    <a id="btn-download-bottom" href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -1266,6 +1266,39 @@
   <footer>
     &copy; 2026 Bartendaz Pro. All rights reserved.
   </footer>
+
+  <script>
+    // Fetch latest release version from GitHub and update download buttons
+    (async function() {
+      try {
+        const res = await fetch('https://api.github.com/repos/murrentronics/bartap-pro/releases/latest', {
+          headers: { Accept: 'application/vnd.github+json' }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const tag = data.tag_name || '';
+        if (!tag) return;
+        const version = tag.replace(/^v/, '');
+
+        // Update hero button
+        const heroBtn = document.getElementById('btn-download-hero');
+        if (heroBtn) {
+          heroBtn.innerHTML = heroBtn.innerHTML.replace('Download for Android', 'Download v' + version);
+        }
+        // Update hero note
+        const heroNote = document.getElementById('dl-note-hero');
+        if (heroNote) heroNote.textContent = 'APK · Android 7.0+ · v' + version;
+
+        // Update bottom button
+        const bottomBtn = document.getElementById('btn-download-bottom');
+        if (bottomBtn) {
+          bottomBtn.innerHTML = bottomBtn.innerHTML.replace('Download Bartendaz Pro', 'Download Bartendaz Pro v' + version);
+        }
+      } catch(e) {
+        // Silently ignore — buttons stay with default text
+      }
+    })();
+  </script>
 
 </body>
 </html>
