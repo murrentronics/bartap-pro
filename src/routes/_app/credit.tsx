@@ -336,23 +336,13 @@ function OpenedTab({
         >
           {/* Left — tap to pay */}
           <button className="flex-1 min-w-0 text-left active:scale-[0.98] transition" onClick={() => onSelect(a)}>
-            <div className="flex items-center gap-2">
-              <p className="font-black text-base">{a.full_name}</p>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEdit(a); }}
-                className="h-6 w-6 rounded-lg flex items-center justify-center active:scale-90 transition shrink-0"
-                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)" }}
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            </div>
+            <p className="font-black text-base">{a.full_name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
             {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
           </button>
 
-          {/* Right — balance + print bill */}
+          {/* Right — balance + print bill + edit */}
           <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
             <button className="flex items-center gap-1.5 active:scale-95 transition" onClick={() => onSelect(a)}>
               <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
@@ -366,6 +356,14 @@ function OpenedTab({
             >
               {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
               Bill
+            </button>
+            <button
+              onClick={() => onEdit(a)}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
+              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
             </button>
           </div>
         </div>
@@ -396,17 +394,7 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
           style={{ background: "var(--gradient-card)" }}
         >
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-black text-base">{a.full_name}</p>
-              <button
-                type="button"
-                onClick={() => onEdit(a)}
-                className="h-6 w-6 rounded-lg flex items-center justify-center active:scale-90 transition shrink-0"
-                style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)" }}
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            </div>
+            <p className="font-black text-base">{a.full_name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
             {a.contact_number && <p className="text-xs text-muted-foreground mt-0.5">{a.contact_number}</p>}
             {a.id_number && <p className="text-xs text-muted-foreground mt-0.5">{a.id_number}</p>}
@@ -421,6 +409,14 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
             >
               {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
               Bill
+            </button>
+            <button
+              onClick={() => onEdit(a)}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
+              style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
             </button>
           </div>
         </div>
@@ -707,7 +703,7 @@ function CreateTab({
 
         <Button
           type="submit"
-          disabled={busy || !name.trim()}
+          disabled={busy || !name.trim() || (contact.trim() !== "" && contact.replace("-", "").length < 7)}
           className="w-full h-12 font-black text-base"
           style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
         >
@@ -955,22 +951,30 @@ function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
 function CreditContactPad({ value, onChange, onDone }: {
   value: string; onChange: (v: string) => void; onDone: () => void;
 }) {
+  const digits = value.replace("-", "");
+  const complete = digits.length === 7;
   const handle = (k: string) => {
     if (k === "⌫") {
-      const digits = value.replace("-", "").slice(0, -1);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = value.replace("-", "").slice(0, -1);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     } else {
-      const digits = (value.replace("-", "") + k).slice(0, 7);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = (value.replace("-", "") + k).slice(0, 7);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
   return (
     <div className="mt-2">
+      {!complete && (
+        <p className="text-xs font-semibold text-amber-400 mb-1.5 text-center">
+          {7 - digits.length} digit{7 - digits.length !== 1 ? "s" : ""} remaining
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k) =>
           k === "done"
-            ? <button key="done" type="button" onClick={onDone}
-                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+            ? <button key="done" type="button"
+                onClick={() => { if (complete) onDone(); }}
+                className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
                 style={{ background: "var(--gradient-hero)" }}>Done</button>
             : <button key={k} type="button" onClick={() => handle(k)}
                 className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}

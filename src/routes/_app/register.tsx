@@ -1947,7 +1947,7 @@ function CreditSaleOverlay({
               </div>
               <Button
                 type="submit"
-                disabled={busy || !newName.trim()}
+                disabled={busy || !newName.trim() || (newContact.trim() !== "" && newContact.replace("-", "").length < 7)}
                 className="w-full h-12 font-black text-base"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
@@ -1992,22 +1992,30 @@ function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
 function CreditContactPad({ value, onChange, onDone }: {
   value: string; onChange: (v: string) => void; onDone: () => void;
 }) {
+  const digits = value.replace("-", "");
+  const complete = digits.length === 7;
   const handle = (k: string) => {
     if (k === "⌫") {
-      const digits = value.replace("-", "").slice(0, -1);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = value.replace("-", "").slice(0, -1);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     } else {
-      const digits = (value.replace("-", "") + k).slice(0, 7);
-      onChange(digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits);
+      const d = (value.replace("-", "") + k).slice(0, 7);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
   return (
     <div className="mt-2">
+      {!complete && (
+        <p className="text-xs font-semibold text-amber-400 mb-1.5 text-center">
+          {7 - digits.length} digit{7 - digits.length !== 1 ? "s" : ""} remaining
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k) =>
           k === "done"
-            ? <button key="done" type="button" onClick={onDone}
-                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+            ? <button key="done" type="button"
+                onClick={() => { if (complete) onDone(); }}
+                className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
                 style={{ background: "var(--gradient-hero)" }}>Done</button>
             : <button key={k} type="button" onClick={() => handle(k)}
                 className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
