@@ -4,13 +4,15 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const yt = useYouTube();
@@ -160,11 +162,11 @@ export default function AppLayout() {
                 <div className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
                   style={{ background: "var(--gradient-card)" }}>
                   <Link to="/billing" className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary">
-                    <CreditCard className="h-5 w-5 shrink-0" /> Billing
+                    <CreditCard className="h-5 w-5 shrink-0" /> {t("billing", "Billing")}
                   </Link>
                   <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
                     className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition">
-                    <X className="h-5 w-5 shrink-0" /> Logout / Salir
+                    <X className="h-5 w-5 shrink-0" /> {t("logout", "Logout")}
                   </button>
                 </div>
               )}
@@ -177,9 +179,9 @@ export default function AppLayout() {
               <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500/20 border border-yellow-500/40">
                 <ShieldAlert className="h-10 w-10 text-yellow-500" />
               </div>
-              <h1 className="text-3xl font-black">Account Pending</h1>
-              <p className="text-muted-foreground">Your account is awaiting admin approval. Please complete your billing setup to activate your account.</p>
-              <Button onClick={() => nav("/billing")} size="lg">Go to Billing</Button>
+              <h1 className="text-3xl font-black">{t("awaiting_approval", "Account Pending")}</h1>
+              <p className="text-muted-foreground">{t("account_pending_msg", "Your account is awaiting admin approval. Please complete your billing setup to activate your account.")}</p>
+              <Button onClick={() => nav("/billing")} size="lg">{t("go_to_billing", "Go to Billing")}</Button>
             </div>
           </div>
         </main>
@@ -190,18 +192,18 @@ export default function AppLayout() {
   const navItems = isAdmin
     ? [
         { to: "/admin",          label: "Users",   icon: Users },
-        { to: "/admin/billing",  label: "Billing", icon: DollarSign },
+        { to: "/admin/billing",  label: t("billing", "Billing"), icon: DollarSign },
         { to: "/admin/banking",  label: "Banking", icon: Building2 },
       ]
     : [
-        { to: "/register", label: "Bar",      icon: Wine },
-        { to: "/credit",   label: "Credit",   icon: Receipt },
-        ...(ownerHasMachines ? [{ to: "/machines", label: "Machines", icon: Gamepad2 }] : []),
+        { to: "/register", label: t("bar", "Bar"),           icon: Wine },
+        { to: "/credit",   label: t("credit", "Credit"),     icon: Receipt },
+        ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
         ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
-        { to: "/wallet",   label: "Wallet",   icon: Wallet },
-        ...(isOwner ? [{ to: "/billing",  label: "Billing",  icon: CreditCard }] : []),
-        ...(isOwner ? [{ to: "/profile",  label: "Profile",  icon: UserCircle }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
+        { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
+        ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),
+        ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"), icon: UserCircle }] : []),
       ];
 
   return (
@@ -225,7 +227,7 @@ export default function AppLayout() {
               style={{ background: "var(--gradient-hero)" }}
               title={isOnMusic ? "Back to Bar" : "Open Music Player"}
             >
-              {isOnMusic ? "Bar" : "Music"}
+            {isOnMusic ? t("bar", "Bar") : t("music", "Music")}
             </Link>
           )}
 
@@ -237,7 +239,7 @@ export default function AppLayout() {
               style={{ background: "var(--gradient-hero)" }}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              Menu
+              {t("menu", "Menu")}
             </button>
 
             {menuOpen && (
@@ -266,6 +268,16 @@ export default function AppLayout() {
                     </Link>
                   );
                 })}
+                {/* Language — all users */}
+                <Link
+                  to={"/language" as "/"}
+                  className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
+                    loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Globe className="h-6 w-6 shrink-0" />
+                  {t("language", "Language")}
+                </Link>
                 {/* Factory Reset — owner only, before logout */}
                 {isOwner && (
                   <Link
@@ -273,7 +285,7 @@ export default function AppLayout() {
                     className="flex items-center gap-4 px-5 py-5 text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
                   >
                     <RotateCcw className="h-6 w-6 shrink-0" />
-                    Factory Reset
+                    {t("factory_reset", "Factory Reset")}
                   </Link>
                 )}
                 <button
@@ -281,7 +293,7 @@ export default function AppLayout() {
                   className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
                   <X className="h-6 w-6 shrink-0" />
-                  Logout / Salir
+                  {t("logout", "Logout")}
                 </button>
               </div>
             )}

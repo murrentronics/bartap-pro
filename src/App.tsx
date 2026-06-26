@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
+import { I18nProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { SplashScreen } from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
@@ -21,6 +22,7 @@ import MusicPage from "@/pages/MusicPage";
 import CreditPage from "@/pages/CreditPage";
 import MachinesPage from "@/pages/MachinesPage";
 import FactoryResetPage from "@/pages/FactoryResetPage";
+import LanguagePage from "@/pages/LanguagePage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 
@@ -44,6 +46,7 @@ function AppWithUpdateCheck() {
             <Route path="credit" element={<CreditPage />} />
             <Route path="machines" element={<MachinesPage />} />
             <Route path="factory-reset" element={<FactoryResetPage />} />
+            <Route path="language" element={<LanguagePage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />
@@ -72,12 +75,14 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <I18nProvider>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       <MusicPlayerProvider>
         <YouTubeProvider>
           <AppWithUpdateCheck />
         </YouTubeProvider>
       </MusicPlayerProvider>
+      </I18nProvider>
     </AuthProvider>
   );
 }

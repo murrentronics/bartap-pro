@@ -271,6 +271,16 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                 }
                 if (isBottlePack) {
                   const isPack = tx.type === "pack_finished";
+                  const bpParts = (tx.note ?? "").split(" | ");
+                  const bpTitle = bpParts[0] ?? (isPack ? "Pack sold out" : "Bottle closed");
+                  const bpSub1  = bpParts[1] ?? ""; // price
+                  const bpSub2  = bpParts[2] ?? ""; // units/shots sold
+                  const bpSub3  = bpParts[3] ?? ""; // revenue
+                  const bpGainLoss = bpParts[4] ?? ""; // Gain/Loss
+                  const bpPrice   = parseFloat((bpSub1.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                  const bpRev     = parseFloat((bpSub3.match(/\$([\d.]+)/) ?? [])[1] ?? "0");
+                  const bpDiff    = bpRev - bpPrice;
+                  const bpHasNums = !isNaN(bpPrice) && !isNaN(bpRev) && (bpPrice > 0 || bpRev > 0);
                   return (
                     <div key={tx.id} className={`rounded-xl p-4 border flex items-start gap-3 ${isPack ? "border-green-500/30" : "border-amber-500/30"}`}
                       style={{ background: isPack ? "oklch(0.20 0.05 145 / 0.35)" : "oklch(0.20 0.06 80 / 0.35)" }}>
@@ -279,7 +289,15 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                        <div className={`text-sm font-black mt-0.5 ${isPack ? "text-green-300" : "text-amber-300"}`}>{tx.note}</div>
+                        <div className={`text-sm font-black mt-0.5 ${isPack ? "text-green-300" : "text-amber-300"}`}>{bpTitle}</div>
+                        {bpSub1 && <div className="text-xs text-muted-foreground mt-0.5">{bpSub1}</div>}
+                        {bpSub2 && <div className="text-xs text-muted-foreground mt-0.5">{bpSub2}</div>}
+                        {bpSub3 && <div className={`text-xs font-semibold mt-0.5 ${isPack ? "text-green-400" : "text-amber-400"}`}>{bpSub3}</div>}
+                        {bpHasNums && (
+                          <div className="text-xs font-black mt-1" style={{ color: bpDiff >= 0 ? "#86efac" : "#fca5a5" }}>
+                            {bpDiff >= 0 ? `Gain: +$${bpDiff.toFixed(2)}` : `Loss: -$${Math.abs(bpDiff).toFixed(2)}`}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
