@@ -42,8 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   // track whether a profile fetch is in flight so we don't sign out prematurely
   const profileFetching = useRef(false);
-  // prevent double-signout calls
-  const signingOut = useRef(false);
 
   const loadProfile = async (uid: string) => {
     profileFetching.current = true;
@@ -123,14 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) await loadProfile(session.user.id);
     },
     signOut: async () => {
-      if (signingOut.current) return;
-      signingOut.current = true;
-      setLoading(true);
       await supabase.auth.signOut();
-      setProfile(null);
-      setSession(null);
-      setLoading(false);
-      signingOut.current = false;
     },
   };
 

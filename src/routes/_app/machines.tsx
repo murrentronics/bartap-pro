@@ -587,11 +587,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       <div className="shrink-0 flex items-center gap-3 px-3 border-b border-border bg-background/95 backdrop-blur z-10"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)", paddingBottom: "0.5rem" }}>
         <button onClick={onBack}
-          className="h-9 w-9 rounded-full flex items-center justify-center bg-muted active:scale-95 transition shrink-0">
-          <ChevronLeft className="h-5 w-5" />
+          className="h-10 px-4 rounded-2xl flex items-center justify-center gap-1.5 bg-muted active:scale-95 transition shrink-0 font-black text-sm">
+          <ChevronLeft className="h-4 w-4" />
+          {screenNumber}
         </button>
         <h1 className="font-black text-lg flex-1 truncate">
-          Screen {screenNumber} — {machine.name}
+          {machine.name}
         </h1>
         {!isCashier && (
           <button onClick={() => setShowDeleteMachine(true)}

@@ -1,41 +1,43 @@
 /**
  * Cross-platform download utility.
  *
- * On Android (Capacitor): writes to the Downloads directory using
- * @capacitor/filesystem, then opens it via the Share sheet.
+ * On Android (Capacitor):
+ *   - downloadPdf: writes to the public Documents directory and shows a toast
+ *   - sharePdf:    writes to cache then opens the native share sheet (WhatsApp etc.)
  *
  * On web: triggers a standard browser <a> download.
  */
 
 import { Capacitor } from "@capacitor/core";
 
-/** Download a PDF file (base64 data URI from jsPDF) */
-export async function downloadPdf(filename: string, pdfBase64: string): Promise<void> {
+/** Strip data URI prefix and validate base64 */
+function extractBase64(pdfBase64: string): string {
   const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
+  if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
+  return base64;
+}
 
-  if (!base64 || base64.length < 10) {
-    throw new Error("PDF generation produced empty output");
-  }
+/** Save PDF to device (Android) or trigger browser download (web) */
+export async function downloadPdf(filename: string, pdfBase64: string): Promise<void> {
+  const base64 = extractBase64(pdfBase64);
 
   if (Capacitor.isNativePlatform()) {
+    // Write to cache (no permissions needed on any Android version)
+    // then open share sheet so user can save to Downloads, Drive, etc.
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const { Share } = await import("@capacitor/share");
-
-    // Write to cache directory first (no extra permissions needed)
     const writeResult = await Filesystem.writeFile({
       path: filename,
       data: base64,
       directory: Directory.Cache,
+      recursive: true,
     });
-
-    // Open share sheet so user can save to Downloads, WhatsApp, etc.
     await Share.share({
       title: filename,
       url: writeResult.uri,
-      dialogTitle: "Save or share PDF",
+      dialogTitle: "Save PDF",
     });
   } else {
-    // Web: decode base64 and trigger <a> download
     const byteChars = atob(base64);
     const bytes = new Uint8Array(byteChars.length);
     for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
@@ -49,23 +51,49 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
   }
 }
 
+/** Share PDF via native share sheet (WhatsApp, email, etc.) */
+export async function sharePdf(filename: string, pdfBase64: string, shareText?: string): Promise<void> {
+  const base64 = extractBase64(pdfBase64);
+
+  if (Capacitor.isNativePlatform()) {
+    const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    const { Share } = await import("@capacitor/share");
+
+    const writeResult = await Filesystem.writeFile({
+      path: filename,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
+
+    await Share.share({
+      title: filename,
+      text: shareText ?? "",
+      url: writeResult.uri,
+      dialogTitle: "Send Bill",
+    });
+  } else {
+    // On web, just download as fallback
+    await downloadPdf(filename, pdfBase64);
+  }
+}
+
 /** Download a plain-text file */
 export async function downloadText(filename: string, content: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const { Share } = await import("@capacitor/share");
-
     const base64 = btoa(unescape(encodeURIComponent(content)));
     const writeResult = await Filesystem.writeFile({
       path: filename,
       data: base64,
       directory: Directory.Cache,
+      recursive: true,
     });
-
     await Share.share({
       title: filename,
       url: writeResult.uri,
-      dialogTitle: "Save or share file",
+      dialogTitle: "Save file",
     });
   } else {
     const blob = new Blob([content], { type: "text/plain" });

@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Pencil,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2,
 } from "lucide-react";
-import { Capacitor } from "@capacitor/core";
-import { downloadPdf } from "@/lib/download";
+import { downloadPdf, sharePdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -149,30 +148,8 @@ function BillModal({ account, ownerName, onClose }: {
     if (!b64) { setBusy(null); return; }
 
     try {
-      if (Capacitor.isNativePlatform()) {
-        const { Filesystem, Directory } = await import("@capacitor/filesystem");
-        const { Share } = await import("@capacitor/share");
-
-        const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
-        const writeResult = await Filesystem.writeFile({
-          path: filename,
-          data: base64Data,
-          directory: Directory.Cache,
-        });
-
-        const rawNum = (account.contact_number ?? "").replace(/\D/g, "");
-        const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
-
-        await Share.share({
-          title: `Credit Bill — ${account.full_name}`,
-          text: shareText,
-          url: writeResult.uri,
-          dialogTitle: "Send Bill",
-        });
-      } else {
-        await downloadPdf(filename, b64);
-        toast.success("Bill saved");
-      }
+      const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
+      await sharePdf(filename, b64, shareText);
     } catch (e: any) {
       if (!String(e?.message ?? "").includes("cancel")) {
         toast.error("Share failed: " + (e?.message ?? "unknown"));
