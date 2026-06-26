@@ -920,8 +920,9 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
         <div>
           <Label>Full Name *</Label>
           <button type="button" onClick={() => { setDone(false); toggle("name"); }}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-            <span className={`text-sm font-black ${name ? "text-foreground" : "text-muted-foreground"}`}>
+            className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+            style={{ background: "#ffffff" }}>
+            <span className={`text-sm font-black ${name ? "text-black" : "text-gray-400"}`}>
               {name || "e.g. John Smith"}
             </span>
           </button>
@@ -933,7 +934,8 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
           <Label htmlFor="credit-idtype">ID Type</Label>
           <select id="credit-idtype" value={idType}
             onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
+            className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+            style={{ background: "#ffffff", color: "#000000" }}>
             <option value="drivers_permit">Driver's Permit</option>
             <option value="national_id">National ID</option>
           </select>
@@ -943,8 +945,9 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
         <div>
           <Label>ID Number</Label>
           <button type="button" onClick={() => toggle("idNumber")}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-            <span className={`text-sm font-black ${idNumber ? "text-foreground" : "text-muted-foreground"}`}>
+            className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+            style={{ background: "#ffffff" }}>
+            <span className={`text-sm font-black ${idNumber ? "text-black" : "text-gray-400"}`}>
               {idNumber || "e.g. 00000000"}
             </span>
           </button>
@@ -959,8 +962,9 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
           <div className="flex items-center mt-1">
             <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
             <button type="button" onClick={() => toggle("contact")}
-              className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
-              <span className={`text-sm font-black ${contact ? "text-foreground" : "text-muted-foreground"}`}>
+              className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+              style={{ background: "#ffffff" }}>
+              <span className={`text-sm font-black ${contact ? "text-black" : "text-gray-400"}`}>
                 {contact || "XXX-XXXX"}
               </span>
             </button>

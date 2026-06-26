@@ -380,6 +380,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
+    // Block payout if remaining float is 0 or less
+    if (tab === "payout" && remainingFloat !== null && remainingFloat <= 0) {
+      toast.error("Float is empty — set a new float before recording a payout");
+      return;
+    }
+
     // Confirm before saving a payout
     if (tab === "payout") {
       const ok = await confirm({
@@ -773,11 +779,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   </button>
                 )}
                 {/* Save Payout button — right */}
-                <Button onClick={handleSave} disabled={busy || !amount}
-                  className="flex-1 h-14 font-black text-base rounded-2xl"
-                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Payout"}
-                </Button>
+                {(() => {
+                  const floatEmpty = remainingFloat !== null && remainingFloat <= 0;
+                  return (
+                    <Button onClick={handleSave} disabled={busy || !amount || floatEmpty}
+                      className="flex-1 h-14 font-black text-base rounded-2xl"
+                      style={{ background: floatEmpty ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                      title={floatEmpty ? "Float is empty — set a new float first" : undefined}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : floatEmpty ? "Float Empty" : "Save Payout"}
+                    </Button>
+                  );
+                })()}
               </div>
             ) : (
               <Button onClick={handleSave} disabled={busy || !amount}

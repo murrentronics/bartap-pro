@@ -108,6 +108,9 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalTxs, setTotalTxs] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  // Lock the newest order id on first load — cleared after delete so button disappears
+  const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
 
   const totalRecords = totalOrders + totalTxs;
   const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
@@ -127,7 +130,14 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
         .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
-        .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
+        .then(({ data }) => {
+          const o = (data ?? []) as unknown as Order[];
+          setOrders(o);
+          // Lock newest on first load only
+          if (lockedNewestOrderIdRef.current === undefined) {
+            lockedNewestOrderIdRef.current = o.length > 0 ? o[0].id : null;
+          }
+        }),
       // Count wallet txs — include transfer_out so cashier sees cleared-to-owner records
       supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
         .eq("profile_id", profile.id)
@@ -171,6 +181,23 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);
+
+  const newestOrderId = lockedNewestOrderIdRef.current;
+
+  const deleteLatestCashierOrder = async (order: Order) => {
+    lockedNewestOrderIdRef.current = null;
+    setDeletingOrderId(order.id);
+    await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
+    await supabase.from("wallet_transactions").delete()
+      .eq("profile_id", profile.id).eq("type", "cashier_sale")
+      .gte("created_at", new Date(new Date(order.created_at).getTime() - 5000).toISOString())
+      .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
+    const { error } = await supabase.from("orders").delete().eq("id", order.id);
+    setDeletingOrderId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Sale deleted");
+    fetchRef.current();
+  };
 
   return (
     <div className="space-y-5">
@@ -319,7 +346,21 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                     </div>
                   </div>
-                  <span className="font-black text-sm text-green-400 shrink-0">+${fmt(Number(o.total))}</span>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
+                    {o.id === newestOrderId && (
+                      <button
+                        onClick={() => deleteLatestCashierOrder(o)}
+                        disabled={deletingOrderId === o.id}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
+                        title="Delete this sale"
+                      >
+                        {deletingOrderId === o.id
+                          ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
