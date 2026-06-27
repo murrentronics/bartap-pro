@@ -2066,7 +2066,7 @@ function CreditSaleOverlay({
   );
 }
 
-// ΓöÇΓöÇ Credit form keyboard helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Credit form keyboard helpers 
 function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
   value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
 }) {
