@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { createCashier, deleteCashier, resetCashierPassword } from "@/lib/cashiers.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -233,7 +234,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <div>
-            <h2 className="text-xl font-black">Statement</h2>
+            <h2 className="text-xl font-black">{t("statement", "Statement")}</h2>
             <p className="text-sm text-muted-foreground">{cashier.username}</p>
           </div>
           <button
@@ -362,6 +363,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
 // ─── Main Cashiers Page ───────────────────────────────────────────────────────
 export default function CashiersPage() {
   const { profile, session, refreshProfile } = useAuth();
+  const { t } = useTranslation();
   const [list, setList] = useState<Cashier[]>([]);
   const [tab, setTab] = useState("add");
   const [u, setU] = useState("");
@@ -487,13 +489,13 @@ export default function CashiersPage() {
     <div>
       {/* Sticky page title */}
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">Cashiers</h1>
+        <h1 className="text-xl font-black leading-tight">{t("cashiers_title", "Cashiers")}</h1>
       </div>
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-2 w-full">
-          <TabsTrigger value="add">Add Cashier</TabsTrigger>
-          <TabsTrigger value="manage">Manage ({list.length})</TabsTrigger>
+          <TabsTrigger value="add">{t("add_cashier", "Add Cashier")}</TabsTrigger>
+          <TabsTrigger value="manage">{t("cashier_name", "Manage")} ({list.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
@@ -503,7 +505,7 @@ export default function CashiersPage() {
             style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
           >
             <div>
-              <Label>Username</Label>
+              <Label>{t("username", "Username")}</Label>
               <Input 
                 value={u} 
                 onChange={(e) => {
@@ -535,7 +537,7 @@ export default function CashiersPage() {
               )}
             </div>
             <div>
-              <Label>Password</Label>
+              <Label>{t("cashier_password", "Password")}</Label>
               <div className="relative mt-1">
                 <Input type={showCreatePw ? "text" : "password"} value={p} onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" className="pr-10" />
                 <button type="button" onClick={() => setShowCreatePw(v => !v)}
@@ -584,13 +586,13 @@ export default function CashiersPage() {
                 </div>
                 <div className="flex items-center gap-2 mt-3">
                   <Button size="sm" variant="outline" className="flex-1 h-12 text-sm font-black" onClick={() => setStatementCashier(c)}>
-                    <FileText className="h-5 w-5 mr-1.5" /> Statement
+                    <FileText className="h-5 w-5 mr-1.5" /> {t("statement", "Statement")}
                   </Button>
                   <Button size="sm" variant="secondary" className="flex-1 h-12 text-sm font-black" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
-                    <Eraser className="h-5 w-5 mr-1.5" /> Clear
+                    <Eraser className="h-5 w-5 mr-1.5" /> {t("clear_wallet", "Clear")}
                   </Button>
                   <Button size="sm" variant="outline" className="flex-1 h-12 text-sm font-black" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
-                    <KeyRound className="h-5 w-5 mr-1.5" /> Password
+                    <KeyRound className="h-5 w-5 mr-1.5" /> {t("change_password", "Password")}
                   </Button>
                 </div>
               </div>
@@ -615,7 +617,7 @@ export default function CashiersPage() {
               <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}>
                 <KeyRound className="h-6 w-6" style={{ color: "var(--primary)" }} />
               </div>
-              <h3 className="font-black text-base">Reset Password</h3>
+              <h3 className="font-black text-base">{t("change_password", "Reset Password")}</h3>
               <p className="text-xs text-muted-foreground mt-1">Set a new password for <span className="font-bold text-foreground">{resetPwCashier.username}</span></p>
             </div>
             <div className="px-6 pb-6 pt-4 space-y-4">

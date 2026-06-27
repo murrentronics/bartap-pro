@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -252,7 +253,6 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
   );
 }
 
-// ── Machine Detail Page ────────────────────────────────────────────────────────
 function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, onBack, onDeleted }: {
   machine: Machine; screenNumber: number; ownerId: string;
   profile: { id: string; username?: string; role?: string };
@@ -260,6 +260,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   remainingFloat: number | null;
   onBack: () => void; onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<MachineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const isCashier = profile.role === "cashier";
@@ -633,18 +634,18 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             </span>
           </div>
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label="Total Payout" value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
-            <StatCard label="Total Income" value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
-            <StatCard label="Total Profit"
+            <StatCard label={t("all_time_payout", "Total Payout")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
+            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
+            <StatCard label={t("all_time_profit", "Total Profit")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
           </div>
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-            <SmallStat label="Payout"
+            <SmallStat label={t("session_float", "Session Float")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+            <SmallStat label={t("session_payout", "Payout")}
               value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
               color="#fca5a5" />
-            <SmallStat label="Remaining"
+            <SmallStat label={t("remaining", "Remaining")}
               value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
               color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -652,13 +653,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
-          {(["payout", ...(!isCashier ? ["income"] : []), "history"] as ("payout" | "income" | "history")[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
+          {(["payout", ...(!isCashier ? ["income"] : []), "history"] as ("payout" | "income" | "history")[]).map((tabKey) => (
+            <button key={tabKey} onClick={() => setTab(tabKey)}
               className={`flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${
-                tab === t ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
-              style={tab === t ? { background: "var(--gradient-hero)" } : {}}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
+              {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : t("history", "History")}
             </button>
           ))}
         </div>
@@ -668,7 +669,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="rounded-2xl border border-border p-4 space-y-3"
             style={{ background: "var(--gradient-card)" }}>
             <h2 className="font-black text-sm">
-              {tab === "payout" ? "Record Payout" : "Record amount cleared from machine"}
+              {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record amount cleared from machine")}
             </h2>
             {/* Amount display + Numpad — hidden when camera is open */}
             {!camOpen && (
@@ -898,6 +899,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 // ── Create Tab ─────────────────────────────────────────────────────────────────
 function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Machine) => void }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -918,16 +920,16 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
   return (
     <form onSubmit={submit} className="rounded-2xl border border-border p-4 space-y-4"
       style={{ background: "var(--gradient-card)" }}>
-      <h2 className="font-black text-sm">New Machine</h2>
+      <h2 className="font-black text-sm">{t("add_machine", "New Machine")}</h2>
       <div>
-        <Label className="text-xs">Machine Name</Label>
+        <Label className="text-xs">{t("machine_name", "Machine Name")}</Label>
         <Input value={name} onChange={e => setName(e.target.value)}
           placeholder="e.g. Lucky Star, Pool Table 1" className="mt-1 h-11" required />
       </div>
       <Button type="submit" disabled={busy || !name.trim()}
         className="w-full h-12 font-black text-base"
         style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />Create Machine</>}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />{t("create_machine", "Create Machine")}</>}
       </Button>
     </form>
   );
@@ -945,6 +947,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   onSetFloat: () => void;
   onDeleteMachine: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
@@ -1077,9 +1080,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label="All Payouts" value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
-          <StatCard label="All Income"  value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
-          <StatCard label="All Profit"
+          <StatCard label={t("all_time_payout", "All Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
+          <StatCard label={t("all_time_income", "All Income")}  value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
+          <StatCard label={t("all_time_profit", "All Profit")}
             value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
             color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
         </div>
@@ -1087,21 +1090,21 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="relative grid grid-cols-3 gap-2">
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Float Set</div>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("float_set", "Float Set")}</div>
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
               {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Session Payout</div>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Payout")}</div>
             <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
               {floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Remaining</div>
+            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("remaining", "Remaining")}</div>
             <div className="font-black text-xs"
               style={{ color: remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
               {remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
@@ -1114,7 +1117,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             <button onClick={onSetFloat}
               className="w-full py-2 rounded-xl text-xs font-black active:scale-95 transition"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1px solid oklch(0.38 0.10 60)" }}>
-              {floatSession ? "Update Float" : "Set Float"}
+              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
             </button>
           </div>
         )}
@@ -1124,18 +1127,18 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       {editMode && (
         <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 border border-amber-500/40"
           style={{ background: "oklch(0.20 0.05 60)" }}>
-          <span className="text-xs font-black text-amber-400">Hold & drag to reorder</span>
+          <span className="text-xs font-black text-amber-400">{t("hold_to_sort", "Hold & drag to reorder")}</span>
           <button
             onClick={handleDone}
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
-            Done
+            {t("done", "Done")}
           </button>
         </div>
       )}
 
       {!editMode && !isCashier && (
         <p className="text-xs text-center" style={{ color: "rgba(180,160,130,0.6)" }}>
-          Hold down any screen to sort order
+          {t("hold_to_sort", "Hold down any screen to sort order")}
         </p>
       )}
 
@@ -1488,6 +1491,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 
 export default function MachinesPage() {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [entries, setEntries] = useState<MachineEntry[]>([]);
@@ -1642,7 +1646,7 @@ export default function MachinesPage() {
   if (!isPremium && !ownerMachinesAddon) {
     return (
       <div className="py-3 space-y-4">
-        <h1 className="text-2xl font-black">Machines</h1>
+        <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
 
         {/* ── Hero card ─────────────────────────────────────────────────── */}
         <div className="rounded-3xl border border-amber-500/30 overflow-hidden"
@@ -1713,9 +1717,9 @@ export default function MachinesPage() {
   const screenNumber = selectedScreenNum;
 
   const tabs = [
-    { key: "screens", label: `Screens${machines.length ? ` (${machines.length})` : ""}` },
-    { key: "payouts", label: "All History" },
-    ...(isOwner ? [{ key: "create", label: "Create" }] : []),
+    { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
+    { key: "payouts", label: t("all_history", "All History") },
+    ...(isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []),
   ] as const;
 
   return (
@@ -1738,7 +1742,7 @@ export default function MachinesPage() {
       {/* List view — always mounted, hidden behind MachineDetail when a machine is selected */}
       <div className="py-3 space-y-4" style={selected ? { visibility: "hidden", pointerEvents: "none" } : {}}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black">Machines</h1>
+        <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
         {isOwner && (
           <button
             onClick={() => setShowAlertsModal(true)}
@@ -1750,7 +1754,7 @@ export default function MachinesPage() {
             }}
           >
             <Bell className={`h-3.5 w-3.5 ${alertSettings.enabled ? "fill-current" : ""}`} />
-            Set Alerts
+            {t("set_alerts", "Set Alerts")}
             {alertSettings.enabled && (
               <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
                 style={{ background: "var(--gradient-hero)" }}>

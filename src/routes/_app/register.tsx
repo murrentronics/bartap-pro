@@ -77,26 +77,20 @@ export default function RegisterPage() {
     return products.filter((p) => (p.category || "beers") === category);
   }, [products, category]);
 
-  // ── Bar sort order (touch-based drag) ────────────────────────────────────
+  // ── Bar sort order ────────────────────────────────────────────────────────
   const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
   const [barEditMode, setBarEditMode] = useState(false);
-  const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
   const [barSelectedId, setBarSelectedId] = useState<string | null>(null);
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
   const barEditModeRef = useRef(false);
   const barSortMapRef = useRef<Record<string, number>>({});
   const barOrderedRef = useRef<Product[]>([]);
-  const barDraggingRef = useRef<string | null>(null);
-  const barLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const barLongPressCancelledRef = useRef(false);
-  const barMoveRafRef = useRef<number | null>(null);
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
-  // Always-current cart length ref so setTimeout callbacks see the live value
   const cartLengthRef = useRef(0);
 
   const loadBarSort = async () => {
-    const pid = profileIdRef.current;  // each user (owner or cashier) keeps their own sort order
+    const pid = profileIdRef.current;
     if (!pid) return;
     const { data } = await (supabase as any)
       .from("bar_sort_order").select("order_json").eq("owner_id", pid).maybeSingle();
@@ -108,7 +102,7 @@ export default function RegisterPage() {
   };
 
   const saveBarSortIds = (ids: string[]) => {
-    const pid = profileIdRef.current;  // save under the user's own id
+    const pid = profileIdRef.current;
     if (!pid) return;
     (supabase as any).from("bar_sort_order").upsert(
       { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
@@ -124,68 +118,6 @@ export default function RegisterPage() {
       return a.name.localeCompare(b.name);
     });
 
-  const handleBarTouchStart = (e: React.TouchEvent, id: string) => {
-    if (!barEditModeRef.current) return;
-    barLongPressCancelledRef.current = false;
-    // Start a 400ms long-press timer — drag only activates if the finger holds still
-    barLongPressTimerRef.current = setTimeout(() => {
-      if (!barLongPressCancelledRef.current) {
-        barDraggingRef.current = id;
-        setBarDraggingId(id);
-        // Vibrate for tactile feedback where supported
-        if (navigator.vibrate) navigator.vibrate(40);
-      }
-    }, 400);
-  };
-
-  const handleBarTouchMove = (e: React.TouchEvent) => {
-    if (!barEditModeRef.current) return;
-    // If drag hasn't started yet, any movement cancels the long-press timer
-    // so the page can scroll normally
-    if (!barDraggingRef.current) {
-      if (barLongPressTimerRef.current) {
-        clearTimeout(barLongPressTimerRef.current);
-        barLongPressTimerRef.current = null;
-      }
-      barLongPressCancelledRef.current = true;
-      return; // let the browser handle native scroll
-    }
-    e.preventDefault();
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const card = el?.closest("[data-bar-id]");
-    const targetId = card?.getAttribute("data-bar-id");
-    if (!targetId || targetId === barDraggingRef.current) return;
-    const current = barOrderedRef.current;
-    const from = current.findIndex(p => p.id === barDraggingRef.current);
-    const to   = current.findIndex(p => p.id === targetId);
-    if (from === -1 || to === -1) return;
-    const next = [...current];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    barOrderedRef.current = next;
-    // Throttle setState to avoid re-rendering grid on every pixel
-    if (!barMoveRafRef.current) {
-      barMoveRafRef.current = requestAnimationFrame(() => {
-        barMoveRafRef.current = null;
-        setBarOrdered([...barOrderedRef.current]);
-      });
-    }
-  };
-
-  const handleBarTouchEnd = () => {
-    // Cancel long-press timer if finger lifted before threshold
-    if (barLongPressTimerRef.current) {
-      clearTimeout(barLongPressTimerRef.current);
-      barLongPressTimerRef.current = null;
-    }
-    if (!barDraggingRef.current) return;
-    const ids = barOrderedRef.current.map(p => p.id);
-    saveBarSortIds(ids);
-    barDraggingRef.current = null;
-    setBarDraggingId(null);
-  };
-
   const barEnterEditMode = () => {
     if (barEditModeRef.current) return;
     barEditModeRef.current = true;
@@ -193,11 +125,9 @@ export default function RegisterPage() {
   };
 
   const handleBarDone = () => {
-    if (barMoveRafRef.current) { cancelAnimationFrame(barMoveRafRef.current); barMoveRafRef.current = null; }
     barEditModeRef.current = false;
     setBarEditMode(false);
-    barDraggingRef.current = null;
-    setBarDraggingId(null);
+    setBarSelectedId(null);
   };
 
   // Load bar sort on mount and sync barOrdered when products/category/sort changes
@@ -210,8 +140,6 @@ export default function RegisterPage() {
     const sorted = applyBarSort(products, category, barSortMapRef.current);
     barOrderedRef.current = sorted;
     setBarOrdered(sorted);
-    barDraggingRef.current = null;
-    setBarDraggingId(null);
   }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track cart length via ref so handlers always see live value
@@ -521,6 +449,24 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
+            {/* ── Edit mode instruction banner — sits where shot/pack buttons normally are ── */}
+            {barEditMode && (
+              <div
+                className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-3 border border-amber-500/40"
+                style={{ background: "oklch(0.20 0.05 60)" }}
+              >
+                <span className="text-xs font-black text-amber-400">
+                  {barSelectedId
+                    ? "Now tap another item to swap its position"
+                    : "Tap an item to select, then tap another to swap"}
+                </span>
+                <button onClick={handleBarDone}
+                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
+                  Done
+                </button>
+              </div>
+            )}
+
             {/* ── Shot button — liquor tab only (hidden in edit/sort mode) ── */}
             {category === "liquor" && !barEditMode && (
               <div className="mb-3">
@@ -569,22 +515,6 @@ export default function RegisterPage() {
             {barEditMode ? (
               /* ── Edit mode: tap-to-select then tap-to-swap ── */
               <div>
-                {/* Sticky instruction banner with Done button — items slide behind it */}
-                <div
-                  className="sticky z-20 flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40 backdrop-blur"
-                  style={{ background: "oklch(0.20 0.05 60 / 0.95)", top: 0 }}
-                >
-                  <span className="text-xs font-black text-amber-400">
-                    {barSelectedId
-                      ? "Now tap another item to swap its position"
-                      : "Tap an item to select, then tap another to swap"}
-                  </span>
-                  <button onClick={handleBarDone}
-                    className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
-                    Done
-                  </button>
-                </div>
-
                 {/* Grid — normal scrolling, taps drive selection/swap */}
                 <div
                   className="grid grid-cols-3 gap-2"
@@ -624,7 +554,7 @@ export default function RegisterPage() {
                             saveBarSortIds(next.map(x => x.id));
                             setBarSelectedId(null);
                           }}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : "active:scale-95"}`}
+                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : ""}`}
                           style={{
                             background: "var(--gradient-card)",
                             boxShadow: isSelected ? "0 0 0 3px rgba(251,191,36,0.95), var(--shadow-elegant)" : "var(--shadow-elegant)",

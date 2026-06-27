@@ -199,7 +199,7 @@ export default function AppLayout() {
         { to: "/register", label: t("bar", "Bar"),           icon: Wine },
         { to: "/credit",   label: t("credit", "Credit"),     icon: Receipt },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
-        ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
+        ...(isOwner ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),

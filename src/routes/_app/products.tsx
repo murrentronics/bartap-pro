@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -431,6 +432,7 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
 // ─── Products Page ────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -489,7 +491,7 @@ export default function ProductsPage() {
       <div className="sticky top-0 z-30 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-black leading-tight">Bar Items</h1>
+            <h1 className="text-xl font-black leading-tight">{t("products_title", "Bar Items")}</h1>
             <p className="text-muted-foreground text-xs">{items.length} items</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>

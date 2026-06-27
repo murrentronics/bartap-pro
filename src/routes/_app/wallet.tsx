@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
@@ -102,6 +103,7 @@ function PaginationBar({
 
 // ─── Cashier Wallet ───────────────────────────────────────────────────────────
 function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
@@ -219,7 +221,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   return (
     <div className="space-y-5">
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">Wallet</h1>
+        <h1 className="text-xl font-black leading-tight">{t("wallet", "Wallet")}</h1>
       </div>
       <section className="rounded-3xl p-6 relative overflow-hidden"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
@@ -236,7 +238,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       </section>
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-black text-xl">Records</h2>
+          <h2 className="font-black text-xl">{t("records", "Records")}</h2>
           <span className="text-sm text-muted-foreground">{totalRecords} records</span>
         </div>
         <PaginationBar page={page} totalPages={totalPages} total={totalRecords} onPrev={handlePrev} onNext={handleNext} />
@@ -577,7 +579,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <div>
-            <h2 className="text-xl font-black">Owner Statement</h2>
+            <h2 className="text-xl font-black">{t("statement", "Owner Statement")}</h2>
             <p className="text-sm text-muted-foreground">Your wallet records</p>
           </div>
           <button onClick={onClose}
@@ -1504,6 +1506,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 
 // ─── Owner Wallet ─────────────────────────────────────────────────────────────
 function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string } }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"transactions" | "financials">("transactions");
   const [showStatement, setShowStatement] = useState(false);
   // Derive balance directly from the prop so it updates when refreshProfile() runs
