@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 import {
   loadAlertSettings, saveAlertSettings, syncAlertSettingsToServer, requestNotificationPermission,
-  checkAndFirePayoutAlert, THRESHOLD_OPTIONS, type AlertSettings,
+  checkAndFirePayoutAlert, registerPayoutAlertTapHandler, THRESHOLD_OPTIONS, type AlertSettings,
 } from "@/lib/machineAlerts";
 
 export const Route = createFileRoute("/_app/machines")({
@@ -641,7 +641,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
           <div className="relative grid grid-cols-3 gap-2">
             <SmallStat label="Session Float" value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-            <SmallStat label="Session Payout"
+            <SmallStat label="Payout"
               value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
               color="#fca5a5" />
             <SmallStat label="Remaining"
@@ -1488,6 +1488,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 
 export default function MachinesPage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [entries, setEntries] = useState<MachineEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1498,6 +1499,13 @@ export default function MachinesPage() {
   // Cashiers see their owner's machines; owners see their own
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
   const isOwner = profile?.role === "owner";
+
+  // Register tap handler so tapping a payout alert notification navigates here
+  useEffect(() => {
+    let cleanup = () => {};
+    registerPayoutAlertTapHandler((to) => navigate({ to })).then((fn) => { cleanup = fn; });
+    return () => cleanup();
+  }, [navigate]);
 
   // Payout alert settings (owner only)
   const [showAlertsModal, setShowAlertsModal] = useState(false);

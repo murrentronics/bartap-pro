@@ -8,6 +8,13 @@
  * LocalNotification whenever a payout meets or exceeds the threshold.
  * On web the permission API is used with the browser Notification API
  * as a fallback (best-effort — not all browsers support it).
+ *
+ * In-app alert: when the owner is looking at the app (document is visible),
+ * Android suppresses local notifications, so we also fire a Sonner toast
+ * so the owner always sees the alert regardless of app state.
+ *
+ * Deep-link: tapping the notification navigates to /machines so the owner
+ * lands directly on the machines page to see the record.
  */
 import { Capacitor } from "@capacitor/core";
 
@@ -70,7 +77,35 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return false;
 }
 
-/** Fire a payout alert if the payout amount meets the threshold. */
+/**
+ * Register a one-time listener so tapping a payout alert notification
+ * navigates the app to /machines. Call this once at app startup or when
+ * the Machines page mounts. Returns a cleanup function.
+ */
+export async function registerPayoutAlertTapHandler(
+  navigate: (to: string) => void
+): Promise<() => void> {
+  if (!Capacitor.isNativePlatform()) return () => {};
+  try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    const handle = await LocalNotifications.addListener(
+      "localNotificationActionPerformed",
+      (action) => {
+        const extra = action.notification.extra as Record<string, unknown> | null;
+        if (extra?.type === "payout_alert") {
+          navigate("/machines");
+        }
+      }
+    );
+    return () => { handle.remove(); };
+  } catch {
+    return () => {};
+  }
+}
+
+/** Fire a payout alert if the payout amount meets the threshold.
+ *  Always fires an in-app toast so the owner sees it even when the app is
+ *  foregrounded (Android suppresses local notifications when app is visible). */
 export async function checkAndFirePayoutAlert(
   amount: number,
   machineName: string,
@@ -80,7 +115,16 @@ export async function checkAndFirePayoutAlert(
   if (amount < settings.threshold) return;
 
   const title = `⚠️ Payout Alert — ${machineName}`;
-  const body  = `$${amount.toFixed(2)} payout recorded — meets your $${settings.threshold.toLocaleString()} TT alert threshold.`;
+  const body  = `$${amount.toFixed(2)} payout — meets your $${settings.threshold.toLocaleString()} threshold`;
+
+  // ── Always show in-app toast so the owner sees it even with app open ──────
+  try {
+    const { toast } = await import("sonner");
+    toast.warning(title, {
+      description: body,
+      duration: 8000,
+    });
+  } catch { /* sonner not available */ }
 
   if (Capacitor.isNativePlatform()) {
     try {
@@ -101,7 +145,8 @@ export async function checkAndFirePayoutAlert(
           channelId: "payout_alerts",
           sound: "default",
           actionTypeId: "",
-          extra: null,
+          // extra carries the deep-link type so the tap handler can route correctly
+          extra: { type: "payout_alert", machineName },
         }],
       });
     } catch (e) {
@@ -110,8 +155,13 @@ export async function checkAndFirePayoutAlert(
     return;
   }
 
-  // Web fallback
+  // Web fallback — tapping a web Notification can't deep-link easily,
+  // but we can focus the window and navigate via the onclick handler.
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, { body });
+    const n = new Notification(title, { body });
+    n.onclick = () => {
+      window.focus();
+      window.location.hash = "#/machines";
+    };
   }
 }
