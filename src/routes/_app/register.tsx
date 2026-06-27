@@ -88,6 +88,21 @@ export default function RegisterPage() {
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
   const cartLengthRef = useRef(0);
+  // Ref for the edit-mode grid — used to block native long-press browser behaviour
+  const barEditGridRef = useRef<HTMLDivElement>(null);
+
+  // Block the browser's built-in long-press (context menu / text-selection grab)
+  // which steals touch focus and freezes buttons. Must be non-passive so we can
+  // call preventDefault().
+  useEffect(() => {
+    const el = barEditGridRef.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => {
+      if (barEditModeRef.current) e.preventDefault();
+    };
+    el.addEventListener("touchstart", block, { passive: false });
+    return () => el.removeEventListener("touchstart", block);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadBarSort = async () => {
     const pid = profileIdRef.current;
@@ -449,11 +464,11 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            {/* ── Edit mode instruction banner — sits where shot/pack buttons normally are ── */}
+            {/* ── Edit mode instruction banner — sticky just below category tabs ── */}
             {barEditMode && (
               <div
-                className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-3 border border-amber-500/40"
-                style={{ background: "oklch(0.20 0.05 60)" }}
+                className="sticky z-[19] -mx-3 px-3 flex items-center justify-between py-2.5 mb-3 border-b border-amber-500/40 bg-background/95 backdrop-blur"
+                style={{ top: "72px" }}
               >
                 <span className="text-xs font-black text-amber-400">
                   {barSelectedId
@@ -517,8 +532,10 @@ export default function RegisterPage() {
               <div>
                 {/* Grid — normal scrolling, taps drive selection/swap */}
                 <div
+                  ref={barEditGridRef}
                   className="grid grid-cols-3 gap-2"
                   onContextMenu={(e) => e.preventDefault()}
+                  style={{ touchAction: "pan-y" }}
                 >
                   {barOrdered.map((p) => {
                     const inCart = cart.find((i) => i.id === p.id);
@@ -529,7 +546,7 @@ export default function RegisterPage() {
                         data-bar-id={p.id}
                         className="relative"
                         onContextMenu={(e) => e.preventDefault()}
-                        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
+                        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", touchAction: "manipulation" } as React.CSSProperties}
                       >
                         <button
                           onClick={() => {
