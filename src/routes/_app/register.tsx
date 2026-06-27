@@ -645,11 +645,37 @@ export default function RegisterPage() {
                                 <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
                               </div>
                             )}
+                            {inCart && (
+                              <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
+                                className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
+                                style={{ background: "#dc2626" }}>
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                            {inCart && (
+                              <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+                                style={{ background: "rgba(0,0,0,0.75)" }}>
+                                <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
+                                  className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
+                                  style={{ background: "#ef4444" }}>
+                                  <Minus className="h-4 w-4 text-black" />
+                                </button>
+                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
+                                  style={{ background: "var(--gradient-hero)" }}>
+                                  {inCart.qty}
+                                </div>
+                              </div>
+                            )}
                             {outOfStock && (
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
                                 <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
                                   <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
                                 </div>
+                              </div>
+                            )}
+                            {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
                               </div>
                             )}
                           </div>
