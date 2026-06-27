@@ -81,6 +81,7 @@ export default function RegisterPage() {
   const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
   const [barEditMode, setBarEditMode] = useState(false);
   const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
+  const [barSelectedId, setBarSelectedId] = useState<string | null>(null);
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
   const barEditModeRef = useRef(false);
   const barSortMapRef = useRef<Record<string, number>>({});
