@@ -81,6 +81,7 @@ export default function RegisterPage() {
   const [barSortMap, setBarSortMap] = useState<Record<string, number>>({});
   const [barEditMode, setBarEditMode] = useState(false);
   const [barDraggingId, setBarDraggingId] = useState<string | null>(null);
+  const [barSelectedId, setBarSelectedId] = useState<string | null>(null);
   const [barOrdered, setBarOrdered] = useState<Product[]>([]);
   const barEditModeRef = useRef(false);
   const barSortMapRef = useRef<Record<string, number>>({});
@@ -565,19 +566,25 @@ export default function RegisterPage() {
             ) : (
           <div>
             {barEditMode ? (
-              /* ── Edit mode: scrollable grid, long-press to drag ── */
+              /* ── Edit mode: tap-to-select then tap-to-swap ── */
               <div>
-                {/* Sticky instruction banner with Done button */}
-                <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
-                  style={{ background: "oklch(0.20 0.05 60)" }}>
-                  <span className="text-xs font-black text-amber-400">Hold an item to drag &amp; reorder</span>
+                {/* Sticky instruction banner with Done button — items slide behind it */}
+                <div
+                  className="sticky z-20 flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40 backdrop-blur"
+                  style={{ background: "oklch(0.20 0.05 60 / 0.95)", top: 0 }}
+                >
+                  <span className="text-xs font-black text-amber-400">
+                    {barSelectedId
+                      ? "Now tap another item to swap its position"
+                      : "Tap an item to select, then tap another to swap"}
+                  </span>
                   <button onClick={handleBarDone}
                     className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
                     Done
                   </button>
                 </div>
 
-                {/* Grid — touchAction auto so the page scrolls normally; only preventDefault once drag is active */}
+                {/* Grid — normal scrolling, taps drive selection/swap */}
                 <div
                   className="grid grid-cols-3 gap-2"
                   onContextMenu={(e) => e.preventDefault()}
@@ -585,26 +592,42 @@ export default function RegisterPage() {
                   {barOrdered.map((p) => {
                     const inCart = cart.find((i) => i.id === p.id);
                     const outOfStock = (p.stock_qty ?? 1) === 0;
-                    const isDragging = barDraggingId === p.id;
+                    const isSelected = barSelectedId === p.id;
                     return (
                       <div key={p.id}
                         data-bar-id={p.id}
                         className="relative"
-                        onTouchStart={(e) => { if (barEditModeRef.current) handleBarTouchStart(e, p.id); }}
-                        onTouchMove={handleBarTouchMove}
-                        onTouchEnd={handleBarTouchEnd}
                         onContextMenu={(e) => e.preventDefault()}
-                        style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
+                        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
                       >
                         <button
-                          onClick={() => !outOfStock && !barEditMode && addToCart(p)}
-                          disabled={outOfStock}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
+                          onClick={() => {
+                            if (!barEditModeRef.current) return;
+                            const current = barOrderedRef.current;
+                            if (!barSelectedId) {
+                              setBarSelectedId(p.id);
+                              return;
+                            }
+                            if (barSelectedId === p.id) {
+                              setBarSelectedId(null);
+                              return;
+                            }
+                            const from = current.findIndex(x => x.id === barSelectedId);
+                            const to = current.findIndex(x => x.id === p.id);
+                            if (from === -1 || to === -1) { setBarSelectedId(null); return; }
+                            const next = [...current];
+                            const [moved] = next.splice(from, 1);
+                            next.splice(to, 0, moved);
+                            barOrderedRef.current = next;
+                            setBarOrdered(next);
+                            saveBarSortIds(next.map(x => x.id));
+                            setBarSelectedId(null);
+                          }}
+                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : "active:scale-95"}`}
                           style={{
                             background: "var(--gradient-card)",
-                            boxShadow: "var(--shadow-elegant)",
-                            borderColor: barEditMode ? "rgba(251,146,60,0.8)" : inCart ? "var(--primary)" : "var(--border)",
-                            pointerEvents: barEditMode ? "none" : "auto",
+                            boxShadow: isSelected ? "0 0 0 3px rgba(251,191,36,0.95), var(--shadow-elegant)" : "var(--shadow-elegant)",
+                            borderColor: isSelected ? "rgb(251,191,36)" : "rgba(251,146,60,0.8)",
                           }}
                         >
                           <div className="aspect-[3/4] relative w-full">
@@ -621,37 +644,11 @@ export default function RegisterPage() {
                                 <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
                               </div>
                             )}
-                            {inCart && (
-                              <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                                className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
-                                style={{ background: "#dc2626" }}>
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                            {inCart && (
-                              <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
-                                style={{ background: "rgba(0,0,0,0.75)" }}>
-                                <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                                  className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
-                                  style={{ background: "#ef4444" }}>
-                                  <Minus className="h-4 w-4 text-black" />
-                                </button>
-                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
-                                  style={{ background: "var(--gradient-hero)" }}>
-                                  {inCart.qty}
-                                </div>
-                              </div>
-                            )}
                             {outOfStock && (
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
                                 <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
                                   <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
                                 </div>
-                              </div>
-                            )}
-                            {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-                                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
                               </div>
                             )}
                           </div>
