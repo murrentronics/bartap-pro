@@ -86,8 +86,8 @@ export default function RegisterPage() {
   const barSortMapRef = useRef<Record<string, number>>({});
   const barOrderedRef = useRef<Product[]>([]);
   const barDraggingRef = useRef<string | null>(null);
-  const barScrollRef = useRef<HTMLDivElement>(null);   // scrollable container in edit mode
-  const barThumbDragRef = useRef<{ startY: number; startScroll: number } | null>(null);
+  const barLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const barLongPressCancelledRef = useRef(false);
   const barMoveRafRef = useRef<number | null>(null);
   const profileIdRef = useRef(profile?.id);
   useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
@@ -95,7 +95,7 @@ export default function RegisterPage() {
   const cartLengthRef = useRef(0);
 
   const loadBarSort = async () => {
-    const pid = profileIdRef.current;
+    const pid = profileIdRef.current;  // each user (owner or cashier) keeps their own sort order
     if (!pid) return;
     const { data } = await (supabase as any)
       .from("bar_sort_order").select("order_json").eq("owner_id", pid).maybeSingle();
@@ -107,7 +107,7 @@ export default function RegisterPage() {
   };
 
   const saveBarSortIds = (ids: string[]) => {
-    const pid = profileIdRef.current;
+    const pid = profileIdRef.current;  // save under the user's own id
     if (!pid) return;
     (supabase as any).from("bar_sort_order").upsert(
       { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
@@ -125,12 +125,30 @@ export default function RegisterPage() {
 
   const handleBarTouchStart = (e: React.TouchEvent, id: string) => {
     if (!barEditModeRef.current) return;
-    barDraggingRef.current = id;
-    setBarDraggingId(id);
+    barLongPressCancelledRef.current = false;
+    // Start a 400ms long-press timer — drag only activates if the finger holds still
+    barLongPressTimerRef.current = setTimeout(() => {
+      if (!barLongPressCancelledRef.current) {
+        barDraggingRef.current = id;
+        setBarDraggingId(id);
+        // Vibrate for tactile feedback where supported
+        if (navigator.vibrate) navigator.vibrate(40);
+      }
+    }, 400);
   };
 
   const handleBarTouchMove = (e: React.TouchEvent) => {
-    if (!barDraggingRef.current) return;
+    if (!barEditModeRef.current) return;
+    // If drag hasn't started yet, any movement cancels the long-press timer
+    // so the page can scroll normally
+    if (!barDraggingRef.current) {
+      if (barLongPressTimerRef.current) {
+        clearTimeout(barLongPressTimerRef.current);
+        barLongPressTimerRef.current = null;
+      }
+      barLongPressCancelledRef.current = true;
+      return; // let the browser handle native scroll
+    }
     e.preventDefault();
     const touch = e.touches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -155,6 +173,11 @@ export default function RegisterPage() {
   };
 
   const handleBarTouchEnd = () => {
+    // Cancel long-press timer if finger lifted before threshold
+    if (barLongPressTimerRef.current) {
+      clearTimeout(barLongPressTimerRef.current);
+      barLongPressTimerRef.current = null;
+    }
     if (!barDraggingRef.current) return;
     const ids = barOrderedRef.current.map(p => p.id);
     saveBarSortIds(ids);
@@ -542,214 +565,105 @@ export default function RegisterPage() {
             ) : (
           <div>
             {barEditMode ? (
-              /* ── Edit mode: fixed-height scrollable box with custom orange scrollbar ── */
-              <div style={{ position: "relative" }}>
-                {/* Instruction banner */}
+              /* ── Edit mode: scrollable grid, long-press to drag ── */
+              <div>
+                {/* Sticky instruction banner with Done button */}
                 <div className="flex items-center justify-between rounded-2xl px-4 py-2.5 mb-2 border border-amber-500/40"
                   style={{ background: "oklch(0.20 0.05 60)" }}>
-                  <span className="text-xs font-black text-amber-400">Drag items to reorder</span>
+                  <span className="text-xs font-black text-amber-400">Hold an item to drag &amp; reorder</span>
                   <button onClick={handleBarDone}
                     className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
                     Done
                   </button>
                 </div>
 
-                {/* Outer positioner — relative so the custom scrollbar can be absolute */}
-                <div style={{ position: "relative" }}>
-
-                  {/* Scrollable content area — native scrollbar hidden */}
-                  <div
-                    ref={barScrollRef}
-                    style={{
-                      maxHeight: "62vh",
-                      overflowY: "scroll",
-                      scrollbarWidth: "none",
-                      msOverflowStyle: "none",
-                      paddingRight: "28px",        // gap for the custom scrollbar
-                    }}
-                    onScroll={() => {
-                      // nudge a cheap re-render so thumb % recalculates
-                      setBarDraggingId((id) => id);
-                    }}
-                  >
-                    {/* hide webkit native scrollbar */}
-                    <style>{`[data-bar-edit-scroll]::-webkit-scrollbar{display:none}`}</style>
-
-                    <div
-                      data-bar-edit-scroll
-                      className="grid grid-cols-3 gap-2"
-                      style={{ touchAction: "none" }}
-                      onContextMenu={(e) => e.preventDefault()}
-                    >
-                      {barOrdered.map((p) => {
-                        const inCart = cart.find((i) => i.id === p.id);
-                        const outOfStock = (p.stock_qty ?? 1) === 0;
-                        const isDragging = barDraggingId === p.id;
-                        return (
-                          <div key={p.id}
-                            data-bar-id={p.id}
-                            className="relative"
-                            onTouchStart={(e) => { if (barEditModeRef.current) handleBarTouchStart(e, p.id); }}
-                            onTouchMove={handleBarTouchMove}
-                            onTouchEnd={handleBarTouchEnd}
-                            onContextMenu={(e) => e.preventDefault()}
-                            style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
-                          >
-                            <button
-                              onClick={() => !outOfStock && !barEditMode && addToCart(p)}
-                              disabled={outOfStock}
-                              className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
-                              style={{
-                                background: "var(--gradient-card)",
-                                boxShadow: "var(--shadow-elegant)",
-                                borderColor: barEditMode ? "rgba(251,146,60,0.8)" : inCart ? "var(--primary)" : "var(--border)",
-                                pointerEvents: barEditMode ? "none" : "auto",
-                              }}
-                            >
-                              <div className="aspect-[3/4] relative w-full">
-                                {p.image_url ? (
-                                  <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
-                                    onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
-                                ) : null}
-                                <div className="absolute inset-0 items-center justify-center text-4xl"
-                                  style={{ display: p.image_url ? "none" : "flex" }}>
-                                  {categoryIcon(p.category ?? "drinks")}
-                                </div>
-                                {p.stock_qty !== undefined && !outOfStock && (
-                                  <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
-                                    <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
-                                  </div>
-                                )}
-                                {inCart && (
-                                  <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                                    className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
-                                    style={{ background: "#dc2626" }}>
-                                    <X className="h-4 w-4" />
-                                  </button>
-                                )}
-                                {inCart && (
-                                  <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
-                                    style={{ background: "rgba(0,0,0,0.75)" }}>
-                                    <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                                      className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
-                                      style={{ background: "#ef4444" }}>
-                                      <Minus className="h-4 w-4 text-black" />
-                                    </button>
-                                    <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
-                                      style={{ background: "var(--gradient-hero)" }}>
-                                      {inCart.qty}
-                                    </div>
-                                  </div>
-                                )}
-                                {outOfStock && (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
-                                    <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                                      <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
-                                    </div>
-                                  </div>
-                                )}
-                                {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                                  <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-                                    <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                                <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
-                                <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
-                              </div>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Done button inside the scroll so it's always reachable */}
-                    <div className="pt-3 pb-2">
-                      <button
-                        onClick={handleBarDone}
-                        className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border border-amber-500/40"
-                        style={{ background: "oklch(0.20 0.05 60)", color: "#fbbf24" }}
-                      >
-                        ✓ Done Sorting
-                      </button>
-                    </div>
-                  </div>{/* end scrollable */}
-
-                  {/* ── Custom orange scrollbar track + white thumb ── */}
-                  {(() => {
-                    const el = barScrollRef.current;
-                    const scrollTop    = el?.scrollTop    ?? 0;
-                    const scrollHeight = el?.scrollHeight ?? 1;
-                    const clientHeight = el?.clientHeight ?? 1;
-                    const canScroll    = scrollHeight > clientHeight;
-                    if (!canScroll) return null;
-
-                    const trackH   = clientHeight;
-                    const thumbH   = Math.max(44, (clientHeight / scrollHeight) * trackH);
-                    const maxThumb = trackH - thumbH;
-                    const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * maxThumb;
-
+                {/* Grid — touchAction auto so the page scrolls normally; only preventDefault once drag is active */}
+                <div
+                  className="grid grid-cols-3 gap-2"
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  {barOrdered.map((p) => {
+                    const inCart = cart.find((i) => i.id === p.id);
+                    const outOfStock = (p.stock_qty ?? 1) === 0;
+                    const isDragging = barDraggingId === p.id;
                     return (
-                      <div
-                        style={{
-                          position: "absolute",
-                          right: 0,
-                          top: 0,
-                          width: "20px",
-                          height: `${trackH}px`,
-                          borderRadius: "10px",
-                          background: "rgba(251,146,60,0.35)",
-                          touchAction: "none",
-                        }}
-                        onTouchStart={(e) => {
-                          const touch = e.touches[0];
-                          barThumbDragRef.current = {
-                            startY: touch.clientY,
-                            startScroll: el?.scrollTop ?? 0,
-                          };
-                          e.stopPropagation();
-                        }}
-                        onTouchMove={(e) => {
-                          if (!barThumbDragRef.current || !el) return;
-                          const dy = e.touches[0].clientY - barThumbDragRef.current.startY;
-                          const ratio = (scrollHeight - clientHeight) / maxThumb;
-                          el.scrollTop = barThumbDragRef.current.startScroll + dy * ratio;
-                          e.stopPropagation();
-                        }}
-                        onTouchEnd={(e) => {
-                          barThumbDragRef.current = null;
-                          e.stopPropagation();
-                        }}
+                      <div key={p.id}
+                        data-bar-id={p.id}
+                        className="relative"
+                        onTouchStart={(e) => { if (barEditModeRef.current) handleBarTouchStart(e, p.id); }}
+                        onTouchMove={handleBarTouchMove}
+                        onTouchEnd={handleBarTouchEnd}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{ opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
                       >
-                        {/* White thumb button */}
-                        <div
+                        <button
+                          onClick={() => !outOfStock && !barEditMode && addToCart(p)}
+                          disabled={outOfStock}
+                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : barEditMode ? "cursor-grab" : "active:scale-95"}`}
                           style={{
-                            position: "absolute",
-                            left: "2px",
-                            right: "2px",
-                            top: `${thumbTop}px`,
-                            height: `${thumbH}px`,
-                            borderRadius: "8px",
-                            background: "#ffffff",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.45)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            background: "var(--gradient-card)",
+                            boxShadow: "var(--shadow-elegant)",
+                            borderColor: barEditMode ? "rgba(251,146,60,0.8)" : inCart ? "var(--primary)" : "var(--border)",
+                            pointerEvents: barEditMode ? "none" : "auto",
                           }}
                         >
-                          {/* Grip lines */}
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {[0,1,2].map(i => (
-                              <div key={i} style={{ width: "10px", height: "2px", borderRadius: "1px", background: "rgba(251,146,60,0.7)" }} />
-                            ))}
+                          <div className="aspect-[3/4] relative w-full">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                                onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
+                            ) : null}
+                            <div className="absolute inset-0 items-center justify-center text-4xl"
+                              style={{ display: p.image_url ? "none" : "flex" }}>
+                              {categoryIcon(p.category ?? "drinks")}
+                            </div>
+                            {p.stock_qty !== undefined && !outOfStock && (
+                              <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
+                                <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
+                              </div>
+                            )}
+                            {inCart && (
+                              <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
+                                className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
+                                style={{ background: "#dc2626" }}>
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                            {inCart && (
+                              <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+                                style={{ background: "rgba(0,0,0,0.75)" }}>
+                                <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
+                                  className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
+                                  style={{ background: "#ef4444" }}>
+                                  <Minus className="h-4 w-4 text-black" />
+                                </button>
+                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
+                                  style={{ background: "var(--gradient-hero)" }}>
+                                  {inCart.qty}
+                                </div>
+                              </div>
+                            )}
+                            {outOfStock && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
+                                <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                                  <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                                </div>
+                              </div>
+                            )}
+                            {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                          <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                            <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
+                          </div>
+                        </button>
                       </div>
                     );
-                  })()}
-
-                </div>{/* end outer positioner */}
+                  })}
+                </div>
               </div>
             ) : (
               /* ── Normal mode: plain grid ── */
@@ -895,6 +809,7 @@ export default function RegisterPage() {
             setCashOpen(false);
             refreshProfile();
             fetchOpenedBottles();
+            fetchOpenedPacks();
           }}
         />
       )}
@@ -912,6 +827,8 @@ export default function RegisterPage() {
             setCart([]);
             setCreditOpen(false);
             refreshProfile();
+            fetchOpenedBottles();
+            fetchOpenedPacks();
           }}
         />
       )}
@@ -1553,8 +1470,12 @@ function CashOverlay({
     if (error) { setBusy(false); toast.error(error.message); return; }
 
     // 2. Decrement stock via RPC (SECURITY DEFINER — works for both owners and cashiers)
+    //    Skip synthetic shot-/pack- ids — those don't map to products rows.
+    const stockItems = cart
+      .filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-"))
+      .map((c) => ({ id: c.id, qty: c.qty }));
     const { error: stockErr } = await supabase.rpc("decrement_stock_item", {
-      p_items: cart.map((c) => ({ id: c.id, qty: c.qty })),
+      p_items: stockItems,
     });
     if (stockErr) {
       console.warn("Stock decrement failed:", stockErr.message);
@@ -1824,6 +1745,30 @@ function CreditSaleOverlay({
     loadAccounts();
   };
 
+  // After a credit charge succeeds, record shots/pack-units against open bottles/packs
+  // exactly the same as a cash sale does — the physical items are consumed regardless
+  // of how the customer pays.
+  const recordShotPackForCredit = async () => {
+    const shotItems = cart.filter((c) => (c as any)._bottle_id);
+    for (const shot of shotItems) {
+      const { error } = await supabase.rpc("record_shot", {
+        p_bottle_id: (shot as any)._bottle_id,
+        p_qty:       shot.qty,
+        p_revenue:   shot.qty * Number(shot.price),
+      });
+      if (error) console.warn("record_shot (credit) failed:", error.message);
+    }
+    const packItems = cart.filter((c) => (c as any)._pack_id);
+    for (const unit of packItems) {
+      const { error } = await supabase.rpc("record_pack_unit", {
+        p_pack_id: (unit as any)._pack_id,
+        p_qty:     unit.qty,
+        p_revenue: unit.qty * Number(unit.price),
+      });
+      if (error) console.warn("record_pack_unit (credit) failed:", error.message);
+    }
+  };
+
   const chargeAccount = async (account: CreditAccount) => {
     if (!profile) return;
     setBusy(true);
@@ -1835,8 +1780,10 @@ function CreditSaleOverlay({
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
     });
+    if (error) { setBusy(false); toast.error(error.message); return; }
+    // Record shots / pack units consumed — same as cash sale
+    await recordShotPackForCredit();
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
     toast.success(`Charged $${total.toFixed(2)} to ${account.full_name}`);
     onSuccess();
   };
@@ -1867,8 +1814,10 @@ function CreditSaleOverlay({
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
     });
+    if (chargeErr) { setBusy(false); toast.error(chargeErr.message); return; }
+    // Record shots / pack units consumed — same as cash sale
+    await recordShotPackForCredit();
     setBusy(false);
-    if (chargeErr) { toast.error(chargeErr.message); return; }
     toast.success(`Account created & $${total.toFixed(2)} charged to ${newName.trim()}`);
     onSuccess();
   };

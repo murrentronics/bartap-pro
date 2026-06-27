@@ -187,15 +187,32 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const deleteLatestCashierOrder = async (order: Order) => {
     lockedNewestOrderIdRef.current = null;
     setDeletingOrderId(order.id);
+
+    const items = Array.isArray(order.items) ? order.items : [];
+
+    // Reverse shots_sold / units_sold / revenue on any opened bottles or packs
+    // that were part of this order.  Also reopens any bottle/pack that was
+    // subsequently marked empty (finished) by this exact order's sale.
+    const hasShotOrPack = items.some((i: any) => i.id?.startsWith("shot-") || i.id?.startsWith("pack-"));
+    if (hasShotOrPack) {
+      await supabase.rpc("reverse_order_shot_pack", { p_items: items });
+    }
+
+    // Restore stock for all real products in the order (skip synthetic shot-/pack- ids)
+    const restorableItems = items.filter((i: any) => !i.id?.startsWith("shot-") && !i.id?.startsWith("pack-"));
+    if (restorableItems.length > 0) {
+      await supabase.rpc("restore_stock_item", {
+        p_items: restorableItems.map((i: any) => ({ id: i.id, qty: i.qty })),
+      });
+    }
+
+    // Delete wallet_transactions linked to this order by order_id (covers the cashier's 'sale' row)
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
-    await supabase.from("wallet_transactions").delete()
-      .eq("profile_id", profile.id).eq("type", "cashier_sale")
-      .gte("created_at", new Date(new Date(order.created_at).getTime() - 5000).toISOString())
-      .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
+
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
-    toast.success("Sale deleted");
+    toast.success("Sale deleted — stock restored");
     fetchRef.current();
   };
 
@@ -1166,8 +1183,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
   const deleteLatestOrder = async (order: Order) => {
     setDeletingOrderId(order.id);
 
-    // 1. Restore stock for every real product in the order (skip shot-xxx and pack-xxx)
-    const items = Array.isArray(order.items) ? order.items as { id: string; qty: number }[] : [];
+    const items = Array.isArray(order.items) ? order.items as { id: string; qty: number; price?: number }[] : [];
+
+    // 1. Reverse shots_sold / units_sold / revenue on any opened bottles or packs.
+    //    Also reopens any bottle/pack that was subsequently marked empty (finished),
+    //    removing the bottle_finished / pack_finished wallet entry in the process.
+    const hasShotOrPack = items.some(i => i.id.startsWith("shot-") || i.id.startsWith("pack-"));
+    if (hasShotOrPack) {
+      await supabase.rpc("reverse_order_shot_pack", { p_items: items });
+    }
+
+    // 2. Restore stock for every real product in the order (skip shot-xxx and pack-xxx)
     const restorableItems = items.filter(i => !i.id.startsWith("shot-") && !i.id.startsWith("pack-"));
     if (restorableItems.length > 0) {
       await supabase.rpc("restore_stock_item", {
@@ -1175,15 +1201,16 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       });
     }
 
-    // 2. Delete wallet_transactions linked to this order
+    // 3. Delete wallet_transactions linked to this order
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
-    // Also catch unlinked sale tx within 10s window
+    // Fallback: catch any unlinked sale tx for this profile within a 10s window
     await supabase.from("wallet_transactions").delete()
+      .eq("profile_id", profile.id)
       .eq("type", "sale")
       .gte("created_at", new Date(new Date(order.created_at).getTime() - 10000).toISOString())
       .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
 
-    // 3. Delete the order itself
+    // 4. Delete the order itself
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
 
@@ -1479,7 +1506,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string } }) {
   const [activeTab, setActiveTab] = useState<"transactions" | "financials">("transactions");
   const [showStatement, setShowStatement] = useState(false);
-  const [balance] = useState(Number(profile.wallet_balance));
+  // Derive balance directly from the prop so it updates when refreshProfile() runs
+  const balance = Number(profile.wallet_balance);
 
   // Financial summary state (loaded for hero display)
   const [financialSummary, setFinancialSummary] = useState<{

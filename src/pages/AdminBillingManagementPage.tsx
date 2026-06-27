@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Search, DollarSign } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Search, DollarSign, Trash2 } from "lucide-react";
 import type { BillingPayment } from "@/types/billing";
 
 type PaymentWithOwner = BillingPayment & {
@@ -34,6 +34,7 @@ export default function AdminBillingManagementPage() {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({ pending: 0, paid: 0, revenue: 0 });
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
   
   const PAGE_SIZE = 100;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -229,6 +230,28 @@ export default function AdminBillingManagementPage() {
   const openPaymentDialog = (payment: PaymentWithOwner) => {
     setSelectedPayment(payment);
     setNotes(payment.notes || "");
+    setConfirmRevoke(false);
+  };
+
+  const revokePayment = async () => {
+    if (!selectedPayment) return;
+    setLoading(true);
+    const { error } = await (supabase as any).rpc("admin_revoke_subscription", {
+      p_payment_id: selectedPayment.id,
+    });
+    setLoading(false);
+    if (error) { toast.error("Revoke failed: " + error.message); return; }
+    const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
+    toast.success(
+      planType === "basic"        ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
+      planType === "premium"      ? `${selectedPayment.profiles?.username} downgraded to Basic` :
+      planType === "machines_addon" ? `Machines add-on removed` :
+      "Subscription revoked"
+    );
+    setSelectedPayment(null);
+    setConfirmRevoke(false);
+    loadPayments();
+    loadStats();
   };
 
   const getStatusColor = (status: string) => {
@@ -446,6 +469,38 @@ export default function AdminBillingManagementPage() {
                       </Button>
                     </DialogFooter>
                   </>
+                )}
+
+                {selectedPayment.status === "paid" && (
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    {!confirmRevoke ? (
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        disabled={loading}
+                        onClick={() => setConfirmRevoke(true)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Revoke &amp; Reset Subscription
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-sm text-destructive font-bold text-center">
+                          This will delete this payment and reset {selectedPayment.profiles?.username ?? "this user"} back to pending. They must re-subscribe. Cannot be undone.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" className="flex-1" disabled={loading}
+                            onClick={() => setConfirmRevoke(false)}>
+                            Cancel
+                          </Button>
+                          <Button variant="destructive" className="flex-1" disabled={loading}
+                            onClick={revokePayment}>
+                            {loading ? "Revoking…" : "Yes, Revoke"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {selectedPayment.notes && (
