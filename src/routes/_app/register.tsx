@@ -521,8 +521,8 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            {/* ΓöÇΓöÇ Shot button — liquor tab only ΓöÇΓöÇ */}
-            {category === "liquor" && (
+            {/* ── Shot button — liquor tab only (hidden in edit/sort mode) ── */}
+            {category === "liquor" && !barEditMode && (
               <div className="mb-3">
                 <button
                   onClick={() => setShotModalOpen(true)}
@@ -540,8 +540,8 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* ΓöÇΓöÇ Cigarette pack button — cigarettes tab only ΓöÇΓöÇ */}
-            {category === "cigarettes" && (
+            {/* ── Cigarette pack button — cigarettes tab only (hidden in edit/sort mode) ── */}
+            {category === "cigarettes" && !barEditMode && (
               <div className="mb-3">
                 <button
                   onClick={() => { setPackModalOpen(true); }}
@@ -558,6 +558,7 @@ export default function RegisterPage() {
                 </button>
               </div>
             )}
+
 
             {filtered.length === 0 && !loading ? (
               <div className="text-center py-20 text-muted-foreground">
