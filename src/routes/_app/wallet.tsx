@@ -223,9 +223,10 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       });
     }
 
-    // DB trigger on_order_delete handles:
-    // - deleting ALL wallet_transactions for this order (cashier + owner rows)
-    // - deducting wallet_balance from the cashier
+    // Delete ALL wallet_transactions for this order (cashier 'sale' row + owner 'cashier_sale' row)
+    // The DB trigger (migration 20260628000003) also does this server-side once applied.
+    await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
+
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
