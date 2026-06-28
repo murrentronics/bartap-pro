@@ -19,6 +19,7 @@ import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/
 import {
   loadAlertSettings, saveAlertSettings, syncAlertSettingsToServer, requestNotificationPermission,
   checkAndFirePayoutAlert, registerPayoutAlertTapHandler, THRESHOLD_OPTIONS, type AlertSettings,
+  ALERT_OPEN_MACHINE_KEY,
 } from "@/lib/machineAlerts";
 
 export const Route = createFileRoute("/_app/machines")({
@@ -273,6 +274,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   onBack: () => void; onDeleted: () => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<MachineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const isCashier = profile.role === "cashier";
@@ -454,7 +456,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     // Fire local payout alert only on the owner's device — not cashier devices
     if (tab === "payout" && profile.role === "owner") {
       const alerts = loadAlertSettings();
-      await checkAndFirePayoutAlert(val, machine.name, alerts);
+      await checkAndFirePayoutAlert(val, machine.name, alerts, (to) => navigate({ to }));
     }
 
     setAmount("");
@@ -1539,6 +1541,19 @@ export default function MachinesPage() {
     registerPayoutAlertTapHandler((to) => navigate({ to })).then((fn) => { cleanup = fn; });
     return () => cleanup();
   }, [navigate]);
+
+  // Auto-open a specific machine if the user arrived via a payout alert tap or toast action
+  useEffect(() => {
+    const targetName = localStorage.getItem(ALERT_OPEN_MACHINE_KEY);
+    if (!targetName || machines.length === 0) return;
+    localStorage.removeItem(ALERT_OPEN_MACHINE_KEY);
+    const match = machines.find(m => m.name === targetName);
+    if (match) {
+      const screenNum = machines.filter(m => m.name <= match.name).length;
+      setSelected(match);
+      setSelectedScreenNum(screenNum);
+    }
+  }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Payout alert settings (owner only)
   const [showAlertsModal, setShowAlertsModal] = useState(false);

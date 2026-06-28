@@ -465,7 +465,6 @@ export default function BillingPage() {
                         <span className={`text-xs font-bold ${p.status === "paid" ? "text-green-600" : p.status === "pending" ? "text-yellow-600" : "text-red-500"}`}>
                           {p.status.toUpperCase()}
                         </span>
-                        {p.next_due_date && <p className="text-xs text-gray-400 mt-0.5">Due: {new Date(p.next_due_date).toLocaleDateString("en-GB")}</p>}
                       </div>
                     </div>
                   );

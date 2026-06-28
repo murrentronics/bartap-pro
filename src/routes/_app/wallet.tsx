@@ -223,9 +223,9 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       });
     }
 
-    // DB trigger on_order_delete deducts wallet_balance automatically
-    await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
-
+    // DB trigger on_order_delete handles:
+    // - deleting ALL wallet_transactions for this order (cashier + owner rows)
+    // - deducting wallet_balance from the cashier
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
@@ -1278,14 +1278,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       });
     }
 
-    // 3. Delete wallet_transactions linked to this order
-    await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
-    // Fallback: catch any unlinked sale tx for this profile within a 10s window
-    await supabase.from("wallet_transactions").delete()
-      .eq("profile_id", profile.id)
-      .eq("type", "sale")
-      .gte("created_at", new Date(new Date(order.created_at).getTime() - 10000).toISOString())
-      .lte("created_at", new Date(new Date(order.created_at).getTime() + 10000).toISOString());
+    // 3. DB trigger on_order_delete handles deleting ALL wallet_transactions
+    //    for this order (owner + cashier rows) and deducting wallet_balance.
 
     // 4. Delete the order itself
     const { error } = await supabase.from("orders").delete().eq("id", order.id);

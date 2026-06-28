@@ -77,10 +77,13 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return false;
 }
 
+/** Key used to tell MachinesPage which machine to auto-open after an alert tap */
+export const ALERT_OPEN_MACHINE_KEY = "payout_alert_open_machine";
+
 /**
  * Register a one-time listener so tapping a payout alert notification
- * navigates the app to /machines. Call this once at app startup or when
- * the Machines page mounts. Returns a cleanup function.
+ * navigates the app to /machines and opens the specific machine.
+ * Call this once when the Machines page mounts. Returns a cleanup function.
  */
 export async function registerPayoutAlertTapHandler(
   navigate: (to: string) => void
@@ -93,6 +96,9 @@ export async function registerPayoutAlertTapHandler(
       (action) => {
         const extra = action.notification.extra as Record<string, unknown> | null;
         if (extra?.type === "payout_alert") {
+          if (extra.machineName) {
+            localStorage.setItem(ALERT_OPEN_MACHINE_KEY, String(extra.machineName));
+          }
           navigate("/machines");
         }
       }
@@ -109,7 +115,8 @@ export async function registerPayoutAlertTapHandler(
 export async function checkAndFirePayoutAlert(
   amount: number,
   machineName: string,
-  settings: AlertSettings
+  settings: AlertSettings,
+  navigate?: (to: string) => void
 ): Promise<void> {
   if (!settings.enabled) return;
   if (amount < settings.threshold) return;
@@ -117,12 +124,21 @@ export async function checkAndFirePayoutAlert(
   const title = `⚠️ Payout Alert — ${machineName}`;
   const body  = `$${amount.toFixed(2)} payout — meets your $${settings.threshold.toLocaleString()} threshold`;
 
-  // ── Always show in-app toast so the owner sees it even with app open ──────
+  // ── Always show in-app toast with a "View" action button ─────────────────
   try {
     const { toast } = await import("sonner");
     toast.warning(title, {
       description: body,
-      duration: 8000,
+      duration: 10000,
+      action: navigate
+        ? {
+            label: "View Machine →",
+            onClick: () => {
+              localStorage.setItem(ALERT_OPEN_MACHINE_KEY, machineName);
+              navigate("/machines");
+            },
+          }
+        : undefined,
     });
   } catch { /* sonner not available */ }
 
