@@ -267,7 +267,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                        <div className="text-sm font-semibold text-red-300">{tx.note ?? "Cleared to owner"}</div>
+                        <div className="text-sm font-semibold text-red-300 break-words whitespace-normal">{tx.note ?? "Cleared to owner"}</div>
                       </div>
                       <div className="font-black text-lg shrink-0 text-red-400">${fmt(Math.abs(Number(tx.amount)))}</div>
                     </div>
@@ -283,7 +283,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
-                        <div className="text-sm font-semibold text-green-300">{tx.note ?? "Cleared from cashier"}</div>
+                        <div className="text-sm font-semibold text-green-300 break-words whitespace-normal">{tx.note ?? "Cleared from cashier"}</div>
                       </div>
                       <div className="font-black text-lg shrink-0 text-green-400">+${fmt(Number(tx.amount))}</div>
                     </div>
@@ -359,7 +359,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                         <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>{ccTitle}</div>
-                        {ccItems && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ccItems}</div>}
+                        {ccItems && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">{ccItems}</div>}
                         {ccAmount && <div className="text-sm font-black text-green-400 mt-0.5">{ccAmount}</div>}
                         {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
                       </div>
@@ -377,7 +377,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                     <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
                       {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
@@ -649,7 +649,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                   <div className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400">🧾</div>
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs text-blue-400 font-bold">{cashierLabel}{totalStr ? " — " + totalStr : ""}</div>
-                                    {itemsStr && <div className="text-xs text-muted-foreground mt-0.5">{itemsStr}</div>}
+                                    {itemsStr && <div className="text-xs text-muted-foreground mt-0.5 break-words whitespace-normal">{itemsStr}</div>}
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
                                 </div>
@@ -659,9 +659,9 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               return (
                                 <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-green-500/5">
                                   <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                                  <div className="flex-1 text-xs text-green-400">
-                                    {tx.note ?? "Cleared from cashier"}
-                                    {" · "}{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs text-green-400 font-bold break-words whitespace-normal">{tx.note ?? "Cleared from cashier"}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
                                   <span className="font-black text-sm text-green-400">
                                     +${Number(tx.amount).toFixed(2)}
@@ -675,7 +675,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                 <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPack ? "bg-green-500/5" : "bg-amber-500/5"}`}>
                                   <span className="text-base shrink-0">{isPack ? "🚬" : "🍾"}</span>
                                   <div className="flex-1 min-w-0">
-                                    <div className={`text-xs font-bold line-clamp-3 ${isPack ? "text-green-400" : "text-amber-400"}`}>{tx.note}</div>
+                                    <div className={`text-xs font-bold break-words whitespace-normal ${isPack ? "text-green-400" : "text-amber-400"}`}>{tx.note}</div>
                                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                                   </div>
                                 </div>
@@ -704,7 +704,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                       </div>
                                     )}
                                     {itemsPart && (
-                                      <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{itemsPart}</div>
+                                      <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">{itemsPart}</div>
                                     )}
                                     {cashierPart && (
                                       <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
@@ -738,7 +738,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                 </div>
                                 <span className="font-black text-primary text-sm ml-2">${fmt(Number(o.total))}</span>
                               </div>
-                              <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                              <div className="mt-1 text-xs text-muted-foreground break-words whitespace-normal">
                                 {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
                               </div>
                               <div className="mt-0.5 text-xs text-muted-foreground">
