@@ -27,15 +27,6 @@ export default function LanguagePage() {
         </div>
       </div>
 
-      {/* Save button — top */}
-      <button
-        onClick={handleSave}
-        disabled={selected === lang}
-        className="w-full h-12 rounded-2xl font-black text-base text-white mb-6 active:scale-[0.98] transition disabled:opacity-40"
-        style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}
-      >
-        {t("save", "Save")}
-      </button>
 
       {/* Language list */}
       <div className="space-y-3">

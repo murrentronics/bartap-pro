@@ -174,7 +174,10 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       setLoading(true);
       Promise.all([
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("cashier_id", profile.id).then(({ count }) => setTotalOrders(count ?? 0)),
-        supabase.from("orders").select("*").eq("cashier_id", profile.id).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
+        supabase.from("orders").select("*").eq("cashier_id", profile.id).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => {
+          // Never re-lock after initial load — keep whatever was locked (null = deleted, id = active)
+          setOrders((data ?? []) as unknown as Order[]);
+        }),
         supabase.from("wallet_transactions").select("id", { count: "exact", head: true }).eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).then(({ count }) => setTotalTxs(count ?? 0)),
         supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => setTxs((data ?? []) as WalletTx[])),
       ]).finally(() => setLoading(false));
@@ -212,23 +215,20 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       });
     }
 
-    // Deduct the order total from the cashier's wallet balance
-    await supabase.rpc("adjust_wallet_balance", {
-      p_profile_id: profile.id,
-      p_amount: -Number(order.total),
-    });
-
-    // Delete wallet_transactions linked to this order by order_id (covers the cashier's 'sale' row)
+    // Delete wallet_transactions linked to this order
+    // (DB trigger on_order_delete will deduct wallet_balance automatically)
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
 
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
-    // Mark as deleted in session so button never reappears on refresh
+
+    // Mark deleted so button never reappears on refresh
     sessionStorage.setItem(DELETED_KEY, order.id);
-    lockedNewestOrderIdRef.current = null;
     toast.success("Sale deleted — stock restored");
-    await refreshProfile();   // sync wallet_balance display
+
+    // Small delay to let the DB trigger update wallet_balance before re-fetching profile
+    setTimeout(() => refreshProfile(), 800);
     fetchRef.current();
   };
 
