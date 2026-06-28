@@ -83,11 +83,12 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
 }
 
 // ── History Month Accordion ────────────────────────────────────────────────────
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier }: {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier }: {
   entries: MachineEntry[];
   loading: boolean;
   downloading: boolean;
   deletingId: string | null;
+  lastDeletedAt: number | null;
   onDownloadAll: () => void;
   onDownloadMonth: (monthKey: string, monthEntries: MachineEntry[]) => void;
   onDelete: (id: string) => void;
@@ -101,9 +102,17 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
 
   // Sort all entries newest first
   const allSorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  // The globally newest entry — only this one gets the undo/delete button.
-  // Once it's deleted it's gone from entries so the button naturally disappears.
-  const newestId = allSorted[0]?.id ?? null;
+  // Only show delete on the newest payout entry if it was made more than 2 seconds
+  // after the last delete — prevents button jumping to the next record after a delete.
+  const newestEntry = allSorted[0] ?? null;
+  const newestId = (() => {
+    if (!newestEntry) return null;
+    if (lastDeletedAt !== null) {
+      const entryTime = new Date(newestEntry.created_at).getTime();
+      if (entryTime < lastDeletedAt - 2000) return null;
+    }
+    return newestEntry.id;
+  })();
 
   // Group by YYYY-MM
   const byMonth: Record<string, MachineEntry[]> = {};
@@ -282,6 +291,11 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const MACHINE_DELETE_KEY = `machine_last_delete_${machine.id}`;
+  const [lastDeletedAt, setLastDeletedAt] = useState<number | null>(() => {
+    const v = localStorage.getItem(`machine_last_delete_${machine.id}`);
+    return v ? Number(v) : null;
+  });
   const [downloading, setDownloading] = useState(false);
   const [downloadedAll, setDownloadedAll] = useState(false);
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
@@ -465,9 +479,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
-    const { error } = await sb.from("machine_entries").delete().eq("id", id);
+    // Add cashier_id filter so RLS policy matches for cashier deletes
+    const query = isCashier
+      ? sb.from("machine_entries").delete().eq("id", id).eq("cashier_id", profile.id)
+      : sb.from("machine_entries").delete().eq("id", id);
+    const { error } = await query;
     setDeletingId(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error("Delete failed: " + error.message); return; }
+    // Store delete timestamp so button won't jump to next record
+    const now = Date.now();
+    localStorage.setItem(MACHINE_DELETE_KEY, String(now));
+    setLastDeletedAt(now);
     toast.success("Record deleted");
     load();
   };
@@ -827,6 +849,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             loading={loading}
             downloading={downloading}
             deletingId={deletingId}
+            lastDeletedAt={lastDeletedAt}
             onDownloadAll={handleDownloadPdf}
             onDownloadMonth={handleDownloadMonthPdf}
             onDelete={handleDelete}

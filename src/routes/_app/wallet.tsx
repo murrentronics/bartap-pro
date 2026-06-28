@@ -125,14 +125,10 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   // Resolve which order (if any) qualifies for the delete button.
   // Rules:
   //   1. Must be the most recent order for this cashier.
-  //   2. Must have been created within the last 10 seconds (brand-new sale).
-  //   3. Must have been created AFTER the last delete timestamp stored in DB
-  //      — prevents the button reappearing on an older sale after refresh.
+  //   2. Must have been created no more than 2 seconds before the last delete
+  //      — if the record is older than 2s before the delete, it's a different sale, no button.
   const resolveDeletable = async (newestOrder: Order | null) => {
     if (!newestOrder) { setDeletableOrderId(null); return; }
-
-    const orderAgeSeconds = (Date.now() - new Date(newestOrder.created_at).getTime()) / 1000;
-    if (orderAgeSeconds > 10) { setDeletableOrderId(null); return; }
 
     const { data } = await supabase
       .from("cashier_last_delete")
@@ -143,8 +139,8 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     if (data?.deleted_at) {
       const orderTime   = new Date(newestOrder.created_at).getTime();
       const deletedTime = new Date(data.deleted_at).getTime();
-      // Only show if this order was placed AFTER the last delete
-      if (orderTime <= deletedTime) { setDeletableOrderId(null); return; }
+      // Hide button if order is older than 2 seconds before the last delete
+      if (orderTime < deletedTime - 2000) { setDeletableOrderId(null); return; }
     }
 
     setDeletableOrderId(newestOrder.id);
@@ -1183,8 +1179,6 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     const newest = ownerOrders.reduce((a, b) =>
       new Date(a.created_at) > new Date(b.created_at) ? a : b
     );
-    const ageSeconds = (Date.now() - new Date(newest.created_at).getTime()) / 1000;
-    if (ageSeconds > 10) { setDeletableOrderId(null); return; }
 
     const { data } = await supabase
       .from("cashier_last_delete")
@@ -1195,7 +1189,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     if (data?.deleted_at) {
       const orderTime   = new Date(newest.created_at).getTime();
       const deletedTime = new Date(data.deleted_at).getTime();
-      if (orderTime <= deletedTime) { setDeletableOrderId(null); return; }
+      // Hide button if order is older than 2 seconds before the last delete
+      if (orderTime < deletedTime - 2000) { setDeletableOrderId(null); return; }
     }
     setDeletableOrderId(newest.id);
   };
