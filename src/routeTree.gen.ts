@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
+import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
@@ -30,14 +30,14 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppFactoryResetRoute = AppFactoryResetRouteImport.update({
-  id: '/factory-reset',
-  path: '/factory-reset',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppMachinesRoute = AppMachinesRouteImport.update({
   id: '/machines',
   path: '/machines',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFactoryResetRoute = AppFactoryResetRouteImport.update({
+  id: '/factory-reset',
+  path: '/factory-reset',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCreditRoute = AppCreditRouteImport.update({
@@ -51,16 +51,16 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
   '/credit': typeof AppCreditRoute
-  '/machines': typeof AppMachinesRoute
   '/factory-reset': typeof AppFactoryResetRoute
+  '/machines': typeof AppMachinesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
   '/credit': typeof AppCreditRoute
-  '/machines': typeof AppMachinesRoute
   '/factory-reset': typeof AppFactoryResetRoute
+  '/machines': typeof AppMachinesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,22 +68,28 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/__root/capacitor': typeof _rootCapacitorRoute
   '/_app/credit': typeof AppCreditRoute
-  '/_app/machines': typeof AppMachinesRoute
   '/_app/factory-reset': typeof AppFactoryResetRoute
+  '/_app/machines': typeof AppMachinesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/capacitor' | '/credit' | '/machines' | '/factory-reset'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/capacitor'
+    | '/credit'
+    | '/factory-reset'
+    | '/machines'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/capacitor' | '/credit' | '/machines' | '/factory-reset'
+  to: '/' | '/login' | '/capacitor' | '/credit' | '/factory-reset' | '/machines'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/__root/capacitor'
     | '/_app/credit'
-    | '/_app/machines'
     | '/_app/factory-reset'
+    | '/_app/machines'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -120,13 +126,6 @@ declare module '@tanstack/react-router' {
       path: '/machines'
       fullPath: '/machines'
       preLoaderRoute: typeof AppMachinesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/credit': {
-      id: '/_app/credit'
-      path: '/credit'
-      fullPath: '/credit'
-      preLoaderRoute: typeof AppCreditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/factory-reset': {
@@ -136,140 +135,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFactoryResetRouteImport
       parentRoute: typeof AppRoute
     }
-  }
-}
-
-interface AppRouteChildren {
-  AppCreditRoute: typeof AppCreditRoute
-  AppMachinesRoute: typeof AppMachinesRoute
-  AppFactoryResetRoute: typeof AppFactoryResetRoute
-}
-
-const AppRouteChildren: AppRouteChildren = {
-  AppCreditRoute: AppCreditRoute,
-  AppMachinesRoute: AppMachinesRoute,
-  AppFactoryResetRoute: AppFactoryResetRoute,
-}
-
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
-
-const rootRouteChildren: RootRouteChildren = {
-  AppRoute: AppRouteWithChildren,
-  LoginRoute: LoginRoute,
-  _rootCapacitorRoute: _rootCapacitorRoute,
-}
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
-
-
-const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
-  id: '/__root/capacitor',
-  path: '/capacitor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppMachinesRoute = AppMachinesRouteImport.update({
-  id: '/machines',
-  path: '/machines',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCreditRoute = AppCreditRouteImport.update({
-  id: '/credit',
-  path: '/credit',
-  getParentRoute: () => AppRoute,
-} as any)
-
-export interface FileRoutesByFullPath {
-  '/': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/capacitor': typeof _rootCapacitorRoute
-  '/credit': typeof AppCreditRoute
-  '/machines': typeof AppMachinesRoute
-}
-export interface FileRoutesByTo {
-  '/': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/capacitor': typeof _rootCapacitorRoute
-  '/credit': typeof AppCreditRoute
-  '/machines': typeof AppMachinesRoute
-}
-export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/_app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/__root/capacitor': typeof _rootCapacitorRoute
-  '/_app/credit': typeof AppCreditRoute
-  '/_app/machines': typeof AppMachinesRoute
-}
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/capacitor' | '/credit' | '/machines'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/capacitor' | '/credit' | '/machines'
-  id:
-    | '__root__'
-    | '/_app'
-    | '/login'
-    | '/__root/capacitor'
-    | '/_app/credit'
-    | '/_app/machines'
-  fileRoutesById: FileRoutesById
-}
-export interface RootRouteChildren {
-  AppRoute: typeof AppRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  _rootCapacitorRoute: typeof _rootCapacitorRoute
-}
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/__root/capacitor': {
-      id: '/__root/capacitor'
-      path: '/capacitor'
-      fullPath: '/capacitor'
-      preLoaderRoute: typeof _rootCapacitorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/machines': {
-      id: '/_app/machines'
-      path: '/machines'
-      fullPath: '/machines'
-      preLoaderRoute: typeof AppMachinesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/credit': {
       id: '/_app/credit'
       path: '/credit'
@@ -282,11 +147,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCreditRoute: typeof AppCreditRoute
+  AppFactoryResetRoute: typeof AppFactoryResetRoute
   AppMachinesRoute: typeof AppMachinesRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCreditRoute: AppCreditRoute,
+  AppFactoryResetRoute: AppFactoryResetRoute,
   AppMachinesRoute: AppMachinesRoute,
 }
 

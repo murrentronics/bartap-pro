@@ -46,6 +46,7 @@ type CashierFlatRecord =
   | { kind: "tx"; data: WalletTx; ts: number };
 
 function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; ownerName: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);

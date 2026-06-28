@@ -1,3 +1,4 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useTranslation } from "@/lib/i18n";
@@ -415,6 +416,7 @@ type OwnerFlatRecord =
   | { kind: "tx"; data: WalletTx; ts: number };
 
 function OwnerStatement({ profile, onClose }: { profile: { id: string; username?: string }; onClose: () => void }) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
