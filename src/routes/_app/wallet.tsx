@@ -105,6 +105,7 @@ function PaginationBar({
 // ─── Cashier Wallet ───────────────────────────────────────────────────────────
 function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
   const { t } = useTranslation();
+  const { refreshProfile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
@@ -112,7 +113,8 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [totalTxs, setTotalTxs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  // Lock the newest order id on first load — cleared after delete so button disappears
+  // Lock the newest order id on first load — once deleted, stays gone for the session
+  const DELETED_KEY = `deleted_order_${profile.id}`;
   const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
 
   const totalRecords = totalOrders + totalTxs;
@@ -136,9 +138,12 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .then(({ data }) => {
           const o = (data ?? []) as unknown as Order[];
           setOrders(o);
-          // Lock newest on first load only
+          // Lock newest on first load only — skip if already deleted this session
           if (lockedNewestOrderIdRef.current === undefined) {
-            lockedNewestOrderIdRef.current = o.length > 0 ? o[0].id : null;
+            const deletedId = sessionStorage.getItem(DELETED_KEY);
+            const candidate = o.length > 0 ? o[0].id : null;
+            // Only lock if not previously deleted this session
+            lockedNewestOrderIdRef.current = candidate && candidate !== deletedId ? candidate : null;
           }
         }),
       // Count wallet txs — include transfer_out so cashier sees cleared-to-owner records
@@ -194,8 +199,6 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     const items = Array.isArray(order.items) ? order.items : [];
 
     // Reverse shots_sold / units_sold / revenue on any opened bottles or packs
-    // that were part of this order.  Also reopens any bottle/pack that was
-    // subsequently marked empty (finished) by this exact order's sale.
     const hasShotOrPack = items.some((i: any) => i.id?.startsWith("shot-") || i.id?.startsWith("pack-"));
     if (hasShotOrPack) {
       await supabase.rpc("reverse_order_shot_pack", { p_items: items });
@@ -209,13 +212,23 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       });
     }
 
+    // Deduct the order total from the cashier's wallet balance
+    await supabase.rpc("adjust_wallet_balance", {
+      p_profile_id: profile.id,
+      p_amount: -Number(order.total),
+    });
+
     // Delete wallet_transactions linked to this order by order_id (covers the cashier's 'sale' row)
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
 
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
+    // Mark as deleted in session so button never reappears on refresh
+    sessionStorage.setItem(DELETED_KEY, order.id);
+    lockedNewestOrderIdRef.current = null;
     toast.success("Sale deleted — stock restored");
+    await refreshProfile();   // sync wallet_balance display
     fetchRef.current();
   };
 
@@ -1137,12 +1150,14 @@ function CashierBadge() {
 }
 
 function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDeleted?: () => void }) {
+  const { refreshProfile } = useAuth();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [allTxs, setAllTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   // Locked snapshot of the newest order id — set once on first load, cleared after delete
+  const DELETED_KEY = `deleted_order_owner_${profile.id}`;
   const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
 
   const fetchData = useCallback(() => {
@@ -1159,10 +1174,12 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
           const ownerOrders = orders.filter((o: any) => o.cashier_id === profile.id);
           setAllOrders(orders);
           if (lockedNewestOrderIdRef.current === undefined) {
+            const deletedId = sessionStorage.getItem(DELETED_KEY);
             const newest = ownerOrders.length > 0
               ? ownerOrders.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
               : null;
-            lockedNewestOrderIdRef.current = newest?.id ?? null;
+            const candidate = newest?.id ?? null;
+            lockedNewestOrderIdRef.current = candidate && candidate !== deletedId ? candidate : null;
           }
         }),
       // Fetch ALL wallet txs (no range limit)
@@ -1248,6 +1265,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     toast.success("Sale removed — stock restored");
     setDeletingOrderId(null);
     lockedNewestOrderIdRef.current = null;
+    sessionStorage.setItem(DELETED_KEY, order.id);
+    await refreshProfile();   // sync wallet_balance display
     fetchData();
     onDeleted?.();
   };

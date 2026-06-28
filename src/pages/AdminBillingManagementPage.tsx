@@ -193,7 +193,7 @@ export default function AdminBillingManagementPage() {
             billing_status: "active",
             music_addon: true,
             plan_type: "basic",
-            subscription_start_date: startDate.toISOString(),
+            ...(isActiveRenewal ? {} : { subscription_start_date: startDate.toISOString() }),
             subscription_end_date: endDate.toISOString(),
           }).eq("id", selectedPayment.owner_id);
 

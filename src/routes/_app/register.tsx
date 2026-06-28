@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
+import { useTranslation } from "@/lib/i18n";
 
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number };
 type CartItem = Product & { qty: number };
@@ -21,6 +22,7 @@ type OpenedBottle = {
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
+  const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -473,15 +475,15 @@ export default function RegisterPage() {
               >
                 <span className="text-xs font-black text-amber-400">
                   {barSelectedId
-                    ? "Now tap another item to swap its position"
-                    : "Tap an item to select, then tap another to swap"}
+                    ? t("sort_tap_swap", "Now tap another item to swap its position")
+                    : t("sort_tap_select", "Tap an item to select, then tap another to swap")}
                 </span>
                 <button
                   onClick={handleBarDone}
                   className="shrink-0 h-8 px-4 rounded-xl font-black text-xs text-white active:scale-95 transition"
                   style={{ background: "var(--gradient-hero)" }}
                 >
-                  Done
+                  {t("done", "Done")}
                 </button>
               </div>
             )}
@@ -494,7 +496,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
                 >
-                  🥃 Shot from Opened Bottle
+                  {t("shot_from_bottle", "🥃 Shot from Opened Bottle")}
                   {openedBottles.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -513,7 +515,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
                 >
-                  🚬 Retail Cigarette &amp; Paper
+                  {t("retail_cigg_paper", "🚬 Retail Cigarette & Paper")}
                   {openedPacks.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -727,7 +729,7 @@ export default function RegisterPage() {
                       className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border"
                       style={{ background: "rgba(251,146,60,0.08)", color: "var(--primary)", borderColor: "rgba(251,146,60,0.30)" }}
                     >
-                      ⇅ Sort Item Order
+                      {t("sort_item_order", "⇅ Sort Item Order")}
                     </button>
                   </div>
                 )}
@@ -753,7 +755,7 @@ export default function RegisterPage() {
               style={{ background: "var(--gradient-hero)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span className="flex items-center gap-2">CASH</span>
+              <span className="flex items-center gap-2">{t("cash", "CASH")}</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
             </button>
             {/* CREDIT button */}
@@ -763,7 +765,7 @@ export default function RegisterPage() {
               style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full text-sm font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)", border: "1.5px solid var(--primary)" }}>{cartCount}</span>
-              <span className="flex items-center gap-2">CREDIT</span>
+              <span className="flex items-center gap-2">{t("credit", "CREDIT")}</span>
               <span className="text-base font-bold">${total.toFixed(2)}</span>
             </button>
           </div>
@@ -816,7 +818,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">🥃 Select Liquor</span>
+              <span className="text-base font-black">{t("select_liquor", "🥃 Select Liquor")}</span>
               <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -951,10 +953,10 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">🥃 Add Shot</span>
+              <span className="font-black text-base">{t("add_shot", "🥃 Add Shot")}</span>
               <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); setShotModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
-                <X className="h-3.5 w-3.5" /> Change
+                <X className="h-3.5 w-3.5" /> {t("change_btn", "Change")}
               </button>
             </div>
 
@@ -1169,7 +1171,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? "📄 Select Cigarette or Paper" : "🚬 Select Cigarette or Paper"}</span>
+              <span className="text-base font-black">{packType === "paper" ? t("select_cigg_paper", "🚬 Select Cigarette or Paper") : t("select_cigg_paper", "🚬 Select Cigarette or Paper")}</span>
               <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
                 <X className="h-4 w-4" />
@@ -1282,7 +1284,7 @@ export default function RegisterPage() {
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">🚬 Add to Order</span>
+              <span className="font-black text-base">{t("add_to_order", "🚬 Add to Order")}</span>
               <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
@@ -1420,6 +1422,7 @@ function CashOverlay({
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
 }) {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1486,7 +1489,7 @@ function CashOverlay({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden border border-border shadow-2xl" style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-xl font-black">Cash Order</h2>
+          <h2 className="text-xl font-black">{t("cash_order", "Cash Order")}</h2>
           <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
@@ -1557,8 +1560,8 @@ function CashOverlay({
               </div>
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>Cancel</Button>
-              <Button className="flex-1 h-12 font-black text-base" onClick={() => setStep(2)} style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>Proceed</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>{t("cancel", "Cancel")}</Button>
+              <Button className="flex-1 h-12 font-black text-base" onClick={() => setStep(2)} style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>{t("proceed", "Proceed")}</Button>
             </div>
           </>
         )}
@@ -1621,14 +1624,14 @@ function CashOverlay({
             </div>
 
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => { setStep(1); setPaid(""); }}>Back</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => { setStep(1); setPaid(""); }}>{t("back", "Back")}</Button>
               <Button
                 className="flex-1 h-12 font-black text-base"
                 disabled={!enough || busy}
                 onClick={submit}
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Sale"}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("confirm_sale", "Confirm Sale")}
               </Button>
             </div>
           </>
@@ -1686,6 +1689,7 @@ function CreditSaleOverlay({
   onSuccess: () => void;
 }) {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
   const [step, setStep] = useState<"review" | "pick" | "confirm" | "create">("review");
@@ -1805,7 +1809,7 @@ function CreditSaleOverlay({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-xl font-black" style={{ color: "var(--primary)" }}>Credit Order</h2>
+          <h2 className="text-xl font-black" style={{ color: "var(--primary)" }}>{t("credit_order", "Credit Order")}</h2>
           <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
             <X className="h-4 w-4" />
           </button>
@@ -1868,13 +1872,13 @@ function CreditSaleOverlay({
               </div>
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>Cancel</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>{t("cancel", "Cancel")}</Button>
               <Button
                 className="flex-1 h-12 font-black text-base"
                 onClick={handleProceed}
                 style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
               >
-                Proceed
+                {t("proceed", "Proceed")}
               </Button>
             </div>
           </>
@@ -1917,13 +1921,13 @@ function CreditSaleOverlay({
               )}
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← Back</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← {t("back", "Back")}</Button>
               <Button
                 className="h-12 px-5 font-black text-sm"
                 onClick={() => setStep("create")}
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                + New Account
+                {t("new_account", "+ New Account")}
               </Button>
             </div>
           </>
@@ -1933,22 +1937,22 @@ function CreditSaleOverlay({
         {confirmPick && (
           <div className="absolute inset-0 z-10 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm rounded-3xl">
             <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl p-6 space-y-4 text-center" style={{ background: "var(--gradient-card)" }}>
-              <h3 className="font-black text-lg">Confirm Customer?</h3>
-              <p className="text-muted-foreground text-sm">Charge this order to</p>
+              <h3 className="font-black text-lg">{t("confirm_customer", "Confirm Customer?")}</h3>
+              <p className="text-muted-foreground text-sm">{t("charge_to", "Charge this order to")}</p>
               <p className="font-black text-xl">{confirmPick.full_name}</p>
               <p className="font-black text-2xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
               {Number(confirmPick.balance_owed) > 0 && (
                 <p className="text-xs text-red-400 font-semibold">Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}</p>
               )}
               <div className="flex gap-3 pt-1">
-                <Button variant="outline" className="flex-1 h-11" onClick={() => setConfirmPick(null)}>Cancel</Button>
+                <Button variant="outline" className="flex-1 h-11" onClick={() => setConfirmPick(null)}>{t("cancel", "Cancel")}</Button>
                 <Button
                   className="flex-1 h-11 font-black"
                   disabled={busy}
                   onClick={() => { chargeAccount(confirmPick); setConfirmPick(null); }}
                   style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
                 >
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, Charge"}
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("yes_charge", "Yes, Charge")}
                 </Button>
               </div>
             </div>
@@ -2028,11 +2032,11 @@ function CreditSaleOverlay({
                 className="w-full h-12 font-black text-base"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create & Charge"}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("create_and_charge", "Create & Charge")}
               </Button>
             </form>
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
-              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Accounts</Button>
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← {t("back", "Back to Accounts")}</Button>
             </div>
           </>
         )}
