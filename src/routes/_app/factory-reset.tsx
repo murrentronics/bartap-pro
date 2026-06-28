@@ -48,20 +48,21 @@ export default function FactoryResetPage() {
     // Wipes all financial history so the owner can start fresh
     // by entering cost prices on existing items.
 
-    // 1. Zero cashier wallets + clear their transaction history (keep cashier accounts)
+    // 1. Zero cashier wallets + clear their transaction history + orders (keep cashier accounts)
     const { data: cashiers } = await supabase
       .from("profiles").select("id").eq("parent_id", ownerId);
     if (cashiers?.length) {
       for (const c of cashiers as { id: string }[]) {
-        await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", c.id);
+        await supabase.from("orders").delete().eq("cashier_id", c.id);
         await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
+        await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", c.id);
       }
     }
 
     // 2. Delete owner wallet transactions
     await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
 
-    // 3. Delete all orders
+    // 3. Delete all orders for this owner (covers owner-direct sales)
     await supabase.from("orders").delete().eq("owner_id", ownerId);
 
     // 4. Delete credit transactions and accounts

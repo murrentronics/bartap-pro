@@ -983,7 +983,18 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
 
       {!showTemplates && (
         <div className="pt-3">
-          <Button onClick={submit} disabled={busy || !name || !price} className="w-full font-bold h-11 shrink-0" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+          <Button
+            onClick={submit}
+            disabled={
+              busy ||
+              !name ||
+              !price ||
+              // Require cost price on new items, and on edits where cost price was never set (0 or null)
+              (!isEdit && (!costPrice || parseFloat(costPrice) <= 0)) ||
+              (isEdit && (editProduct?.cost_price ?? 0) === 0 && (!costPrice || parseFloat(costPrice) <= 0))
+            }
+            className="w-full font-bold h-11 shrink-0"
+            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Next →"}
           </Button>
         </div>

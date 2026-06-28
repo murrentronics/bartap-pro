@@ -52,6 +52,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -218,6 +219,8 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
       const filename = "cashier-statement-" + cashier.username + "-" + month.replace(/\s/g, "-") + ".pdf";
       await downloadPdf(filename, doc.output("datauristring"));
       toast.success("PDF saved to Downloads folder");
+      setDownloadedMonth(month);
+      setTimeout(() => setDownloadedMonth(null), 5000);
     } catch (err: any) {
       console.error("PDF download error:", err);
       toast.error("Download failed: " + (err?.message ?? "unknown error"));
@@ -298,11 +301,14 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                             type="button"
                             disabled={downloadingMonth === month}
                             onClick={(e) => { e.stopPropagation(); handleDownload(month); }}
+                            style={downloadedMonth === month ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}
                           >
                             {downloadingMonth === month
                               ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : downloadedMonth === month
+                              ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                               : <Download className="h-4 w-4" />}
-                            {downloadingMonth === month ? "…" : "PDF"}
+                            {downloadingMonth === month ? "…" : downloadedMonth === month ? "Done" : "PDF"}
                           </Button>
                         </div>
                       </div>
@@ -636,17 +642,17 @@ export default function CashiersPage() {
                   {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1 h-11" onClick={() => { setResetPwCashier(null); setNewPw(""); }}>
-                  Cancel
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" className="flex-1 min-w-[100px] h-11" onClick={() => { setResetPwCashier(null); setNewPw(""); }}>
+                  {t("cancel", "Cancel")}
                 </Button>
                 <Button
-                  className="flex-1 h-11 font-black"
+                  className="flex-1 min-w-[100px] h-11 font-black"
                   disabled={resettingPw || newPw.length < 6}
                   onClick={onResetPassword}
                   style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
                 >
-                  {resettingPw ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  {resettingPw ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save", "Save")}
                 </Button>
               </div>
             </div>

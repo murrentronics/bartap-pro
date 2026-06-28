@@ -95,6 +95,8 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
 }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [downloadedAll, setDownloadedAll] = useState(false);
+  const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
 
   // Sort all entries newest first
   const allSorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -121,6 +123,8 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
     setDownloadingMonth(mk);
     await onDownloadMonth(mk, byMonth[mk]);
     setDownloadingMonth(null);
+    setDownloadedMonth(mk);
+    setTimeout(() => setDownloadedMonth(null), 5000);
   };
 
   if (loading) {
@@ -137,9 +141,14 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{entries.length} records</span>
         <Button size="sm" variant="outline" className="h-9 gap-1.5 font-bold"
-          disabled={downloading || entries.length === 0} onClick={onDownloadAll}>
-          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-          Download All
+          disabled={downloading || entries.length === 0} onClick={async () => { await onDownloadAll(); setDownloadedAll(true); setTimeout(() => setDownloadedAll(false), 5000); }}
+          style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+          {downloading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : downloadedAll
+            ? <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            : <Download className="h-3.5 w-3.5" />}
+          {downloadedAll ? "Done" : "Download All"}
         </Button>
       </div>
 
@@ -170,11 +179,14 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, onDo
                     onClick={(ev) => { ev.stopPropagation(); handleMonthPdf(mk); }}
                     disabled={downloadingMonth === mk}
                     className="h-7 px-2 rounded-lg flex items-center gap-1 text-xs font-bold border border-border hover:bg-muted/50 transition disabled:opacity-50"
+                    style={downloadedMonth === mk ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}
                     title="Download this month PDF">
                     {downloadingMonth === mk
                       ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : downloadedMonth === mk
+                      ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       : <Download className="h-3 w-3" />}
-                    PDF
+                    {downloadedMonth === mk ? "Done" : "PDF"}
                   </button>
                   <span className={`transition-transform text-muted-foreground text-sm ${isOpen ? "rotate-180" : ""}`}>▾</span>
                 </div>
@@ -269,6 +281,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadedAll, setDownloadedAll] = useState(false);
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
   const [deletingMachine, setDeletingMachine] = useState(false);
   const confirm = useConfirm();
@@ -515,6 +528,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       addFootersToAllPages(doc);
       await downloadPdf(`machine-${machine.name.replace(/\s+/g, "-")}-all.pdf`, doc.output("datauristring"));
       toast.success("PDF saved");
+      setDownloadedAll(true);
+      setTimeout(() => setDownloadedAll(false), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
     finally { setDownloading(false); }
   };
@@ -1234,7 +1249,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machines: Machine[] }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadedAll, setDownloadedAll] = useState(false);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
 
   // All records sorted newest first
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -1336,6 +1353,8 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       const doc = await buildPdf(sorted, "Full History", "All Records");
       await downloadPdf("machines-all-history.pdf", doc.output("datauristring"));
       toast.success("PDF saved");
+      setDownloadedAll(true);
+      setTimeout(() => setDownloadedAll(false), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
     finally { setDownloading(false); }
   };
@@ -1347,6 +1366,8 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       const doc = await buildPdf(byMonth[mk], monthLabel(mk), monthLabel(mk));
       await downloadPdf(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc.output("datauristring"));
       toast.success("PDF saved");
+      setDownloadedMonth(mk);
+      setTimeout(() => setDownloadedMonth(null), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
     finally { setDownloadingMonth(null); }
   };
@@ -1362,9 +1383,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{sorted.length} records</span>
           <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
-            disabled={downloading} onClick={handleDownloadAll}>
-            {downloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-            All PDF
+            disabled={downloading} onClick={handleDownloadAll}
+            style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+            {downloading
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : downloadedAll
+              ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              : <Download className="h-3 w-3" />}
+            {downloadedAll ? "Done" : "All PDF"}
           </Button>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -1410,11 +1436,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   <button
                     onClick={ev => { ev.stopPropagation(); handleDownloadMonth(mk); }}
                     disabled={downloadingMonth === mk}
-                    className="h-7 px-2 rounded-lg flex items-center gap-1 text-xs font-bold border border-border hover:bg-muted/50 transition disabled:opacity-50">
+                    className="h-7 px-2 rounded-lg flex items-center gap-1 text-xs font-bold border border-border hover:bg-muted/50 transition disabled:opacity-50"
+                    style={downloadedMonth === mk ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
                     {downloadingMonth === mk
                       ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : downloadedMonth === mk
+                      ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       : <Download className="h-3 w-3" />}
-                    PDF
+                    {downloadedMonth === mk ? "Done" : "PDF"}
                   </button>
                   <span className={`text-muted-foreground text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
                 </div>

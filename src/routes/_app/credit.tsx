@@ -316,6 +316,7 @@ function OpenedTab({
   onEdit: (a: CreditAccount) => void;
 }) {
   const [printing, setPrinting] = useState<string | null>(null);
+  const [printed, setPrinted] = useState<string | null>(null);
 
   if (loading) return <Spinner />;
   if (accounts.length === 0)
@@ -352,13 +353,17 @@ function OpenedTab({
             </button>
             <div className="flex flex-col items-end gap-1.5">
               <button
-                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
                 disabled={printing === a.id}
                 className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
               >
-                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-                Bill
+                {printing === a.id
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : printed === a.id
+                  ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  : <FileDown className="h-3 w-3" />}
+                {printed === a.id ? "Done" : "Bill"}
               </button>
               <button
                 onClick={() => onEdit(a)}
@@ -379,6 +384,7 @@ function OpenedTab({
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
 function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void }) {
   const [printing, setPrinting] = useState<string | null>(null);
+  const [printed, setPrinted] = useState<string | null>(null);
 
   if (loading) return <Spinner />;
   if (accounts.length === 0)
@@ -420,13 +426,17 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
             <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
             <div className="flex flex-col items-end gap-1.5">
               <button
-                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); }}
+                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
                 disabled={printing === a.id}
                 className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
               >
-                {printing === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-                Bill
+                {printing === a.id
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : printed === a.id
+                  ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  : <FileDown className="h-3 w-3" />}
+                {printed === a.id ? "Done" : "Bill"}
               </button>
               <button
                 onClick={() => onEdit(a)}
@@ -748,6 +758,7 @@ function PaymentOverlay({
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [printed, setPrinted] = useState(false);
   const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number }[] | null; created_at: string; cashier_id: string | null }[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const ownerName = profile?.username ?? "Bar";
@@ -814,13 +825,17 @@ function PaymentOverlay({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={async () => { setPrinting(true); await printBill(account, ownerName); setPrinting(false); }}
+              onClick={async () => { setPrinting(true); await printBill(account, ownerName); setPrinting(false); setPrinted(true); setTimeout(() => setPrinted(false), 5000); }}
               disabled={printing}
               className="flex items-center gap-1.5 px-3 h-9 rounded-xl font-bold text-xs transition active:scale-95 disabled:opacity-50"
-              style={{ background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
+              style={printed ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
             >
-              {printing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-              Bill
+              {printing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : printed
+                ? <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                : <FileDown className="h-3.5 w-3.5" />}
+              {printed ? "Done" : "Bill"}
             </button>
             <button
               onClick={onClose}
