@@ -113,9 +113,8 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [totalTxs, setTotalTxs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  // Lock the newest order id on first load — once deleted, stays gone for the session
-  const DELETED_KEY = `deleted_order_${profile.id}`;
-  const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
+  // The id of the order that qualifies for the delete button (null = none)
+  const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
 
   const totalRecords = totalOrders + totalTxs;
   const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
@@ -123,14 +122,40 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const handlePrev = () => { setPage((p) => p - 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleNext = () => { setPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
+  // Resolve which order (if any) qualifies for the delete button.
+  // Rules:
+  //   1. Must be the most recent order for this cashier.
+  //   2. Must have been created within the last 10 seconds (brand-new sale).
+  //   3. Must have been created AFTER the last delete timestamp stored in DB
+  //      — prevents the button reappearing on an older sale after refresh.
+  const resolveDeletable = async (newestOrder: Order | null) => {
+    if (!newestOrder) { setDeletableOrderId(null); return; }
+
+    const orderAgeSeconds = (Date.now() - new Date(newestOrder.created_at).getTime()) / 1000;
+    if (orderAgeSeconds > 10) { setDeletableOrderId(null); return; }
+
+    const { data } = await supabase
+      .from("cashier_last_delete")
+      .select("deleted_at")
+      .eq("cashier_id", profile.id)
+      .maybeSingle();
+
+    if (data?.deleted_at) {
+      const orderTime   = new Date(newestOrder.created_at).getTime();
+      const deletedTime = new Date(data.deleted_at).getTime();
+      // Only show if this order was placed AFTER the last delete
+      if (orderTime <= deletedTime) { setDeletableOrderId(null); return; }
+    }
+
+    setDeletableOrderId(newestOrder.id);
+  };
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      // Count orders
       supabase.from("orders").select("id", { count: "exact", head: true })
         .eq("cashier_id", profile.id)
         .then(({ count }) => setTotalOrders(count ?? 0)),
-      // Fetch orders for this page
       supabase.from("orders").select("*")
         .eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
@@ -138,20 +163,12 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .then(({ data }) => {
           const o = (data ?? []) as unknown as Order[];
           setOrders(o);
-          // Lock newest on first load only — skip if already deleted this session
-          if (lockedNewestOrderIdRef.current === undefined) {
-            const deletedId = sessionStorage.getItem(DELETED_KEY);
-            const candidate = o.length > 0 ? o[0].id : null;
-            // Only lock if not previously deleted this session
-            lockedNewestOrderIdRef.current = candidate && candidate !== deletedId ? candidate : null;
-          }
+          resolveDeletable(o[0] ?? null);
         }),
-      // Count wallet txs — include transfer_out so cashier sees cleared-to-owner records
       supabase.from("wallet_transactions").select("id", { count: "exact", head: true })
         .eq("profile_id", profile.id)
         .in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .then(({ count }) => setTotalTxs(count ?? 0)),
-      // Fetch wallet txs
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
         .in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
@@ -159,15 +176,9 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
-  }, [profile.id, page]);
+  }, [profile.id, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Merge orders and txs into flat list sorted by date, capped at page size
-  const flatRecords: Array<{ kind: "order"; data: Order; ts: number } | { kind: "tx"; data: WalletTx; ts: number }> = [
-    ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
-    ...txs.map((tx) => ({ kind: "tx" as const, data: tx, ts: new Date(tx.created_at).getTime() })),
-  ].sort((a, b) => b.ts - a.ts).slice(0, ORDERS_PAGE_SIZE);
-
-  // Realtime — stable channel, refreshes on any order or wallet_transaction change
+  // Realtime — stable channel
   const fetchRef = useRef<() => void>(() => {});
   useEffect(() => {
     fetchRef.current = () => {
@@ -175,14 +186,15 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       Promise.all([
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("cashier_id", profile.id).then(({ count }) => setTotalOrders(count ?? 0)),
         supabase.from("orders").select("*").eq("cashier_id", profile.id).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => {
-          // Never re-lock after initial load — keep whatever was locked (null = deleted, id = active)
-          setOrders((data ?? []) as unknown as Order[]);
+          const o = (data ?? []) as unknown as Order[];
+          setOrders(o);
+          resolveDeletable(o[0] ?? null);
         }),
         supabase.from("wallet_transactions").select("id", { count: "exact", head: true }).eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).then(({ count }) => setTotalTxs(count ?? 0)),
         supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id).in("type", ["transfer_in", "transfer_out", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"]).order("created_at", { ascending: false }).range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1).then(({ data }) => setTxs((data ?? []) as WalletTx[])),
       ]).finally(() => setLoading(false));
     };
-  });
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const ch = supabase
@@ -193,21 +205,17 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);
 
-  const newestOrderId = lockedNewestOrderIdRef.current;
-
   const deleteLatestCashierOrder = async (order: Order) => {
-    lockedNewestOrderIdRef.current = null;
+    setDeletableOrderId(null);
     setDeletingOrderId(order.id);
 
     const items = Array.isArray(order.items) ? order.items : [];
 
-    // Reverse shots_sold / units_sold / revenue on any opened bottles or packs
     const hasShotOrPack = items.some((i: any) => i.id?.startsWith("shot-") || i.id?.startsWith("pack-"));
     if (hasShotOrPack) {
       await supabase.rpc("reverse_order_shot_pack", { p_items: items });
     }
 
-    // Restore stock for all real products in the order (skip synthetic shot-/pack- ids)
     const restorableItems = items.filter((i: any) => !i.id?.startsWith("shot-") && !i.id?.startsWith("pack-"));
     if (restorableItems.length > 0) {
       await supabase.rpc("restore_stock_item", {
@@ -215,22 +223,30 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       });
     }
 
-    // Delete wallet_transactions linked to this order
-    // (DB trigger on_order_delete will deduct wallet_balance automatically)
+    // DB trigger on_order_delete deducts wallet_balance automatically
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
 
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
     setDeletingOrderId(null);
     if (error) { toast.error(error.message); return; }
 
-    // Mark deleted so button never reappears on refresh
-    sessionStorage.setItem(DELETED_KEY, order.id);
-    toast.success("Sale deleted — stock restored");
+    // Persist delete timestamp in DB — survives refresh, prevents button jumping
+    await supabase.from("cashier_last_delete").upsert(
+      { cashier_id: profile.id, deleted_at: new Date().toISOString() },
+      { onConflict: "cashier_id" }
+    );
 
-    // Small delay to let the DB trigger update wallet_balance before re-fetching profile
+    toast.success("Sale deleted — stock restored");
     setTimeout(() => refreshProfile(), 800);
     fetchRef.current();
   };
+
+
+  // Merge orders and txs into flat list sorted by date, capped at page size
+  const flatRecords: Array<{ kind: "order"; data: Order; ts: number } | { kind: "tx"; data: WalletTx; ts: number }> = [
+    ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
+    ...txs.map((tx) => ({ kind: "tx" as const, data: tx, ts: new Date(tx.created_at).getTime() })),
+  ].sort((a, b) => b.ts - a.ts).slice(0, ORDERS_PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -399,7 +415,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
-                    {o.id === newestOrderId && (
+                    {o.id === deletableOrderId && (
                       <button
                         onClick={() => deleteLatestCashierOrder(o)}
                         disabled={deletingOrderId === o.id}
@@ -1156,31 +1172,44 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  // Locked snapshot of the newest order id — set once on first load, cleared after delete
-  const DELETED_KEY = `deleted_order_owner_${profile.id}`;
-  const lockedNewestOrderIdRef = useRef<string | null | undefined>(undefined);
+  // The id of the owner-direct order that qualifies for the delete button
+  const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+
+  // Resolve which owner-direct order (if any) shows the delete button.
+  // Same rules as cashier: newest, within 10 seconds, after last delete timestamp.
+  const resolveDeletable = async (ownerOrders: Order[]) => {
+    if (ownerOrders.length === 0) { setDeletableOrderId(null); return; }
+    const newest = ownerOrders.reduce((a, b) =>
+      new Date(a.created_at) > new Date(b.created_at) ? a : b
+    );
+    const ageSeconds = (Date.now() - new Date(newest.created_at).getTime()) / 1000;
+    if (ageSeconds > 10) { setDeletableOrderId(null); return; }
+
+    const { data } = await supabase
+      .from("cashier_last_delete")
+      .select("deleted_at")
+      .eq("cashier_id", profile.id)
+      .maybeSingle();
+
+    if (data?.deleted_at) {
+      const orderTime   = new Date(newest.created_at).getTime();
+      const deletedTime = new Date(data.deleted_at).getTime();
+      if (orderTime <= deletedTime) { setDeletableOrderId(null); return; }
+    }
+    setDeletableOrderId(newest.id);
+  };
 
   const fetchData = useCallback(() => {
     setLoading(true);
     Promise.all([
-      // ALL orders for this owner — both owner-direct and cashier sales
       supabase.from("orders").select("*")
         .eq("owner_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => {
           const orders = (data ?? []) as unknown as Order[];
-          // Lock the newest id only on the very first fetch (undefined = not yet set)
-          // Only lock owner-direct orders (cashier_id = owner) for the delete button
           const ownerOrders = orders.filter((o: any) => o.cashier_id === profile.id);
           setAllOrders(orders);
-          if (lockedNewestOrderIdRef.current === undefined) {
-            const deletedId = sessionStorage.getItem(DELETED_KEY);
-            const newest = ownerOrders.length > 0
-              ? ownerOrders.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
-              : null;
-            const candidate = newest?.id ?? null;
-            lockedNewestOrderIdRef.current = candidate && candidate !== deletedId ? candidate : null;
-          }
+          resolveDeletable(ownerOrders);
         }),
       // Fetch ALL wallet txs (no range limit)
       supabase.from("wallet_transactions").select("*")
@@ -1264,9 +1293,15 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 
     toast.success("Sale removed — stock restored");
     setDeletingOrderId(null);
-    lockedNewestOrderIdRef.current = null;
-    sessionStorage.setItem(DELETED_KEY, order.id);
-    await refreshProfile();   // sync wallet_balance display
+    setDeletableOrderId(null);
+
+    // Persist delete timestamp so button never reappears on refresh
+    await supabase.from("cashier_last_delete").upsert(
+      { cashier_id: profile.id, deleted_at: new Date().toISOString() },
+      { onConflict: "cashier_id" }
+    );
+
+    setTimeout(() => refreshProfile(), 800);
     fetchData();
     onDeleted?.();
   };
@@ -1275,7 +1310,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
   const handleNext = () => { setPage((p) => Math.min(totalPages - 1, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   // Use the locked snapshot — never moves after first load
-  const newestOrderId = lockedNewestOrderIdRef.current ?? null;
+  const newestOrderId = deletableOrderId;
 
   return (
     <div className="space-y-3 pt-2">
