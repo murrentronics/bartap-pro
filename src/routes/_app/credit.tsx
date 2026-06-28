@@ -544,6 +544,8 @@ function EditCustomerModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. John Smith"
                 required
+                className="mt-1"
+                style={{ background: "#ffffff", color: "#000000" }}
               />
             </div>
 
@@ -554,7 +556,8 @@ function EditCustomerModal({
                 id="edit-credit-idtype"
                 value={idType}
                 onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+                style={{ background: "#ffffff", color: "#000000" }}
               >
                 <option value="drivers_permit">Driver's Permit</option>
                 <option value="national_id">National ID</option>
@@ -565,8 +568,8 @@ function EditCustomerModal({
             <div>
               <Label>ID Number</Label>
               <button type="button" onClick={() => setActiveField(f => f === "idNumber" ? null : "idNumber")}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-left mt-1 font-semibold"
-                style={{ color: idNumber ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
+                style={{ background: "#ffffff", color: idNumber ? "#000000" : "#9ca3af" }}>
                 {idNumber || "e.g. 00000000"}
               </button>
               {activeField === "idNumber" && (
@@ -580,8 +583,8 @@ function EditCustomerModal({
               <div className="flex items-center gap-0 mt-1">
                 <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
                 <button type="button" onClick={() => setActiveField(f => f === "contact" ? null : "contact")}
-                  className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-sm text-left font-semibold"
-                  style={{ color: contact ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                  className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm text-left font-semibold"
+                  style={{ background: "#ffffff", color: contact ? "#000000" : "#9ca3af" }}>
                   {contact || "XXX-XXXX"}
                 </button>
               </div>
@@ -680,6 +683,8 @@ function CreateTab({
             onChange={(e) => { setName(e.target.value); setDone(false); }}
             placeholder="e.g. John Smith"
             required
+            className="mt-1"
+            style={{ background: "#ffffff", color: "#000000" }}
           />
         </div>
 
@@ -690,7 +695,8 @@ function CreateTab({
             id="credit-idtype"
             value={idType}
             onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+            className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+            style={{ background: "#ffffff", color: "#000000" }}
           >
             <option value="drivers_permit">Driver's Permit</option>
             <option value="national_id">National ID</option>
@@ -701,8 +707,8 @@ function CreateTab({
         <div>
           <Label>ID Number</Label>
           <button type="button" onClick={() => toggle("idNumber")}
-            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-left mt-1 font-semibold"
-            style={{ color: idNumber ? "var(--foreground)" : "var(--muted-foreground)" }}>
+            className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
+            style={{ background: "#ffffff", color: idNumber ? "#000000" : "#9ca3af" }}>
             {idNumber || "e.g. 00000000"}
           </button>
           {activeField === "idNumber" && (
@@ -716,8 +722,8 @@ function CreateTab({
           <div className="flex items-center gap-0 mt-1">
             <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
             <button type="button" onClick={() => toggle("contact")}
-              className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-sm text-left font-semibold"
-              style={{ color: contact ? "var(--foreground)" : "var(--muted-foreground)" }}>
+              className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm text-left font-semibold"
+              style={{ background: "#ffffff", color: contact ? "#000000" : "#9ca3af" }}>
               {contact || "XXX-XXXX"}
             </button>
           </div>

@@ -468,7 +468,7 @@ export default function RegisterPage() {
             {/* ── Edit mode instruction banner — sticky just below category tabs ── */}
             {barEditMode && (
               <div
-                className="sticky z-[19] -mx-3 px-3 flex items-center justify-between py-2.5 mb-3 border-b border-amber-500/40 bg-background/95 backdrop-blur"
+                className="sticky z-[19] -mx-3 px-3 flex items-center justify-between py-2 mb-3 border-b border-amber-500/40 bg-background/95 backdrop-blur"
                 style={{ top: "72px" }}
               >
                 <span className="text-xs font-black text-amber-400">
@@ -476,8 +476,11 @@ export default function RegisterPage() {
                     ? "Now tap another item to swap its position"
                     : "Tap an item to select, then tap another to swap"}
                 </span>
-                <button onClick={handleBarDone}
-                  className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition active:scale-95">
+                <button
+                  onClick={handleBarDone}
+                  className="shrink-0 h-8 px-4 rounded-xl font-black text-xs text-white active:scale-95 transition"
+                  style={{ background: "var(--gradient-hero)" }}
+                >
                   Done
                 </button>
               </div>

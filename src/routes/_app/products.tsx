@@ -628,11 +628,24 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                {/* ── Title + price below image ── */}
-                <div className="px-1.5 py-1.5 pointer-events-none select-none" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
-                  <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
-                  <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
-                </div>
+                {/* ── Title + CP / SP below image ── */}
+                {(() => {
+                  const cp = Number(p.cost_price ?? 0);
+                  const sp = Number(p.price ?? 0);
+                  const cpMissing = cp === 0;
+                  const spMissing = sp === 0;
+                  return (
+                    <div className="px-1.5 py-1.5 pointer-events-none select-none" style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderTop: "1px solid rgba(var(--primary-rgb, 251 146 60) / 0.35)" }}>
+                      <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                      <div className="font-black text-[10px] leading-tight mt-0.5" style={{ color: cpMissing ? "#f87171" : "var(--primary)" }}>
+                        CP: ${cp.toFixed(2)}
+                      </div>
+                      <div className="font-black text-[10px] leading-tight" style={{ color: spMissing ? "#f87171" : "var(--primary)" }}>
+                        SP: ${sp.toFixed(2)}
+                      </div>
+                    </div>
+                  );
+                })()}
 
               </div>
             ))}

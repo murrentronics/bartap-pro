@@ -1074,24 +1074,37 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                 </button>
                 {isOpen && (
                   <div className="border-t border-border divide-y divide-border/50">
-                    {mExpenses.map((e) => (
-                      <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm truncate">
-                            {e.description ?? "Stock expense"}
+                    {mExpenses.map((e) => {
+                      // Split auto-generated descriptions into title + detail
+                      // Formats: "Rum ×12" or "Rum ×12 @ $5.00 each"
+                      const raw = e.description ?? "Stock expense";
+                      const atIdx = raw.indexOf(" ×");
+                      const hasDetail = atIdx !== -1;
+                      const title = hasDetail ? raw.slice(0, atIdx).trim() : raw;
+                      const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null; // e.g. "×12 @ $5.00 each"
+
+                      return (
+                        <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-black text-sm">{title}</div>
+                            {detail && (
+                              <div className="text-xs text-muted-foreground mt-0.5 break-words whitespace-normal">
+                                {detail}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(e.created_at).toLocaleString("en-GB", {
+                                day: "numeric", month: "short", year: "numeric",
+                                hour: "2-digit", minute: "2-digit", hour12: true,
+                              })}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(e.created_at).toLocaleString("en-GB", {
-                              day: "numeric", month: "short", year: "numeric",
-                              hour: "2-digit", minute: "2-digit", hour12: true,
-                            })}
-                          </div>
+                          <span className="font-black text-sm text-red-400 shrink-0">
+                            -${fmt(Number(e.amount))}
+                          </span>
                         </div>
-                        <span className="font-black text-sm text-red-400 shrink-0">
-                          -${fmt(Number(e.amount))}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

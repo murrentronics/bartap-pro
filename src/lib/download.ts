@@ -16,9 +16,17 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
     });
   } else {
     const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-    Object.assign(document.createElement("a"), { href: url, download: filename }).click();
-    URL.revokeObjectURL(url);
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    // Try anchor click first (desktop); fall back to window.open for mobile browsers
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Give the browser a moment to initiate the download before revoking
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 }
 
