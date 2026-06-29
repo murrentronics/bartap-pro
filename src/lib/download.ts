@@ -6,8 +6,14 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
   if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
 
   if (Capacitor.isNativePlatform()) {
-    // Save directly to the device Documents folder — shows in status bar via system download manager
+    // Save directly to the device Documents folder
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    // Delete any stale copy first — a previous failed write can leave a locked file
+    try {
+      await Filesystem.deleteFile({ path: filename, directory: Directory.Documents });
+    } catch {
+      // file didn't exist, that's fine
+    }
     await Filesystem.writeFile({
       path: filename,
       data: base64,

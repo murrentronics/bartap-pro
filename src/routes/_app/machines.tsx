@@ -1379,7 +1379,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     try {
       const doc = await buildPdf(sorted, "Full History", "All Records");
       await downloadPdf("machines-all-history.pdf", doc.output("datauristring"));
-      toast.success("PDF saved");
+      toast.success("PDF saved — check your Documents folder");
       setDownloadedAll(true);
       setTimeout(() => setDownloadedAll(false), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
@@ -1392,7 +1392,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     try {
       const doc = await buildPdf(byMonth[mk], monthLabel(mk), monthLabel(mk));
       await downloadPdf(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc.output("datauristring"));
-      toast.success("PDF saved");
+      toast.success("PDF saved — check your Documents folder");
       setDownloadedMonth(mk);
       setTimeout(() => setDownloadedMonth(null), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
