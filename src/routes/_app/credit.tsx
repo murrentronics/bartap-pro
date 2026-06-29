@@ -810,7 +810,7 @@ function PaymentOverlay({
     const ownerId = profile.role === "owner" ? profile.id : (profile as any).parent_id;
     setDeletingId(chargeId);
 
-    // Get the charge timestamp BEFORE calling the RPC so we can match wallet rows
+    // Read charge timestamp BEFORE deleting so we can match wallet rows
     const { data: chargeTx } = await supabase
       .from("credit_transactions")
       .select("created_at")
@@ -824,21 +824,15 @@ function PaymentOverlay({
     setDeletingId(null);
     if (error) { toast.error(error.message); return; }
 
-    // Forcibly delete owner + cashier wallet_transactions for this charge.
-    // Match by type + profile + 60-second window around the charge created_at.
-    if (chargeTx?.created_at) {
-      const chargeTime = new Date(chargeTx.created_at);
-      const from = new Date(chargeTime.getTime() - 60000).toISOString();
-      const to   = new Date(chargeTime.getTime() + 60000).toISOString();
-      const profiles = [ownerId, profile.id].filter(Boolean);
-      for (const pid of profiles) {
-        await supabase.from("wallet_transactions")
-          .delete()
-          .eq("type", "credit_charge")
-          .eq("profile_id", pid)
-          .gte("created_at", from)
-          .lte("created_at", to);
-      }
+    // Call SECURITY DEFINER RPC to delete both owner + cashier wallet rows
+    if (chargeTx?.created_at && ownerId) {
+      const t = new Date(chargeTx.created_at);
+      await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+        p_owner_id:   ownerId,
+        p_cashier_id: profile.id,
+        p_from_time:  new Date(t.getTime() - 5000).toISOString(),
+        p_to_time:    new Date(t.getTime() + 5000).toISOString(),
+      });
     }
 
     toast.success("Charge removed — stock restored");
