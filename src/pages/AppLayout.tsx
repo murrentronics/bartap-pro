@@ -81,6 +81,35 @@ export default function AppLayout() {
   // Register FCM push token for the owner's device — must be before any early returns (Rules of Hooks)
   usePushNotifications(profile?.role === "owner" ? profile.id : null);
 
+  // ── In-app payout alert modal ─────────────────────────────────────────────
+  const [payoutAlert, setPayoutAlert] = useState<{ title: string; body: string; machineName: string; navigate?: (to: string) => void } | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { title, body, machineName, navigate: navFn } = (e as CustomEvent).detail;
+      setPayoutAlert({ title, body, machineName, navigate: navFn });
+      // Play alert sound using Web Audio API
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        // Three ascending beeps
+        [0, 0.3, 0.6].forEach((delay) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880 + delay * 400;
+          osc.type = "sine";
+          gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.3);
+        });
+      } catch { /* audio not available */ }
+    };
+    window.addEventListener("payoutAlert", handler);
+    return () => window.removeEventListener("payoutAlert", handler);
+  }, []);
+
   // Load owner plan to decide whether to show Machines in nav — must be before early returns (Rules of Hooks)
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -342,6 +371,55 @@ export default function AppLayout() {
               );
             }}
           />
+        </div>
+      )}
+
+      {/* ── In-app payout alert modal ── */}
+      {payoutAlert && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
+          onClick={() => setPayoutAlert(null)}>
+          <div
+            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/60"
+            style={{ background: "oklch(0.15 0.04 45)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Orange flash header */}
+            <div className="px-6 pt-6 pb-4 text-center"
+              style={{ background: "linear-gradient(135deg, #c0441a, #f0a030)" }}>
+              <div className="text-5xl mb-2">⚠️</div>
+              <h2 className="font-black text-white text-xl leading-tight">Payout Alert</h2>
+              <p className="text-white/90 font-bold text-base mt-1">{payoutAlert.machineName}</p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 text-center space-y-5">
+              <p className="text-amber-200 font-semibold text-sm leading-relaxed">
+                {payoutAlert.body}
+              </p>
+              <div className="flex flex-col gap-2">
+                {/* Go to machine history tab */}
+                <button
+                  onClick={() => {
+                    setPayoutAlert(null);
+                    localStorage.setItem("payout_alert_open_machine", payoutAlert.machineName);
+                    localStorage.setItem("payout_alert_open_tab", "history");
+                    nav("/machines");
+                  }}
+                  className="w-full h-12 rounded-2xl font-black text-sm text-white active:scale-95 transition"
+                  style={{ background: "linear-gradient(135deg, #c0441a, #f0a030)" }}
+                >
+                  View History →
+                </button>
+                <button
+                  onClick={() => setPayoutAlert(null)}
+                  className="w-full h-11 rounded-2xl font-black text-sm border border-white/20 text-white/60 active:scale-95 transition"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

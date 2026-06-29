@@ -110,8 +110,8 @@ export async function registerPayoutAlertTapHandler(
 }
 
 /** Fire a payout alert if the payout amount meets the threshold.
- *  Always fires an in-app toast so the owner sees it even when the app is
- *  foregrounded (Android suppresses local notifications when app is visible). */
+ *  Fires an in-app modal alert (via custom DOM event picked up by AppLayout)
+ *  AND the system push notification when app is backgrounded. */
 export async function checkAndFirePayoutAlert(
   amount: number,
   machineName: string,
@@ -124,23 +124,10 @@ export async function checkAndFirePayoutAlert(
   const title = `⚠️ Payout Alert — ${machineName}`;
   const body  = `$${amount.toFixed(2)} payout — meets your $${settings.threshold.toLocaleString()} threshold`;
 
-  // ── Always show in-app toast with a "View" action button ─────────────────
-  try {
-    const { toast } = await import("sonner");
-    toast.warning(title, {
-      description: body,
-      duration: 10000,
-      action: navigate
-        ? {
-            label: "View Machine →",
-            onClick: () => {
-              localStorage.setItem(ALERT_OPEN_MACHINE_KEY, machineName);
-              navigate("/machines");
-            },
-          }
-        : undefined,
-    });
-  } catch { /* sonner not available */ }
+  // ── Fire in-app modal via custom DOM event (handled by AppLayout) ─────────
+  window.dispatchEvent(new CustomEvent("payoutAlert", {
+    detail: { title, body, machineName, navigate }
+  }));
 
   if (Capacitor.isNativePlatform()) {
     try {

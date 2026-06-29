@@ -275,11 +275,12 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
   );
 }
 
-function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, onBack, onDeleted }: {
+function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted }: {
   machine: Machine; screenNumber: number; ownerId: string;
   profile: { id: string; username?: string; role?: string };
   floatSession: FloatSession | null;
   remainingFloat: number | null;
+  initialTab?: "payout" | "income" | "history";
   onBack: () => void; onDeleted: () => void;
 }) {
   const { t } = useTranslation();
@@ -287,7 +288,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [entries, setEntries] = useState<MachineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const isCashier = profile.role === "cashier";
-  const [tab, setTab] = useState<"payout" | "income" | "history">("payout");
+  const [tab, setTab] = useState<"payout" | "income" | "history">(initialTab ?? "payout");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1277,6 +1278,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
   const [downloadedAll, setDownloadedAll] = useState(false);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // All records sorted newest first
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -1497,6 +1499,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   {mEntries.map(e => {
                     const m = machines.find(x => x.id === e.machine_id);
                     const isPayout = e.type === "payout";
+                    const hasProof = !!e.proof_image_url;
                     return (
                       <div key={e.id} className="px-4 py-3 flex items-start gap-3">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border text-xs font-black ${
@@ -1521,7 +1524,28 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                               {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
                             </div>
                           )}
+                          {isPayout && !hasProof && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                              <span className="text-[10px] font-bold text-amber-400">Unverified</span>
+                            </div>
+                          )}
+                          {isPayout && hasProof && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <svg className="h-3 w-3 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              <span className="text-[10px] font-bold text-green-400">Verified</span>
+                            </div>
+                          )}
                         </div>
+                        {/* Proof photo — landscape, right side */}
+                        {isPayout && hasProof && (
+                          <button
+                            onClick={() => setLightboxUrl(e.proof_image_url!)}
+                            className="shrink-0 rounded-xl overflow-hidden border border-green-500/30 active:opacity-80 transition"
+                            style={{ width: 100, height: 65 }}>
+                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -1531,6 +1555,28 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
           );
         })}
       </div>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt="proof"
+            className="rounded-2xl shadow-2xl"
+            style={{ maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 h-10 w-10 rounded-full flex items-center justify-center bg-black/60 border border-white/20 text-white active:scale-90 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1553,6 +1599,7 @@ export default function MachinesPage() {
   const [tab, setTab] = useState<"screens" | "payouts" | "create">("screens");
   const [selected, setSelected] = useState<Machine | null>(null);
   const [selectedScreenNum, setSelectedScreenNum] = useState(0);
+  const [selectedInitialTab, setSelectedInitialTab] = useState<"payout" | "income" | "history">("payout");
 
   // Cashiers see their owner's machines; owners see their own
   const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
@@ -1568,13 +1615,16 @@ export default function MachinesPage() {
   // Auto-open a specific machine if the user arrived via a payout alert tap or toast action
   useEffect(() => {
     const targetName = localStorage.getItem(ALERT_OPEN_MACHINE_KEY);
+    const targetTab  = localStorage.getItem("payout_alert_open_tab") as "history" | null;
     if (!targetName || machines.length === 0) return;
     localStorage.removeItem(ALERT_OPEN_MACHINE_KEY);
+    localStorage.removeItem("payout_alert_open_tab");
     const match = machines.find(m => m.name === targetName);
     if (match) {
       const screenNum = machines.filter(m => m.name <= match.name).length;
       setSelected(match);
       setSelectedScreenNum(screenNum);
+      setSelectedInitialTab(targetTab === "history" ? "history" : "payout");
     }
   }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1801,6 +1851,7 @@ export default function MachinesPage() {
           profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined }}
           floatSession={floatSession}
           remainingFloat={remainingFloat}
+          initialTab={selectedInitialTab}
           onBack={() => { setSelected(null); load(); }}
           onDeleted={() => { setSelected(null); load(); }}
         />
@@ -1851,7 +1902,7 @@ export default function MachinesPage() {
         <>
           {tab === "screens" && (
             <ScreensTab
-              machines={machines} entries={entries} ownerId={ownerId} profileId={profile.id} onSelect={(m, num) => { setSelected(m); setSelectedScreenNum(num); }}
+              machines={machines} entries={entries} ownerId={ownerId} profileId={profile.id} onSelect={(m, num) => { setSelected(m); setSelectedScreenNum(num); setSelectedInitialTab("payout"); }}
               floatSession={floatSession}
               remainingFloat={remainingFloat} isCashier={!isOwner}
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
