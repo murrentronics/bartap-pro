@@ -408,20 +408,25 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
 
   const deleteCharge = async (tx: CreditTx) => {
     setDeletingId(tx.id);
+    const ownerId = profile?.role === "owner" ? profile.id : (profile as any)?.parent_id;
+
     const { error } = await supabase
       .from("credit_transactions")
       .delete()
       .eq("id", tx.id);
     if (error) { toast.error(error.message); setDeletingId(null); return; }
 
-    // Remove matching wallet_transactions (type='credit_charge') created within
-    // 10 seconds of this charge — covers both owner and cashier wallet records
-    await supabase
-      .from("wallet_transactions")
-      .delete()
-      .eq("type", "credit_charge")
-      .gte("created_at", new Date(new Date(tx.created_at).getTime() - 10000).toISOString())
-      .lte("created_at", new Date(new Date(tx.created_at).getTime() + 10000).toISOString());
+    // Use SECURITY DEFINER RPC to delete both owner + cashier wallet rows
+    // (client-side delete is blocked by RLS when cashier tries to delete owner's row)
+    if (ownerId && profile?.id) {
+      const t = new Date(tx.created_at);
+      await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+        p_owner_id:   ownerId,
+        p_cashier_id: profile.id,
+        p_from_time:  new Date(t.getTime() - 5000).toISOString(),
+        p_to_time:    new Date(t.getTime() + 5000).toISOString(),
+      });
+    }
 
     const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
       p_credit_account_id: tx.credit_account_id,
