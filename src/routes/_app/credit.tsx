@@ -231,6 +231,17 @@ function CreditPage() {
     fetchAccounts();
   }, [ownerId, fetchAccounts]);
 
+  // Realtime — refresh when credit_accounts or credit_transactions change
+  useEffect(() => {
+    if (!ownerId) return;
+    const ch = supabase
+      .channel(`credit-page-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_accounts", filter: `owner_id=eq.${ownerId}` }, () => fetchAccounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_transactions", filter: `owner_id=eq.${ownerId}` }, () => fetchAccounts())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, fetchAccounts]);
+
   const handleCreated = (account: CreditAccount) => {
     setClosed((prev) => [account, ...prev]);
     setTab("closed");
@@ -785,6 +796,15 @@ function PaymentOverlay({
 
   useEffect(() => { loadCharges(); }, [loadCharges]);
 
+  // Realtime — refresh charge list when credit_transactions change for this account
+  useEffect(() => {
+    const ch = supabase
+      .channel(`credit-charges-${account.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_transactions", filter: `credit_account_id=eq.${account.id}` }, () => loadCharges())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [account.id, loadCharges]);
+
   const deleteCharge = async (chargeId: string) => {
     if (!profile) return;
     setDeletingId(chargeId);
@@ -794,6 +814,14 @@ function PaymentOverlay({
     });
     setDeletingId(null);
     if (error) { toast.error(error.message); return; }
+
+    // Directly delete owner + cashier wallet_transactions for this charge
+    // using the credit_tx_id reference (migration 007) or fallback by note pattern
+    await supabase.from("wallet_transactions")
+      .delete()
+      .eq("type", "credit_charge")
+      .eq("credit_tx_id" as any, chargeId);
+
     toast.success("Charge removed — stock restored");
     await loadCharges();
     onDone();
