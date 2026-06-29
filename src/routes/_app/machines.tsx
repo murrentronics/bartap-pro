@@ -1373,13 +1373,30 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     return doc;
   };
 
+  // Saves via Cache + Share to avoid Android scoped-storage EACCES on Directory.Documents
+  const savePdfNative = async (filename: string, doc: import("jspdf").jsPDF) => {
+    const { Capacitor } = await import("@capacitor/core");
+    const base64 = doc.output("datauristring").replace(/^data:[^;]+;base64,/, "");
+    if (Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = await import("@capacitor/filesystem");
+      const { Share } = await import("@capacitor/share");
+      const result = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache, recursive: true });
+      await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
+    } else {
+      const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      Object.assign(document.createElement("a"), { href: url, download: filename }).click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const handleDownloadAll = async () => {
     if (downloading || sorted.length === 0) return;
     setDownloading(true);
     try {
       const doc = await buildPdf(sorted, "Full History", "All Records");
-      await downloadPdf("machines-all-history.pdf", doc.output("datauristring"));
-      toast.success("PDF saved — check your Documents folder");
+      await savePdfNative("machines-all-history.pdf", doc);
+      toast.success("PDF ready — check your Documents folder");
       setDownloadedAll(true);
       setTimeout(() => setDownloadedAll(false), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
@@ -1391,8 +1408,8 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     setDownloadingMonth(mk);
     try {
       const doc = await buildPdf(byMonth[mk], monthLabel(mk), monthLabel(mk));
-      await downloadPdf(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc.output("datauristring"));
-      toast.success("PDF saved — check your Documents folder");
+      await savePdfNative(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc);
+      toast.success("PDF ready — check your Documents folder");
       setDownloadedMonth(mk);
       setTimeout(() => setDownloadedMonth(null), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
