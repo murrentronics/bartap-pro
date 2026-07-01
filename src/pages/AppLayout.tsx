@@ -110,6 +110,16 @@ export default function AppLayout() {
     return () => window.removeEventListener("payoutAlert", handler);
   }, []);
 
+  // ── Deep-link navigation from push notification tap (background / killed) ─
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { path } = (e as CustomEvent).detail as { path: string };
+      if (path) nav(path);
+    };
+    window.addEventListener("pushNotificationNavigate", handler);
+    return () => window.removeEventListener("pushNotificationNavigate", handler);
+  }, [nav]);
+
   // Load owner plan to decide whether to show Machines in nav — must be before early returns (Rules of Hooks)
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");

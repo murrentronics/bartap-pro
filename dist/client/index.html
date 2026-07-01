@@ -1082,13 +1082,15 @@
   <section class="pricing">
     <h2 class="section-title">Simple <span>pricing</span></h2>
     <div class="divider"></div>
-    <p class="pricing-intro">One plan. Everything included.</p>
-    <div class="pricing-grid" style="max-width:360px;margin:0 auto 32px;">
+    <p class="pricing-intro">Choose the plan that fits your bar.</p>
+    <div class="pricing-grid" style="max-width:760px;margin:0 auto 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;">
+
+      <!-- Basic Plan -->
       <div class="pricing-card featured" style="text-align:center;">
-        <div class="plan-badge popular">Annual Plan</div>
+        <div class="plan-badge popular">Basic Plan</div>
         <div class="plan-price">
           <span class="currency">$</span>
-          <span class="amount">750</span>
+          <span class="amount">800</span>
           <span class="period">TT / year</span>
         </div>
         <p class="plan-desc">Full access, renewed yearly</p>
@@ -1102,14 +1104,53 @@
           <li>✓ 12 months access</li>
         </ul>
       </div>
+
+      <!-- Premium Plan -->
+      <div class="pricing-card featured" style="text-align:center;border-color:rgba(240,160,48,0.5);background:linear-gradient(160deg,#1a0e03,#140d04);">
+        <div class="plan-badge popular" style="background:linear-gradient(135deg,#f59e0b,#ea580c);">⭐ Premium Plan</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">1300</span>
+          <span class="period">TT / year</span>
+        </div>
+        <p class="plan-desc">Everything in Basic, plus more</p>
+        <ul class="plan-features">
+          <li>✓ Everything in Basic</li>
+          <li>✓ Machines payout tracker</li>
+          <li>✓ Per-screen profit reports</li>
+          <li>✓ Float session management</li>
+          <li>✓ Full history PDF export</li>
+          <li>✓ 12 months access</li>
+        </ul>
+      </div>
+
+      <!-- Machines Add-on -->
+      <div class="pricing-card" style="text-align:center;border-color:rgba(240,160,48,0.25);">
+        <div class="plan-badge" style="background:rgba(240,160,48,0.15);color:var(--gold);">🎰 Machines Add-on</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">600</span>
+          <span class="period">TT / year</span>
+        </div>
+        <p class="plan-desc">For Basic subscribers only</p>
+        <ul class="plan-features">
+          <li>✓ Machines payout tracker</li>
+          <li>✓ Per-screen profit reports</li>
+          <li>✓ Float session management</li>
+          <li>✓ Add to your Basic plan</li>
+          <li>✓ Separate annual renewal</li>
+        </ul>
+      </div>
+
     </div>
-    <p class="pricing-note">+ One-time <strong style="color:var(--gold)">$250 TT</strong> setup &amp; training fee — we come to you</p>
+    <p class="pricing-note">+ One-time <strong style="color:var(--gold)">$200 TT</strong> setup &amp; training fee — we come to you</p>
+    <p class="pricing-note" style="margin-top:8px;">+ Optional: <strong style="color:var(--gold)">$600 TT</strong> Android tablet (pre-installed &amp; ready to go)</p>
     
     <div class="support-banner">
       <div class="support-icon">📞</div>
       <div class="support-content">
         <h3>Setup &amp; Training Available</h3>
-        <p>We come to your bar, install everything, and train your staff. One-time $250 TT fee.</p>
+        <p>We come to your bar, install everything, and train your staff. One-time $200 TT fee.</p>
         <div class="contact-buttons">
           <a href="tel:+18683850635" class="contact-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1161,7 +1202,7 @@
   <!-- BOTTOM CTA -->
   <section class="bottom-cta">
     <h2>Ready to run your bar smarter?</h2>
-    <p>Download now and choose your plan after signing up. Starting at $300 TT for 6 months.</p>
+    <p>Download now and choose your plan after signing up. Starting at $800 TT / year.</p>
     <a id="btn-download-bottom" href="https://github.com/murrentronics/bartap-pro/releases/latest/download/bartendaz-pro.apk" class="btn-download">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1176,7 +1217,7 @@
   <section class="flyer-section">
     <h2 class="section-title">Printable <span>Flyer</span></h2>
     <div class="divider"></div>
-    <p class="pricing-intro">Hold down on each image to save or share.</p>
+    <p class="pricing-intro">Use the buttons below each flyer to save as an image.</p>
 
     <!-- Side-by-side preview on screen -->
     <div class="flyer-preview-row">
@@ -1192,11 +1233,11 @@
                   <h1 class="fl-title">Bartendaz<span>.</span><br>Pro</h1>
                   <p class="fl-contact-hero">📞 +1 868 385-0635</p>
                   <p class="fl-contact-hero">📞 +1 868 726-7313</p>
-                  <p class="fl-setup-fee">⭐ One-time $250 TT — site visit, installation &amp; training</p>
+                  <p class="fl-setup-fee">⭐ One-time $200 TT — site visit, installation &amp; training</p>
                   <p class="fl-sub">Run your bar like a business — not a guessing game.</p>
                 </div>
                 <div class="fl-price-badge">
-                  <div class="fl-price-badge-amount">$750</div>
+                  <div class="fl-price-badge-amount">$800</div>
                   <div class="fl-price-badge-period">/Year</div>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)" style="margin-top:4px"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.66 0-1.3.11-1.9.31L8.6.08c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.9 5.9 0 0 0 6.02 7h11.96a5.9 5.9 0 0 0-2.45-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
                 </div>
@@ -1242,6 +1283,20 @@
 
     </div><!-- /flyer-preview-row -->
 
+    <!-- Download buttons -->
+    <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:28px;">
+      <button id="btn-save-front" onclick="saveFlyerFront()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:14px;font-size:1rem;font-weight:800;border:none;cursor:pointer;color:#1a0a02;background:linear-gradient(135deg,#F0A030 0%,#C0441A 100%);box-shadow:0 6px 24px rgba(240,160,48,0.35);transition:transform 0.15s,box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save Flyer (Front)
+      </button>
+      <button id="btn-save-back" onclick="saveFlyerBack()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:14px;font-size:1rem;font-weight:800;border:2px solid rgba(240,160,48,0.4);cursor:pointer;color:#F0A030;background:transparent;transition:transform 0.15s,border-color 0.15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='#F0A030'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='rgba(240,160,48,0.4)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save Flyer (Back)
+      </button>
+    </div>
+    <p style="text-align:center;font-size:0.78rem;color:var(--muted);margin-top:10px;">Saves as a PNG image ready to share or print.</p>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
     <script>
       const CARD_W = 480;
       const CARD_H = 1067;
@@ -1260,6 +1315,75 @@
       }
       scaleAllFlyers();
       window.addEventListener('resize', scaleAllFlyers);
+
+      function downloadCanvas(canvas, filename) {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+
+      function saveFlyerFront() {
+        const btn  = document.getElementById('btn-save-front');
+        const card = document.getElementById('flyer-front');
+        if (!card) return;
+
+        // Temporarily reset transform so html2canvas captures full size
+        const prev = card.style.transform;
+        card.style.transform = 'none';
+        btn.textContent = 'Saving…';
+        btn.disabled = true;
+
+        html2canvas(card, {
+          scale: 2,          // 2× for crisp output
+          useCORS: true,
+          backgroundColor: null,
+          width: CARD_W,
+          height: CARD_H,
+          windowWidth: CARD_W,
+          windowHeight: CARD_H,
+        }).then(canvas => {
+          card.style.transform = prev;
+          scaleAllFlyers();
+          downloadCanvas(canvas, 'bartendaz-pro-flyer-front.png');
+          btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save Flyer (Front)';
+          btn.disabled = false;
+        }).catch(() => {
+          card.style.transform = prev;
+          scaleAllFlyers();
+          btn.innerHTML = 'Save Flyer (Front)';
+          btn.disabled = false;
+          alert('Could not save. Try holding down on the flyer image to save instead.');
+        });
+      }
+
+      function saveFlyerBack() {
+        const btn = document.getElementById('btn-save-back');
+        const img = document.querySelector('.flyer-preview-col:last-child img');
+        if (!img) return;
+
+        btn.textContent = 'Saving…';
+        btn.disabled = true;
+
+        // For the back image, we can directly trigger a download via fetch + blob
+        fetch(img.src)
+          .then(r => r.blob())
+          .then(blob => {
+            const url  = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'bartendaz-pro-flyer-back.png';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save Flyer (Back)';
+            btn.disabled = false;
+          })
+          .catch(() => {
+            btn.innerHTML = 'Save Flyer (Back)';
+            btn.disabled = false;
+            alert('Could not save. Try holding down on the image to save instead.');
+          });
+      }
     </script>
   </section>
 
