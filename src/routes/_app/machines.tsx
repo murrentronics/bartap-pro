@@ -83,12 +83,13 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
 }
 
 // ── History Month Accordion ────────────────────────────────────────────────────
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier }: {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier }: {
   entries: MachineEntry[];
   loading: boolean;
   downloading: boolean;
   deletingId: string | null;
   lastDeletedAt: number | null;
+  floatSession: FloatSession | null;
   onDownloadAll: () => void;
   onDownloadMonth: (monthKey: string, monthEntries: MachineEntry[]) => void;
   onDelete: (id: string) => void;
@@ -102,16 +103,27 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
   // Sort all entries newest first
   const allSorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  // Only show delete on the newest payout entry if it was made more than 2 seconds
-  // after the last delete — prevents button jumping to the next record after a delete.
-  const newestEntry = allSorted[0] ?? null;
+  // Only show delete on the newest payout entry if:
+  //   1. It was made more than 2 seconds after the last delete (prevents button jumping)
+  //   2. It was made AFTER the last float update — once the owner updates the float,
+  //      all prior entries are locked and the delete button must not appear on them.
+  //      It only re-appears when a new payout is recorded in the new float session.
+  const newestPayoutEntry = allSorted.find(e => e.type === "payout") ?? null;
   const newestId = (() => {
-    if (!newestEntry) return null;
+    if (!newestPayoutEntry) return null;
+    // Guard: entry must be newer than 2s after last delete
     if (lastDeletedAt !== null) {
-      const entryTime = new Date(newestEntry.created_at).getTime();
+      const entryTime = new Date(newestPayoutEntry.created_at).getTime();
       if (entryTime < lastDeletedAt - 2000) return null;
     }
-    return newestEntry.id;
+    // Guard: entry must be from the current float session (after floatSession.set_at).
+    // If it predates the last float update, the session is closed — hide the button.
+    if (floatSession) {
+      const entryTime = new Date(newestPayoutEntry.created_at).getTime();
+      const floatTime = new Date(floatSession.set_at).getTime();
+      if (entryTime < floatTime) return null;
+    }
+    return newestPayoutEntry.id;
   })();
 
   // Group by YYYY-MM
@@ -851,6 +863,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             downloading={downloading}
             deletingId={deletingId}
             lastDeletedAt={lastDeletedAt}
+            floatSession={floatSession}
             onDownloadAll={handleDownloadPdf}
             onDownloadMonth={handleDownloadMonthPdf}
             onDelete={handleDelete}
