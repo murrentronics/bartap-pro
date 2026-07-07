@@ -92,7 +92,7 @@ export function PhoneInput({ id, name, value, onChange, required, onFocus }: Pho
         ref={inputRef}
         id={id}
         name={name}
-        type="text"
+        type="tel"
         inputMode="tel"
         autoComplete="tel-local"
         value={displayValue}

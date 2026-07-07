@@ -65,6 +65,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const submitBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -112,16 +113,23 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
       </div>
       <div>
         <Label htmlFor="signin-pw">Password</Label>
-        <Input
-          id="signin-pw"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          onFocus={handlePasswordFocus}
-          required
-        />
+        <div className="relative">
+          <Input
+            id="signin-pw"
+            name="password"
+            type={showPw ? "text" : "password"}
+            autoComplete="current-password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onFocus={handlePasswordFocus}
+            required
+            className="pr-10"
+          />
+          <button type="button" onClick={() => setShowPw(v => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
       <Button ref={submitBtnRef} type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
@@ -145,6 +153,8 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const [otp, setOtp] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [busy, setBusy] = useState(false);
   // Hold the session we get after OTP verify so we can update password
   const [recoverySession, setRecoverySession] = useState(false);
@@ -361,25 +371,39 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
           </div>
           <div>
             <Label htmlFor="new-pw">New Password</Label>
-            <Input
-              id="new-pw"
-              type="password"
-              value={newPw}
-              onChange={(e) => setNewPw(e.target.value)}
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="new-pw"
+                type={showNewPw ? "text" : "password"}
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                minLength={6}
+                required
+                className="pr-10"
+              />
+              <button type="button" onClick={() => setShowNewPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <div>
             <Label htmlFor="confirm-pw">Confirm Password</Label>
-            <Input
-              id="confirm-pw"
-              type="password"
-              value={confirmPw}
-              onChange={(e) => setConfirmPw(e.target.value)}
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="confirm-pw"
+                type={showConfirmPw ? "text" : "password"}
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                minLength={6}
+                required
+                className="pr-10"
+              />
+              <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
             {busy ? "Updating..." : "Update password"}
