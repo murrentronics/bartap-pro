@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -239,6 +239,7 @@ export default function AppLayout() {
         { to: "/credit",   label: t("credit", "Credit"),     icon: Receipt },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
         ...(isOwner ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
+        ...(isOwner ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),

@@ -23,6 +23,7 @@ import CreditPage from "@/pages/CreditPage";
 import MachinesPage from "@/pages/MachinesPage";
 import FactoryResetPage from "@/pages/FactoryResetPage";
 import LanguagePage from "@/pages/LanguagePage";
+import SpecialsPage from "@/pages/SpecialsPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 
@@ -47,6 +48,7 @@ function AppWithUpdateCheck() {
             <Route path="machines" element={<MachinesPage />} />
             <Route path="factory-reset" element={<FactoryResetPage />} />
             <Route path="language" element={<LanguagePage />} />
+            <Route path="specials" element={<SpecialsPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />

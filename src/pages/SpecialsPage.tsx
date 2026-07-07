@@ -1,0 +1,446 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, Loader2, X, Check, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
+
+type Special = {
+  id: string;
+  owner_id: string;
+  name: string;
+  special_price: number;
+  required_qty: number;
+  product_ids: string[];
+  is_recurring: boolean;
+  run_days: number[]; // 0=Sun … 6=Sat
+  start_date: string; // YYYY-MM-DD
+  end_date: string | null;
+  active: boolean;
+  created_at: string;
+};
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// ─── Helper: is a special active right now? ───────────────────────────────────
+export function isSpecialActiveNow(s: Special): boolean {
+  if (!s.active) return false;
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  if (today < s.start_date) return false;
+  if (s.end_date && today > s.end_date) return false;
+  if (s.is_recurring && s.run_days.length > 0) {
+    const dayOfWeek = now.getDay(); // 0=Sun
+    return s.run_days.includes(dayOfWeek);
+  }
+  return true;
+}
+
+// ─── Item selector popup ──────────────────────────────────────────────────────
+function ProductSelector({
+  products,
+  selected,
+  onClose,
+  onConfirm,
+}: {
+  products: Product[];
+  selected: string[];
+  onClose: () => void;
+  onConfirm: (ids: string[]) => void;
+}) {
+  const [draft, setDraft] = useState<string[]>(selected);
+
+  const toggle = (id: string) =>
+    setDraft((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+      <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl flex flex-col max-h-[80dvh]"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0 border-b border-border">
+          <span className="font-black text-base">Select Items</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{draft.length} selected</span>
+            <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
+          {products.map((p) => {
+            const on = draft.includes(p.id);
+            return (
+              <button key={p.id} onClick={() => toggle(p.id)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition active:scale-[0.98]"
+                style={{ background: on ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)", border: `1px solid ${on ? "var(--primary)" : "transparent"}` }}>
+                <div className={`h-5 w-5 rounded flex items-center justify-center border-2 shrink-0 transition ${on ? "border-primary" : "border-muted-foreground/40"}`}
+                  style={on ? { background: "var(--primary)" } : {}}>
+                  {on && <Check className="h-3 w-3 text-black" />}
+                </div>
+                <span className="text-sm font-bold flex-1 text-left">{p.name}</span>
+                <span className="text-xs text-muted-foreground shrink-0">${Number(p.price).toFixed(2)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-4 pb-5 pt-3 border-t border-border shrink-0">
+          <button onClick={() => { onConfirm(draft); onClose(); }}
+            disabled={draft.length === 0}
+            className="w-full h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 transition active:scale-[0.98]"
+            style={{ background: "var(--gradient-hero)" }}>
+            OK — {draft.length} item{draft.length !== 1 ? "s" : ""} selected
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Create / Edit Special form ───────────────────────────────────────────────
+function SpecialForm({
+  products,
+  ownerId,
+  editSpecial,
+  onClose,
+  onSaved,
+}: {
+  products: Product[];
+  ownerId: string;
+  editSpecial?: Special | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!editSpecial;
+  const [name, setName] = useState(editSpecial?.name ?? "");
+  const [reqQty, setReqQty] = useState(String(editSpecial?.required_qty ?? "3"));
+  const [price, setPrice] = useState(editSpecial?.special_price ? String(editSpecial.special_price) : "");
+  const [selectedIds, setSelectedIds] = useState<string[]>(editSpecial?.product_ids ?? []);
+  const [isRecurring, setIsRecurring] = useState(editSpecial?.is_recurring ?? false);
+  const [runDays, setRunDays] = useState<number[]>(editSpecial?.run_days ?? []);
+  const [startDate, setStartDate] = useState(editSpecial?.start_date ?? new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(editSpecial?.end_date ?? "");
+  const [showSelector, setShowSelector] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const toggleDay = (d: number) =>
+    setRunDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+
+  const selectedNames = selectedIds
+    .map((id) => products.find((p) => p.id === id)?.name)
+    .filter(Boolean)
+    .join(", ");
+
+  const canSave = name.trim() && parseFloat(price) > 0 && parseInt(reqQty) > 0 && selectedIds.length > 0 && startDate;
+
+  const save = async () => {
+    if (!canSave) return;
+    setBusy(true);
+    const payload = {
+      owner_id: ownerId,
+      name: name.trim(),
+      special_price: parseFloat(price),
+      required_qty: parseInt(reqQty),
+      product_ids: selectedIds,
+      is_recurring: isRecurring,
+      run_days: isRecurring ? runDays : [],
+      start_date: startDate,
+      end_date: endDate || null,
+      active: true,
+    };
+    let error;
+    if (isEdit && editSpecial) {
+      ({ error } = await (supabase as any).from("specials").update(payload).eq("id", editSpecial.id));
+    } else {
+      ({ error } = await (supabase as any).from("specials").insert(payload));
+    }
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isEdit ? "Special updated" : "Special created");
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[75] bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+        <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl flex flex-col max-h-[92dvh]"
+          style={{ background: "var(--gradient-card)" }}
+          onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0 border-b border-border">
+            <span className="font-black text-base">{isEdit ? "Edit Special" : "New Special"}</span>
+            <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* Name */}
+            <div>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Friday Beer Special"
+                className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+            </div>
+
+            {/* Qty + Price row */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
+                <input type="number" inputMode="numeric" min="1" value={reqQty}
+                  onChange={(e) => setReqQty(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
+                <input type="number" inputMode="decimal" min="0" step="0.01" value={price}
+                  onChange={(e) => setPrice(e.target.value)} placeholder="25.00"
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+            </div>
+
+            {/* Item picker */}
+            <div>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Eligible Items</label>
+              <button onClick={() => setShowSelector(true)}
+                className="w-full min-h-[40px] rounded-xl border px-3 py-2 text-sm text-left transition active:scale-[0.98]"
+                style={{ borderColor: selectedIds.length ? "var(--primary)" : "var(--border)", background: "rgba(255,255,255,0.03)" }}>
+                {selectedIds.length === 0
+                  ? <span className="text-muted-foreground">Tap to select items…</span>
+                  : <span className="font-bold" style={{ color: "var(--primary)" }}>{selectedNames}</span>}
+              </button>
+              {selectedIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Any {reqQty} of these items in the cart triggers the special</p>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Start Date</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">End Date (opt)</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+            </div>
+
+            {/* Recurring toggle */}
+            <div>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Schedule</label>
+              <div className="flex gap-3">
+                <button onClick={() => setIsRecurring(false)}
+                  className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
+                  style={{ background: !isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: !isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                  One-time
+                </button>
+                <button onClick={() => setIsRecurring(true)}
+                  className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
+                  style={{ background: isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                  Recurring
+                </button>
+              </div>
+            </div>
+
+            {/* Day picker — only when recurring */}
+            {isRecurring && (
+              <div>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Run on days</label>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {DAY_LABELS.map((d, i) => {
+                    const on = runDays.includes(i);
+                    return (
+                      <button key={i} onClick={() => toggleDay(i)}
+                        className="h-10 rounded-xl font-black text-xs transition active:scale-95"
+                        style={{ background: on ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: on ? "var(--primary-foreground)" : "var(--muted-foreground)", border: `1px solid ${on ? "var(--primary)" : "var(--border)"}` }}>
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Save button */}
+          <div className="px-5 pb-6 pt-3 border-t border-border shrink-0">
+            <button onClick={save} disabled={!canSave || busy}
+              className="w-full h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+              style={{ background: "var(--gradient-hero)" }}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Create Special"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showSelector && (
+        <ProductSelector products={products} selected={selectedIds}
+          onClose={() => setShowSelector(false)}
+          onConfirm={(ids) => setSelectedIds(ids)} />
+      )}
+    </>
+  );
+}
+
+// ─── Special card ─────────────────────────────────────────────────────────────
+function SpecialCard({
+  special,
+  products,
+  onEdit,
+  onDelete,
+  onToggle,
+}: {
+  special: Special;
+  products: Product[];
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggle: () => void;
+}) {
+  const itemNames = special.product_ids
+    .map((id) => products.find((p) => p.id === id)?.name)
+    .filter(Boolean)
+    .join(", ");
+  const isLive = isSpecialActiveNow(special);
+
+  return (
+    <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+      {/* Top row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isLive ? "bg-green-400" : "bg-muted-foreground/40"}`} />
+          <span className="font-black text-base leading-tight truncate">{special.name}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={onEdit} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={onDelete} className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600/20 hover:bg-red-600/30 transition">
+            <Trash2 className="h-3.5 w-3.5 text-red-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Deal summary */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-2xl font-black" style={{ color: "var(--primary)" }}>${special.special_price.toFixed(2)}</span>
+        <span className="text-sm font-bold text-muted-foreground">for any {special.required_qty}</span>
+      </div>
+
+      {/* Items */}
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        <span className="font-black text-foreground/70">Items: </span>{itemNames || "—"}
+      </p>
+
+      {/* Schedule */}
+      <div className="text-xs text-muted-foreground">
+        {special.is_recurring
+          ? <span><span className="font-black text-foreground/70">Runs: </span>{special.run_days.map((d) => DAY_LABELS[d]).join(", ") || "every day"}</span>
+          : <span><span className="font-black text-foreground/70">One-time: </span>{special.start_date}{special.end_date ? ` → ${special.end_date}` : ""}</span>}
+      </div>
+
+      {/* Active toggle */}
+      <button onClick={onToggle}
+        className="w-full h-9 rounded-xl font-black text-xs transition active:scale-[0.98] border"
+        style={{
+          background: special.active ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
+          borderColor: special.active ? "#22c55e" : "var(--border)",
+          color: special.active ? "#4ade80" : "var(--muted-foreground)",
+        }}>
+        {special.active ? "● Active" : "○ Inactive — tap to enable"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Specials Page ───────────────────────────────────────────────────────
+export default function SpecialsPage() {
+  const { profile } = useAuth();
+  const [specials, setSpecials] = useState<Special[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editSpecial, setEditSpecial] = useState<Special | null>(null);
+
+  const ownerId = profile?.id ?? "";
+
+  const load = async () => {
+    const [{ data: sp }, { data: pr }] = await Promise.all([
+      (supabase as any).from("specials").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false }),
+      (supabase as any).from("products").select("id, name, price, image_url, category").eq("owner_id", ownerId).order("name", { ascending: true }),
+    ]);
+    setSpecials((sp ?? []) as Special[]);
+    setProducts((pr ?? []) as Product[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!ownerId) return;
+    load();
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const deleteSpecial = async (id: string) => {
+    await (supabase as any).from("specials").delete().eq("id", id);
+    setSpecials((prev) => prev.filter((s) => s.id !== id));
+    toast.success("Special deleted");
+  };
+
+  const toggleActive = async (special: Special) => {
+    const next = !special.active;
+    await (supabase as any).from("specials").update({ active: next }).eq("id", special.id);
+    setSpecials((prev) => prev.map((s) => s.id === special.id ? { ...s, active: next } : s));
+  };
+
+  if (profile?.role !== "owner") {
+    return <div className="text-center text-muted-foreground py-20">Only owners can manage specials.</div>;
+  }
+
+  return (
+    <div>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-30 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black leading-tight flex items-center gap-2">
+              <Tag className="h-5 w-5" style={{ color: "var(--primary)" }} /> Specials
+            </h1>
+            <p className="text-muted-foreground text-xs">{specials.length} special{specials.length !== 1 ? "s" : ""}</p>
+          </div>
+          <Button size="sm" className="font-bold h-8" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            onClick={() => { setEditSpecial(null); setShowForm(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> New Special
+          </Button>
+        </div>
+      </div>
+
+      <div className="pt-4 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : specials.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <Tag className="h-12 w-12 mx-auto mb-3 opacity-20" />
+            <p className="font-bold">No specials yet</p>
+            <p className="text-xs mt-1">Tap New Special to create your first deal</p>
+          </div>
+        ) : (
+          specials.map((s) => (
+            <SpecialCard key={s.id} special={s} products={products}
+              onEdit={() => { setEditSpecial(s); setShowForm(true); }}
+              onDelete={() => deleteSpecial(s.id)}
+              onToggle={() => toggleActive(s)} />
+          ))
+        )}
+      </div>
+
+      {showForm && (
+        <SpecialForm products={products} ownerId={ownerId} editSpecial={editSpecial}
+          onClose={() => { setShowForm(false); setEditSpecial(null); }}
+          onSaved={load} />
+      )}
+    </div>
+  );
+}

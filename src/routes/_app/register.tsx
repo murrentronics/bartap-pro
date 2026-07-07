@@ -165,8 +165,85 @@ export default function RegisterPage() {
     cartLengthRef.current = cart.length;
   }, [cart.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const total = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
+  const rawTotal = useMemo(() => cart.reduce((s, i) => s + i.qty * Number(i.price), 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
+
+  // ── Specials: load active deals for this owner ─────────────────────────────
+  type Special = {
+    id: string; name: string; special_price: number; required_qty: number;
+    product_ids: string[]; is_recurring: boolean; run_days: number[];
+    start_date: string; end_date: string | null; active: boolean;
+  };
+  const [activeSpecials, setActiveSpecials] = useState<Special[]>([]);
+
+  useEffect(() => {
+    const id = ownerIdRef.current;
+    if (!id) return;
+    const loadSpecials = async () => {
+      const { data } = await (supabase as any)
+        .from("specials")
+        .select("*")
+        .eq("owner_id", id)
+        .eq("active", true);
+      setActiveSpecials((data ?? []) as Special[]);
+    };
+    loadSpecials();
+    // Refresh when specials change for this owner
+    const ch = supabase
+      .channel(`specials-register-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "specials", filter: `owner_id=eq.${id}` },
+        () => loadSpecials()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Specials: compute total with bundle pricing applied ───────────────────
+  const { total, appliedSpecial, specialBundles } = useMemo(() => {
+    // Helper: is this special active right now?
+    const isLive = (s: Special) => {
+      const now = new Date();
+      const today = now.toISOString().split("T")[0];
+      if (today < s.start_date) return false;
+      if (s.end_date && today > s.end_date) return false;
+      if (s.is_recurring && s.run_days.length > 0) return s.run_days.includes(now.getDay());
+      return true;
+    };
+
+    // Expand cart into a flat list of individual product ids (one per unit)
+    const cartUnits: string[] = [];
+    for (const item of cart) {
+      for (let i = 0; i < item.qty; i++) cartUnits.push(item.id);
+    }
+
+    let bestSaving = 0;
+    let bestSpecial: Special | null = null;
+    let bestBundles = 0;
+
+    for (const s of activeSpecials) {
+      if (!isLive(s)) continue;
+      // Count how many cart units are eligible
+      const eligible = cartUnits.filter((id) => s.product_ids.includes(id));
+      const bundles = Math.floor(eligible.length / s.required_qty);
+      if (bundles === 0) continue;
+      // Normal cost of those eligible items
+      const normalCost = eligible.slice(0, bundles * s.required_qty)
+        .reduce((sum, id) => {
+          const item = cart.find((c) => c.id === id);
+          return sum + Number(item?.price ?? 0);
+        }, 0);
+      const specialCost = bundles * s.special_price;
+      const saving = normalCost - specialCost;
+      if (saving > bestSaving) {
+        bestSaving = saving;
+        bestSpecial = s;
+        bestBundles = bundles;
+      }
+    }
+
+    const finalTotal = rawTotal - bestSaving;
+    return { total: finalTotal, appliedSpecial: bestSpecial, specialBundles: bestBundles };
+  }, [cart, rawTotal, activeSpecials]);
 
   // Close cash overlay immediately if cart becomes empty (e.g. order/item deleted)
   useEffect(() => {
@@ -748,6 +825,16 @@ export default function RegisterPage() {
           style={{ bottom: 8 }}
         >
           <div className="max-w-2xl mx-auto pointer-events-auto space-y-2">
+            {/* Special deal banner — shown when a special is actively applied */}
+            {appliedSpecial && (
+              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-green-500/40"
+                style={{ background: "oklch(0.20 0.07 145 / 0.9)" }}>
+                <span className="text-green-300 font-black text-xs">🏷 {appliedSpecial.name}</span>
+                <span className="text-green-300 font-black text-xs">
+                  {specialBundles}× deal · save ${(rawTotal - total).toFixed(2)}
+                </span>
+              </div>
+            )}
             {/* CASH button */}
             <button
               onClick={() => setCashOpen(true)}
