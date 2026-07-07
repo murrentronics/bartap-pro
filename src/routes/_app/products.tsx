@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil } from "lucide-react";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -430,6 +430,224 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
   );
 }
 
+// ─── Bulk Edit Modal ──────────────────────────────────────────────────────────
+function BulkEditModal({ items, ownerId, onClose, onSaved }: {
+  items: Product[];
+  ownerId: string;
+  onClose: () => void;
+  onSaved: (patches: { id: string; stock_qty: number; stock_last_expense_id: string | null }[]) => void;
+}) {
+  // newQty keyed by product id — only items with a value > 0 will be processed
+  const [newQtys, setNewQtys] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  // Sort all items alphabetically, group by category
+  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+  const grouped = CATEGORIES.map((cat) => ({
+    cat,
+    products: sorted.filter((p) => (p.category || "beers") === cat.value),
+  })).filter((g) => g.products.length > 0);
+
+  const updates = items.filter((p) => {
+    const v = parseInt(newQtys[p.id] ?? "", 10);
+    return !isNaN(v) && v > 0;
+  });
+  const totalCost = updates.reduce((sum, p) => {
+    const addQty = parseInt(newQtys[p.id], 10);
+    return sum + (Number(p.cost_price ?? 0) * addQty);
+  }, 0);
+
+  const save = async () => {
+    if (updates.length === 0) return;
+    setBusy(true);
+
+    // Build a multi-line description for the single combined expense record
+    const today = new Date().toISOString().split("T")[0];
+    const lines = updates.map((p) => {
+      const addQty = parseInt(newQtys[p.id], 10);
+      const cp = Number(p.cost_price ?? 0);
+      const lineTotal = cp * addQty;
+      return `${p.name} ×${addQty} @ $${cp.toFixed(2)} each = $${lineTotal.toFixed(2)}`;
+    });
+    const description = lines.join("\n") + `\n\nTotal: $${totalCost.toFixed(2)}`;
+
+    // Insert one combined expense record (only if there's a cost)
+    let expenseId: string | null = null;
+    if (totalCost > 0) {
+      const { data: expData, error: expErr } = await supabase
+        .from("owner_expenses")
+        .insert({
+          owner_id: ownerId,
+          amount: totalCost,
+          description,
+          expense_date: today,
+        })
+        .select("id")
+        .single();
+      if (expErr) { toast.error("Could not create expense record: " + expErr.message); setBusy(false); return; }
+      expenseId = expData?.id ?? null;
+    }
+
+    // Update each product's stock qty
+    const patches: { id: string; stock_qty: number; stock_last_expense_id: string | null }[] = [];
+    for (const p of updates) {
+      const addQty = parseInt(newQtys[p.id], 10);
+      const newTotal = (p.stock_qty ?? 0) + addQty;
+      const { error } = await supabase
+        .from("products")
+        .update({
+          stock_qty: newTotal,
+          stock_qty_undo: p.stock_qty ?? 0,
+          stock_qty_undo_saved: newTotal,
+          stock_last_expense_id: expenseId,
+        })
+        .eq("id", p.id);
+      if (error) { toast.error(`Failed to update ${p.name}: ${error.message}`); }
+      else { patches.push({ id: p.id, stock_qty: newTotal, stock_last_expense_id: expenseId }); }
+    }
+
+    setBusy(false);
+    toast.success(`${patches.length} item${patches.length !== 1 ? "s" : ""} updated`);
+    onSaved(patches);
+    onClose();
+  };
+
+  const SaveBar = () => (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
+      <div className="text-sm font-black">
+        {updates.length > 0
+          ? <span style={{ color: "var(--primary)" }}>{updates.length} item{updates.length !== 1 ? "s" : ""} · <span className="text-green-400">${totalCost.toFixed(2)}</span></span>
+          : <span className="text-muted-foreground">Enter new qty to add stock</span>
+        }
+      </div>
+      <button
+        onClick={save}
+        disabled={busy || updates.length === 0}
+        className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Bulk"}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col bg-background" onClick={onClose}>
+      <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-5 w-5" style={{ color: "var(--primary)" }} />
+            <span className="text-lg font-black">Bulk Edit Stock</span>
+          </div>
+          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Save bar — top */}
+        <SaveBar />
+
+        {/* Scrollable table */}
+        <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+          <table className="min-w-[560px] w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-background border-b border-border">
+              <tr>
+                <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-8"></th>
+                <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[120px]">Name</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[56px]">Qty</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[80px]" style={{ color: "var(--primary)" }}>+ Add</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grouped.map(({ cat, products }) => (
+                <>
+                  {/* Category section header */}
+                  <tr key={`hdr-${cat.value}`}>
+                    <td colSpan={6} className="pl-3 pt-4 pb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg leading-none">{cat.icon}</span>
+                        <span className="text-xs font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>{cat.label}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {products.map((p) => {
+                    const addVal = newQtys[p.id] ?? "";
+                    const hasAdd = parseInt(addVal, 10) > 0;
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-t border-border/40 transition"
+                        style={hasAdd ? { background: "rgba(251,146,60,0.07)" } : {}}
+                      >
+                        {/* Thumbnail */}
+                        <td className="pl-3 pr-2 py-1.5 w-8">
+                          <div className="h-8 w-8 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base" style={{ background: "var(--gradient-card)" }}>
+                            {p.image_url
+                              ? <img src={p.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                              : categoryIcon(p.category ?? "drinks")}
+                          </div>
+                        </td>
+                        {/* Name */}
+                        <td className="px-2 py-1.5 min-w-[120px]">
+                          <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
+                        </td>
+                        {/* Cost price */}
+                        <td className="px-2 py-1.5 text-right w-[72px]">
+                          <span className="font-black text-xs text-muted-foreground">${Number(p.cost_price ?? 0).toFixed(2)}</span>
+                        </td>
+                        {/* Sell price */}
+                        <td className="px-2 py-1.5 text-right w-[72px]">
+                          <span className="font-black text-xs">${Number(p.price ?? 0).toFixed(2)}</span>
+                        </td>
+                        {/* Current qty */}
+                        <td className="px-2 py-1.5 text-right w-[56px]">
+                          <span className={`font-black text-xs ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                            {p.stock_qty ?? 0}
+                          </span>
+                        </td>
+                        {/* New qty input */}
+                        <td className="pr-4 pl-2 py-1.5 text-right w-[80px]">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            placeholder="0"
+                            value={addVal}
+                            onChange={(e) => setNewQtys((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            className="w-[68px] h-8 rounded-lg border text-right pr-2 text-sm font-black bg-muted/50 outline-none focus:ring-1 transition"
+                            style={{
+                              borderColor: hasAdd ? "var(--primary)" : "var(--border)",
+                              color: hasAdd ? "var(--primary)" : "var(--foreground)",
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Grand total row at bottom of table */}
+          {updates.length > 0 && (
+            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3 flex items-center justify-between">
+              <span className="text-xs font-black text-muted-foreground">{updates.length} item{updates.length !== 1 ? "s" : ""} to update</span>
+              <span className="text-base font-black" style={{ color: "var(--primary)" }}>Total: <span className="text-green-400">${totalCost.toFixed(2)}</span></span>
+            </div>
+          )}
+        </div>
+
+        {/* Save bar — bottom */}
+        <SaveBar />
+      </div>
+    </div>
+  );
+}
+
 // ─── Products Page ────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const { profile } = useAuth();
@@ -440,6 +658,7 @@ export default function ProductsPage() {
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
 
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
@@ -495,6 +714,16 @@ export default function ProductsPage() {
             <h1 className="text-xl font-black leading-tight">{t("products_title", "Bar Items")}</h1>
             <p className="text-muted-foreground text-xs">{items.length} items</p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setShowBulkEdit(true)}
+              className="font-bold h-8 px-3"
+              variant="outline"
+              style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1" /> Bulk Edit
+            </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="font-bold h-8" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
@@ -512,6 +741,7 @@ export default function ProductsPage() {
                 }}
               />
           </Dialog>
+          </div>
         </div>
         <div className="grid grid-cols-5 gap-2">
           {CATEGORIES.map((cat) => (
@@ -651,7 +881,24 @@ export default function ProductsPage() {
             ))}
           </div>
         )}
-      </div>
+
+        {/* ── Bulk Edit button — full-width, shown below grid ── */}
+        {!loading && (
+          <div className="pt-3 pb-2">
+            <button
+              onClick={() => setShowBulkEdit(true)}
+              className="w-full h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border-2 transition active:scale-[0.98]"
+              style={{
+                background: "rgba(251,146,60,0.08)",
+                borderColor: "var(--primary)",
+                color: "var(--primary)",
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              Bulk Edit
+            </button>
+          </div>
+        )}      </div>
 
       {stockNumpadId && stockNumpadProduct && (
         <StockNumpad
@@ -686,6 +933,21 @@ export default function ProductsPage() {
             }}
           />
         </Dialog>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkEdit && (
+        <BulkEditModal
+          items={items}
+          ownerId={profile.id}
+          onClose={() => setShowBulkEdit(false)}
+          onSaved={(patches) => {
+            setItems((prev) => prev.map((p) => {
+              const patch = patches.find((x) => x.id === p.id);
+              return patch ? { ...p, stock_qty: patch.stock_qty, stock_last_expense_id: patch.stock_last_expense_id } : p;
+            }));
+          }}
+        />
       )}
     </div>
   );
