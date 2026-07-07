@@ -448,6 +448,25 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   );
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // id + field for active numpad in the table
+  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" } | null>(null);
+
+  const handleNumpad = (k: string) => {
+    if (!activeNumpad) return;
+    const { id, field } = activeNumpad;
+    const isDecimal = field === "cp" || field === "sp";
+    const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : (newQtys[id] ?? "");
+    const setter = field === "cp"
+      ? (v: string) => setCostPrices((p) => ({ ...p, [id]: v }))
+      : field === "sp"
+      ? (v: string) => setSellPrices((p) => ({ ...p, [id]: v }))
+      : (v: string) => setNewQtys((p) => ({ ...p, [id]: v }));
+    if (k === "⌫") { setter(current.slice(0, -1)); return; }
+    if (k === ".") { if (isDecimal && !current.includes(".")) setter(current + "."); return; }
+    const dotIdx = current.indexOf(".");
+    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    setter(current === "0" ? k : current + k);
+  };
 
   // Sort all items alphabetically, group by category
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
@@ -672,29 +691,23 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         </td>
                         {/* Cost price — editable */}
                         <td className="px-2 py-1.5 w-[76px]">
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            value={cpVal}
-                            onChange={(e) => setCostPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                            className={numInputCls}
-                            style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
-                          />
+                          <div
+                            onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "cp" ? null : { id: p.id, field: "cp" })}
+                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "cp" ? "var(--primary)" : "var(--border)", color: "var(--muted-foreground)" }}
+                          >
+                            {cpVal || "0.00"}
+                          </div>
                         </td>
                         {/* Sell price — editable */}
                         <td className="px-2 py-1.5 w-[76px]">
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            value={spVal}
-                            onChange={(e) => setSellPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                            className={numInputCls}
-                            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
-                          />
+                          <div
+                            onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "sp" ? null : { id: p.id, field: "sp" })}
+                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "sp" ? "var(--primary)" : "var(--border)", color: "var(--foreground)" }}
+                          >
+                            {spVal || "0.00"}
+                          </div>
                         </td>
                         {/* Current qty — read only */}
                         <td className="px-2 py-1.5 text-right w-[46px]">
@@ -704,19 +717,16 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         </td>
                         {/* New qty input */}
                         <td className="pr-4 pl-2 py-1.5 text-right w-[76px]">
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min="0"
-                            placeholder="0"
-                            value={addVal}
-                            onChange={(e) => setNewQtys((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                            className={numInputCls}
+                          <div
+                            onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "qty" ? null : { id: p.id, field: "qty" })}
+                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
                             style={{
-                              borderColor: hasAdd ? "var(--primary)" : "var(--border)",
-                              color: hasAdd ? "var(--primary)" : "var(--foreground)",
+                              borderColor: activeNumpad?.id === p.id && activeNumpad.field === "qty" ? "var(--primary)" : hasAdd ? "var(--primary)" : "var(--border)",
+                              color: hasAdd ? "var(--primary)" : "var(--muted-foreground)",
                             }}
-                          />
+                          >
+                            {addVal || "0"}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -726,6 +736,31 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
             </tbody>
           </table>
         </div>
+
+        {/* Numpad — shown above bottom save bar when a cell is active */}
+        {activeNumpad && (
+          <div className="shrink-0 border-t border-border px-4 pt-3 pb-1" style={{ background: "var(--background)" }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : "Add Qty"}
+              </span>
+              <button onClick={() => setActiveNumpad(null)} className="text-xs font-black text-primary">Done</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {["1","2","3","4","5","6","7","8","9", activeNumpad.field !== "qty" ? "." : "", "0","⌫"].map((k, i) => (
+                k === "" ? <div key={i} /> :
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleNumpad(k)}
+                  className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
+                    k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
+                  }`}
+                >{k}</button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Save bar — bottom */}
         <SaveBar />

@@ -148,6 +148,18 @@ function SpecialForm({
   const [endTime, setEndTime] = useState(editSpecial?.end_time ?? "");
   const [showSelector, setShowSelector] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [activeNumpad, setActiveNumpad] = useState<"qty" | "price" | null>(null);
+
+  const handleNumpad = (field: "qty" | "price", k: string) => {
+    const current = field === "qty" ? reqQty : price;
+    const setter = field === "qty" ? setReqQty : setPrice;
+    const isDecimal = field === "price";
+    if (k === "⌫") { setter(current.slice(0, -1)); return; }
+    if (k === ".") { if (isDecimal && !current.includes(".")) setter(current + "."); return; }
+    const dotIdx = current.indexOf(".");
+    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    setter(current === "0" ? k : current + k);
+  };
 
   const toggleDay = (d: number) =>
     setRunDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
@@ -214,29 +226,44 @@ function SpecialForm({
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min="1"
-                  value={reqQty}
-                  onChange={(e) => setReqQty(e.target.value)}
-                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <div
+                  className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                  onClick={() => setActiveNumpad(activeNumpad === "qty" ? null : "qty")}
+                >
+                  <span className={`text-base font-black ${activeNumpad === "qty" ? "text-primary" : "text-muted-foreground"}`}>
+                    {reqQty || "0"}
+                  </span>
+                </div>
               </div>
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  pattern="[0-9]*\.?[0-9]*"
-                  min="0"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="25.00"
-                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <div
+                  className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                  onClick={() => setActiveNumpad(activeNumpad === "price" ? null : "price")}
+                >
+                  <span className={`text-base font-black ${activeNumpad === "price" ? "text-primary" : "text-muted-foreground"}`}>
+                    ${price || "0.00"}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Inline numpad — shows below qty/price when either is active */}
+            {activeNumpad !== null && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {["1","2","3","4","5","6","7","8","9", activeNumpad === "price" ? "." : "", "0","⌫"].map((k, i) => (
+                  k === "" ? <div key={i} /> :
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleNumpad(activeNumpad, k)}
+                    className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
+                      k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
+                    }`}
+                  >{k}</button>
+                ))}
+              </div>
+            )}
 
             {/* Item picker */}
             <div>
