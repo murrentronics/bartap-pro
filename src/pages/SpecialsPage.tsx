@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, X, Check, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
@@ -446,16 +447,26 @@ function SpecialCard({
         </p>
 
         {/* Schedule */}
-        <div className="text-xs text-muted-foreground">
-          {special.is_recurring
-            ? <span><span className="font-black text-foreground/70">Runs: </span>{special.run_days.map((d) => DAY_LABELS[d]).join(", ") || "every day"}</span>
-            : (
-              <span>
-                <span className="font-black text-foreground/70">Period: </span>
-                {special.start_date}{special.start_time ? ` ${special.start_time}` : ""}
-                {special.end_date ? ` → ${special.end_date}${special.end_time ? ` ${special.end_time}` : ""}` : ""}
-              </span>
-            )}
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          {special.is_recurring ? (
+            <>
+              <div>
+                <span className="font-black text-foreground/70">Runs: </span>
+                {special.run_days.map((d) => DAY_LABELS[d]).join(", ") || "every day"}
+              </div>
+              <div>
+                <span className="font-black text-foreground/70">Time: </span>
+                {special.start_time || "00:00"}
+                {special.end_time ? ` → ${special.end_time}` : " onwards"}
+              </div>
+            </>
+          ) : (
+            <div>
+              <span className="font-black text-foreground/70">Period: </span>
+              {special.start_date}{special.start_time ? ` ${special.start_time}` : ""}
+              {special.end_date ? ` → ${special.end_date}${special.end_time ? ` ${special.end_time}` : ""}` : ""}
+            </div>
+          )}
         </div>
       </div>
 
@@ -475,6 +486,7 @@ function SpecialCard({
 // ─── Main Specials Page ───────────────────────────────────────────────────────
 export default function SpecialsPage() {
   const { profile } = useAuth();
+  const confirm = useConfirm();
   const [specials, setSpecials] = useState<Special[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -498,7 +510,15 @@ export default function SpecialsPage() {
     load();
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const deleteSpecial = async (id: string) => {
+  const deleteSpecial = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      description: "This special will be permanently removed and can't be undone.",
+      confirmLabel: "Yes, Delete",
+      cancelLabel: "No",
+      destructive: true,
+    });
+    if (!ok) return;
     await (supabase as any).from("specials").delete().eq("id", id);
     setSpecials((prev) => prev.filter((s) => s.id !== id));
     toast.success("Special deleted");
@@ -545,7 +565,7 @@ export default function SpecialsPage() {
           specials.map((s) => (
             <SpecialCard key={s.id} special={s} products={products}
               onEdit={() => { setEditSpecial(s); setShowForm(true); }}
-              onDelete={() => deleteSpecial(s.id)}
+              onDelete={() => deleteSpecial(s.id, s.name)}
               onToggle={() => toggleActive(s)} />
           ))
         )}

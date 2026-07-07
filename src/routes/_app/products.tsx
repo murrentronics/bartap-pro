@@ -435,10 +435,17 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   items: Product[];
   ownerId: string;
   onClose: () => void;
-  onSaved: (patches: { id: string; stock_qty: number; stock_last_expense_id: string | null }[]) => void;
+  onSaved: (patches: { id: string; stock_qty: number; stock_last_expense_id: string | null; cost_price?: number; price?: number }[]) => void;
 }) {
   // newQty keyed by product id — only items with a value > 0 will be processed
   const [newQtys, setNewQtys] = useState<Record<string, string>>({});
+  // editable cost price and sell price — pre-seeded from items
+  const [costPrices, setCostPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(items.map((p) => [p.id, String(p.cost_price ?? "")]))
+  );
+  const [sellPrices, setSellPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(items.map((p) => [p.id, String(p.price ?? "")]))
+  );
   const [busy, setBusy] = useState(false);
 
   // Sort all items alphabetically, group by category
@@ -448,28 +455,33 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     products: sorted.filter((p) => (p.category || "beers") === cat.value),
   })).filter((g) => g.products.length > 0);
 
+  // Items with a new qty entered
   const updates = items.filter((p) => {
     const v = parseInt(newQtys[p.id] ?? "", 10);
     return !isNaN(v) && v > 0;
   });
+
+  // Use the edited cost price for the expense calc
   const totalCost = updates.reduce((sum, p) => {
     const addQty = parseInt(newQtys[p.id], 10);
-    return sum + (Number(p.cost_price ?? 0) * addQty);
+    const cp = parseFloat(costPrices[p.id] ?? "") || Number(p.cost_price ?? 0);
+    return sum + cp * addQty;
   }, 0);
 
   const save = async () => {
     if (updates.length === 0) return;
     setBusy(true);
 
-    // Build a multi-line description for the single combined expense record
     const today = new Date().toISOString().split("T")[0];
+
+    // Build description — title then one item per line, no total (shown separately)
     const lines = updates.map((p) => {
       const addQty = parseInt(newQtys[p.id], 10);
-      const cp = Number(p.cost_price ?? 0);
+      const cp = parseFloat(costPrices[p.id] ?? "") || Number(p.cost_price ?? 0);
       const lineTotal = cp * addQty;
       return `${p.name} ×${addQty} @ $${cp.toFixed(2)} each = $${lineTotal.toFixed(2)}`;
     });
-    const description = `Bulk Stock Update\n${lines.join("\n")}\n\nTotal: $${totalCost.toFixed(2)}`;
+    const description = `Bulk Stock Update\n${lines.join("\n")}`;
 
     // Insert one combined expense record (only if there's a cost)
     let expenseId: string | null = null;
@@ -488,11 +500,15 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       expenseId = expData?.id ?? null;
     }
 
-    // Update each product's stock qty
-    const patches: { id: string; stock_qty: number; stock_last_expense_id: string | null }[] = [];
+    // Update each product — stock qty + any edited prices
+    const patches: { id: string; stock_qty: number; stock_last_expense_id: string | null; cost_price?: number; price?: number }[] = [];
     for (const p of updates) {
       const addQty = parseInt(newQtys[p.id], 10);
       const newTotal = (p.stock_qty ?? 0) + addQty;
+      const newCp = parseFloat(costPrices[p.id] ?? "");
+      const newSp = parseFloat(sellPrices[p.id] ?? "");
+      const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
+      const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
       const { error } = await supabase
         .from("products")
         .update({
@@ -500,10 +516,45 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           stock_qty_undo: p.stock_qty ?? 0,
           stock_qty_undo_saved: newTotal,
           stock_last_expense_id: expenseId,
+          ...(cpChanged ? { cost_price: newCp } : {}),
+          ...(spChanged ? { price: newSp } : {}),
         })
         .eq("id", p.id);
       if (error) { toast.error(`Failed to update ${p.name}: ${error.message}`); }
-      else { patches.push({ id: p.id, stock_qty: newTotal, stock_last_expense_id: expenseId }); }
+      else {
+        patches.push({
+          id: p.id,
+          stock_qty: newTotal,
+          stock_last_expense_id: expenseId,
+          ...(cpChanged ? { cost_price: newCp } : {}),
+          ...(spChanged ? { price: newSp } : {}),
+        });
+      }
+    }
+
+    // Also save price-only changes for items where no qty was added
+    for (const p of items.filter((p) => !updates.includes(p))) {
+      const newCp = parseFloat(costPrices[p.id] ?? "");
+      const newSp = parseFloat(sellPrices[p.id] ?? "");
+      const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
+      const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
+      if (!cpChanged && !spChanged) continue;
+      const { error } = await supabase
+        .from("products")
+        .update({
+          ...(cpChanged ? { cost_price: newCp } : {}),
+          ...(spChanged ? { price: newSp } : {}),
+        })
+        .eq("id", p.id);
+      if (!error) {
+        patches.push({
+          id: p.id,
+          stock_qty: p.stock_qty,
+          stock_last_expense_id: p.stock_last_expense_id,
+          ...(cpChanged ? { cost_price: newCp } : {}),
+          ...(spChanged ? { price: newSp } : {}),
+        });
+      }
     }
 
     setBusy(false);
@@ -517,7 +568,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       <div className="text-sm font-black">
         {updates.length > 0
           ? <span style={{ color: "var(--primary)" }}>{updates.length} item{updates.length !== 1 ? "s" : ""} · <span className="text-green-400">${totalCost.toFixed(2)}</span></span>
-          : <span className="text-muted-foreground">Enter new qty to add stock</span>
+          : <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
         }
       </div>
       <button
@@ -530,6 +581,9 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       </button>
     </div>
   );
+
+  // shared input style
+  const numInputCls = "w-full h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 outline-none focus:ring-1 focus:ring-primary transition";
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-background" onClick={onClose}>
@@ -550,15 +604,15 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
 
         {/* Scrollable table */}
         <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-          <table className="min-w-[560px] w-full border-collapse text-sm">
+          <table className="min-w-[600px] w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background border-b border-border">
               <tr>
                 <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-8"></th>
-                <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[120px]">Name</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[56px]">Qty</th>
-                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[80px]" style={{ color: "var(--primary)" }}>+ Add</th>
+                <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[110px]">Name</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px]">Cost $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px]">Sell $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px]">Qty</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px]" style={{ color: "var(--primary)" }}>+ Add</th>
               </tr>
             </thead>
             <tbody>
@@ -576,6 +630,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                   {products.map((p) => {
                     const addVal = newQtys[p.id] ?? "";
                     const hasAdd = parseInt(addVal, 10) > 0;
+                    const cpVal = costPrices[p.id] ?? "";
+                    const spVal = sellPrices[p.id] ?? "";
                     return (
                       <tr
                         key={p.id}
@@ -591,25 +647,45 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           </div>
                         </td>
                         {/* Name */}
-                        <td className="px-2 py-1.5 min-w-[120px]">
+                        <td className="px-2 py-1.5 min-w-[110px]">
                           <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
                         </td>
-                        {/* Cost price */}
-                        <td className="px-2 py-1.5 text-right w-[72px]">
-                          <span className="font-black text-xs text-muted-foreground">${Number(p.cost_price ?? 0).toFixed(2)}</span>
+                        {/* Cost price — editable */}
+                        <td className="px-2 py-1.5 w-[76px]">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            pattern="[0-9]*\.?[0-9]*"
+                            min="0"
+                            step="0.01"
+                            value={cpVal}
+                            onChange={(e) => setCostPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            className={numInputCls}
+                            style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+                          />
                         </td>
-                        {/* Sell price */}
-                        <td className="px-2 py-1.5 text-right w-[72px]">
-                          <span className="font-black text-xs">${Number(p.price ?? 0).toFixed(2)}</span>
+                        {/* Sell price — editable */}
+                        <td className="px-2 py-1.5 w-[76px]">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            pattern="[0-9]*\.?[0-9]*"
+                            min="0"
+                            step="0.01"
+                            value={spVal}
+                            onChange={(e) => setSellPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            className={numInputCls}
+                            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                          />
                         </td>
-                        {/* Current qty */}
-                        <td className="px-2 py-1.5 text-right w-[56px]">
+                        {/* Current qty — read only */}
+                        <td className="px-2 py-1.5 text-right w-[46px]">
                           <span className={`font-black text-xs ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
                             {p.stock_qty ?? 0}
                           </span>
                         </td>
                         {/* New qty input */}
-                        <td className="pr-4 pl-2 py-1.5 text-right w-[80px]">
+                        <td className="pr-4 pl-2 py-1.5 text-right w-[76px]">
                           <input
                             type="number"
                             inputMode="numeric"
@@ -618,7 +694,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                             placeholder="0"
                             value={addVal}
                             onChange={(e) => setNewQtys((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                            className="w-[68px] h-8 rounded-lg border text-right pr-2 text-sm font-black bg-muted/50 outline-none focus:ring-1 transition"
+                            className={numInputCls}
                             style={{
                               borderColor: hasAdd ? "var(--primary)" : "var(--border)",
                               color: hasAdd ? "var(--primary)" : "var(--foreground)",
@@ -937,7 +1013,13 @@ export default function ProductsPage() {
           onSaved={(patches) => {
             setItems((prev) => prev.map((p) => {
               const patch = patches.find((x) => x.id === p.id);
-              return patch ? { ...p, stock_qty: patch.stock_qty, stock_last_expense_id: patch.stock_last_expense_id } : p;
+              return patch ? {
+                ...p,
+                stock_qty: patch.stock_qty,
+                stock_last_expense_id: patch.stock_last_expense_id,
+                ...(patch.cost_price !== undefined ? { cost_price: patch.cost_price } : {}),
+                ...(patch.price !== undefined ? { price: patch.price } : {}),
+              } : p;
             }));
           }}
         />
