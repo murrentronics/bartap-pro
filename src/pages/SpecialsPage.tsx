@@ -28,6 +28,17 @@ type Special = {
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Convert "HH:MM" (24h) to "h:MM AM/PM" */
+function fmt12(time: string | null | undefined): string {
+  if (!time) return "";
+  const [hStr, mStr] = time.split(":");
+  let h = parseInt(hStr, 10);
+  const m = mStr ?? "00";
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
 // ─── Helper: is a special active right now? ───────────────────────────────────
 export function isSpecialActiveNow(s: Special): boolean {
   if (!s.active) return false;
@@ -204,24 +215,22 @@ function SpecialForm({
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   min="1"
                   value={reqQty}
-                  onChange={(e) => setReqQty(e.target.value)}
+                  onChange={(e) => setReqQty(e.target.value.replace(/[^0-9]/g, ""))}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
                   pattern="[0-9]*\.?[0-9]*"
-                  min="0"
-                  step="0.01"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
                   placeholder="25.00"
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
@@ -311,7 +320,7 @@ function SpecialForm({
 
       {showSelector && (
         <ProductSelector
-          products={products}
+          products={products.filter((p) => (p.category || "beers") === "beers")}
           selected={selectedIds}
           onClose={() => setShowSelector(false)}
           onConfirm={(ids) => setSelectedIds(ids)} />
@@ -442,12 +451,12 @@ function SpecialCard({
         </div>
 
         {/* Items */}
-        <p className="text-xs text-muted-foreground leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           <span className="font-black text-foreground/70">Items: </span>{itemNames || "—"}
         </p>
 
         {/* Schedule */}
-        <div className="text-xs text-muted-foreground space-y-0.5">
+        <div className="text-sm text-muted-foreground space-y-0.5">
           {special.is_recurring ? (
             <>
               <div>
@@ -456,15 +465,15 @@ function SpecialCard({
               </div>
               <div>
                 <span className="font-black text-foreground/70">Time: </span>
-                {special.start_time || "00:00"}
-                {special.end_time ? ` → ${special.end_time}` : " onwards"}
+                {fmt12(special.start_time) || "12:00 AM"}
+                {special.end_time ? ` → ${fmt12(special.end_time)}` : " onwards"}
               </div>
             </>
           ) : (
             <div>
               <span className="font-black text-foreground/70">Period: </span>
-              {special.start_date}{special.start_time ? ` ${special.start_time}` : ""}
-              {special.end_date ? ` → ${special.end_date}${special.end_time ? ` ${special.end_time}` : ""}` : ""}
+              {special.start_date}{special.start_time ? ` ${fmt12(special.start_time)}` : ""}
+              {special.end_date ? ` → ${special.end_date}${special.end_time ? ` ${fmt12(special.end_time)}` : ""}` : ""}
             </div>
           )}
         </div>
