@@ -447,6 +447,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     Object.fromEntries(items.map((p) => [p.id, String(p.price ?? "")]))
   );
   const [busy, setBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Sort all items alphabetically, group by category
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
@@ -460,6 +461,20 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     const v = parseInt(newQtys[p.id] ?? "", 10);
     return !isNaN(v) && v > 0;
   });
+
+  // Items with price-only changes (no qty added)
+  const priceOnlyChanges = items.filter((p) => {
+    const v = parseInt(newQtys[p.id] ?? "", 10);
+    if (!isNaN(v) && v > 0) return false; // already in updates
+    const newCp = parseFloat(costPrices[p.id] ?? "");
+    const newSp = parseFloat(sellPrices[p.id] ?? "");
+    const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
+    const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
+    return cpChanged || spChanged;
+  });
+
+  // All items with any change — shown in preview
+  const allChanged = [...updates, ...priceOnlyChanges];
 
   // Use the edited cost price for the expense calc
   const totalCost = updates.reduce((sum, p) => {
@@ -566,14 +581,18 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   const SaveBar = () => (
     <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
       <div className="text-sm font-black">
-        {updates.length > 0
-          ? <span style={{ color: "var(--primary)" }}>{updates.length} item{updates.length !== 1 ? "s" : ""} · <span className="text-green-400">${totalCost.toFixed(2)}</span></span>
-          : <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
-        }
+        {allChanged.length > 0 ? (
+          <span style={{ color: "var(--primary)" }}>
+            {allChanged.length} item{allChanged.length !== 1 ? "s" : ""}
+            {updates.length > 0 && <span className="text-green-400"> · ${totalCost.toFixed(2)}</span>}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
+        )}
       </div>
       <button
-        onClick={save}
-        disabled={busy || updates.length === 0}
+        onClick={() => { if (allChanged.length > 0) setShowPreview(true); }}
+        disabled={busy || allChanged.length === 0}
         className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
         style={{ background: "var(--gradient-hero)" }}
       >
@@ -586,6 +605,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   const numInputCls = "w-full h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 outline-none focus:ring-1 focus:ring-primary transition";
 
   return (
+    <>
     <div className="fixed inset-0 z-[70] flex flex-col bg-background" onClick={onClose}>
       <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -714,6 +734,99 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         <SaveBar />
       </div>
     </div>
+
+    {/* ── Preview / Confirm modal ── */}
+    {showPreview && (
+      <div className="fixed inset-0 z-[80] flex flex-col bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-border shrink-0">
+          <div>
+            <h2 className="text-lg font-black">Confirm Changes</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{allChanged.length} item{allChanged.length !== 1 ? "s" : ""} will be updated</p>
+          </div>
+          <button onClick={() => setShowPreview(false)} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Preview list */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+          {allChanged.map((p) => {
+            const addQty = parseInt(newQtys[p.id] ?? "", 10);
+            const hasQty = !isNaN(addQty) && addQty > 0;
+            const newCp = parseFloat(costPrices[p.id] ?? "");
+            const newSp = parseFloat(sellPrices[p.id] ?? "");
+            const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
+            const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
+            const cp = hasQty ? (parseFloat(costPrices[p.id] ?? "") || Number(p.cost_price ?? 0)) : Number(p.cost_price ?? 0);
+            const lineTotal = hasQty ? cp * addQty : 0;
+            return (
+              <div key={p.id} className="rounded-2xl border border-border p-3 flex items-start gap-3"
+                style={{ background: "var(--gradient-card)" }}>
+                {/* Thumbnail */}
+                <div className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
+                  style={{ background: "var(--gradient-card)" }}>
+                  {p.image_url
+                    ? <img src={p.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    : categoryIcon(p.category ?? "drinks")}
+                </div>
+                {/* Details */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="font-black text-sm truncate">{p.name}</div>
+                  {hasQty && (
+                    <div className="text-xs font-bold" style={{ color: "var(--primary)" }}>
+                      Stock: {p.stock_qty ?? 0} → <span className="text-green-400">{(p.stock_qty ?? 0) + addQty}</span>
+                      <span className="text-muted-foreground ml-2">(+{addQty} @ ${cp.toFixed(2)} = ${lineTotal.toFixed(2)})</span>
+                    </div>
+                  )}
+                  {cpChanged && (
+                    <div className="text-xs text-muted-foreground">
+                      Cost: <span className="line-through">${Number(p.cost_price ?? 0).toFixed(2)}</span>
+                      <span className="text-yellow-400 font-black ml-1"> → ${newCp.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {spChanged && (
+                    <div className="text-xs text-muted-foreground">
+                      Sell: <span className="line-through">${Number(p.price ?? 0).toFixed(2)}</span>
+                      <span className="text-yellow-400 font-black ml-1"> → ${newSp.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Expense total summary */}
+          {totalCost > 0 && (
+            <div className="rounded-2xl border border-green-500/30 px-4 py-3 flex items-center justify-between mt-2"
+              style={{ background: "rgba(34,197,94,0.06)" }}>
+              <span className="text-sm font-black text-muted-foreground">Stock expense total</span>
+              <span className="text-lg font-black text-green-400">${totalCost.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="px-4 pb-6 pt-3 border-t border-border shrink-0 flex gap-3">
+          <button
+            onClick={() => setShowPreview(false)}
+            className="flex-1 h-12 rounded-2xl font-black text-sm border border-border transition active:scale-[0.98]"
+            style={{ background: "rgba(255,255,255,0.04)" }}
+          >
+            ← Back
+          </button>
+          <button
+            onClick={save}
+            disabled={busy}
+            className="flex-[2] h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Save"}
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
