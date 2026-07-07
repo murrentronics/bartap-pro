@@ -17,8 +17,10 @@ type Special = {
   product_ids: string[];
   is_recurring: boolean;
   run_days: number[]; // 0=Sun … 6=Sat
-  start_date: string; // YYYY-MM-DD
+  start_date: string;  // YYYY-MM-DD
+  start_time: string;  // HH:MM (24h), e.g. "09:00"
   end_date: string | null;
+  end_time: string | null; // HH:MM or null
   active: boolean;
   created_at: string;
 };
@@ -30,11 +32,18 @@ export function isSpecialActiveNow(s: Special): boolean {
   if (!s.active) return false;
   const now = new Date();
   const today = now.toISOString().split("T")[0];
+  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
   if (today < s.start_date) return false;
-  if (s.end_date && today > s.end_date) return false;
+  if (today === s.start_date && s.start_time && nowTime < s.start_time) return false;
+
+  if (s.end_date) {
+    if (today > s.end_date) return false;
+    if (today === s.end_date && s.end_time && nowTime > s.end_time) return false;
+  }
+
   if (s.is_recurring && s.run_days.length > 0) {
-    const dayOfWeek = now.getDay(); // 0=Sun
-    return s.run_days.includes(dayOfWeek);
+    return s.run_days.includes(now.getDay());
   }
   return true;
 }
@@ -122,7 +131,9 @@ function SpecialForm({
   const [isRecurring, setIsRecurring] = useState(editSpecial?.is_recurring ?? false);
   const [runDays, setRunDays] = useState<number[]>(editSpecial?.run_days ?? []);
   const [startDate, setStartDate] = useState(editSpecial?.start_date ?? new Date().toISOString().split("T")[0]);
+  const [startTime, setStartTime] = useState(editSpecial?.start_time ?? "00:00");
   const [endDate, setEndDate] = useState(editSpecial?.end_date ?? "");
+  const [endTime, setEndTime] = useState(editSpecial?.end_time ?? "");
   const [showSelector, setShowSelector] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -148,7 +159,9 @@ function SpecialForm({
       is_recurring: isRecurring,
       run_days: isRecurring ? runDays : [],
       start_date: startDate,
+      start_time: startTime || "00:00",
       end_date: endDate || null,
+      end_time: endTime || null,
       active: true,
     };
     let error;
@@ -189,14 +202,26 @@ function SpecialForm({
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
-                <input type="number" inputMode="numeric" min="1" value={reqQty}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min="1"
+                  value={reqQty}
                   onChange={(e) => setReqQty(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
-                <input type="number" inputMode="decimal" min="0" step="0.01" value={price}
-                  onChange={(e) => setPrice(e.target.value)} placeholder="25.00"
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  pattern="[0-9]*\.?[0-9]*"
+                  min="0"
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="25.00"
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
             </div>
@@ -216,16 +241,21 @@ function SpecialForm({
               )}
             </div>
 
-            {/* Dates */}
+            {/* Dates + Times */}
             <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Start Date</label>
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Start Date</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
-              <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">End Date (opt)</label>
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">End Date (opt)</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
+                  placeholder="End time"
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
             </div>
@@ -279,11 +309,85 @@ function SpecialForm({
       </div>
 
       {showSelector && (
-        <ProductSelector products={products} selected={selectedIds}
+        <ProductSelector
+          products={products}
+          selected={selectedIds}
           onClose={() => setShowSelector(false)}
           onConfirm={(ids) => setSelectedIds(ids)} />
       )}
     </>
+  );
+}
+
+// ─── Special actions modal ────────────────────────────────────────────────────
+function SpecialActionsModal({
+  special,
+  onClose,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  special: Special;
+  onClose: () => void;
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl overflow-hidden"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle + title */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+          <span className="font-black text-base truncate pr-3">{special.name}</span>
+          <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-4 py-4 space-y-2">
+          {/* Edit */}
+          <button
+            onClick={() => { onEdit(); onClose(); }}
+            className="w-full h-14 rounded-2xl font-black text-sm flex items-center gap-3 px-5 transition active:scale-[0.98]"
+            style={{ background: "rgba(251,146,60,0.08)", border: "1.5px solid var(--primary)", color: "var(--primary)" }}
+          >
+            <Pencil className="h-4 w-4 shrink-0" />
+            Edit Special
+          </button>
+
+          {/* Disable / Enable */}
+          <button
+            onClick={() => { onToggle(); onClose(); }}
+            className="w-full h-14 rounded-2xl font-black text-sm flex items-center gap-3 px-5 transition active:scale-[0.98]"
+            style={{
+              background: special.active ? "rgba(234,179,8,0.08)" : "rgba(34,197,94,0.08)",
+              border: `1.5px solid ${special.active ? "#eab308" : "#22c55e"}`,
+              color: special.active ? "#facc15" : "#4ade80",
+            }}
+          >
+            <span className="text-base leading-none shrink-0">{special.active ? "○" : "●"}</span>
+            {special.active ? "Disable Special" : "Enable Special"}
+          </button>
+
+          {/* Delete */}
+          <button
+            onClick={() => { onDelete(); onClose(); }}
+            className="w-full h-14 rounded-2xl font-black text-sm flex items-center gap-3 px-5 transition active:scale-[0.98]"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1.5px solid #ef4444", color: "#f87171" }}
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            Delete Special
+          </button>
+        </div>
+
+        {/* Safe-area spacer */}
+        <div className="h-4" />
+      </div>
+    </div>
   );
 }
 
@@ -301,6 +405,8 @@ function SpecialCard({
   onDelete: () => void;
   onToggle: () => void;
 }) {
+  const [showActions, setShowActions] = useState(false);
+
   const itemNames = special.product_ids
     .map((id) => products.find((p) => p.id === id)?.name)
     .filter(Boolean)
@@ -308,52 +414,61 @@ function SpecialCard({
   const isLive = isSpecialActiveNow(special);
 
   return (
-    <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isLive ? "bg-green-400" : "bg-muted-foreground/40"}`} />
-          <span className="font-black text-base leading-tight truncate">{special.name}</span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={onEdit} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
-            <Pencil className="h-3.5 w-3.5" />
+    <>
+      <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+        {/* Top row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${isLive ? "bg-green-400" : "bg-muted-foreground/40"}`} />
+            <span className="font-black text-base leading-tight truncate">{special.name}</span>
+          </div>
+          <button
+            onClick={() => setShowActions(true)}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0"
+          >
+            <Pencil className="h-4 w-4" />
           </button>
-          <button onClick={onDelete} className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600/20 hover:bg-red-600/30 transition">
-            <Trash2 className="h-3.5 w-3.5 text-red-400" />
-          </button>
+        </div>
+
+        {/* Deal summary */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-2xl font-black" style={{ color: "var(--primary)" }}>${special.special_price.toFixed(2)}</span>
+          <span className="text-sm font-bold text-muted-foreground">for any {special.required_qty}</span>
+          <span className={`ml-auto text-xs font-black px-2 py-0.5 rounded-full border ${special.active ? "border-green-500/40 text-green-400" : "border-border text-muted-foreground"}`}
+            style={{ background: special.active ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.03)" }}>
+            {special.active ? "● Active" : "○ Inactive"}
+          </span>
+        </div>
+
+        {/* Items */}
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <span className="font-black text-foreground/70">Items: </span>{itemNames || "—"}
+        </p>
+
+        {/* Schedule */}
+        <div className="text-xs text-muted-foreground">
+          {special.is_recurring
+            ? <span><span className="font-black text-foreground/70">Runs: </span>{special.run_days.map((d) => DAY_LABELS[d]).join(", ") || "every day"}</span>
+            : (
+              <span>
+                <span className="font-black text-foreground/70">Period: </span>
+                {special.start_date}{special.start_time ? ` ${special.start_time}` : ""}
+                {special.end_date ? ` → ${special.end_date}${special.end_time ? ` ${special.end_time}` : ""}` : ""}
+              </span>
+            )}
         </div>
       </div>
 
-      {/* Deal summary */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-2xl font-black" style={{ color: "var(--primary)" }}>${special.special_price.toFixed(2)}</span>
-        <span className="text-sm font-bold text-muted-foreground">for any {special.required_qty}</span>
-      </div>
-
-      {/* Items */}
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        <span className="font-black text-foreground/70">Items: </span>{itemNames || "—"}
-      </p>
-
-      {/* Schedule */}
-      <div className="text-xs text-muted-foreground">
-        {special.is_recurring
-          ? <span><span className="font-black text-foreground/70">Runs: </span>{special.run_days.map((d) => DAY_LABELS[d]).join(", ") || "every day"}</span>
-          : <span><span className="font-black text-foreground/70">One-time: </span>{special.start_date}{special.end_date ? ` → ${special.end_date}` : ""}</span>}
-      </div>
-
-      {/* Active toggle */}
-      <button onClick={onToggle}
-        className="w-full h-9 rounded-xl font-black text-xs transition active:scale-[0.98] border"
-        style={{
-          background: special.active ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-          borderColor: special.active ? "#22c55e" : "var(--border)",
-          color: special.active ? "#4ade80" : "var(--muted-foreground)",
-        }}>
-        {special.active ? "● Active" : "○ Inactive — tap to enable"}
-      </button>
-    </div>
+      {showActions && (
+        <SpecialActionsModal
+          special={special}
+          onClose={() => setShowActions(false)}
+          onEdit={onEdit}
+          onToggle={onToggle}
+          onDelete={onDelete}
+        />
+      )}
+    </>
   );
 }
 

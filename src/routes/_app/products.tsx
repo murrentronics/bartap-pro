@@ -469,7 +469,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       const lineTotal = cp * addQty;
       return `${p.name} ×${addQty} @ $${cp.toFixed(2)} each = $${lineTotal.toFixed(2)}`;
     });
-    const description = lines.join("\n") + `\n\nTotal: $${totalCost.toFixed(2)}`;
+    const description = `Bulk Stock Update\n${lines.join("\n")}\n\nTotal: $${totalCost.toFixed(2)}`;
 
     // Insert one combined expense record (only if there's a cost)
     let expenseId: string | null = null;
@@ -613,6 +613,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           <input
                             type="number"
                             inputMode="numeric"
+                            pattern="[0-9]*"
                             min="0"
                             placeholder="0"
                             value={addVal}
@@ -631,14 +632,6 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
               ))}
             </tbody>
           </table>
-
-          {/* Grand total row at bottom of table */}
-          {updates.length > 0 && (
-            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-black text-muted-foreground">{updates.length} item{updates.length !== 1 ? "s" : ""} to update</span>
-              <span className="text-base font-black" style={{ color: "var(--primary)" }}>Total: <span className="text-green-400">${totalCost.toFixed(2)}</span></span>
-            </div>
-          )}
         </div>
 
         {/* Save bar — bottom */}

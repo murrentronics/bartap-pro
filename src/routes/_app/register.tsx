@@ -172,7 +172,8 @@ export default function RegisterPage() {
   type Special = {
     id: string; name: string; special_price: number; required_qty: number;
     product_ids: string[]; is_recurring: boolean; run_days: number[];
-    start_date: string; end_date: string | null; active: boolean;
+    start_date: string; start_time: string | null;
+    end_date: string | null; end_time: string | null; active: boolean;
   };
   const [activeSpecials, setActiveSpecials] = useState<Special[]>([]);
 
@@ -204,8 +205,13 @@ export default function RegisterPage() {
     const isLive = (s: Special) => {
       const now = new Date();
       const today = now.toISOString().split("T")[0];
+      const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
       if (today < s.start_date) return false;
-      if (s.end_date && today > s.end_date) return false;
+      if (today === s.start_date && s.start_time && nowTime < s.start_time) return false;
+      if (s.end_date) {
+        if (today > s.end_date) return false;
+        if (today === s.end_date && s.end_time && nowTime > s.end_time) return false;
+      }
       if (s.is_recurring && s.run_days.length > 0) return s.run_days.includes(now.getDay());
       return true;
     };
