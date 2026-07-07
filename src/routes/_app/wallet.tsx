@@ -1101,13 +1101,51 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                 {isOpen && (
                   <div className="border-t border-border divide-y divide-border/50">
                     {mExpenses.map((e) => {
-                      // Split auto-generated descriptions into title + detail
-                      // Formats: "Rum ×12" or "Rum ×12 @ $5.00 each"
                       const raw = e.description ?? "Stock expense";
+                      const isBulk = raw.startsWith("Bulk Stock Update\n");
+
+                      if (isBulk) {
+                        // Split into title + item lines
+                        const lines = raw.split("\n").filter(Boolean);
+                        const title = lines[0]; // "Bulk Stock Update"
+                        const itemLines = lines.slice(1); // each "Name ×qty @ $x = $y"
+                        return (
+                          <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-black text-sm">{title}</div>
+                              <div className="mt-1 space-y-0.5">
+                                {itemLines.map((line, i) => {
+                                  // Split "Name ×qty @ $cp each = $total" at " = "
+                                  const eqIdx = line.lastIndexOf(" = ");
+                                  const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
+                                  const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
+                                  return (
+                                    <div key={i} className="flex items-center justify-between gap-2">
+                                      <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                                      {right && <span className="text-xs font-black text-red-400 shrink-0">{right}</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1.5">
+                                {new Date(e.created_at).toLocaleString("en-GB", {
+                                  day: "numeric", month: "short", year: "numeric",
+                                  hour: "2-digit", minute: "2-digit", hour12: true,
+                                })}
+                              </div>
+                            </div>
+                            <span className="font-black text-sm text-red-400 shrink-0">
+                              -${fmt(Number(e.amount))}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      // Single-item expense: "Name ×12 @ $5.00 each"
                       const atIdx = raw.indexOf(" ×");
                       const hasDetail = atIdx !== -1;
                       const title = hasDetail ? raw.slice(0, atIdx).trim() : raw;
-                      const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null; // e.g. "×12 @ $5.00 each"
+                      const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null;
 
                       return (
                         <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">

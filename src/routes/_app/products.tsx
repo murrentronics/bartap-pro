@@ -673,11 +673,12 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         {/* Cost price — editable */}
                         <td className="px-2 py-1.5 w-[76px]">
                           <input
-                            type="text"
+                            type="number"
                             inputMode="decimal"
-                            pattern="[0-9]*\.?[0-9]*"
+                            min="0"
+                            step="0.01"
                             value={cpVal}
-                            onChange={(e) => setCostPrices((prev) => ({ ...prev, [p.id]: e.target.value.replace(/[^0-9.]/g, "") }))}
+                            onChange={(e) => setCostPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
                             className={numInputCls}
                             style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
                           />
@@ -685,11 +686,12 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         {/* Sell price — editable */}
                         <td className="px-2 py-1.5 w-[76px]">
                           <input
-                            type="text"
+                            type="number"
                             inputMode="decimal"
-                            pattern="[0-9]*\.?[0-9]*"
+                            min="0"
+                            step="0.01"
                             value={spVal}
-                            onChange={(e) => setSellPrices((prev) => ({ ...prev, [p.id]: e.target.value.replace(/[^0-9.]/g, "") }))}
+                            onChange={(e) => setSellPrices((prev) => ({ ...prev, [p.id]: e.target.value }))}
                             className={numInputCls}
                             style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
                           />
@@ -703,12 +705,12 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         {/* New qty input */}
                         <td className="pr-4 pl-2 py-1.5 text-right w-[76px]">
                           <input
-                            type="text"
+                            type="number"
                             inputMode="numeric"
-                            pattern="[0-9]*"
+                            min="0"
                             placeholder="0"
                             value={addVal}
-                            onChange={(e) => setNewQtys((prev) => ({ ...prev, [p.id]: e.target.value.replace(/[^0-9]/g, "") }))}
+                            onChange={(e) => setNewQtys((prev) => ({ ...prev, [p.id]: e.target.value }))}
                             className={numInputCls}
                             style={{
                               borderColor: hasAdd ? "var(--primary)" : "var(--border)",

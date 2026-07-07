@@ -215,22 +215,24 @@ function SpecialForm({
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
                 <input
-                  type="text"
+                  type="number"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   min="1"
                   value={reqQty}
-                  onChange={(e) => setReqQty(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) => setReqQty(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex-1">
                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
                 <input
-                  type="text"
+                  type="number"
                   inputMode="decimal"
                   pattern="[0-9]*\.?[0-9]*"
+                  min="0"
+                  step="0.01"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))}
+                  onChange={(e) => setPrice(e.target.value)}
                   placeholder="25.00"
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
