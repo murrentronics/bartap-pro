@@ -503,7 +503,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   }, 0);
 
   const save = async () => {
-    if (updates.length === 0) return;
+    if (allChanged.length === 0) return;
     setBusy(true);
 
     const today = new Date().toISOString().split("T")[0];

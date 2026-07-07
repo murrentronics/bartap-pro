@@ -82,8 +82,14 @@ export default function FactoryResetPage() {
     await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);
 
     // 7. Clear cost_price on all products so owner re-enters them fresh
-    //    (stock_qty and selling price are kept)
-    await supabase.from("products").update({ cost_price: 0, stock_last_expense_id: null }).eq("owner_id", ownerId);
+    //    Also zero all stock quantities so new stock additions create proper expense records
+    await supabase.from("products").update({
+      cost_price: 0,
+      stock_qty: 0,
+      stock_qty_undo: null,
+      stock_qty_undo_saved: null,
+      stock_last_expense_id: null,
+    }).eq("owner_id", ownerId);
   };
 
   const resetBar = async (ownerId: string) => {
