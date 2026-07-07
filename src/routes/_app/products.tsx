@@ -1007,7 +1007,7 @@ export default function ProductsPage() {
                   {/* Out-of-stock overlay — tappable to open qty editor */}
                   {(p.stock_qty ?? 0) === 0 && (
                     <div
-                      onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
+                      onClick={(e) => { e.stopPropagation(); setEditItem(p); }}
                       className="absolute inset-0 z-[5] flex items-center justify-center bg-red-950/75 backdrop-blur-[1px] cursor-pointer active:bg-red-950/90 transition"
                     >
                       <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
@@ -1016,13 +1016,12 @@ export default function ProductsPage() {
                     </div>
                   )}
 
-                  {/* Stock qty — top-left, larger, tappable to open numpad */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setStockNumpadId(p.id); }}
-                    className="absolute top-1.5 left-1.5 h-10 min-w-[2.5rem] px-2 rounded-full flex items-center justify-center bg-black/70 active:scale-95 transition shadow z-10"
+                  {/* Stock qty — top-left, display only */}
+                  <div
+                    className="absolute top-1.5 left-1.5 h-10 min-w-[2.5rem] px-2 rounded-full flex items-center justify-center bg-black/70 shadow z-10"
                   >
                     <span className="text-base font-black text-white leading-none">{p.stock_qty ?? 0}</span>
-                  </button>
+                  </div>
 
                   {/* Edit button — bottom-left orange circle */}
                   <button
