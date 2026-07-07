@@ -681,6 +681,8 @@ export default function ProductsPage() {
             onSaved={(updated) => {
               setItems((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p));
               setEditItem(null);
+              // Open the stock numpad so the user can add new stock at the updated cost price
+              setStockNumpadId(updated.id);
             }}
           />
         </Dialog>
@@ -760,45 +762,10 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
 
     if (isEdit && editProduct) {
       // ── UPDATE existing product ──────────────────────────────────────────
-      const prevCostPrice = Number(editProduct.cost_price ?? 0);
-      const costChanged   = costVal !== prevCostPrice;
-      const stockQty      = Number(editProduct.stock_qty ?? 0);
-
-      // If cost_price changed and stock exists, refresh the opening expense record.
-      // This is the key path for old accounts migrating to the new financials system:
-      // owner edits an existing item, sets the cost price, hits save — one expense
-      // record is created for (cost_price × stock_qty) so financials are correct.
-      let newExpenseId: string | null = editProduct.stock_last_expense_id ?? null;
-      if (costChanged && stockQty > 0) {
-        // Delete the old stock-linked expense record if present
-        if (editProduct.stock_last_expense_id) {
-          await supabase.from("owner_expenses").delete().eq("id", editProduct.stock_last_expense_id);
-        }
-
-        if (costVal > 0) {
-          // Insert a fresh expense record: cost_price × current stock_qty
-          const today = new Date().toISOString().split("T")[0];
-          const { data: expData, error: expErr } = await supabase
-            .from("owner_expenses")
-            .insert({
-              owner_id:     profile.id,
-              amount:       costVal * stockQty,
-              description:  `${name.trim()} ×${stockQty} @ $${costVal.toFixed(2)} each`,
-              expense_date: today,
-            })
-            .select("id")
-            .single();
-          if (expErr) {
-            toast.error("Saved item but could not create expense record: " + expErr.message);
-          } else {
-            newExpenseId = expData?.id ?? null;
-          }
-        } else {
-          // cost_price set to 0 — clear the expense link
-          newExpenseId = null;
-        }
-      }
-
+      // Only save the product details here — no expense record is created.
+      // Expense records are only generated in the StockNumpad when new stock
+      // is actually added, so only the newly purchased qty is multiplied by
+      // the new cost price (not the existing stock already on hand).
       const { data: updated, error } = await supabase
         .from("products")
         .update({
@@ -807,15 +774,13 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
           cost_price: costVal,
           image_url,
           category,
-          // Keep expense link in sync so undo/redo still works
-          ...(costChanged ? { stock_last_expense_id: newExpenseId } : {}),
         })
         .eq("id", editProduct.id)
         .select("*")
         .single();
       setBusy(false);
       if (error) { toast.error(error.message); return; }
-      toast.success(costChanged && stockQty > 0 && costVal > 0 ? "Item updated — expense record created" : "Item updated");
+      toast.success("Item updated");
       onDone();
       onSaved(updated);
     } else {
@@ -1008,7 +973,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
             }
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Next →"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
           </Button>
         </div>
       )}
