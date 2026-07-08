@@ -130,6 +130,19 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const resolveDeletable = async (newestOrder: Order | null) => {
     if (!newestOrder) { setDeletableOrderId(null); return; }
 
+    // Block delete if a wallet clear (transfer_out) happened after this order was created.
+    // That means the sale's money already moved to the owner — deleting would cause a negative balance.
+    const { data: clearData } = await supabase
+      .from("wallet_transactions")
+      .select("created_at")
+      .eq("profile_id", profile.id)
+      .eq("type", "transfer_out")
+      .gt("created_at", newestOrder.created_at)
+      .limit(1)
+      .maybeSingle();
+
+    if (clearData) { setDeletableOrderId(null); return; }
+
     const { data } = await supabase
       .from("cashier_last_delete")
       .select("deleted_at")
