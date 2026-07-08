@@ -55,9 +55,10 @@ export default function FactoryResetPage() {
       for (const c of cashiers as { id: string }[]) {
         await supabase.from("orders").delete().eq("cashier_id", c.id);
         await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
-        await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", c.id);
       }
     }
+    // Use SECURITY DEFINER RPC to zero cashier balances (RLS blocks direct update from owner)
+    await supabase.rpc("reset_cashier_wallets", { _owner_id: ownerId });
 
     // 2. Delete owner wallet transactions
     await supabase.from("wallet_transactions").delete().eq("profile_id", ownerId);
