@@ -284,11 +284,11 @@ export default function AppLayout() {
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+6px)] w-64 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
-                style={{ background: "var(--gradient-card)", maxHeight: "calc(100dvh - 80px)" }}
+                className="absolute right-0 top-[calc(100%+6px)] w-56 sm:w-64 rounded-2xl border border-border shadow-2xl z-[100]"
+                style={{ background: "var(--gradient-card)" }}
               >
                 {/* Owner name — small, at the top of the menu */}
-                <div className="px-5 py-3 border-b border-border/50">
+                <div className="px-4 sm:px-5 py-2 sm:py-3 border-b border-border/50">
                   <span className="text-xs font-semibold text-muted-foreground truncate block">{profile.username}</span>
                 </div>
 
@@ -299,11 +299,11 @@ export default function AppLayout() {
                     <Link
                       key={it.to}
                       to={it.to}
-                      className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
+                      className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
                         active ? "text-primary" : "text-foreground hover:bg-muted/50"
                       }`}
                     >
-                      <Icon className="h-6 w-6 shrink-0" />
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                       {it.label}
                     </Link>
                   );
@@ -311,28 +311,28 @@ export default function AppLayout() {
                 {/* Language — all users */}
                 <Link
                   to={"/language" as "/"}
-                  className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
+                  className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
                     loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
                   }`}
                 >
-                  <Globe className="h-6 w-6 shrink-0" />
+                  <Globe className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                   {t("language", "Language")}
                 </Link>
                 {/* Factory Reset — owner only, before logout */}
                 {isOwner && (
                   <Link
                     to={"/factory-reset" as "/"}
-                    className="flex items-center gap-4 px-5 py-5 text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
+                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
                   >
-                    <RotateCcw className="h-6 w-6 shrink-0" />
+                    <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     {t("factory_reset", "Factory Reset")}
                   </Link>
                 )}
                 <button
                   onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                  className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                  className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
-                  <X className="h-6 w-6 shrink-0" />
+                  <X className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                   {t("logout", "Logout")}
                 </button>
               </div>
