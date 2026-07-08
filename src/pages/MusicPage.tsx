@@ -68,7 +68,9 @@ export default function MusicPage() {
   const [searchOpen, setSearchOpen]   = useState(false);
   const [ytSubTab, setYtSubTab]       = useState<"results" | "saved">("results");
   const [showTips, setShowTips]               = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);  // Use context-persisted tab so returning to /music lands on same tab
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const savedListRef      = useRef<HTMLDivElement>(null);
+  const playingRowRef     = useRef<HTMLButtonElement>(null);  // Use context-persisted tab so returning to /music lands on same tab
   const lastMainTab    = yt.lastMusicTab;
   const setLastMainTab = yt.setLastMusicTab;
 
@@ -160,6 +162,21 @@ export default function MusicPage() {
     if (player.playMode === "shuffle")    return <Shuffle  className="h-4 w-4" />;
     return <Repeat className="h-4 w-4" />;
   };
+
+  // ── Auto-scroll saved list to the playing item when tab opens ──────────
+  useEffect(() => {
+    if (ytSubTab !== "saved") return;
+    // Give the list a frame to render before scrolling
+    const raf = requestAnimationFrame(() => {
+      if (playingRowRef.current && savedListRef.current) {
+        playingRowRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+      } else if (savedListRef.current) {
+        // No song playing — scroll to top
+        savedListRef.current.scrollTo({ top: 0, behavior: "instant" });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [ytSubTab]);
 
   // ── Listen for YouTube video ended → auto-play next from history ──────
   useEffect(() => {
@@ -746,7 +763,7 @@ export default function MusicPage() {
             </div>
 
             {/* ── Scrollable results area ── */}
-            <div className="flex-1 overflow-y-auto px-3 pb-8">
+            <div className="flex-1 overflow-y-auto px-3 pb-8" ref={savedListRef}>
 
               {/* ── Results sub-tab ── */}
               {ytSubTab === "results" && (
@@ -873,6 +890,7 @@ export default function MusicPage() {
                       </div>
                       {yt.history.map(item => (
                         <button key={item.id}
+                          ref={yt.videoId === item.id ? playingRowRef : undefined}
                           onClick={() => playResult(item)}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:scale-[0.98] transition border ${
                             yt.videoId === item.id ? "border-red-500/60" : "border-transparent hover:border-red-500/20"

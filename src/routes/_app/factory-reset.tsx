@@ -186,7 +186,8 @@ export default function FactoryResetPage() {
       "All credit accounts and bills",
       "All financial expense records",
       "All cost prices (re-enter to rebuild financials)",
-      "✓ Items and stock quantities are KEPT",
+      "All stock quantities (reset to zero)",
+      "✓ Items (products list) are KEPT",
     ],
     bar: [
       "All sales orders and transaction history",
@@ -223,7 +224,7 @@ export default function FactoryResetPage() {
       {/* Step 1 — pick target */}
       <div className="space-y-3">
         {[
-          { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items & stock — wipe orders, wallet, expenses, credit. Re-enter cost prices to rebuild.", machinesOnly: false },
+          { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities. Re-enter cost prices to rebuild.", machinesOnly: false },
           { value: "bar" as ResetTarget,            icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",                         machinesOnly: false },
           { value: "machines" as ResetTarget,       icon: Gamepad2, label: "Machines",              desc: "Machine entries, payouts, floats",                                                             machinesOnly: true  },
           { value: "both" as ResetTarget,           icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                                        machinesOnly: true  },

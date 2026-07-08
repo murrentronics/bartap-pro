@@ -299,7 +299,7 @@ export default function AppLayout() {
                     <Link
                       key={it.to}
                       to={it.to}
-                      className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                      className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
                         active ? "text-primary" : "text-foreground hover:bg-muted/50"
                       }`}
                     >
@@ -311,7 +311,7 @@ export default function AppLayout() {
                 {/* Language — all users */}
                 <Link
                   to={"/language" as "/"}
-                  className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                  className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
                     loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
                   }`}
                 >
@@ -322,7 +322,7 @@ export default function AppLayout() {
                 {isOwner && (
                   <Link
                     to={"/factory-reset" as "/"}
-                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
+                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
                   >
                     <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     {t("factory_reset", "Factory Reset")}
@@ -330,7 +330,7 @@ export default function AppLayout() {
                 )}
                 <button
                   onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                  className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-5 text-sm sm:text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                  className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
                 >
                   <X className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                   {t("logout", "Logout")}
