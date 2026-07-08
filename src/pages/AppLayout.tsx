@@ -284,8 +284,8 @@ export default function AppLayout() {
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+6px)] w-64 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
-                style={{ background: "var(--gradient-card)" }}
+                className="absolute right-0 top-[calc(100%+6px)] w-64 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                style={{ background: "var(--gradient-card)", maxHeight: "calc(100dvh - 80px)" }}
               >
                 {/* Owner name — small, at the top of the menu */}
                 <div className="px-5 py-3 border-b border-border/50">
