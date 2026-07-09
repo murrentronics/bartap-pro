@@ -280,7 +280,7 @@ export default function AppLayout() {
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
       <header
         className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)", position: "relative", zIndex: 50 }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
 
@@ -579,7 +579,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none", isolation: "isolate" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none", isolation: "isolate", zIndex: 0 }}>
         <Outlet />
       </main>
 
