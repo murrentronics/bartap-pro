@@ -1622,7 +1622,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 
 export default function MachinesPage() {
   const { profile } = useAuth();
-  const { effectiveOwnerId } = useChain();
+  const { effectiveOwnerId, isChainOwner, activeBarId } = useChain();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -1683,16 +1683,35 @@ export default function MachinesPage() {
   // Premium gate — check owner's plan (cashiers inherit from owner)
   const [ownerPlanType, setOwnerPlanType] = useState<string | null>(null);
   const [ownerMachinesAddon, setOwnerMachinesAddon] = useState(false);
+  const [isBarAccount, setIsBarAccount] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
+  const [enablingMachines, setEnablingMachines] = useState(false);
+  const [showEnableConfirm, setShowEnableConfirm] = useState(false);
+
   useEffect(() => {
     if (!ownerId) return;
-    (supabase as any).from("profiles").select("plan_type, machines_addon_active").eq("id", ownerId).single()
-      .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean } | null }) => {
+    (supabase as any).from("profiles").select("plan_type, machines_addon_active, is_bar_account").eq("id", ownerId).single()
+      .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean; is_bar_account: boolean } | null }) => {
         setOwnerPlanType(data?.plan_type ?? "basic");
         setOwnerMachinesAddon(data?.machines_addon_active ?? false);
+        setIsBarAccount(data?.is_bar_account ?? false);
         setPlanLoading(false);
       });
   }, [ownerId]);
+
+  const handleEnableMachines = async () => {
+    if (!ownerId) return;
+    setEnablingMachines(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ machines_addon_active: true })
+      .eq("id", ownerId);
+    setEnablingMachines(false);
+    if (error) { toast.error("Failed to enable machines: " + error.message); return; }
+    setOwnerMachinesAddon(true);
+    setShowEnableConfirm(false);
+    toast.success("Machines enabled for this bar");
+  };
 
   const isPremium = ownerPlanType === "premium";
 
@@ -1792,7 +1811,70 @@ export default function MachinesPage() {
   }
 
   // Premium gate — basic plan users without machines add-on see an upgrade wall
+  // Chain bar sub-accounts without machines see a simple "Enable" button instead
   if (!isPremium && !ownerMachinesAddon) {
+    // ── Chain bar: one-tap enable (no billing needed, already on chain plan) ──
+    if (isChainOwner && isBarAccount) {
+      return (
+        <div className="py-6 space-y-6 max-w-lg mx-auto">
+          <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
+
+          <div className="rounded-3xl border border-amber-500/30 overflow-hidden"
+            style={{ background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)" }}>
+            <div className="px-6 pt-8 pb-6 text-center space-y-3">
+              <div className="h-16 w-16 rounded-2xl flex items-center justify-center mx-auto"
+                style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.4)" }}>
+                <Gamepad2 className="h-8 w-8" style={{ color: "var(--primary)" }} />
+              </div>
+              <h2 className="text-xl font-black text-white">Machines Tracker</h2>
+              <p className="text-sm text-white/50 mt-2 leading-relaxed">
+                This bar was created without machines. Enable it to start tracking payouts, income and profit.
+              </p>
+              <p className="text-xs font-black text-amber-400/80 mt-1">
+                ⚠ This cannot be undone — the bar will become Bar + Machines permanently.
+              </p>
+            </div>
+          </div>
+
+          {!showEnableConfirm ? (
+            <Button
+              onClick={() => setShowEnableConfirm(true)}
+              className="w-full h-14 text-base font-black gap-2"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              <Gamepad2 className="h-5 w-5" />
+              Enable Machines for this Bar
+            </Button>
+          ) : (
+            <div className="rounded-2xl border border-amber-500/40 p-5 space-y-4"
+              style={{ background: "rgba(251,146,60,0.06)" }}>
+              <p className="text-sm font-black text-amber-400 text-center">
+                Are you sure? This bar will permanently become Bar + Machines.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 font-black"
+                  onClick={() => setShowEnableConfirm(false)}
+                  disabled={enablingMachines}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 h-12 font-black bg-amber-500 hover:bg-amber-600 text-black"
+                  onClick={handleEnableMachines}
+                  disabled={enablingMachines}
+                >
+                  {enablingMachines ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, Enable"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Regular basic plan: show billing upgrade wall ──
     return (
       <div className="py-3 space-y-4">
         <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
@@ -1805,7 +1887,6 @@ export default function MachinesPage() {
               style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.4)" }}>
               <Gamepad2 className="h-8 w-8" style={{ color: "var(--primary)" }} />
             </div>
-            {/* Active badge */}
             <span className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider"
               style={{ background: "rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.9)", border: "1px solid rgba(251,146,60,0.35)" }}>
               Basic Plan — Active

@@ -134,7 +134,10 @@ export default function AppLayout() {
       const { data: { user } } = await supabase.auth.getUser();
       setOwnerEmail(user?.email ?? "");
       if (!profile?.id) return;
-      const ownerId = profile.role === "cashier" ? profile.parent_id : profile.id;
+      // For chain owners, check the active bar's machines status; otherwise check own profile
+      const ownerId = isChainOwner && activeBarId
+        ? activeBarId
+        : profile.role === "cashier" ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
         .select("plan_type, machines_addon_active").eq("id", ownerId).single();
@@ -143,7 +146,28 @@ export default function AppLayout() {
       setOwnerHasMachines(planType === "premium" || addonActive || user?.email === "renard.sankersingh@gmail.com");
     };
     load();
-  }, [profile?.id]);
+  }, [profile?.id, isChainOwner, activeBarId]);
+
+  // Realtime: re-check machines status when the active bar's profile updates
+  // (e.g. after enabling machines from within the machines page)
+  useEffect(() => {
+    if (!isChainOwner || !activeBarId) return;
+    const ch = supabase
+      .channel(`applayout-bar-profile-${activeBarId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${activeBarId}` },
+        async () => {
+          const { data } = await (supabase as any)
+            .from("profiles").select("machines_addon_active").eq("id", activeBarId).single();
+          if (data) {
+            setOwnerHasMachines((prev) => prev || !!data.machines_addon_active);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [isChainOwner, activeBarId]);
 
   if (loading || !session || !profile) {
     return (
@@ -291,18 +315,18 @@ export default function AppLayout() {
             {/* ── CASHIER MENU — full-width big-button grid + brown backdrop ── */}
             {menuOpen && isCashier && (
               <>
-                {/* Brown backdrop */}
+                {/* Fully opaque backdrop — hides bar content completely */}
                 <div
                   className="fixed inset-0 z-[99]"
-                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "rgba(120,60,20,0.65)" }}
+                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
                   onClick={() => setMenuOpen(false)}
                 />
                 <div
                   className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
                   style={{
                     top: "calc(44px + env(safe-area-inset-top, 0px))",
+                    bottom: 0,
                     background: "var(--gradient-card)",
-                    maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
                   }}
                 >
                   {/* Cashier name strip */}
@@ -395,20 +419,20 @@ export default function AppLayout() {
             {/* ── OWNER / ADMIN MENU — full-width panel + black backdrop ── */}
             {menuOpen && !isCashier && (
               <>
-                {/* Brown backdrop — covers everything below the menu, closes on tap */}
+                {/* Fully opaque backdrop — hides bar content completely */}
                 <div
                   className="fixed inset-0 z-[99]"
-                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "rgba(120,60,20,0.65)" }}
+                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
                   onClick={() => setMenuOpen(false)}
                 />
 
                 {/* Menu panel — full width, on top of backdrop */}
                 <div
-                  className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                  className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
                   style={{
                     top: "calc(44px + env(safe-area-inset-top, 0px))",
+                    bottom: 0,
                     background: "var(--gradient-card)",
-                    maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
                   }}
                 >
                   {/* Owner name */}
