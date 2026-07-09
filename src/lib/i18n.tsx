@@ -32,6 +32,7 @@ const ES: Record<string, string> = {
   "bar":              "Bar",
   "wallet":           "Billetera",
   "cashiers":         "Cajeros",
+  "switch_bar":       "Cambiar bar",
   "products":         "Productos",
   "machines":         "Máquinas",
   "credit":           "Crédito",
