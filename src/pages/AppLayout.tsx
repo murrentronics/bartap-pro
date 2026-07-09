@@ -330,7 +330,7 @@ export default function AppLayout() {
               <span className="text-sm font-black text-foreground">{profile.username}</span>
             </div>
             <div className="p-3 pb-[30vh]">
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {navItems.map((it) => {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;
@@ -384,7 +384,7 @@ export default function AppLayout() {
               {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
             </div>
             <div className="p-3 pb-[30vh]">
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {navItems.map((it) => {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;
