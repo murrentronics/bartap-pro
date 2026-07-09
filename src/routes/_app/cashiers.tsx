@@ -447,11 +447,13 @@ export default function CashiersPage() {
     setUsernameError(null);
     setBusy(true);
     try {
-      // Chain owners: pass the active bar's id so the cashier belongs to that bar, not the master
+      // Chain owners: pass the active bar's id so the cashier belongs to that bar, not the master.
+      // Use activeBarId alone — isChainOwner is async and may still be false on first render.
+      // activeBarId is only ever non-null for chain owners so this is safe.
       await create({
         username: u,
         password: p,
-        ...(isChainOwner && activeBarId ? { barOwnerId: activeBarId } : {}),
+        ...(activeBarId ? { barOwnerId: activeBarId } : {}),
       });
       setU(""); setP("");
       setTab("manage");

@@ -1880,11 +1880,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 // ─── Page Entry Point ─────────────────────────────────────────────────────────
 export default function WalletPage() {
   const { profile } = useAuth();
-  const { effectiveOwnerId } = useChain();
+  const { effectiveOwnerId, activeBar } = useChain();
   if (!profile) return null;
-  // For chain owners, show the wallet of the active bar sub-account
+  // For chain owners, use the active bar's id AND bar name so PDFs/queries are scoped to that bar
   const walletProfile = profile.role === "owner"
-    ? { ...profile, id: effectiveOwnerId(profile.id) }
+    ? { ...profile, id: effectiveOwnerId(profile.id), username: activeBar?.bar_name ?? profile.username }
     : profile;
   if (walletProfile.role === "owner") return <OwnerWallet profile={walletProfile} />;
   return <CashierWallet profile={walletProfile} />;
