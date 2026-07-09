@@ -314,8 +314,13 @@ export default function AppLayout() {
 
             {menuOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+6px)] w-64 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
-                style={{ background: "var(--gradient-card)", maxHeight: "calc(100dvh - 80px)" }}
+                className="fixed right-0 left-0 z-[100] overflow-y-auto"
+                style={{
+                  top: "calc(44px + env(safe-area-inset-top, 0px))",
+                  bottom: 0,
+                  background: "var(--gradient-card)",
+                  borderTop: "1px solid var(--border)",
+                }}
               >
                 {/* Owner / cashier name — small, at the top of the menu */}
                 <div className="px-5 py-3 border-b border-border/50">
@@ -386,7 +391,7 @@ export default function AppLayout() {
 
                 <button
                   onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                  className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                  className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50 pb-10"
                 >
                   <X className="h-6 w-6 shrink-0" />
                   {t("logout", "Logout")}
