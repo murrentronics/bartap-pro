@@ -279,7 +279,7 @@ export default function AppLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
       <header
-        className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
+        className="shrink-0 z-[101] bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
@@ -301,7 +301,7 @@ export default function AppLayout() {
             </Link>
           )}
 
-          {/* Hamburger — no username in header on mobile */}
+          {/* Hamburger */}
           <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -312,9 +312,16 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {menuOpen && (
+            {/* ── CASHIER MENU ── */}
+            {menuOpen && isCashier && (
+            <>
               <div
-                className="fixed right-0 left-0 z-[100] overflow-y-auto"
+                className="fixed inset-0 z-[99]"
+                style={{ background: "var(--background)" }}
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                className="fixed left-0 right-0 z-[100] overflow-y-auto"
                 style={{
                   top: "calc(44px + env(safe-area-inset-top, 0px))",
                   bottom: 0,
@@ -322,81 +329,250 @@ export default function AppLayout() {
                   borderTop: "1px solid var(--border)",
                 }}
               >
-                {/* Owner / cashier name — small, at the top of the menu */}
-                <div className="px-5 py-3 border-b border-border/50">
-                  <span className="text-xs font-semibold text-muted-foreground truncate block">{profile.username}</span>
-                  {isChainOwner && activeBar && (
-                    <span className="text-xs font-black text-primary truncate block mt-0.5">
-                      📍 {activeBar.bar_name}
-                    </span>
-                  )}
-                  {isChainOwner && !activeBar && (
-                    <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
-                      ⚠ No bar selected
-                    </span>
-                  )}
+                  <div className="px-4 py-3 border-b border-border/50">
+                    <span className="text-sm font-black text-foreground">{profile.username}</span>
                 </div>
 
-                {navItems.map((it) => {
-                  const active = loc.pathname.startsWith(it.to);
-                  const Icon = it.icon;
-                  return (
+                {/* Big button grid */}
+                <div className="p-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {navItems.map((it) => {
+                      const active = loc.pathname.startsWith(it.to);
+                      const Icon = it.icon;
+                      return (
+                        <Link
+                          key={it.to}
+                          to={it.to}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                          style={{
+                            background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
+                            borderColor: active ? "var(--primary)" : "var(--border)",
+                            boxShadow: active
+                              ? "0 6px 18px rgba(251,146,60,0.35)"
+                              : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          <div
+                            className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                            }}
+                          >
+                            <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
+                          </div>
+                          <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>
+                            {it.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+
+                    {/* Language button */}
                     <Link
-                      key={it.to}
-                      to={it.to}
-                      className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                        active ? "text-primary" : "text-foreground hover:bg-muted/50"
-                      }`}
+                      to={"/language" as "/"}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{
+                        background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)",
+                        borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
+                        boxShadow: loc.pathname === "/language"
+                          ? "0 6px 18px rgba(251,146,60,0.35)"
+                          : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
                     >
-                      <Icon className="h-6 w-6 shrink-0" />
-                      {it.label}
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}
+                      >
+                        <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
+                      </div>
+                      <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>
+                        {t("language", "Language")}
+                      </span>
                     </Link>
-                  );
-                })}
 
-                {/* Language — all users */}
-                <Link
-                  to={"/language" as "/"}
-                  className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                    loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <Globe className="h-6 w-6 shrink-0" />
-                  {t("language", "Language")}
-                </Link>
-
-                {/* Switch Bar — chain owners only */}
-                {isChainOwner && (
-                  <Link
-                    to={"/switch-bar" as "/"}
-                    className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                      loc.pathname === "/switch-bar" ? "text-primary" : "text-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    <GitBranch className="h-6 w-6 shrink-0" />
-                    Switch Bar
-                  </Link>
-                )}
-
-                {/* Factory Reset — owner only, before logout */}
-                {isOwner && (
-                  <Link
-                    to={"/factory-reset" as "/"}
-                    className="flex items-center gap-4 px-5 py-5 text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
-                  >
-                    <RotateCcw className="h-6 w-6 shrink-0" />
-                    {t("factory_reset", "Factory Reset")}
-                  </Link>
-                )}
-
-                <button
-                  onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                  className="w-full flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50 pb-10"
-                >
-                  <X className="h-6 w-6 shrink-0" />
-                  {t("logout", "Logout")}
-                </button>
+                    {/* Logout button */}
+                    <button
+                      onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "rgba(239,68,68,0.12)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}
+                      >
+                        <X className="h-6 w-6 text-destructive" />
+                      </div>
+                      <span className="text-xs font-black text-destructive text-center leading-tight">
+                        {t("logout", "Logout")}
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
+              </>
+            )}
+
+            {/* ── OWNER / ADMIN MENU — full-width panel + black backdrop ── */}
+            {menuOpen && !isCashier && (
+              <>
+                {/* Fully opaque backdrop — hides bar content completely */}
+                <div
+                  className="fixed inset-0 z-[99]"
+                  style={{ background: "var(--background)" }}
+                  onClick={() => setMenuOpen(false)}
+                />
+
+                {/* Menu panel — full width, on top of backdrop */}
+                <div
+                  className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
+                  style={{
+                    top: "calc(44px + env(safe-area-inset-top, 0px))",
+                    bottom: 0,
+                    background: "var(--gradient-card)",
+                  }}
+                >
+                  {/* Owner name */}
+                  <div className="px-5 py-3 border-b border-border/50">
+                    <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
+                    {isChainOwner && activeBar && (
+                      <span className="text-xs font-black text-primary truncate block mt-0.5">
+                        📍 {activeBar.bar_name}
+                      </span>
+                    )}
+                    {isChainOwner && !activeBar && (
+                      <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
+                        ⚠ No bar selected
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Big button grid — same style as cashier menu */}
+                  <div className="p-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+
+                      {navItems.map((it) => {
+                        const active = loc.pathname.startsWith(it.to);
+                        const Icon = it.icon;
+                        return (
+                          <Link
+                            key={it.to}
+                            to={it.to}
+                            onClick={() => setMenuOpen(false)}
+                            className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                            style={{
+                              background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
+                              borderColor: active ? "var(--primary)" : "var(--border)",
+                              boxShadow: active
+                                ? "0 6px 18px rgba(251,146,60,0.35)"
+                                : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            <div
+                              className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                              style={{
+                                background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                                boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                              }}
+                            >
+                              <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
+                            </div>
+                            <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>
+                              {it.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+
+                      {/* Language */}
+                      <Link
+                        to={"/language" as "/"}
+                        onClick={() => setMenuOpen(false)}
+                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                        style={{
+                          background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)",
+                          borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
+                          boxShadow: loc.pathname === "/language"
+                            ? "0 6px 18px rgba(251,146,60,0.35)"
+                            : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                          <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
+                        </div>
+                        <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>
+                          {t("language", "Language")}
+                        </span>
+                      </Link>
+
+                      {/* Switch Bar — chain owners only */}
+                      {isChainOwner && (
+                        <Link
+                          to={"/switch-bar" as "/"}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                          style={{
+                            background: loc.pathname === "/switch-bar" ? "var(--gradient-hero)" : "var(--gradient-card)",
+                            borderColor: loc.pathname === "/switch-bar" ? "var(--primary)" : "var(--border)",
+                            boxShadow: loc.pathname === "/switch-bar"
+                              ? "0 6px 18px rgba(251,146,60,0.35)"
+                              : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: loc.pathname === "/switch-bar" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                            <GitBranch className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`} />
+                          </div>
+                          <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>
+                            Switch Bar
+                          </span>
+                        </Link>
+                      )}
+
+                      {/* Factory Reset — owner only */}
+                      {isOwner && (
+                        <Link
+                          to={"/factory-reset" as "/"}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                          style={{
+                            background: loc.pathname === "/factory-reset" ? "var(--gradient-hero)" : "var(--gradient-card)",
+                            borderColor: loc.pathname === "/factory-reset" ? "var(--primary)" : "var(--border)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                            <RotateCcw className="h-6 w-6 text-primary" />
+                          </div>
+                          <span className="text-xs font-black text-center leading-tight text-foreground">
+                            {t("factory_reset", "Factory Reset")}
+                          </span>
+                        </Link>
+                      )}
+
+                      {/* Logout */}
+                      <button
+                        onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
+                        style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+                      >
+                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: "rgba(239,68,68,0.12)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                          <X className="h-6 w-6 text-destructive" />
+                        </div>
+                        <span className="text-xs font-black text-destructive text-center leading-tight">
+                          {t("logout", "Logout")}
+                        </span>
+                      </button>
+
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
