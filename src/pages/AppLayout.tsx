@@ -288,19 +288,26 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {/* ── CASHIER MENU — same absolute position as owner menu, big-button grid ── */}
+            {/* ── CASHIER MENU — full-width big-button grid + brown backdrop ── */}
             {menuOpen && isCashier && (
-              <div
-                className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
-                style={{
-                  top: "calc(44px + env(safe-area-inset-top, 0px))",
-                  background: "var(--gradient-card)",
-                  maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
-                }}
-              >
-                {/* Cashier name strip */}
-                <div className="px-4 py-3 border-b border-border/50">
-                  <span className="text-sm font-black text-foreground">{profile.username}</span>
+              <>
+                {/* Brown backdrop */}
+                <div
+                  className="fixed inset-0 z-[99]"
+                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "rgba(120,60,20,0.65)" }}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                  style={{
+                    top: "calc(44px + env(safe-area-inset-top, 0px))",
+                    background: "var(--gradient-card)",
+                    maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
+                  }}
+                >
+                  {/* Cashier name strip */}
+                  <div className="px-4 py-3 border-b border-border/50">
+                    <span className="text-sm font-black text-foreground">{profile.username}</span>
                 </div>
 
                 {/* Big button grid */}
@@ -382,15 +389,16 @@ export default function AppLayout() {
                   </div>
                 </div>
               </div>
+              </>
             )}
 
             {/* ── OWNER / ADMIN MENU — full-width panel + black backdrop ── */}
             {menuOpen && !isCashier && (
               <>
-                {/* Black backdrop — covers everything below the menu, closes on tap */}
+                {/* Brown backdrop — covers everything below the menu, closes on tap */}
                 <div
-                  className="fixed inset-0 z-[99] bg-black/60"
-                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))" }}
+                  className="fixed inset-0 z-[99]"
+                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "rgba(120,60,20,0.65)" }}
                   onClick={() => setMenuOpen(false)}
                 />
 

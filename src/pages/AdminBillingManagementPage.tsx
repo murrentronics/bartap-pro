@@ -154,7 +154,7 @@ export default function AdminBillingManagementPage() {
             billing_status: "active",
             plan_type: "chain",
             chain_addon_active: true,
-            chain_bar_count: 0,
+            chain_bar_count: 1,  // their existing bar is automatically bar 1
             subscription_start_date: startDate.toISOString(),
             subscription_end_date: chainEnd.toISOString(),
             music_addon: true,

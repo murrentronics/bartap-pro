@@ -9,9 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 export const Route = createFileRoute("/_app/create-bar")({
   component: CreateBarPage,
 });
@@ -56,19 +53,29 @@ export default function CreateBarPage() {
     if (!profile?.id || !canCreate) return;
     setBusy(true);
     try {
-      const { data, error } = await sb.rpc("create_bar_account", {
-        p_owner_id:   profile.id,
-        p_name:       barName.trim(),
-        p_location:   barLocation.trim(),
-        p_has_machines: hasMachines,
+      // Use edge function — RPC can't create auth.users without service role
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-bar`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+        },
+        body: JSON.stringify({
+          p_name:         barName.trim(),
+          p_location:     barLocation.trim(),
+          p_has_machines: hasMachines,
+        }),
       });
-      if (error) {
-        toast.error(error.message ?? "Failed to create bar");
+      const data = await res.json() as { bar_id?: string; error?: string };
+      if (!res.ok || data.error) {
+        toast.error(data.error ?? "Failed to create bar");
         return;
       }
-      // Refresh the bar list, then switch to the new bar
       await refreshBars();
-      if (data?.bar_id) {
+      if (data.bar_id) {
         setActiveBarId(data.bar_id);
         toast.success(`"${barName.trim()}" created — switched to this bar`);
         nav({ to: "/register" });
