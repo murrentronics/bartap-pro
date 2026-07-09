@@ -399,7 +399,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     setPaying(true);
     const { error } = await supabase.rpc("record_credit_payment", {
       p_credit_account_id: account.id,
-      p_cashier_id: ownerId,
+      p_cashier_id: profile.id,
       p_amount: amt,
     });
     setPaying(false);

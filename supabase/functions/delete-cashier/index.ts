@@ -110,6 +110,14 @@ serve(async (req) => {
       }
     }
 
+    // Reassign credit_transactions cashier_id to the bar owner before deletion
+    // (credit_transactions.cashier_id has NOT NULL constraint — can't cascade to null)
+    const parentId = cashierProfile.parent_id;
+    await supabaseClient
+      .from("credit_transactions")
+      .update({ cashier_id: parentId })
+      .eq("cashier_id", cashier_id);
+
     // Delete the cashier profile (cascade will handle related records)
     const { error: deleteProfileError } = await supabaseClient
       .from("profiles")
