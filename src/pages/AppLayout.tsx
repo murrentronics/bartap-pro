@@ -288,11 +288,15 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {/* ── CASHIER MENU — fullscreen big-button grid overlay ── */}
+            {/* ── CASHIER MENU — same absolute position as owner menu, big-button grid ── */}
             {menuOpen && isCashier && (
               <div
-                className="fixed inset-x-0 bottom-0 z-[300] overflow-y-auto"
-                style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
+                className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                style={{
+                  top: "calc(44px + env(safe-area-inset-top, 0px))",
+                  background: "var(--gradient-card)",
+                  maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
+                }}
               >
                 {/* Cashier name strip */}
                 <div className="px-4 py-3 border-b border-border/50">
@@ -300,8 +304,8 @@ export default function AppLayout() {
                 </div>
 
                 {/* Big button grid */}
-                <div className="p-4">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                <div className="p-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {navItems.map((it) => {
                       const active = loc.pathname.startsWith(it.to);
                       const Icon = it.icon;
@@ -310,29 +314,25 @@ export default function AppLayout() {
                           key={it.to}
                           to={it.to}
                           onClick={() => setMenuOpen(false)}
-                          className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 p-6 active:scale-95 transition-transform select-none"
+                          className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                           style={{
-                            background: active
-                              ? "var(--gradient-hero)"
-                              : "var(--gradient-card)",
+                            background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
                             borderColor: active ? "var(--primary)" : "var(--border)",
                             boxShadow: active
-                              ? "0 8px 24px rgba(251,146,60,0.35)"
-                              : "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                              ? "0 6px 18px rgba(251,146,60,0.35)"
+                              : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
                           }}
                         >
                           <div
-                            className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
+                            className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
                             style={{
-                              background: active
-                                ? "rgba(255,255,255,0.20)"
-                                : "rgba(255,255,255,0.06)",
-                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
+                              background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
                             }}
                           >
-                            <Icon className={`h-8 w-8 ${active ? "text-white" : "text-primary"}`} />
+                            <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
                           </div>
-                          <span className={`text-sm font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>
+                          <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>
                             {it.label}
                           </span>
                         </Link>
@@ -343,25 +343,22 @@ export default function AppLayout() {
                     <Link
                       to={"/language" as "/"}
                       onClick={() => setMenuOpen(false)}
-                      className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 p-6 active:scale-95 transition-transform select-none"
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)",
                         borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
                         boxShadow: loc.pathname === "/language"
-                          ? "0 8px 24px rgba(251,146,60,0.35)"
-                          : "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                          ? "0 6px 18px rgba(251,146,60,0.35)"
+                          : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
                       }}
                     >
                       <div
-                        className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
-                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
-                        }}
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}
                       >
-                        <Globe className={`h-8 w-8 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
+                        <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
                       </div>
-                      <span className={`text-sm font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>
+                      <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>
                         {t("language", "Language")}
                       </span>
                     </Link>
@@ -369,22 +366,16 @@ export default function AppLayout() {
                     {/* Logout button */}
                     <button
                       onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                      className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-destructive/40 p-6 active:scale-95 transition-transform select-none"
-                      style={{
-                        background: "rgba(239,68,68,0.08)",
-                        boxShadow: "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
-                      }}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
                     >
                       <div
-                        className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: "rgba(239,68,68,0.12)",
-                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
-                        }}
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: "rgba(239,68,68,0.12)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}
                       >
-                        <X className="h-8 w-8 text-destructive" />
+                        <X className="h-6 w-6 text-destructive" />
                       </div>
-                      <span className="text-sm font-black text-destructive text-center leading-tight">
+                      <span className="text-xs font-black text-destructive text-center leading-tight">
                         {t("logout", "Logout")}
                       </span>
                     </button>
