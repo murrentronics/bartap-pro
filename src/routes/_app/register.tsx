@@ -33,6 +33,10 @@ export default function RegisterPage() {
   const [creditOpen, setCreditOpen] = useState(false);
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
+  // cashierId = the actual person making the sale:
+  // - chain owner acting as a bar → use the bar's id (ownerId) so it shows as bar owner sale, not master
+  // - regular owner or cashier → use their own profile.id
+  const cashierId = (profile?.role === "owner" && ownerId !== profile.id) ? ownerId : (profile?.id ?? "");
 
   // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);
@@ -367,7 +371,7 @@ export default function RegisterPage() {
   const handleFinishPack = async (packId: string) => {
     if (!profile) return;
     setPackBusy(true);
-    const { error } = await supabase.rpc("finish_pack", { p_pack_id: packId, p_cashier_id: ownerId });
+    const { error } = await supabase.rpc("finish_pack", { p_pack_id: packId, p_cashier_id: cashierId });
     setPackBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Pack marked empty — revenue recorded");
@@ -504,7 +508,7 @@ export default function RegisterPage() {
     setBottleBusy(true);
     const { error } = await supabase.rpc("finish_bottle", {
       p_bottle_id:  bottleId,
-      p_cashier_id: ownerId,
+      p_cashier_id: cashierId,
     });
     setBottleBusy(false);
     if (error) { toast.error(error.message); return; }
@@ -1538,7 +1542,7 @@ function CashOverlay({
     // ownerId is already correctly set at component level via effectiveOwnerId
     // 1. Insert the order
     const { error } = await supabase.from("orders").insert({
-      owner_id: ownerId, cashier_id: profile.id,
+      owner_id: ownerId, cashier_id: cashierId,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       total, paid: Number(paid), change_given: change,
     });
@@ -1851,7 +1855,7 @@ function CreditSaleOverlay({
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: account.id,
-      p_cashier_id: profile.id,
+      p_cashier_id: cashierId,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
@@ -1885,7 +1889,7 @@ function CreditSaleOverlay({
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
-      p_cashier_id: profile.id,
+      p_cashier_id: cashierId,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
