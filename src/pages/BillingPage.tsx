@@ -478,6 +478,47 @@ export default function BillingPage() {
                   )}
                 </>
               )} {/* end !isChain */}
+
+              {/* ── Upgrade to Chain — shown to all active non-chain, non-special owners ── */}
+              {!isChain && !isSpecial && !pendingPayment && chainPlan && (
+                <div
+                  className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative"
+                  style={{ background: "linear-gradient(135deg, rgba(234,88,12,0.08) 0%, rgba(245,158,11,0.06) 100%)" }}
+                >
+                  {/* Multi-bar badge */}
+                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Upgrade
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                      <GitBranch className="h-4 w-4 text-orange-700" />
+                    </div>
+                    <div>
+                      <p className="font-black text-gray-900 text-sm">Chain of Bars Plan</p>
+                      <p className="text-xs text-gray-500">Manage up to 10 bars from one login</p>
+                    </div>
+                  </div>
+                  <p className="text-2xl font-black text-orange-700 mb-1">
+                    ${chainPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT / year</span>
+                  </p>
+                  <ul className="space-y-1 mb-4">
+                    {["Up to 10 fully independent bars", "Per-bar items, wallet & cashiers", "One-click bar switching"].map(f => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                        <CheckCircle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => { setSelectedPlan(chainPlan); setStep("addons"); }}
+                    className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                    style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                  >
+                    Upgrade to Chain — ${chainPlan.amount.toFixed(0)} TT/yr
+                  </button>
+                </div>
+              )}
+
             </div>
           )} {/* end hasActive */}
 
