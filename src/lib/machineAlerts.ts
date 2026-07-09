@@ -19,6 +19,7 @@
 import { Capacitor } from "@capacitor/core";
 
 const STORAGE_KEY = "machine_alert_settings";
+const storageKey = (barId: string) => `machine_alert_settings_${barId}`;
 
 export type AlertSettings = {
   enabled: boolean;
@@ -27,30 +28,43 @@ export type AlertSettings = {
 
 export const THRESHOLD_OPTIONS = [500, 1000, 1500, 2000, 3000, 5000, 10000];
 
-export function loadAlertSettings(): AlertSettings {
+/** Load alert settings for a specific bar.
+ *  Falls back to bar-1 (legacy key) settings so new bars inherit bar 1's config. */
+export function loadAlertSettings(barId?: string): AlertSettings {
   try {
+    // If a barId is provided, try bar-specific key first
+    if (barId) {
+      const barRaw = localStorage.getItem(storageKey(barId));
+      if (barRaw) return JSON.parse(barRaw) as AlertSettings;
+    }
+    // Fall back to legacy/bar-1 key
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as AlertSettings;
   } catch { /* ignore */ }
   return { enabled: false, threshold: 1000 };
 }
 
-export function saveAlertSettings(settings: AlertSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+export function saveAlertSettings(settings: AlertSettings, barId?: string): void {
+  if (barId) {
+    localStorage.setItem(storageKey(barId), JSON.stringify(settings));
+  } else {
+    // Legacy / bar-1 key
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }
 }
 
 /** Sync alert settings to Supabase so the edge function can read them server-side. */
 export async function syncAlertSettingsToServer(
-  ownerId: string,
+  barId: string,
   settings: AlertSettings
 ): Promise<void> {
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     await (supabase as any).from("machine_alert_settings").upsert(
       {
-        owner_id: ownerId,
-        enabled: settings.enabled,
-        threshold: settings.threshold,
+        owner_id:   barId,
+        enabled:    settings.enabled,
+        threshold:  settings.threshold,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "owner_id" }
@@ -79,6 +93,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 /** Key used to tell MachinesPage which machine to auto-open after an alert tap */
 export const ALERT_OPEN_MACHINE_KEY = "payout_alert_open_machine";
+export const ALERT_OPEN_BAR_KEY     = "payout_alert_open_bar";
 
 /**
  * Register a one-time listener so tapping a payout alert notification
@@ -99,6 +114,9 @@ export async function registerPayoutAlertTapHandler(
           if (extra.machineName) {
             localStorage.setItem(ALERT_OPEN_MACHINE_KEY, String(extra.machineName));
           }
+          if (extra.barId) {
+            localStorage.setItem(ALERT_OPEN_BAR_KEY, String(extra.barId));
+          }
           navigate("/machines");
         }
       }
@@ -116,17 +134,20 @@ export async function checkAndFirePayoutAlert(
   amount: number,
   machineName: string,
   settings: AlertSettings,
-  navigate?: (to: string) => void
+  navigate?: (to: string) => void,
+  barId?: string,
+  barName?: string,
 ): Promise<void> {
   if (!settings.enabled) return;
   if (amount < settings.threshold) return;
 
-  const title = `⚠️ Payout Alert — ${machineName}`;
+  const barLabel = barName ? ` — ${barName}` : "";
+  const title = `⚠️ Payout Alert${barLabel} — ${machineName}`;
   const body  = `$${amount.toFixed(2)} payout — meets your $${settings.threshold.toLocaleString()} threshold`;
 
   // ── Fire in-app modal via custom DOM event (handled by AppLayout) ─────────
   window.dispatchEvent(new CustomEvent("payoutAlert", {
-    detail: { title, body, machineName, navigate }
+    detail: { title, body, machineName, barId, navigate }
   }));
 
   if (Capacitor.isNativePlatform()) {
@@ -149,7 +170,7 @@ export async function checkAndFirePayoutAlert(
           sound: "default",
           actionTypeId: "",
           // extra carries the deep-link type so the tap handler can route correctly
-          extra: { type: "payout_alert", machineName },
+          extra: { type: "payout_alert", machineName, barId },
         }],
       });
     } catch (e) {

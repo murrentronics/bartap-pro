@@ -88,12 +88,12 @@ export default function AppLayout() {
   usePushNotifications(profile?.role === "owner" ? profile.id : null);
 
   // ── In-app payout alert modal ─────────────────────────────────────────────
-  const [payoutAlert, setPayoutAlert] = useState<{ title: string; body: string; machineName: string; navigate?: (to: string) => void } | null>(null);
+  const [payoutAlert, setPayoutAlert] = useState<{ title: string; body: string; machineName: string; barId?: string; navigate?: (to: string) => void } | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const { title, body, machineName, navigate: navFn } = (e as CustomEvent).detail;
-      setPayoutAlert({ title, body, machineName, navigate: navFn });
+      const { title, body, machineName, barId, navigate: navFn } = (e as CustomEvent).detail;
+      setPayoutAlert({ title, body, machineName, barId, navigate: navFn });
       // Play alert sound using Web Audio API
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -519,6 +519,7 @@ export default function AppLayout() {
                     setPayoutAlert(null);
                     localStorage.setItem("payout_alert_open_machine", payoutAlert.machineName);
                     localStorage.setItem("payout_alert_open_tab", "history");
+                    if (payoutAlert.barId) localStorage.setItem("payout_alert_open_bar", payoutAlert.barId);
                     nav("/machines");
                   }}
                   className="w-full h-12 rounded-2xl font-black text-sm text-white active:scale-95 transition"

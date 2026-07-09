@@ -20,7 +20,7 @@ import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/
 import {
   loadAlertSettings, saveAlertSettings, syncAlertSettingsToServer, requestNotificationPermission,
   checkAndFirePayoutAlert, registerPayoutAlertTapHandler, THRESHOLD_OPTIONS, type AlertSettings,
-  ALERT_OPEN_MACHINE_KEY,
+  ALERT_OPEN_MACHINE_KEY, ALERT_OPEN_BAR_KEY,
 } from "@/lib/machineAlerts";
 
 export const Route = createFileRoute("/_app/machines")({
@@ -483,8 +483,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
     // Fire local payout alert only on the owner's device — not cashier devices
     if (tab === "payout" && profile.role === "owner") {
-      const alerts = loadAlertSettings();
-      await checkAndFirePayoutAlert(val, machine.name, alerts, (to) => navigate({ to }));
+      const alerts = loadAlertSettings(ownerId);
+      await checkAndFirePayoutAlert(val, machine.name, alerts, (to) => navigate({ to }), ownerId);
     }
 
     setAmount("");
@@ -653,7 +653,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden"
+    <div className="fixed inset-0 z-[150] flex flex-col overflow-hidden"
       style={{ background: "var(--background)" }}>
       {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-3 border-b border-border bg-background/95 backdrop-blur z-10"
@@ -1622,7 +1622,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 
 export default function MachinesPage() {
   const { profile } = useAuth();
-  const { effectiveOwnerId, isChainOwner, activeBarId } = useChain();
+  const { effectiveOwnerId, isChainOwner, activeBarId, setActiveBarId } = useChain();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -1647,10 +1647,16 @@ export default function MachinesPage() {
   // Auto-open a specific machine if the user arrived via a payout alert tap or toast action
   useEffect(() => {
     const targetName = localStorage.getItem(ALERT_OPEN_MACHINE_KEY);
+    const targetBar  = localStorage.getItem(ALERT_OPEN_BAR_KEY);
     const targetTab  = localStorage.getItem("payout_alert_open_tab") as "history" | null;
     if (!targetName || machines.length === 0) return;
     localStorage.removeItem(ALERT_OPEN_MACHINE_KEY);
+    localStorage.removeItem(ALERT_OPEN_BAR_KEY);
     localStorage.removeItem("payout_alert_open_tab");
+    // Switch to the bar the alert came from if needed
+    if (targetBar && targetBar !== ownerId) {
+      setActiveBarId(targetBar);
+    }
     const match = machines.find(m => m.name === targetName);
     if (match) {
       const screenNum = machines.filter(m => m.name <= match.name).length;
@@ -1660,9 +1666,14 @@ export default function MachinesPage() {
     }
   }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Payout alert settings (owner only)
+  // Payout alert settings — scoped per bar so each bar can have its own threshold
   const [showAlertsModal, setShowAlertsModal] = useState(false);
-  const [alertSettings, setAlertSettings] = useState<AlertSettings>(() => loadAlertSettings());
+  const [alertSettings, setAlertSettings] = useState<AlertSettings>(() => loadAlertSettings(ownerId));
+
+  // Reload settings when active bar changes
+  useEffect(() => {
+    setAlertSettings(loadAlertSettings(ownerId));
+  }, [ownerId]);
 
   const handleSaveAlerts = async (next: AlertSettings) => {
     if (next.enabled && !alertSettings.enabled) {
@@ -1672,9 +1683,9 @@ export default function MachinesPage() {
         return;
       }
     }
-    saveAlertSettings(next);
+    saveAlertSettings(next, ownerId);
     setAlertSettings(next);
-    // Sync to Supabase so the edge function can read it server-side
+    // Sync to Supabase keyed by barId so edge function reads correct settings
     await syncAlertSettingsToServer(ownerId, next);
     toast.success(next.enabled ? `Alert set — $${next.threshold.toLocaleString()} TT threshold` : "Alerts disabled");
     setShowAlertsModal(false);

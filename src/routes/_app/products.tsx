@@ -629,7 +629,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     <div className="fixed inset-0 z-[70] flex flex-col bg-background" onClick={onClose}>
       <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-4 pb-3 border-b border-border shrink-0"
+          style={{ paddingTop: "calc(44px + env(safe-area-inset-top, 0px) + 0.75rem)" }}>
           <div className="flex items-center gap-2">
             <ListChecks className="h-5 w-5" style={{ color: "var(--primary)" }} />
             <span className="text-lg font-black">Bulk Edit Stock</span>
