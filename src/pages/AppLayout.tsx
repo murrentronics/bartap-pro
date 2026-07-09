@@ -301,7 +301,7 @@ export default function AppLayout() {
             </Link>
           )}
 
-          {/* Hamburger */}
+          {/* Hamburger — no username in header on mobile */}
           <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -312,29 +312,30 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {/* ── CASHIER MENU ── */}
+            {/* ── CASHIER MENU — full-width big-button grid + brown backdrop ── */}
             {menuOpen && isCashier && (
-            <>
-              <div
-                className="fixed inset-0 z-[99]"
-                style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
-                onClick={() => setMenuOpen(false)}
-              />
-              <div
-                className="fixed left-0 right-0 z-[100] overflow-y-auto"
-                style={{
-                  top: "calc(44px + env(safe-area-inset-top, 0px))",
-                  bottom: 0,
-                  background: "var(--gradient-card)",
-                  borderTop: "1px solid var(--border)",
-                }}
-              >
+              <>
+                {/* Fully opaque backdrop — hides bar content completely */}
+                <div
+                  className="fixed inset-0 z-[99]"
+                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                  style={{
+                    top: "calc(44px + env(safe-area-inset-top, 0px))",
+                    bottom: 0,
+                    background: "var(--gradient-card)",
+                  }}
+                >
+                  {/* Cashier name strip */}
                   <div className="px-4 py-3 border-b border-border/50">
                     <span className="text-sm font-black text-foreground">{profile.username}</span>
                 </div>
 
                 {/* Big button grid */}
-                <div className="p-3">
+                <div className="p-3 pb-[30vh]">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {navItems.map((it) => {
                       const active = loc.pathname.startsWith(it.to);
@@ -424,6 +425,7 @@ export default function AppLayout() {
                   style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
                   onClick={() => setMenuOpen(false)}
                 />
+
                 {/* Menu panel — full width, on top of backdrop */}
                 <div
                   className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
@@ -449,7 +451,7 @@ export default function AppLayout() {
                   </div>
 
                   {/* Big button grid — same style as cashier menu */}
-                  <div className="p-3">
+                  <div className="p-3 pb-[30vh]">
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
 
                       {navItems.map((it) => {
@@ -577,7 +579,7 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none", isolation: "isolate" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <Outlet />
       </main>
 
