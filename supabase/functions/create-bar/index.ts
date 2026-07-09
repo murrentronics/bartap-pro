@@ -113,7 +113,7 @@ serve(async (req) => {
     if (p_copy_items === true) {
       const { data: sourceProducts, error: copyFetchError } = await supabase
         .from("products")
-        .select("name, price, category, image_url, stock_qty, cost_price, sort_order")
+        .select("name, price, category, image_url, cost_price, sort_order")
         .eq("owner_id", user.id);
 
       if (copyFetchError) {
@@ -126,7 +126,7 @@ serve(async (req) => {
           price:      p.price,
           category:   p.category,
           image_url:  p.image_url,
-          stock_qty:  p.stock_qty ?? 0,
+          stock_qty:  0,
           cost_price: p.cost_price ?? 0,
           sort_order: p.sort_order ?? 0,
           owner_id:   barId,
