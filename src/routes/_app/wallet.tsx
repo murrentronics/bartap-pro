@@ -1262,7 +1262,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       // Fetch ALL wallet txs (no range limit)
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
-        .in("type", ["sale", "transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
+        .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setAllTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
