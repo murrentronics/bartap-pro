@@ -322,7 +322,10 @@ export default function AppLayout() {
       {menuOpen && isCashier && (
         <>
           <div className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}>
+            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <div className="px-4 py-3 border-b border-border/50">
               <span className="text-sm font-black text-foreground">{profile.username}</span>
             </div>
@@ -371,7 +374,10 @@ export default function AppLayout() {
       {menuOpen && !isCashier && (
         <>
           <div className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}>
+            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <div className="px-5 py-3 border-b border-border/50">
               <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
               {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
