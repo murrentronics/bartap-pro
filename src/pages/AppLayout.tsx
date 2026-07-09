@@ -334,7 +334,7 @@ export default function AppLayout() {
                 </div>
 
                 {/* Big button grid */}
-                <div className="p-3">
+                <div className="p-3 pb-[30vh]">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {navItems.map((it) => {
                       const active = loc.pathname.startsWith(it.to);
@@ -450,7 +450,7 @@ export default function AppLayout() {
                   </div>
 
                   {/* Big button grid — same style as cashier menu */}
-                  <div className="p-3">
+                  <div className="p-3 pb-[30vh]">
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
 
                       {navItems.map((it) => {
