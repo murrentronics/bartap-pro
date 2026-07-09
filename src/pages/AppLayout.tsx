@@ -291,23 +291,17 @@ export default function AppLayout() {
             {/* ── CASHIER MENU — fullscreen big-button grid overlay ── */}
             {menuOpen && isCashier && (
               <div
-                className="fixed inset-0 z-[100] flex flex-col"
+                className="fixed inset-x-0 bottom-0 z-[300] flex flex-col overflow-y-auto"
                 style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
               >
                 {/* Cashier name strip */}
-                <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between shrink-0">
+                <div className="px-4 py-3 border-b border-border/50 shrink-0">
                   <span className="text-sm font-black text-foreground">{profile.username}</span>
-                  <button
-                    onClick={() => setMenuOpen(false)}
-                    className="h-8 w-8 rounded-full flex items-center justify-center bg-muted active:scale-90 transition"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
                 </div>
 
                 {/* Big button grid */}
                 <div className="flex-1 overflow-y-auto p-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
                     {navItems.map((it) => {
                       const active = loc.pathname.startsWith(it.to);
                       const Icon = it.icon;
