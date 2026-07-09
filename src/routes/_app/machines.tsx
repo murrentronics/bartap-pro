@@ -425,7 +425,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
     // Block payout if the entered amount exceeds the remaining float
-    if (tab === "payout" && remainingFloat !== null && val > remainingFloat) {
+    if (tab === "payout" && remainingFloat !== null && Math.round(val * 100) / 100 > Math.round(remainingFloat * 100) / 100) {
       toast.error(`Payout $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
       return;
     }
@@ -653,7 +653,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex flex-col overflow-hidden"
+    <div className="fixed inset-0 z-[9999] flex flex-col overflow-hidden"
       style={{ background: "var(--background)" }}>
       {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-3 border-b border-border bg-background/95 backdrop-blur z-10"
@@ -834,8 +834,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 )}
                 {/* Save Payout button — right */}
                 {(() => {
-                  const enteredVal = parseFloat(amount) || 0;
-                  const overFloat = remainingFloat !== null && enteredVal > remainingFloat && enteredVal > 0;
+                  const enteredVal = Math.round((parseFloat(amount) || 0) * 100) / 100;
+                  const overFloat = remainingFloat !== null && enteredVal > 0 && enteredVal > Math.round(remainingFloat * 100) / 100;
                   return (
                     <Button onClick={handleSave} disabled={busy || !amount || overFloat}
                       className="flex-1 h-14 font-black text-base rounded-2xl"

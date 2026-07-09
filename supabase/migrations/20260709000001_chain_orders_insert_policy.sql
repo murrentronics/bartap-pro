@@ -137,8 +137,19 @@ CREATE POLICY "Chain owner manages sort order"
   USING (public.is_owner_in_scope(owner_id))
   WITH CHECK (public.is_owner_in_scope(owner_id));
 
--- ── specials ─────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "Chain owner manages specials" ON public.specials;
+-- ── profiles — allow chain owner to see/manage cashiers under their bar sub-accounts ──
+DROP POLICY IF EXISTS "Chain owner views bar cashiers" ON public.profiles;
+CREATE POLICY "Chain owner views bar cashiers"
+  ON public.profiles FOR SELECT
+  USING (
+    -- already covered: id = auth.uid(), parent_id = auth.uid(), get_owner_id(auth.uid())
+    -- new: cashiers whose parent is one of the chain owner's bar sub-accounts
+    parent_id IN (
+      SELECT id FROM public.profiles
+      WHERE parent_id = auth.uid()
+        AND is_bar_account = true
+    )
+  );
 CREATE POLICY "Chain owner manages specials"
   ON public.specials FOR ALL
   USING (public.is_owner_in_scope(owner_id))
