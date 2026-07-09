@@ -352,6 +352,8 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
   onEdit: (a: CreditAccount) => void;
 }) {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
+  const ownerId = effectiveOwnerId(profile?.role === "owner" ? (profile?.id ?? "") : (profile?.parent_id ?? ""));
   const ownerName = profile?.username ?? "Bar";
   const [expanded, setExpanded]     = useState<string | null>(null);
   const [txs, setTxs]               = useState<CreditTx[]>([]);
@@ -397,7 +399,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     setPaying(true);
     const { error } = await supabase.rpc("record_credit_payment", {
       p_credit_account_id: account.id,
-      p_cashier_id: profile.id,
+      p_cashier_id: ownerId,
       p_amount: amt,
     });
     setPaying(false);

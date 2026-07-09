@@ -298,6 +298,7 @@ function CreditPage() {
       {payAccount && (
         <PaymentOverlay
           account={payAccount}
+          ownerId={ownerId!}
           onClose={() => setPayAccount(null)}
           onDone={handlePaymentDone}
         />
@@ -767,10 +768,12 @@ function CreateTab({
 // ── Payment Overlay ────────────────────────────────────────────────────────────
 function PaymentOverlay({
   account,
+  ownerId,
   onClose,
   onDone,
 }: {
   account: CreditAccount;
+  ownerId: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -848,7 +851,7 @@ function PaymentOverlay({
     setBusy(true);
     const { error } = await supabase.rpc("record_credit_payment", {
       p_credit_account_id: account.id,
-      p_cashier_id: profile.id,
+      p_cashier_id: ownerId,
       p_amount: amountNum,
     });
     setBusy(false);
