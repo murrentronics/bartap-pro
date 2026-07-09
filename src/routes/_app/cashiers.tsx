@@ -68,7 +68,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
         .from("wallet_transactions")
         .select("*")
         .eq("profile_id", cashier.id)
-        .eq("type", "transfer_out")
+        .in("type", ["sale", "transfer_out", "credit_charge", "credit_payment"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -109,7 +109,12 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
       const orders = monthRecords.filter((r) => r.kind === "order");
       const txs    = monthRecords.filter((r) => r.kind === "tx");
       const totalSales   = orders.reduce((s, r) => s + Number((r.data as Order).total), 0);
-      const totalCleared = txs.reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
+      const totalCleared = txs
+        .filter((r) => (r.data as WalletTx).type === "transfer_out")
+        .reduce((s, r) => s + Math.abs(Number((r.data as WalletTx).amount)), 0);
+      const totalCreditPayments = txs
+        .filter((r) => (r.data as WalletTx).type === "credit_payment" && Number((r.data as WalletTx).amount) > 0)
+        .reduce((s, r) => s + Number((r.data as WalletTx).amount), 0);
       const orderCount   = orders.length;
 
       // ── Cashier sub-line ──────────────────────────────────────────────────
@@ -137,8 +142,8 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
       const cols = [
         { label: "Total Orders",    value: String(orderCount) },
         { label: "Total Sales",     value: "$" + totalSales.toFixed(2) },
-        { label: "Total Cleared",   value: "$" + totalCleared.toFixed(2) },
-        { label: "Net Outstanding", value: "$" + (totalSales - totalCleared).toFixed(2) },
+        { label: "Credit Collected", value: "$" + totalCreditPayments.toFixed(2) },
+        { label: "Net Outstanding", value: "$" + (totalSales + totalCreditPayments - totalCleared).toFixed(2) },
       ];
       const colW = boxW / cols.length;
       cols.forEach((col, i) => {
@@ -320,17 +325,47 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                         {monthRecords.map((rec) => {
                           if (rec.kind === "tx") {
                             const tx = rec.data;
-                            return (
-                              <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-green-500/5">
-                                <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                                <div className="flex-1 text-xs text-green-400">
-                                  {tx.note ?? "Cleared to owner"} · {new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
+                            const isTransferOut = tx.type === "transfer_out";
+                            const isCreditPayment = tx.type === "credit_payment";
+                            const isCreditCharge = tx.type === "credit_charge";
+                            if (isTransferOut) {
+                              return (
+                                <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-green-500/5">
+                                  <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                                  <div className="flex-1 text-xs text-green-400">
+                                    {tx.note ?? "Cleared to owner"} · {new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
+                                  </div>
+                                  <span className="font-black text-green-400 text-sm">
+                                    -${Math.abs(Number(tx.amount)).toFixed(2)}
+                                  </span>
                                 </div>
-                                <span className="font-black text-green-400 text-sm">
-                                  -${Math.abs(Number(tx.amount)).toFixed(2)}
-                                </span>
-                              </div>
-                            );
+                              );
+                            }
+                            if (isCreditPayment) {
+                              return (
+                                <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-blue-500/5">
+                                  <div className="h-3.5 w-3.5 shrink-0 text-blue-400 font-black text-xs flex items-center justify-center">💳</div>
+                                  <div className="flex-1 text-xs text-blue-300">
+                                    {tx.note ?? "Credit payment"} · {new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
+                                  </div>
+                                  <span className="font-black text-blue-300 text-sm">
+                                    +${Number(tx.amount).toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            if (isCreditCharge) {
+                              return (
+                                <div key={tx.id} className="px-4 py-3 flex items-center gap-3 bg-amber-500/5">
+                                  <div className="h-3.5 w-3.5 shrink-0 text-amber-400 font-black text-xs flex items-center justify-center">🪙</div>
+                                  <div className="flex-1 text-xs text-amber-300">
+                                    {tx.note ?? "Credit charge"} · {new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "2-digit", month: "2-digit", year: "numeric" })}
+                                  </div>
+                                  <span className="font-black text-amber-300 text-sm">Credit</span>
+                                </div>
+                              );
+                            }
+                            return null;
                           }
                           const o = rec.data as Order;
                           return (

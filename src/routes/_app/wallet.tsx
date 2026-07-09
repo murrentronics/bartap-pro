@@ -1255,7 +1255,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
         .order("created_at", { ascending: false })
         .then(({ data }) => {
           const orders = (data ?? []) as unknown as Order[];
-          const ownerOrders = orders.filter((o: any) => o.cashier_id === profile.id);
+          const ownerOrders = orders.filter((o: any) => o.cashier_id === profile.id || o.owner_id === profile.id);
           setAllOrders(orders);
           resolveDeletable(ownerOrders);
         }),
@@ -1493,6 +1493,46 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 
               const isTransferIn = tx.type === "transfer_in";
               if (isTransferIn) {
+                // Check if this is a chain bar owner's direct sale (has order_id)
+                const linkedOrder = tx.order_id
+                  ? allOrders.find((o: any) => o.id === tx.order_id)
+                  : null;
+                if (linkedOrder) {
+                  // Render exactly like a cash sale order card
+                  const o = linkedOrder as any;
+                  const isLatest = o.id === deletableOrderId;
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                      style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
+                          {(o.items || []).map((i: any) => `${i.qty}× ${i.name}`).join(", ")}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
+                        {isLatest && (
+                          <button
+                            onClick={() => deleteLatestOrder(o)}
+                            disabled={deletingOrderId === o.id}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
+                            title="Delete this sale"
+                          >
+                            {deletingOrderId === o.id
+                              ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-green-500/30 flex items-center gap-3"
                     style={{ background: "oklch(0.22 0.06 145 / 0.3)" }}>
