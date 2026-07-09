@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Wine, Gamepad2, Loader2, ChevronLeft } from "lucide-react";
+import { Wine, Gamepad2, Loader2, ChevronLeft, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ export default function CreateBarPage() {
   const [barName, setBarName] = useState("");
   const [barLocation, setBarLocation] = useState("");
   const [hasMachines, setHasMachines] = useState(false);
+  const [copyItems, setCopyItems] = useState<boolean | null>(null); // null = not answered yet
   const [busy, setBusy] = useState(false);
 
   // Guard
@@ -47,7 +48,9 @@ export default function CreateBarPage() {
     );
   }
 
-  const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2;
+  // If this is the first bar (chainBars.length === 0), skip the copyItems question
+  const needsCopyAnswer = chainBars.length > 0;
+  const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2 && (!needsCopyAnswer || copyItems !== null);
 
   const handleCreate = async () => {
     if (!profile?.id || !canCreate) return;
@@ -67,6 +70,7 @@ export default function CreateBarPage() {
           p_name:         barName.trim(),
           p_location:     barLocation.trim(),
           p_has_machines: hasMachines,
+          p_copy_items:   copyItems === true,
         }),
       });
       const data = await res.json() as { bar_id?: string; error?: string };
@@ -177,6 +181,48 @@ export default function CreateBarPage() {
             </button>
           </div>
         </div>
+
+        {/* Copy items toggle — only shown when there's at least one existing bar */}
+        {chainBars.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+              Copy Items from Bar 1?
+            </Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Start this bar with the same product list as your first bar.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCopyItems(true)}
+                className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
+                style={{
+                  background: copyItems === true ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
+                  borderColor: copyItems === true ? "var(--primary)" : "var(--border)",
+                }}
+              >
+                <Copy className={`h-5 w-5 ${copyItems === true ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`text-xs font-black ${copyItems === true ? "text-primary" : "text-muted-foreground"}`}>
+                  Yes, copy items
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCopyItems(false)}
+                className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
+                style={{
+                  background: copyItems === false ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
+                  borderColor: copyItems === false ? "var(--primary)" : "var(--border)",
+                }}
+              >
+                <Wine className={`h-5 w-5 ${copyItems === false ? "text-primary" : "text-muted-foreground"}`} />
+                <span className={`text-xs font-black ${copyItems === false ? "text-primary" : "text-muted-foreground"}`}>
+                  Start fresh
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create button */}

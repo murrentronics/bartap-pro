@@ -1661,7 +1661,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
       // All products with stock: price × qty and cost_price × qty
-      supabase.from("products").select("price, cost_price, stock_qty"),
+      supabase.from("products").select("price, cost_price, stock_qty").eq("owner_id", profile.id),
       // Currently open bottles
       sb.from("opened_bottles")
         .select("revenue, product_id, products(price)")
