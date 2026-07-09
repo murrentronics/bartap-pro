@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
@@ -424,6 +425,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
+    // Block payout if no float has been set
+    if (tab === "payout" && remainingFloat === null) {
+      toast.error("Set a float before recording a payout");
+      return;
+    }
+
     // Block payout if the entered amount exceeds the remaining float
     if (tab === "payout" && remainingFloat !== null && Math.round(val * 100) / 100 > Math.round(remainingFloat * 100) / 100) {
       toast.error(`Payout $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
@@ -835,13 +842,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 {/* Save Payout button — right */}
                 {(() => {
                   const enteredVal = Math.round((parseFloat(amount) || 0) * 100) / 100;
-                  const overFloat = remainingFloat !== null && enteredVal > 0 && enteredVal > Math.round(remainingFloat * 100) / 100;
+                  const noFloat = remainingFloat === null;
+                  const overFloat = !noFloat && enteredVal > 0 && enteredVal > Math.round(remainingFloat! * 100) / 100;
+                  const blocked = noFloat || overFloat;
                   return (
-                    <Button onClick={handleSave} disabled={busy || !amount || overFloat}
+                    <Button onClick={handleSave} disabled={busy || !amount || blocked}
                       className="flex-1 h-14 font-black text-base rounded-2xl"
-                      style={{ background: overFloat ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-                      title={overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : undefined}>
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : overFloat ? "Exceeds Float" : "Save Payout"}
+                      style={{ background: blocked ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                      title={noFloat ? "Set a float first" : overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : undefined}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Payout"}
                     </Button>
                   );
                 })()}
@@ -1967,7 +1976,7 @@ export default function MachinesPage() {
     <>
       {/* MachineDetail overlays the list but keeps MachinesPage mounted so
           realtime channels stay alive and float/entries update in the background */}
-      {selected && (
+      {selected && createPortal(
         <MachineDetail
           machine={selected}
           screenNumber={screenNumber}
@@ -1978,7 +1987,8 @@ export default function MachinesPage() {
           initialTab={selectedInitialTab}
           onBack={() => { setSelected(null); load(); }}
           onDeleted={() => { setSelected(null); load(); }}
-        />
+        />,
+        document.body
       )}
 
       {/* List view — always mounted, hidden behind MachineDetail when a machine is selected */}

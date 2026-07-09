@@ -1538,7 +1538,7 @@ function CashOverlay({
     // ownerId is already correctly set at component level via effectiveOwnerId
     // 1. Insert the order
     const { error } = await supabase.from("orders").insert({
-      owner_id: ownerId, cashier_id: ownerId,
+      owner_id: ownerId, cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       total, paid: Number(paid), change_given: change,
     });

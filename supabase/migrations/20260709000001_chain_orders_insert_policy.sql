@@ -150,6 +150,9 @@ CREATE POLICY "Chain owner views bar cashiers"
         AND is_bar_account = true
     )
   );
+
+-- ── specials ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Chain owner manages specials" ON public.specials;
 CREATE POLICY "Chain owner manages specials"
   ON public.specials FOR ALL
   USING (public.is_owner_in_scope(owner_id))

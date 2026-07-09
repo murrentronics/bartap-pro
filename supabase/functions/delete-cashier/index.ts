@@ -61,7 +61,7 @@ serve(async (req) => {
       );
     }
 
-    // Verify the cashier belongs to this owner
+    // Verify the cashier belongs to this owner directly OR via a bar sub-account
     const { data: cashierProfile } = await supabaseClient
       .from("profiles")
       .select("parent_id, wallet_balance")
@@ -69,7 +69,27 @@ serve(async (req) => {
       .eq("role", "cashier")
       .single();
 
-    if (!cashierProfile || cashierProfile.parent_id !== user.id) {
+    if (!cashierProfile) {
+      return new Response(
+        JSON.stringify({ error: "Cashier not found or does not belong to you" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Direct ownership: cashier.parent_id = caller
+    // Chain ownership: cashier.parent_id = bar_sub_account whose parent_id = caller
+    const directOwner = cashierProfile.parent_id === user.id;
+    let chainOwner = false;
+    if (!directOwner) {
+      const { data: barProfile } = await supabaseClient
+        .from("profiles")
+        .select("parent_id, is_bar_account")
+        .eq("id", cashierProfile.parent_id)
+        .single();
+      chainOwner = barProfile?.parent_id === user.id && barProfile?.is_bar_account === true;
+    }
+
+    if (!directOwner && !chainOwner) {
       return new Response(
         JSON.stringify({ error: "Cashier not found or does not belong to you" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
