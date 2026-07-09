@@ -332,7 +332,7 @@ export default function AppLayout() {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;
                   return (
-                    <Link key={it.to} to={it.to} onClick={() => setMenuOpen(false)}
+                    <button key={it.to} onClick={() => { setMenuOpen(false); nav(it.to); }}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{ background: active ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: active ? "var(--primary)" : "var(--border)", boxShadow: active ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                       <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -340,10 +340,10 @@ export default function AppLayout() {
                         <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
                       </div>
                       <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>{it.label}</span>
-                    </Link>
+                    </button>
                   );
                 })}
-                <Link to={"/language" as "/"} onClick={() => setMenuOpen(false)}
+                <button onClick={() => { setMenuOpen(false); nav("/language"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -351,7 +351,7 @@ export default function AppLayout() {
                     <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
                   </div>
                   <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
-                </Link>
+                </button>
                 <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -383,7 +383,7 @@ export default function AppLayout() {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;
                   return (
-                    <Link key={it.to} to={it.to} onClick={() => setMenuOpen(false)}
+                    <button key={it.to} onClick={() => { setMenuOpen(false); nav(it.to); }}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{ background: active ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: active ? "var(--primary)" : "var(--border)", boxShadow: active ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                       <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -391,10 +391,10 @@ export default function AppLayout() {
                         <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
                       </div>
                       <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>{it.label}</span>
-                    </Link>
+                    </button>
                   );
                 })}
-                <Link to={"/language" as "/"} onClick={() => setMenuOpen(false)}
+                <button onClick={() => { setMenuOpen(false); nav("/language"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -402,9 +402,9 @@ export default function AppLayout() {
                     <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
                   </div>
                   <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
-                </Link>
+                </button>
                 {isChainOwner && (
-                  <Link to={"/switch-bar" as "/"} onClick={() => setMenuOpen(false)}
+                  <button onClick={() => { setMenuOpen(false); nav("/switch-bar"); }}
                     className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                     style={{ background: loc.pathname === "/switch-bar" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/switch-bar" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/switch-bar" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                     <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -412,10 +412,10 @@ export default function AppLayout() {
                       <GitBranch className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`} />
                     </div>
                     <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>Switch Bar</span>
-                  </Link>
+                  </button>
                 )}
                 {isOwner && (
-                  <Link to={"/factory-reset" as "/"} onClick={() => setMenuOpen(false)}
+                  <button onClick={() => { setMenuOpen(false); nav("/factory-reset"); }}
                     className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                     style={{ background: loc.pathname === "/factory-reset" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/factory-reset" ? "var(--primary)" : "var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
                     <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
@@ -423,7 +423,7 @@ export default function AppLayout() {
                       <RotateCcw className="h-6 w-6 text-primary" />
                     </div>
                     <span className="text-xs font-black text-center leading-tight text-foreground">{t("factory_reset", "Factory Reset")}</span>
-                  </Link>
+                  </button>
                 )}
                 <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
