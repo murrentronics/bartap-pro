@@ -1274,6 +1274,13 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Clear stale data immediately when switching bars
+  useEffect(() => {
+    setAllOrders([]);
+    setAllTxs([]);
+    setLoading(true);
+  }, [profile.id]);
+
   // Realtime — one stable channel per owner, never torn down on data refresh
   useEffect(() => {
     const ch = supabase
@@ -1707,6 +1714,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   }, [profile.id]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
+
+  // Clear stale data immediately when switching bars so old bar's data doesn't flash
+  useEffect(() => {
+    setFinancialSummary(null);
+    setLoadingSummary(true);
+  }, [profile.id]);
 
   // Stable ref so the realtime channel never needs to be recreated when loadSummary re-runs
   const loadSummaryRef = useRef(loadSummary);

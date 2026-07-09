@@ -876,6 +876,7 @@ export default function RegisterPage() {
           onRemove={removeItem}
           onClearCart={() => setCart([])}
           onClose={() => setCashOpen(false)}
+          ownerId={ownerId}
           onSuccess={(paidAmt, changeAmt) => {
             setCart([]);
             setCashOpen(false);
@@ -895,6 +896,7 @@ export default function RegisterPage() {
           onRemove={removeItem}
           onClearCart={() => setCart([])}
           onClose={() => setCreditOpen(false)}
+          ownerId={ownerId}
           onSuccess={() => {
             setCart([]);
             setCreditOpen(false);
@@ -1509,12 +1511,13 @@ export default function RegisterPage() {
 
 // ΓöÇΓöÇΓöÇ Cash Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void; onClearCart: () => void;
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
+  ownerId: string;
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
@@ -1533,7 +1536,6 @@ function CashOverlay({
     if (!enough || !profile) return;
     setBusy(true);
     // ownerId is already correctly set at component level via effectiveOwnerId
-
     // 1. Insert the order
     const { error } = await supabase.from("orders").insert({
       owner_id: ownerId, cashier_id: profile.id,
@@ -1772,7 +1774,7 @@ type CreditAccount = {
 };
 
 function CreditSaleOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number;
   cart: CartItem[];
@@ -1782,10 +1784,10 @@ function CreditSaleOverlay({
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: () => void;
+  ownerId: string;
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
-  const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
 
   const [step, setStep] = useState<"review" | "pick" | "confirm" | "create">("review");
   const [accounts, setAccounts] = useState<CreditAccount[]>([]);
