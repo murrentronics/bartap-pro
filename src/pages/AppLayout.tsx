@@ -279,7 +279,7 @@ export default function AppLayout() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
       <header
-        className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
+        className="shrink-0 z-[101] bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
@@ -301,7 +301,7 @@ export default function AppLayout() {
             </Link>
           )}
 
-          {/* Hamburger — no username in header on mobile */}
+          {/* Hamburger */}
           <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
@@ -312,24 +312,23 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {/* ── CASHIER MENU — full-width big-button grid + brown backdrop ── */}
+            {/* ── CASHIER MENU ── */}
             {menuOpen && isCashier && (
-              <>
-                {/* Fully opaque backdrop — hides bar content completely */}
-                <div
-                  className="fixed inset-0 z-[99]"
-                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
-                  onClick={() => setMenuOpen(false)}
-                />
-                <div
-                  className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
-                  style={{
-                    top: "calc(44px + env(safe-area-inset-top, 0px))",
-                    bottom: 0,
-                    background: "var(--gradient-card)",
-                  }}
-                >
-                  {/* Cashier name strip */}
+            <>
+              <div
+                className="fixed inset-0 z-[99]"
+                style={{ background: "var(--background)" }}
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                className="fixed left-0 right-0 z-[100] overflow-y-auto"
+                style={{
+                  top: "calc(44px + env(safe-area-inset-top, 0px))",
+                  bottom: 0,
+                  background: "var(--gradient-card)",
+                  borderTop: "1px solid var(--border)",
+                }}
+              >
                   <div className="px-4 py-3 border-b border-border/50">
                     <span className="text-sm font-black text-foreground">{profile.username}</span>
                 </div>
@@ -422,7 +421,7 @@ export default function AppLayout() {
                 {/* Fully opaque backdrop — hides bar content completely */}
                 <div
                   className="fixed inset-0 z-[99]"
-                  style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
+                  style={{ background: "var(--background)" }}
                   onClick={() => setMenuOpen(false)}
                 />
 

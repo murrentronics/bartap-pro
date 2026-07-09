@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Wine, Gamepad2, ChevronRight, Plus, CheckCircle2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Wine, Gamepad2, Plus, CheckCircle2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -151,12 +151,21 @@ export default function SwitchBarPage() {
                   </button>
                 )}
 
-                {/* ── Chevron centered at bottom ── */}
+                {/* ── Switch / Active badge centered at bottom ── */}
                 <button
                   onClick={() => handleSelect(bar.id)}
                   className="w-full flex justify-center pb-3 pt-1"
                 >
-                  <ChevronRight className={`h-4 w-4 rotate-90 ${isActive ? "text-primary" : "text-muted-foreground/50"}`} />
+                  <span
+                    className="px-4 py-1 rounded-full text-xs font-black tracking-wide transition"
+                    style={{
+                      background: isActive ? "var(--gradient-hero)" : "rgba(255,255,255,0.07)",
+                      color: isActive ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                      border: isActive ? "none" : "1px solid var(--border)",
+                    }}
+                  >
+                    {isActive ? "● Active" : "Switch"}
+                  </span>
                 </button>
               </div>
             );
