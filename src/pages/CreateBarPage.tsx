@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -11,33 +11,14 @@ import { Label } from "@/components/ui/label";
 
 export default function CreateBarPage() {
   const { profile } = useAuth();
-  const { isChainOwner, chainBars, refreshBars, setActiveBarId, activeBarId } = useChain();
+  const { isChainOwner, chainBars, refreshBars, setActiveBarId } = useChain();
   const nav = useNavigate();
 
   const [barName, setBarName] = useState("");
   const [barLocation, setBarLocation] = useState("");
   const [hasMachines, setHasMachines] = useState(false);
   const [copyItems, setCopyItems] = useState<boolean | null>(null);
-  const [copySourceId, setCopySourceId] = useState<string | null>(null);
-  const [barsWithProducts, setBarsWithProducts] = useState<{ id: string; bar_name: string }[]>([]);
   const [busy, setBusy] = useState(false);
-
-  // Load which bars have products so owner can pick a valid source
-  useEffect(() => {
-    if (chainBars.length === 0) return;
-    const load = async () => {
-      const ids = chainBars.map((b) => b.id);
-      const { data } = await (supabase as any)
-        .from("products")
-        .select("owner_id")
-        .in("owner_id", ids);
-      if (!data) return;
-      const idsWithProducts = [...new Set(data.map((r: any) => r.owner_id as string))];
-      const bars = chainBars.filter((b) => idsWithProducts.includes(b.id));
-      setBarsWithProducts(bars);
-    };
-    load();
-  }, [chainBars]);
 
   // Guard
   if (!isChainOwner && profile) {
@@ -65,9 +46,7 @@ export default function CreateBarPage() {
 
   // If this is the first bar (chainBars.length === 0), skip the copyItems question
   const needsCopyAnswer = chainBars.length > 0;
-  const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2
-    && (!needsCopyAnswer || copyItems !== null)
-    && (copyItems !== true || copySourceId !== null);
+  const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2 && (!needsCopyAnswer || copyItems !== null);
 
   const handleCreate = async () => {
     if (!profile?.id || !canCreate) return;
@@ -87,7 +66,6 @@ export default function CreateBarPage() {
           p_location:       barLocation.trim(),
           p_has_machines:   hasMachines,
           p_copy_items:     copyItems === true,
-          p_copy_source_id: copyItems === true ? copySourceId : null,
         }),
       });
       const data = await res.json() as { bar_id?: string; error?: string };
@@ -203,15 +181,15 @@ export default function CreateBarPage() {
         {chainBars.length > 0 && (
           <div className="space-y-2">
             <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              Copy Items from Another Bar?
+              Copy Items from Bar 1?
             </Label>
             <p className="text-xs text-muted-foreground -mt-1">
-              Start this bar with the same product list as an existing bar.
+              Start this bar with the same product list as your first bar.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => { setCopyItems(true); setCopySourceId(null); }}
+                onClick={() => setCopyItems(true)}
                 className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
                 style={{
                   background: copyItems === true ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
@@ -225,7 +203,7 @@ export default function CreateBarPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setCopyItems(false); setCopySourceId(null); }}
+                onClick={() => setCopyItems(false)}
                 className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
                 style={{
                   background: copyItems === false ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
@@ -238,38 +216,6 @@ export default function CreateBarPage() {
                 </span>
               </button>
             </div>
-
-            {/* Bar picker — only shown if Yes selected */}
-            {copyItems === true && (
-              <div className="space-y-2 pt-1">
-                <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                  Copy from which bar?
-                </Label>
-                {barsWithProducts.length === 0 ? (
-                  <p className="text-xs text-amber-400 font-semibold">
-                    None of your bars have products yet — start fresh instead.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {barsWithProducts.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => setCopySourceId(b.id)}
-                        className="w-full h-12 rounded-xl border-2 px-4 text-sm font-black text-left transition active:scale-[0.98]"
-                        style={{
-                          background: copySourceId === b.id ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                          borderColor: copySourceId === b.id ? "var(--primary)" : "var(--border)",
-                          color: copySourceId === b.id ? "var(--primary)" : "var(--foreground)",
-                        }}
-                      >
-                        {b.bar_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>

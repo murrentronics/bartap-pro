@@ -52,7 +52,7 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { p_name, p_location, p_has_machines, p_copy_items, p_copy_source_id } = await req.json();
+    const { p_name, p_location, p_has_machines, p_copy_items } = await req.json();
     if (!p_name?.trim() || !p_location?.trim()) {
       return new Response(JSON.stringify({ error: "Name and location required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -109,20 +109,15 @@ serve(async (req) => {
       .update({ chain_bar_count: (ownerProfile.chain_bar_count ?? 1) + 1 })
       .eq("id", user.id);
 
-    // Copy products from source bar if requested
+    // Copy products from the master's own bar (bar 1 = master profile) if requested
     if (p_copy_items === true) {
-      // Use the provided source bar ID, or fall back to the master's own bar
-      const sourceId = p_copy_source_id ?? user.id;
       const { data: sourceProducts } = await supabase
         .from("products")
         .select("name, price, category, is_available, description, image_url")
-        .eq("owner_id", sourceId);
+        .eq("owner_id", user.id);
 
       if (sourceProducts && sourceProducts.length > 0) {
-        const copies = sourceProducts.map((p) => ({
-          ...p,
-          owner_id: barId,
-        }));
+        const copies = sourceProducts.map((p) => ({ ...p, owner_id: barId }));
         for (let i = 0; i < copies.length; i += 100) {
           await supabase.from("products").insert(copies.slice(i, i + 100));
         }
