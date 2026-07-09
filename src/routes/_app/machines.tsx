@@ -1972,7 +1972,7 @@ export default function MachinesPage() {
           machine={selected}
           screenNumber={screenNumber}
           ownerId={ownerId}
-          profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined }}
+          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined }}
           floatSession={floatSession}
           remainingFloat={remainingFloat}
           initialTab={selectedInitialTab}
