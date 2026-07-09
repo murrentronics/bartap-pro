@@ -417,7 +417,7 @@ export default function AppLayout() {
                       style={{ background: loc.pathname === "/switch-bar" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
                       <GitBranch className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`} />
                     </div>
-                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>Switch Bar</span>
+                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>{t("switch_bar", "Switch Bar")}</span>
                   </button>
                 )}
                 {isOwner && (
