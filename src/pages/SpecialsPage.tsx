@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, X, Check, Tag } from "lucide-react";
@@ -524,6 +525,7 @@ function SpecialCard({
 // ─── Main Specials Page ───────────────────────────────────────────────────────
 export default function SpecialsPage() {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const confirm = useConfirm();
   const [specials, setSpecials] = useState<Special[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -531,7 +533,8 @@ export default function SpecialsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editSpecial, setEditSpecial] = useState<Special | null>(null);
 
-  const ownerId = profile?.id ?? "";
+  // For chain owners, use the active bar's id; for regular owners, use their own id
+  const ownerId = effectiveOwnerId(profile?.id ?? "");
 
   const load = async () => {
     const [{ data: sp }, { data: pr }] = await Promise.all([

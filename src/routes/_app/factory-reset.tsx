@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteCashier } from "@/lib/cashiers.functions";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ type ResetTarget = "bar" | "bar_financials" | "machines" | "both" | null;
 
 export default function FactoryResetPage() {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const nav = useNavigate();
 
   // Step 1 — choose what to reset
@@ -153,7 +155,8 @@ export default function FactoryResetPage() {
     if (!profile || !target) return;
     setBusy(true);
     try {
-      const ownerId = profile.id;
+      // Use effectiveOwnerId so chain owners reset the active bar, not their master account
+      const ownerId = effectiveOwnerId(profile.id);
       if (target === "bar" || target === "both") await resetBar(ownerId);
       if (target === "bar_financials") await resetBarFinancials(ownerId);
       if (target === "machines" || target === "both") await resetMachines(ownerId);

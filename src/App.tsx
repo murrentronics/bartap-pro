@@ -24,8 +24,11 @@ import MachinesPage from "@/pages/MachinesPage";
 import FactoryResetPage from "@/pages/FactoryResetPage";
 import LanguagePage from "@/pages/LanguagePage";
 import SpecialsPage from "@/pages/SpecialsPage";
+import SwitchBarPage from "@/pages/SwitchBarPage";
+import CreateBarPage from "@/pages/CreateBarPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
+import { ChainProvider } from "@/lib/ChainContext";
 
 function AppWithUpdateCheck() {
   const { update, dismiss } = useAppUpdate();
@@ -49,6 +52,8 @@ function AppWithUpdateCheck() {
             <Route path="factory-reset" element={<FactoryResetPage />} />
             <Route path="language" element={<LanguagePage />} />
             <Route path="specials" element={<SpecialsPage />} />
+            <Route path="switch-bar" element={<SwitchBarPage />} />
+            <Route path="create-bar" element={<CreateBarPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />
@@ -79,11 +84,13 @@ export default function App() {
     <AuthProvider>
       <I18nProvider>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      <MusicPlayerProvider>
-        <YouTubeProvider>
-          <AppWithUpdateCheck />
-        </YouTubeProvider>
-      </MusicPlayerProvider>
+      <ChainProvider>
+        <MusicPlayerProvider>
+          <YouTubeProvider>
+            <AppWithUpdateCheck />
+          </YouTubeProvider>
+        </MusicPlayerProvider>
+      </ChainProvider>
       </I18nProvider>
     </AuthProvider>
   );

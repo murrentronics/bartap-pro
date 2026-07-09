@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ type OpenedBottle = {
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
@@ -30,7 +32,7 @@ export default function RegisterPage() {
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
 
-  const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+  const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
   // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);

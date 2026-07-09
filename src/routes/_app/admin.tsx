@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import {
   Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2,
   ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
-  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus,
+  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus, GitBranch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
@@ -31,6 +31,9 @@ type Row = {
   created_at: string;
   phone: string | null;
   address: string | null;
+  plan_type?: string;
+  chain_bar_count?: number;
+  is_bar_account?: boolean;
 };
 
 type SubPayment = {
@@ -1264,7 +1267,20 @@ export default function AdminPage() {
                   <div key={r.id} className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="min-w-0 space-y-1">
-                        <div className="font-semibold">{r.username}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{r.username}</span>
+                          {r.plan_type === "chain" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                              <GitBranch className="h-2.5 w-2.5" />
+                              Chain · {r.chain_bar_count ?? 0} bar{(r.chain_bar_count ?? 0) !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {r.is_bar_account && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              Sub-bar
+                            </span>
+                          )}
+                        </div>
                         {r.email && (
                           <a
                             href={`mailto:${r.email}`}

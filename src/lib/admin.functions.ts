@@ -13,6 +13,9 @@ export type AdminProfileRow = {
   parent_id: string | null;
   phone: string | null;
   address: string | null;
+  plan_type?: string;
+  chain_bar_count?: number;
+  is_bar_account?: boolean;
 };
 
 export async function listAllProfiles(): Promise<AdminProfileRow[]> {

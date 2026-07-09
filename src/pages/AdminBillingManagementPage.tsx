@@ -141,8 +141,28 @@ export default function AdminBillingManagementPage() {
         const startDate = new Date();
         const isPremium = (plan as any).plan_type === "premium";
         const isMachinesAddon = (plan as any).plan_type === "machines_addon";
+        const isChainPlan = (plan as any).plan_type === "chain";
 
-        if (isPremium) {
+        if (isChainPlan) {
+          // Chain plan: set plan_type = "chain", chain_addon_active = true,
+          // subscription_end_date = now + duration_months, chain_bar_count = 0
+          const chainEnd = new Date(startDate);
+          chainEnd.setMonth(chainEnd.getMonth() + plan.duration_months);
+
+          await supabase.from("profiles").update({
+            status: "approved",
+            billing_status: "active",
+            plan_type: "chain",
+            chain_addon_active: true,
+            chain_bar_count: 0,
+            subscription_start_date: startDate.toISOString(),
+            subscription_end_date: chainEnd.toISOString(),
+            music_addon: true,
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = chainEnd.toISOString();
+
+        } else if (isPremium) {
           // Premium: extend premium_subscription_end_date independently
           const premiumBase = ownerProfile?.premium_subscription_end_date
             && new Date(ownerProfile.premium_subscription_end_date) > startDate
@@ -243,8 +263,9 @@ export default function AdminBillingManagementPage() {
     if (error) { toast.error("Revoke failed: " + error.message); return; }
     const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
     toast.success(
-      planType === "basic"        ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
-      planType === "premium"      ? `${selectedPayment.profiles?.username} downgraded to Basic` :
+      planType === "chain"          ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
+      planType === "basic"          ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
+      planType === "premium"        ? `${selectedPayment.profiles?.username} downgraded to Basic` :
       planType === "machines_addon" ? `Machines add-on removed` :
       "Subscription revoked"
     );

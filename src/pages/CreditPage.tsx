@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,7 +240,8 @@ function BillModal({ account, ownerName, onClose }: {
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function CreditPage() {
   const { profile } = useAuth();
-  const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+  const { effectiveOwnerId } = useChain();
+  const ownerId = effectiveOwnerId(profile?.role === "owner" ? (profile?.id ?? "") : (profile?.parent_id ?? ""));
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
 

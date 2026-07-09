@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
+  const { isChainOwner, activeBarId, activeBar } = useChain();
   const nav = useNavigate();
   const loc = useLocation();
   const { t } = useTranslation();
@@ -37,7 +39,11 @@ export default function AppLayout() {
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
-  }, [loading, profile, loc.pathname, nav]);
+    // Chain owner with no bar selected → force them to pick a bar first
+    if (!loading && isChainOwner && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
+      nav("/switch-bar", { replace: true });
+    }
+  }, [loading, profile, loc.pathname, nav, isChainOwner, activeBarId]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -282,7 +288,119 @@ export default function AppLayout() {
               {t("menu", "Menu")}
             </button>
 
-            {menuOpen && (
+            {/* ── CASHIER MENU — fullscreen big-button grid overlay ── */}
+            {menuOpen && isCashier && (
+              <div
+                className="fixed inset-0 z-[100] flex flex-col"
+                style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", background: "var(--background)" }}
+              >
+                {/* Cashier name strip */}
+                <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between shrink-0">
+                  <span className="text-sm font-black text-foreground">{profile.username}</span>
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center bg-muted active:scale-90 transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Big button grid */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {navItems.map((it) => {
+                      const active = loc.pathname.startsWith(it.to);
+                      const Icon = it.icon;
+                      return (
+                        <Link
+                          key={it.to}
+                          to={it.to}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 p-6 active:scale-95 transition-transform select-none"
+                          style={{
+                            background: active
+                              ? "var(--gradient-hero)"
+                              : "var(--gradient-card)",
+                            borderColor: active ? "var(--primary)" : "var(--border)",
+                            boxShadow: active
+                              ? "0 8px 24px rgba(251,146,60,0.35)"
+                              : "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                          }}
+                        >
+                          <div
+                            className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
+                            style={{
+                              background: active
+                                ? "rgba(255,255,255,0.20)"
+                                : "rgba(255,255,255,0.06)",
+                              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
+                            }}
+                          >
+                            <Icon className={`h-8 w-8 ${active ? "text-white" : "text-primary"}`} />
+                          </div>
+                          <span className={`text-sm font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>
+                            {it.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+
+                    {/* Language button */}
+                    <Link
+                      to={"/language" as "/"}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 p-6 active:scale-95 transition-transform select-none"
+                      style={{
+                        background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)",
+                        borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
+                        boxShadow: loc.pathname === "/language"
+                          ? "0 8px 24px rgba(251,146,60,0.35)"
+                          : "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div
+                        className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <Globe className={`h-8 w-8 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
+                      </div>
+                      <span className={`text-sm font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>
+                        {t("language", "Language")}
+                      </span>
+                    </Link>
+
+                    {/* Logout button */}
+                    <button
+                      onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                      className="flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-destructive/40 p-6 active:scale-95 transition-transform select-none"
+                      style={{
+                        background: "rgba(239,68,68,0.08)",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div
+                        className="h-16 w-16 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "rgba(239,68,68,0.12)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <X className="h-8 w-8 text-destructive" />
+                      </div>
+                      <span className="text-sm font-black text-destructive text-center leading-tight">
+                        {t("logout", "Logout")}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── OWNER / ADMIN MENU — standard dropdown ── */}
+            {menuOpen && !isCashier && (
               <div
                 className="absolute right-0 top-[calc(100%+6px)] w-56 sm:w-64 rounded-2xl border border-border shadow-2xl z-[100]"
                 style={{ background: "var(--gradient-card)" }}
@@ -290,6 +408,16 @@ export default function AppLayout() {
                 {/* Owner name — small, at the top of the menu */}
                 <div className="px-4 sm:px-5 py-2 sm:py-3 border-b border-border/50">
                   <span className="text-xs font-semibold text-muted-foreground truncate block">{profile.username}</span>
+                  {isChainOwner && activeBar && (
+                    <span className="text-xs font-black text-primary truncate block mt-0.5">
+                      📍 {activeBar.bar_name}
+                    </span>
+                  )}
+                  {isChainOwner && !activeBar && (
+                    <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
+                      ⚠ No bar selected
+                    </span>
+                  )}
                 </div>
 
                 {navItems.map((it) => {
@@ -318,6 +446,18 @@ export default function AppLayout() {
                   <Globe className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                   {t("language", "Language")}
                 </Link>
+                {/* Switch Bar — chain owners only, before Factory Reset */}
+                {isChainOwner && (
+                  <Link
+                    to={"/switch-bar" as "/"}
+                    className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                      loc.pathname === "/switch-bar" ? "text-primary" : "text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <GitBranch className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                    Switch Bar
+                  </Link>
+                )}
                 {/* Factory Reset — owner only, before logout */}
                 {isOwner && (
                   <Link

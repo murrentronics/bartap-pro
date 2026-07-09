@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { createCashier, deleteCashier, resetCashierPassword } from "@/lib/cashiers.functions";
@@ -370,6 +371,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
 // ─── Main Cashiers Page ───────────────────────────────────────────────────────
 export default function CashiersPage() {
   const { profile, session, refreshProfile } = useAuth();
+  const { effectiveOwnerId, activeBarId, isChainOwner } = useChain();
   const { t } = useTranslation();
   const [list, setList] = useState<Cashier[]>([]);
   const [tab, setTab] = useState("add");
@@ -390,10 +392,11 @@ export default function CashiersPage() {
 
   const load = async () => {
     if (!profile) return;
+    const ownerIdForQuery = effectiveOwnerId(profile.id);
     const { data } = await supabase
       .from("profiles")
       .select("id,username,wallet_balance")
-      .eq("parent_id", profile.id)
+      .eq("parent_id", ownerIdForQuery)
       .order("created_at", { ascending: false });
     setList(((data ?? []) as Cashier[]).sort((a, b) => a.username.localeCompare(b.username)));
   };
@@ -403,9 +406,10 @@ export default function CashiersPage() {
   useEffect(() => {
     if (!profile?.id) return;
     if (channelRef.current) supabase.removeChannel(channelRef.current);
+    const ownerIdForQuery = effectiveOwnerId(profile.id);
     const ch = supabase
-      .channel(`cashiers-${profile.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `parent_id=eq.${profile.id}` }, () => load())
+      .channel(`cashiers-${ownerIdForQuery}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `parent_id=eq.${ownerIdForQuery}` }, () => load())
       .subscribe();
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); channelRef.current = null; };
@@ -443,7 +447,12 @@ export default function CashiersPage() {
     setUsernameError(null);
     setBusy(true);
     try {
-      await create({ username: u, password: p });
+      // Chain owners: pass the active bar's id so the cashier belongs to that bar, not the master
+      await create({
+        username: u,
+        password: p,
+        ...(isChainOwner && activeBarId ? { barOwnerId: activeBarId } : {}),
+      });
       setU(""); setP("");
       setTab("manage");
       load();

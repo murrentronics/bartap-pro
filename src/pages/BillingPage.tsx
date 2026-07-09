@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   CreditCard, CheckCircle, Clock, AlertCircle, Copy,
-  Star, Gamepad2, ChevronRight, ArrowLeft, Check,
+  Star, Gamepad2, ChevronRight, ArrowLeft, Check, GitBranch,
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
@@ -165,11 +165,13 @@ export default function BillingPage() {
   const isSpecial       = userEmail === SPECIAL_EMAIL;
   const isBasic         = !profile?.plan_type || profile.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium";
+  const isChain         = profile?.plan_type === "chain";
   const hasMachinesAddon = !!profile?.machines_addon_active;
 
   const basicPlan         = plans.find(p => p.plan_type === "basic");
   const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
   const premiumPlan       = plans.find(p => p.plan_type === "premium");
+  const chainPlan         = plans.find(p => p.plan_type === "chain");
 
   const basicEnd      = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const basicDaysLeft = basicEnd ? Math.ceil((basicEnd.getTime() - Date.now()) / 86400000) : null;
@@ -185,6 +187,12 @@ export default function BillingPage() {
   const addonDaysLeft = addonEnd ? Math.ceil((addonEnd.getTime() - Date.now()) / 86400000) : null;
   const addonOverdue  = addonEnd ? addonEnd < new Date() : false;
   const addonCanRenew = addonOverdue || (addonDaysLeft !== null && addonDaysLeft <= 7);
+
+  // Chain plan end date — uses subscription_end_date (set to 1yr from payment date)
+  const chainEnd      = isChain && profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
+  const chainDaysLeft = chainEnd ? Math.ceil((chainEnd.getTime() - Date.now()) / 86400000) : null;
+  const chainOverdue  = chainEnd ? chainEnd < new Date() : false;
+  const chainCanRenew = chainOverdue || (chainDaysLeft !== null && chainDaysLeft <= 7);
 
   const isNewSignup    = !pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired";
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
@@ -287,136 +295,191 @@ export default function BillingPage() {
           {/* Active subscription cards */}
           {hasActive && (
             <div className="space-y-3">
-              {/* Basic plan card */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-black text-gray-900 text-sm">Basic Plan</p>
-                      <p className="text-xs text-gray-500">${basicPlan?.amount.toFixed(0) ?? "750"} TT / year</p>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-black px-2.5 py-1 rounded-full ${basicOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
-                    {basicOverdue ? "OVERDUE" : "ACTIVE"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm mb-3">
-                  <span className="text-gray-500">Renews</span>
-                  <span className={`font-bold ${basicOverdue ? "text-red-500" : basicDaysLeft !== null && basicDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
-                    {basicEnd ? basicEnd.toLocaleDateString("en-GB") : "—"}
-                    {basicDaysLeft !== null && !basicOverdue && basicDaysLeft <= 30 && ` (${basicDaysLeft}d)`}
-                  </span>
-                </div>
-                {!pendingPayment && !isSpecial && (
-                  basicCanRenew ? (
-                    <button onClick={() => { setSelectedPlan(basicPlan!); setRenewMode("basic"); setStep("payment"); }}
-                      className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${basicOverdue ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>
-                      {basicOverdue ? "⚠️ Renew Now — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT" : "Renew Basic — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT"}
-                    </button>
-                  ) : (
-                    <p className="text-xs text-center text-gray-400">Renewal opens {basicDaysLeft !== null ? basicDaysLeft - 7 : 0} days before due date</p>
-                  )
-                )}
-              </div>
-
-              {/* Premium plan card */}
-              {isPremium && !isSpecial && (
-                <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-sm">
+              {/* ── Chain Plan card — shown ONLY to chain owners ── */}
+              {isChain && (
+                <div className="rounded-2xl border-2 border-orange-300 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <Star className="h-4 w-4 text-amber-800" />
+                      <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <GitBranch className="h-4 w-4 text-orange-700" />
                       </div>
                       <div>
-                        <p className="font-black text-gray-900 text-sm">Premium Plan</p>
-                        <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "1300"} TT / year</p>
+                        <p className="font-black text-gray-900 text-sm">Chain of Bars Plan</p>
+                        <p className="text-xs text-gray-500">Up to 10 bars — ${chainPlan?.amount.toFixed(0) ?? "3000"} TT / year</p>
                       </div>
                     </div>
-                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-800"}`}>
-                      {premOverdue ? "OVERDUE" : "ACTIVE"}
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ${chainOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                      {chainOverdue ? "OVERDUE" : "ACTIVE"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-amber-800 mb-3">
-                    <Gamepad2 className="h-3 w-3" /> Machines Tracker included
+                  <div className="flex items-center gap-1 text-xs text-orange-700 mb-3">
+                    <GitBranch className="h-3 w-3" /> {profile?.chain_bar_count ?? 0} bar{(profile?.chain_bar_count ?? 0) !== 1 ? "s" : ""} created
                   </div>
                   <div className="flex items-center justify-between text-sm mb-3">
                     <span className="text-gray-500">Renews</span>
-                    <span className={`font-bold ${premOverdue ? "text-red-500" : premDaysLeft !== null && premDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
-                      {premEnd ? premEnd.toLocaleDateString("en-GB") : "—"}
-                      {premDaysLeft !== null && !premOverdue && premDaysLeft <= 30 && ` (${premDaysLeft}d)`}
+                    <span className={`font-bold ${chainOverdue ? "text-red-500" : chainDaysLeft !== null && chainDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                      {chainEnd ? chainEnd.toLocaleDateString("en-GB") : "—"}
+                      {chainDaysLeft !== null && !chainOverdue && chainDaysLeft <= 30 && ` (${chainDaysLeft}d)`}
                     </span>
                   </div>
-                  {!pendingPayment && (
-                    premCanRenew ? (
-                      <button onClick={() => { setSelectedPlan(premiumPlan!); setRenewMode("premium"); setStep("payment"); }}
-                        className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${premOverdue ? "bg-red-500 text-white" : "bg-amber-500 text-white"}`}>
-                        {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT" : "Renew Premium — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT"}
+                  {!pendingPayment && !isSpecial && (
+                    chainCanRenew ? (
+                      <button
+                        onClick={() => {
+                          const plan = chainPlan ?? { id: "chain", name: "Chain of Bars Plan", amount: 3000, plan_type: "chain", duration_months: 12 } as unknown as BillingPlan;
+                          setSelectedPlan(plan);
+                          setRenewMode("basic"); // reuse basic renewal path (no addons)
+                          setStep("payment");
+                        }}
+                        className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${chainOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}
+                      >
+                        {chainOverdue
+                          ? `⚠️ Renew Now — $${chainPlan?.amount.toFixed(0) ?? "3000"} TT`
+                          : `Renew Chain Plan — $${chainPlan?.amount.toFixed(0) ?? "3000"} TT`}
                       </button>
                     ) : (
-                      <p className="text-xs text-center text-amber-800/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
+                      <p className="text-xs text-center text-gray-400">
+                        Renewal opens {chainDaysLeft !== null ? chainDaysLeft - 7 : 0} days before due date
+                      </p>
                     )
                   )}
                 </div>
               )}
 
-              {/* Machines Add-on card — active card if subscribed, subscribe button if not */}
-              {isBasic && !isSpecial && !pendingPayment && (
-                hasMachinesAddon ? (
-                  /* ── Active machines addon card ── */
-                  <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
+              {/* Basic + Premium + Machines cards — hidden for chain owners */}
+              {!isChain && (
+                <>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                          <Gamepad2 className="h-4 w-4 text-orange-700" />
+                        <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <CreditCard className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-black text-gray-900 text-sm">Machines Add-on</p>
-                          <p className="text-xs text-gray-500">${machinesAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
+                          <p className="font-black text-gray-900 text-sm">Basic Plan</p>
+                          <p className="text-xs text-gray-500">${basicPlan?.amount.toFixed(0) ?? "750"} TT / year</p>
                         </div>
                       </div>
-                      <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
-                        {addonOverdue ? "OVERDUE" : "ACTIVE"}
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-full ${basicOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                        {basicOverdue ? "OVERDUE" : "ACTIVE"}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm mb-3">
+                    <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Renews</span>
-                      <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
-                        {addonEnd ? addonEnd.toLocaleDateString("en-GB") : "—"}
-                        {addonDaysLeft !== null && !addonOverdue && addonDaysLeft <= 30 && ` (${addonDaysLeft}d)`}
+                      <span className={`font-bold ${basicOverdue ? "text-red-500" : basicDaysLeft !== null && basicDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                        {basicEnd ? basicEnd.toLocaleDateString("en-GB") : "—"}
+                        {basicDaysLeft !== null && !basicOverdue && basicDaysLeft <= 30 && ` (${basicDaysLeft}d)`}
                       </span>
                     </div>
-                    {addonCanRenew ? (
-                      <button onClick={() => { setSelectedPlan(machinesAddonPlan!); setRenewMode(null); setStep("payment"); }}
-                        className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${addonOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}>
-                        {addonOverdue ? "⚠️ Renew Now — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT" : "Renew Add-on — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT"}
-                      </button>
-                    ) : (
-                      <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
+                    {!pendingPayment && !isSpecial && (
+                      basicCanRenew ? (
+                        <button onClick={() => { setSelectedPlan(basicPlan!); setRenewMode("basic"); setStep("payment"); }}
+                          className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${basicOverdue ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>
+                          {basicOverdue ? "⚠️ Renew Now — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT" : "Renew Basic — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT"}
+                        </button>
+                      ) : (
+                        <p className="text-xs text-center text-gray-400">Renewal opens {basicDaysLeft !== null ? basicDaysLeft - 7 : 0} days before due date</p>
+                      )
                     )}
                   </div>
-                ) : (
-                  /* ── Subscribe button ── */
-                  <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
-                    disabled={!machinesAddonPlan}
-                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Gamepad2 className="h-5 w-5 text-orange-700" />
-                        <div>
-                          <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
-                          <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $600 TT/yr separate</p>
+
+                  {/* Premium plan card */}
+                  {isPremium && !isSpecial && (
+                    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                            <Star className="h-4 w-4 text-amber-800" />
+                          </div>
+                          <div>
+                            <p className="font-black text-gray-900 text-sm">Premium Plan</p>
+                            <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "1300"} TT / year</p>
+                          </div>
                         </div>
+                        <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-800"}`}>
+                          {premOverdue ? "OVERDUE" : "ACTIVE"}
+                        </span>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                      <div className="flex items-center gap-1 text-xs text-amber-800 mb-3">
+                        <Gamepad2 className="h-3 w-3" /> Machines Tracker included
+                      </div>
+                      <div className="flex items-center justify-between text-sm mb-3">
+                        <span className="text-gray-500">Renews</span>
+                        <span className={`font-bold ${premOverdue ? "text-red-500" : premDaysLeft !== null && premDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                          {premEnd ? premEnd.toLocaleDateString("en-GB") : "—"}
+                          {premDaysLeft !== null && !premOverdue && premDaysLeft <= 30 && ` (${premDaysLeft}d)`}
+                        </span>
+                      </div>
+                      {!pendingPayment && (
+                        premCanRenew ? (
+                          <button onClick={() => { setSelectedPlan(premiumPlan!); setRenewMode("premium"); setStep("payment"); }}
+                            className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${premOverdue ? "bg-red-500 text-white" : "bg-amber-500 text-white"}`}>
+                            {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT" : "Renew Premium — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT"}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-center text-amber-800/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
+                        )
+                      )}
                     </div>
-                  </button>
-                )
-              )}
+                  )}
+
+                  {/* Machines Add-on card — active card if subscribed, subscribe button if not */}
+                  {isBasic && !isSpecial && !pendingPayment && (
+                    hasMachinesAddon ? (
+                      /* ── Active machines addon card ── */
+                      <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                              <Gamepad2 className="h-4 w-4 text-orange-700" />
+                            </div>
+                            <div>
+                              <p className="font-black text-gray-900 text-sm">Machines Add-on</p>
+                              <p className="text-xs text-gray-500">${machinesAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
+                            </div>
+                          </div>
+                          <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                            {addonOverdue ? "OVERDUE" : "ACTIVE"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mb-3">
+                          <span className="text-gray-500">Renews</span>
+                          <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                            {addonEnd ? addonEnd.toLocaleDateString("en-GB") : "—"}
+                            {addonDaysLeft !== null && !addonOverdue && addonDaysLeft <= 30 && ` (${addonDaysLeft}d)`}
+                          </span>
+                        </div>
+                        {addonCanRenew ? (
+                          <button onClick={() => { setSelectedPlan(machinesAddonPlan!); setRenewMode(null); setStep("payment"); }}
+                            className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${addonOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}>
+                            {addonOverdue ? "⚠️ Renew Now — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT" : "Renew Add-on — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT"}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
+                        )}
+                      </div>
+                    ) : (
+                      /* ── Subscribe button ── */
+                      <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                        disabled={!machinesAddonPlan}
+                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Gamepad2 className="h-5 w-5 text-orange-700" />
+                            <div>
+                              <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
+                              <p className="text-xs text-gray-900 font-bold mt-0.5">Keep Basic + add Machines — $600 TT/yr separate</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        </div>
+                      </button>
+                    )
+                  )}
+                </>
+              )} {/* end !isChain */}
             </div>
-          )}
+          )} {/* end hasActive */}
 
           {/* Pending setup / expired — go to plan selection */}
           {(isNewSignup || isExpiredRenew) && !pendingPayment && (
@@ -489,7 +552,7 @@ export default function BillingPage() {
           ═══════════════════════════════════════════════════════════════════ */}
       {step === "choose" && (
         <div className="space-y-6">
-          <p className="text-center text-gray-500 text-sm">Select the plan that works best for your business. Both renew annually.</p>
+          <p className="text-center text-gray-500 text-sm">Select the plan that works best for your business. All plans renew annually.</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Basic plan card */}
@@ -560,6 +623,50 @@ export default function BillingPage() {
               </div>
             )}
           </div>
+
+          {/* Chain of Bars plan card — full width, shown to all non-chain owners */}
+          {chainPlan && (
+            <div className="rounded-2xl border-2 border-orange-400 bg-white shadow-md overflow-hidden relative">
+              <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Multi-Bar
+              </div>
+              <div className="h-2 bg-gradient-to-r from-orange-600 to-amber-500" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                    <GitBranch className="h-4 w-4 text-orange-700" />
+                  </div>
+                  <h3 className="font-black text-gray-900 text-lg">Chain of Bars</h3>
+                </div>
+                <p className="text-3xl font-black text-orange-700 mt-2">${chainPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-4">Manage up to 10 bars from one login</p>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
+                  {[
+                    "Up to 10 independent bars",
+                    "Each bar fully isolated",
+                    "One-click bar switching",
+                    "Per-bar items & wallet",
+                    "Per-bar cashiers & credit",
+                    "Per-bar machines tracker",
+                  ].map(f => (
+                    <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => { setSelectedPlan(chainPlan); setStep("addons"); }}
+                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
+                  style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                >
+                  Select Chain Plan
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

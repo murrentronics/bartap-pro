@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,7 +197,9 @@ async function printBill(account: CreditAccount, ownerName: string) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 function CreditPage() {
   const { profile } = useAuth();
-  const ownerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+  const { effectiveOwnerId } = useChain();
+  const rawOwnerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
+  const ownerId = profile?.role === "owner" ? effectiveOwnerId(profile.id) : rawOwnerId;
   const ownerName = profile?.username ?? "Bar";
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);

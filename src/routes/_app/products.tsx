@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -865,6 +866,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
 // ─── Products Page ────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -880,29 +882,32 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     const p = profileRef.current;
     if (!p) return;
+    const ownerIdForQuery = effectiveOwnerId(p.id);
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("owner_id", p.id)
+      .eq("owner_id", ownerIdForQuery)
       .order("name", { ascending: true });
     setItems((data ?? []) as Product[]);
     setLoading(false);
-  }, []);
+  }, [effectiveOwnerId]);
 
   useEffect(() => {
     if (!profile?.id) return;
     load();
+    const ownerIdForQuery = effectiveOwnerId(profile.id);
     const ch = supabase
-      .channel(`products-mgmt-${profile.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => load())
+      .channel(`products-mgmt-${ownerIdForQuery}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerIdForQuery}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [profile?.id, load]);
+  }, [profile?.id, load, effectiveOwnerId]);
 
   if (profile?.role !== "owner") {
     return <div className="text-center text-muted-foreground py-20">Only owners can manage items.</div>;
   }
 
+  const ownerIdForQuery = effectiveOwnerId(profile.id);
   const filtered = items.filter((p) => (p.category || "beers") === category);
 
   const updateStock = async (id: string, delta: number) => {
@@ -946,7 +951,7 @@ export default function ProductsPage() {
             </DialogTrigger>
             <AddItemDialog
                 key={open ? "open" : "closed"}
-                ownerId={profile.id}
+                ownerId={ownerIdForQuery}
                 onDone={() => { setOpen(false); load(); }}
                 onSaved={(product) => {
                   // inject the new product into items immediately so the numpad can find it
@@ -1117,7 +1122,7 @@ export default function ProductsPage() {
         <StockNumpad
           productId={stockNumpadId}
           productName={stockNumpadProduct.name}
-          ownerId={profile.id}
+          ownerId={ownerIdForQuery}
           currentQty={stockNumpadProduct.stock_qty ?? 0}
           costPrice={stockNumpadProduct.cost_price ?? 0}
           stockQtyUndo={stockNumpadProduct.stock_qty_undo ?? null}
@@ -1135,7 +1140,7 @@ export default function ProductsPage() {
         <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
           <AddItemDialog
             key={`edit-${editItem.id}`}
-            ownerId={profile.id}
+            ownerId={ownerIdForQuery}
             editProduct={editItem}
             onDone={() => { setEditItem(null); load(); }}
             onSaved={(updated) => {
@@ -1152,7 +1157,7 @@ export default function ProductsPage() {
       {showBulkEdit && (
         <BulkEditModal
           items={items}
-          ownerId={profile.id}
+          ownerId={ownerIdForQuery}
           onClose={() => setShowBulkEdit(false)}
           onSaved={(patches) => {
             setItems((prev) => prev.map((p) => {

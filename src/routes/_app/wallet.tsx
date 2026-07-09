@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -1866,8 +1867,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 // ─── Page Entry Point ─────────────────────────────────────────────────────────
 export default function WalletPage() {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   if (!profile) return null;
-  if (profile.role === "owner") return <OwnerWallet profile={profile} />;
-  return <CashierWallet profile={profile} />;
+  // For chain owners, show the wallet of the active bar sub-account
+  const walletProfile = profile.role === "owner"
+    ? { ...profile, id: effectiveOwnerId(profile.id) }
+    : profile;
+  if (walletProfile.role === "owner") return <OwnerWallet profile={walletProfile} />;
+  return <CashierWallet profile={walletProfile} />;
 }
 

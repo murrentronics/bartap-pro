@@ -52,13 +52,29 @@ serve(async (req) => {
       );
     }
 
-    const { username, password } = await req.json();
+    const { username, password, bar_owner_id } = await req.json();
 
     if (!username || !password) {
       return new Response(
         JSON.stringify({ error: "Username and password are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Determine the effective parent_id:
+    // - Chain owners pass bar_owner_id (the active bar sub-account's id)
+    // - Regular owners use their own id
+    let parentId = user.id;
+    if (bar_owner_id && bar_owner_id !== user.id) {
+      // Verify the bar actually belongs to this chain owner (parent_id = user.id)
+      const { data: barProfile } = await supabaseClient
+        .from("profiles")
+        .select("id, parent_id, is_bar_account")
+        .eq("id", bar_owner_id)
+        .single();
+      if (barProfile?.parent_id === user.id && barProfile?.is_bar_account === true) {
+        parentId = bar_owner_id;
+      }
     }
 
     // Check if username already exists
@@ -84,7 +100,7 @@ serve(async (req) => {
       user_metadata: {
         username: username,
         role: "cashier",
-        parent_id: user.id,
+        parent_id: parentId,
       },
     });
 

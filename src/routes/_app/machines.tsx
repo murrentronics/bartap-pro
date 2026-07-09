@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1621,6 +1622,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 
 export default function MachinesPage() {
   const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -1632,7 +1634,7 @@ export default function MachinesPage() {
   const [selectedInitialTab, setSelectedInitialTab] = useState<"payout" | "income" | "history">("payout");
 
   // Cashiers see their owner's machines; owners see their own
-  const ownerId = profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? "");
+  const ownerId = effectiveOwnerId(profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? ""));
   const isOwner = profile?.role === "owner";
 
   // Register tap handler so tapping a payout alert notification navigates here
