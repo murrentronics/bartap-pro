@@ -399,97 +399,85 @@ export default function AppLayout() {
               </div>
             )}
 
-            {/* ── OWNER / ADMIN MENU — fullscreen right panel, scrollable ── */}
+            {/* ── OWNER / ADMIN MENU — dropdown, scrollable if screen is short ── */}
             {menuOpen && !isCashier && (
               <div
-                className="fixed inset-0 z-[100] flex justify-end"
-                style={{ top: "calc(44px + env(safe-area-inset-top, 0px))" }}
+                className="absolute right-0 top-[calc(100%+6px)] w-72 sm:w-80 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                style={{
+                  background: "var(--gradient-card)",
+                  maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
+                }}
               >
-                {/* Backdrop */}
-                <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
+                {/* Owner name — small, at the top of the menu */}
+                <div className="px-4 sm:px-5 py-2 sm:py-3 border-b border-border/50">
+                  <span className="text-xs font-semibold text-muted-foreground truncate block">{profile.username}</span>
+                  {isChainOwner && activeBar && (
+                    <span className="text-xs font-black text-primary truncate block mt-0.5">
+                      📍 {activeBar.bar_name}
+                    </span>
+                  )}
+                  {isChainOwner && !activeBar && (
+                    <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
+                      ⚠ No bar selected
+                    </span>
+                  )}
+                </div>
 
-                {/* Panel */}
-                <div
-                  className="relative w-72 sm:w-80 h-full overflow-y-auto flex flex-col border-l border-border shadow-2xl"
-                  style={{ background: "var(--gradient-card)" }}
-                >
-                  {/* Username / chain bar strip */}
-                  <div className="px-5 py-4 border-b border-border/50 shrink-0">
-                    <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
-                    {isChainOwner && activeBar && (
-                      <span className="text-xs font-black text-primary truncate block mt-0.5">
-                        📍 {activeBar.bar_name}
-                      </span>
-                    )}
-                    {isChainOwner && !activeBar && (
-                      <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
-                        ⚠ No bar selected
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Nav items */}
-                  {navItems.map((it) => {
-                    const active = loc.pathname.startsWith(it.to);
-                    const Icon = it.icon;
-                    return (
-                      <Link
-                        key={it.to}
-                        to={it.to}
-                        className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                          active ? "text-primary" : "text-foreground hover:bg-muted/50"
-                        }`}
-                      >
-                        <Icon className="h-6 w-6 shrink-0" />
-                        {it.label}
-                      </Link>
-                    );
-                  })}
-
-                  {/* Language */}
-                  <Link
-                    to={"/language" as "/"}
-                    className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                      loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    <Globe className="h-6 w-6 shrink-0" />
-                    {t("language", "Language")}
-                  </Link>
-
-                  {/* Switch Bar — chain owners only */}
-                  {isChainOwner && (
+                {navItems.map((it) => {
+                  const active = loc.pathname.startsWith(it.to);
+                  const Icon = it.icon;
+                  return (
                     <Link
-                      to={"/switch-bar" as "/"}
-                      className={`flex items-center gap-4 px-5 py-5 text-base font-black transition border-b border-border/50 ${
-                        loc.pathname === "/switch-bar" ? "text-primary" : "text-foreground hover:bg-muted/50"
+                      key={it.to}
+                      to={it.to}
+                      className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                        active ? "text-primary" : "text-foreground hover:bg-muted/50"
                       }`}
                     >
-                      <GitBranch className="h-6 w-6 shrink-0" />
-                      Switch Bar
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                      {it.label}
                     </Link>
-                  )}
-
-                  {/* Factory Reset — owner only */}
-                  {isOwner && (
-                    <Link
-                      to={"/factory-reset" as "/"}
-                      className="flex items-center gap-4 px-5 py-5 text-base font-black text-foreground hover:bg-muted/50 transition border-b border-border/50"
-                    >
-                      <RotateCcw className="h-6 w-6 shrink-0" />
-                      {t("factory_reset", "Factory Reset")}
-                    </Link>
-                  )}
-
-                  {/* Logout — pinned at bottom via mt-auto */}
-                  <button
-                    onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                    className="mt-auto flex items-center gap-4 px-5 py-5 text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                  );
+                })}
+                {/* Language — all users */}
+                <Link
+                  to={"/language" as "/"}
+                  className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                    loc.pathname === "/language" ? "text-primary" : "text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Globe className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                  {t("language", "Language")}
+                </Link>
+                {/* Switch Bar — chain owners only, before Factory Reset */}
+                {isChainOwner && (
+                  <Link
+                    to={"/switch-bar" as "/"}
+                    className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black transition border-b border-border/50 ${
+                      loc.pathname === "/switch-bar" ? "text-primary" : "text-foreground hover:bg-muted/50"
+                    }`}
                   >
-                    <X className="h-6 w-6 shrink-0" />
-                    {t("logout", "Logout")}
-                  </button>
-                </div>
+                    <GitBranch className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                    Switch Bar
+                  </Link>
+                )}
+                {/* Factory Reset — owner only, before logout */}
+                {isOwner && (
+                  <Link
+                    to={"/factory-reset" as "/"}
+                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black text-foreground hover:bg-muted/50 transition border-t border-border/50"
+                  >
+                    <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                    {t("factory_reset", "Factory Reset")}
+                  </Link>
+                )}
+                <button
+                  onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                  className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-5 text-sm sm:text-base font-black text-destructive hover:bg-muted/50 transition border-t border-border/50"
+                >
+                  <X className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+                  {t("logout", "Logout")}
+                </button>
               </div>
             )}
           </div>
