@@ -1851,7 +1851,7 @@ function CreditSaleOverlay({
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: account.id,
-      p_cashier_id: ownerId,
+      p_cashier_id: profile.id,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
@@ -1885,7 +1885,7 @@ function CreditSaleOverlay({
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
-      p_cashier_id: ownerId,
+      p_cashier_id: profile.id,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       p_note: itemsDesc,
