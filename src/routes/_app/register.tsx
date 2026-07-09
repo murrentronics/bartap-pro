@@ -1532,7 +1532,7 @@ function CashOverlay({
   const submit = async () => {
     if (!enough || !profile) return;
     setBusy(true);
-    const ownerId = profile.role === "owner" ? profile.id : profile.parent_id!;
+    // ownerId is already correctly set at component level via effectiveOwnerId
 
     // 1. Insert the order
     const { error } = await supabase.from("orders").insert({
