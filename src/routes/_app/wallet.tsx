@@ -1297,11 +1297,21 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     ...allTxs.map((tx): FlatRecord => ({ kind: "tx", data: tx, ts: new Date(tx.created_at).getTime() })),
   ].sort((a, b) => b.ts - a.ts);
 
-  // Cashier orders are displayed via their cashier_sale wallet_transaction — exclude them
-  // from the count so each sale only counts once, not twice.
+  // Show orders where: cashier_id = profile.id (regular owner/cashier)
+  // OR owner_id = profile.id and no cashier_sale tx exists for same order_id
+  // (chain master acting as bar — cashier_id = master, but bar wallet should show it)
+  const cashierSaleTxOrderIds = new Set(
+    allTxs
+      .filter((tx: any) => tx.type === "cashier_sale" && tx.order_id)
+      .map((tx: any) => tx.order_id)
+  );
   const allFlatVisible = allFlat.filter((rec) => {
     if (rec.kind === "order") {
-      return (rec.data as any).cashier_id === profile.id;
+      const o = rec.data as any;
+      if (o.cashier_id === profile.id) return true;
+      // Show if owner_id matches and no cashier_sale tx covers it (avoid double-count)
+      if (o.owner_id === profile.id && !cashierSaleTxOrderIds.has(o.id)) return true;
+      return false;
     }
     return true;
   });
