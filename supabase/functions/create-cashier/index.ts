@@ -119,6 +119,7 @@ serve(async (req) => {
     }
 
     // Profile is automatically created by the trigger, just verify it exists
+    // Then explicitly set parent_id in case the trigger didn't pick it up correctly
     const { data: cashierProfile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("id, username")
@@ -133,6 +134,12 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Force-set parent_id — don't rely solely on the trigger
+    await supabaseClient
+      .from("profiles")
+      .update({ parent_id: parentId })
+      .eq("id", authData.user.id);
 
     return new Response(
       JSON.stringify({ id: authData.user.id, username: username }),

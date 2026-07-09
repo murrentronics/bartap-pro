@@ -397,6 +397,7 @@ export default function CashiersPage() {
       .from("profiles")
       .select("id,username,wallet_balance")
       .eq("parent_id", ownerIdForQuery)
+      .eq("role", "cashier")
       .order("created_at", { ascending: false });
     setList(((data ?? []) as Cashier[]).sort((a, b) => a.username.localeCompare(b.username)));
   };
