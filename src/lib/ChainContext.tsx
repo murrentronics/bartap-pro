@@ -90,7 +90,9 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const isChain = profile?.plan_type === "chain" && profile?.chain_addon_active === true;
+    // isChainOwner = plan_type is 'chain' — chain_addon_active is a belt-and-suspenders flag
+    // but if admin forgot to set it we still want chain features to work
+    const isChain = profile?.plan_type === "chain";
     setIsChainOwner(isChain);
 
     if (!isChain) {
@@ -128,7 +130,25 @@ export function ChainProvider({ children }: { children: ReactNode }) {
         setActiveBarId(null);
       }
     });
-    return () => sub.subscription.unsubscribe();
+
+    // ── Realtime: re-check when the profile row changes (e.g. admin approves chain plan) ──
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      profileChannel = supabase
+        .channel(`chain-profile-${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+          () => refreshBars()
+        )
+        .subscribe();
+    });
+
+    return () => {
+      sub.subscription.unsubscribe();
+      if (profileChannel) supabase.removeChannel(profileChannel);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

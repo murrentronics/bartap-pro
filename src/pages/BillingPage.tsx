@@ -26,10 +26,19 @@ const SETUP_FEE  = 200;
 const TABLET_FEE = 600;
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
 
+// Fallback used when the chain plan row hasn't been added to billing_plans yet
+const CHAIN_FALLBACK: BillingPlan = {
+  id: "chain-fallback",
+  name: "Chain of Bars Plan",
+  amount: 3000,
+  plan_type: "chain",
+  duration_months: 12,
+} as unknown as BillingPlan;
+
 type Step = "status" | "choose" | "addons" | "payment" | "confirm";
 
 export default function BillingPage() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
 
   // ── Remote data ──────────────────────────────────────────────────────────
   const [plans, setPlans]             = useState<BillingPlan[]>([]);
@@ -52,6 +61,26 @@ export default function BillingPage() {
 
   useEffect(() => { loadAll(); }, [profile?.id]);
   useEffect(() => { if (profile?.id) loadPayments(); }, [historyPage]);
+
+  // ── Realtime: refresh when admin approves/rejects a payment or updates the profile ──
+  useEffect(() => {
+    if (!profile?.id) return;
+    const ch = supabase
+      .channel(`billing-realtime-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "billing_payments", filter: `owner_id=eq.${profile.id}` },
+        () => { loadPayments(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${profile.id}` },
+        () => { refreshProfile(); loadPayments(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // ── Handle ?upgrade=machines_addon|premium from Machines page ────────────
   useEffect(() => {
@@ -171,7 +200,7 @@ export default function BillingPage() {
   const basicPlan         = plans.find(p => p.plan_type === "basic");
   const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
   const premiumPlan       = plans.find(p => p.plan_type === "premium");
-  const chainPlan         = plans.find(p => p.plan_type === "chain");
+  const chainPlan         = plans.find(p => p.plan_type === "chain") ?? CHAIN_FALLBACK;
 
   const basicEnd      = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const basicDaysLeft = basicEnd ? Math.ceil((basicEnd.getTime() - Date.now()) / 86400000) : null;
@@ -480,10 +509,9 @@ export default function BillingPage() {
               )} {/* end !isChain */}
 
               {/* ── Upgrade to Chain — shown to all active non-chain, non-special owners ── */}
-              {!isChain && !isSpecial && !pendingPayment && chainPlan && (
+              {!isChain && !isSpecial && !pendingPayment && (
                 <div
-                  className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative"
-                  style={{ background: "linear-gradient(135deg, rgba(234,88,12,0.08) 0%, rgba(245,158,11,0.06) 100%)" }}
+                  className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative bg-white"
                 >
                   {/* Multi-bar badge */}
                   <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -666,7 +694,7 @@ export default function BillingPage() {
           </div>
 
           {/* Chain of Bars plan card — full width, shown to all non-chain owners */}
-          {chainPlan && (
+          {!isChain && (
             <div className="rounded-2xl border-2 border-orange-400 bg-white shadow-md overflow-hidden relative">
               <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Multi-Bar
@@ -754,7 +782,7 @@ export default function BillingPage() {
             <div className="flex justify-between text-sm text-gray-600"><span>{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
             {includeSetup   && <div className="flex justify-between text-sm text-gray-600"><span>Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
             {includeTablet  && <div className="flex justify-between text-sm text-gray-600"><span>Android tablet</span><span className="font-bold">$600 TT</span></div>}
-            <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2"><span>Total due now</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span></div>
+            <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2 text-orange-700"><span>Total due now</span><span>${totalDue.toFixed(0)} TT</span></div>
           </div>
 
           <button onClick={() => setStep("payment")}

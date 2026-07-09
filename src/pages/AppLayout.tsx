@@ -402,7 +402,7 @@ export default function AppLayout() {
             {/* ── OWNER / ADMIN MENU — dropdown, scrollable if screen is short ── */}
             {menuOpen && !isCashier && (
               <div
-                className="absolute right-0 top-[calc(100%+6px)] w-72 sm:w-80 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+                className="absolute right-0 top-[calc(100%+6px)] w-56 sm:w-64 rounded-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
                 style={{
                   background: "var(--gradient-card)",
                   maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",

@@ -166,17 +166,17 @@ export default function MusicPage() {
   // ── Auto-scroll saved list to the playing item when tab opens ──────────
   useEffect(() => {
     if (ytSubTab !== "saved") return;
-    // Give the list a frame to render before scrolling
-    const raf = requestAnimationFrame(() => {
+    // Use a short timeout to allow the view to fully render (especially after exiting fullscreen)
+    const timer = setTimeout(() => {
       if (playingRowRef.current && savedListRef.current) {
         playingRowRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
       } else if (savedListRef.current) {
         // No song playing — scroll to top
         savedListRef.current.scrollTo({ top: 0, behavior: "instant" });
       }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [ytSubTab]);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [ytSubTab, showYTFullscreen]);
 
   // ── Listen for YouTube video ended → auto-play next from history ──────
   useEffect(() => {
@@ -435,6 +435,8 @@ export default function MusicPage() {
                 onClick={() => {
                   setShowYTFullscreen(false);
                   setLastMainTab("youtube");
+                  // Switch to saved tab — the auto-scroll useEffect will scroll to the playing item
+                  setYtSubTab("saved");
                 }}
                 className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
                 style={{ background: "rgba(180,0,0,0.85)" }}
