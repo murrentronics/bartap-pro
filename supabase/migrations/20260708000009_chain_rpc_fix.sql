@@ -1,13 +1,15 @@
--- Recreate create_bar_account using supabase_auth_admin role for auth.users insert
--- Also adds all missing GRANT EXECUTE statements
+-- Chain RPC fixes: proper grants + updated get_chain_bars
+-- create_bar_account is handled by the create-bar edge function (service role)
+-- so it is NOT defined here as an RPC.
 
--- ── Drop old version first (signature changed) ───────────────────────────────
+-- ── Drop old versions first ───────────────────────────────────────────────────
 DROP FUNCTION IF EXISTS public.create_bar_account(uuid, text, text, boolean);
 DROP FUNCTION IF EXISTS public.delete_bar_account(uuid, uuid);
 DROP FUNCTION IF EXISTS public.get_chain_bars(uuid);
 DROP FUNCTION IF EXISTS public.update_bar_account(uuid, uuid, text, text, boolean);
 
 -- ── get_chain_bars ────────────────────────────────────────────────────────────
+-- Returns master's own bar (bar 1) + all sub-accounts ordered by created_at
 CREATE OR REPLACE FUNCTION public.get_chain_bars(p_owner_id UUID)
 RETURNS TABLE (
   id            UUID,
@@ -37,127 +39,6 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_chain_bars(uuid) TO authenticated;
-
--- ── create_bar_account ────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.create_bar_account(
-  p_owner_id     UUID,
-  p_name         TEXT,
-  p_location     TEXT,
-  p_has_machines BOOLEAN DEFAULT false
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-DECLARE
-  v_new_user_id   UUID;
-  v_bar_count     INTEGER;
-  v_caller_id     UUID := auth.uid();
-  v_fake_email    TEXT;
-BEGIN
-  -- Security: only the chain owner themselves can call this
-  IF v_caller_id IS DISTINCT FROM p_owner_id THEN
-    RAISE EXCEPTION 'Not authorized';
-  END IF;
-
-  -- Check chain plan is active
-  IF NOT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = p_owner_id AND plan_type = 'chain'
-  ) THEN
-    RAISE EXCEPTION 'Chain plan not active';
-  END IF;
-
-  -- Count existing sub-accounts (master bar doesn't count against the 10 sub limit)
-  SELECT COUNT(*) INTO v_bar_count
-  FROM public.profiles
-  WHERE parent_id = p_owner_id AND is_bar_account = true;
-
-  IF v_bar_count >= 9 THEN
-    -- 9 sub-accounts + 1 master = 10 total
-    RAISE EXCEPTION 'Maximum 10 bars reached';
-  END IF;
-
-  v_new_user_id := gen_random_uuid();
-  v_fake_email  := 'bar-' || v_new_user_id::text || '@chain.internal';
-
-  -- Insert auth user via supabase_auth_admin
-  PERFORM extensions.pgcrypto_gen_random_bytes(1); -- ensure pgcrypto available
-
-  INSERT INTO auth.users (
-    id,
-    instance_id,
-    email,
-    encrypted_password,
-    email_confirmed_at,
-    raw_user_meta_data,
-    created_at,
-    updated_at,
-    aud,
-    role,
-    is_super_admin
-  ) VALUES (
-    v_new_user_id,
-    '00000000-0000-0000-0000-000000000000',
-    v_fake_email,
-    crypt(gen_random_uuid()::text, gen_salt('bf')),
-    now(),
-    jsonb_build_object('username', p_name, 'role', 'owner'),
-    now(),
-    now(),
-    'authenticated',
-    'authenticated',
-    false
-  );
-
-  -- Insert profile row
-  INSERT INTO public.profiles (
-    id,
-    username,
-    role,
-    parent_id,
-    wallet_balance,
-    status,
-    address,
-    is_bar_account,
-    machines_addon_active,
-    plan_type,
-    chain_addon_active,
-    billing_status
-  ) VALUES (
-    v_new_user_id,
-    p_name,
-    'owner',
-    p_owner_id,
-    0,
-    'approved',
-    p_location,
-    true,
-    p_has_machines,
-    'chain',
-    false,
-    'active'
-  )
-  ON CONFLICT (id) DO UPDATE SET
-    username              = EXCLUDED.username,
-    parent_id             = EXCLUDED.parent_id,
-    status                = EXCLUDED.status,
-    address               = EXCLUDED.address,
-    is_bar_account        = EXCLUDED.is_bar_account,
-    machines_addon_active = EXCLUDED.machines_addon_active,
-    plan_type             = EXCLUDED.plan_type;
-
-  -- Increment bar count on master
-  UPDATE public.profiles
-  SET chain_bar_count = COALESCE(chain_bar_count, 1) + 1
-  WHERE id = p_owner_id;
-
-  RETURN jsonb_build_object('bar_id', v_new_user_id);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.create_bar_account(uuid, text, text, boolean) TO authenticated;
 
 -- ── delete_bar_account ────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.delete_bar_account(
