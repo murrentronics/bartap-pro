@@ -111,15 +111,29 @@ serve(async (req) => {
 
     // Copy products from the master's own bar (bar 1 = master profile) if requested
     if (p_copy_items === true) {
-      const { data: sourceProducts } = await supabase
+      const { data: sourceProducts, error: copyFetchError } = await supabase
         .from("products")
-        .select("name, price, category, is_available, description, image_url")
+        .select("name, price, category, image_url, stock_qty, cost_price, sort_order")
         .eq("owner_id", user.id);
 
+      if (copyFetchError) {
+        console.error("copy fetch error:", copyFetchError.message);
+      }
+
       if (sourceProducts && sourceProducts.length > 0) {
-        const copies = sourceProducts.map((p) => ({ ...p, owner_id: barId }));
+        const copies = sourceProducts.map((p) => ({
+          name:       p.name,
+          price:      p.price,
+          category:   p.category,
+          image_url:  p.image_url,
+          stock_qty:  p.stock_qty ?? 0,
+          cost_price: p.cost_price ?? 0,
+          sort_order: p.sort_order ?? 0,
+          owner_id:   barId,
+        }));
         for (let i = 0; i < copies.length; i += 100) {
-          await supabase.from("products").insert(copies.slice(i, i + 100));
+          const { error: insertError } = await supabase.from("products").insert(copies.slice(i, i + 100));
+          if (insertError) console.error("copy insert error:", insertError.message);
         }
       }
     }
