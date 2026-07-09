@@ -474,7 +474,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase.from("wallet_transactions").select("*").eq("profile_id", profile.id)
-        .in("type", ["sale", "transfer_in", "cashier_sale", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
+        .in("type", ["transfer_in", "cashier_sale", "bottle_finished", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -1262,7 +1262,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       // Fetch ALL wallet txs (no range limit)
       supabase.from("wallet_transactions").select("*")
         .eq("profile_id", profile.id)
-        .in("type", ["sale", "transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
+        .in("type", ["transfer_in", "bottle_finished", "cashier_sale", "pack_finished", "credit_payment", "credit_charge"])
         .order("created_at", { ascending: false })
         .then(({ data }) => setAllTxs((data ?? []) as WalletTx[])),
     ]).finally(() => setLoading(false));
@@ -1656,7 +1656,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, saleTxRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       // Transfer-in: cashier balances cleared to owner
@@ -1665,10 +1665,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
       // Cashier orders — all orders under this owner where a cashier (not the owner) made the sale
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
-      // Sale txs — covers chain bar owner where cashier_id = master (not profile.id)
-      supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "sale"),
       // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
-      supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),      // All products with stock: price × qty and cost_price × qty
+      supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
+      // All products with stock: price × qty and cost_price × qty
       supabase.from("products").select("price, cost_price, stock_qty").eq("owner_id", profile.id),
       // Currently open bottles
       sb.from("opened_bottles")
@@ -1686,12 +1685,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Cashier orders are NOT counted here — that cash is still with the cashier until cleared
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
-    // Sale txs cover chain bar owner sales (cashier_id = master, not profile.id)
-    // For regular owners ownerOrdersIncome already covers this — use whichever has data
-    const saleTxIncome = (saleTxRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const directIncome = ownerOrdersIncome > 0 ? ownerOrdersIncome : saleTxIncome;
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const totalIncome = transfersIncome + directIncome + creditPaymentsIncome;
+    const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
 
     // Closed stock: sum of price × stock_qty (resale) and cost_price × stock_qty (cost)
     const closedStockValue = (productsRes.data ?? []).reduce(
