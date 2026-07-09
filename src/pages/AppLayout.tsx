@@ -316,12 +316,7 @@ export default function AppLayout() {
             {menuOpen && isCashier && (
             <>
               <div
-                className="fixed inset-0 z-[99]"
-                style={{ background: "var(--background)" }}
-                onClick={() => setMenuOpen(false)}
-              />
-              <div
-                className="fixed left-0 right-0 z-[100] overflow-y-auto"
+                className="fixed left-0 right-0 z-[200] overflow-y-auto"
                 style={{
                   top: "calc(44px + env(safe-area-inset-top, 0px))",
                   bottom: 0,
@@ -418,16 +413,9 @@ export default function AppLayout() {
             {/* ── OWNER / ADMIN MENU — full-width panel + black backdrop ── */}
             {menuOpen && !isCashier && (
               <>
-                {/* Fully opaque backdrop — hides bar content completely */}
-                <div
-                  className="fixed inset-0 z-[99]"
-                  style={{ background: "var(--background)" }}
-                  onClick={() => setMenuOpen(false)}
-                />
-
                 {/* Menu panel — full width, on top of backdrop */}
                 <div
-                  className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
+                  className="fixed left-0 right-0 border border-border shadow-2xl z-[200] overflow-y-auto"
                   style={{
                     top: "calc(44px + env(safe-area-inset-top, 0px))",
                     bottom: 0,
