@@ -389,20 +389,23 @@ export default function AdminBillingManagementPage() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full">
               {(["pending", "due", "paid", "rejected"] as const).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
                   onClick={() => { setFilter(f); setPage(0); }}
-                  title={f.charAt(0).toUpperCase() + f.slice(1)}
-                  className="w-10 h-10 p-0 shrink-0"
+                  className="flex-1 flex flex-col items-center gap-0.5 h-auto py-2 px-1 min-w-0"
                   style={f === "due" && filter === f ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}
                 >
-                  {f === "pending"  && <Clock       className="h-4 w-4 text-yellow-500" />}
-                  {f === "due"      && <AlertCircle className="h-4 w-4 text-orange-400" />}
-                  {f === "paid"     && <CheckCircle className="h-4 w-4 text-green-500"  />}
-                  {f === "rejected" && <XCircle     className="h-4 w-4 text-red-500"    />}
+                  {f === "pending"  && <Clock       className="h-4 w-4 text-yellow-500 shrink-0" />}
+                  {f === "due"      && <AlertCircle className="h-4 w-4 text-orange-400 shrink-0" />}
+                  {f === "paid"     && <CheckCircle className="h-4 w-4 text-green-500  shrink-0" />}
+                  {f === "rejected" && <XCircle     className="h-4 w-4 text-red-500    shrink-0" />}
+                  <span className="text-[10px] font-black leading-none capitalize">{f}</span>
+                  {f === "pending"  && stats.pending  > 0 && <span className="text-[10px] font-black text-yellow-500">{stats.pending}</span>}
+                  {f === "due"      && stats.dueSoonCount > 0 && <span className="text-[10px] font-black text-orange-400">{stats.dueSoonCount}</span>}
+                  {f === "paid"     && stats.paid     > 0 && <span className="text-[10px] font-black text-green-500">{stats.paid}</span>}
                 </Button>
               ))}
             </div>
