@@ -131,6 +131,11 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const resolveDeletable = async (newestOrder: Order | null) => {
     if (!newestOrder) { setDeletableOrderId(null); return; }
 
+    // Hide delete button if order is older than 1 hour
+    if (Date.now() - new Date(newestOrder.created_at).getTime() > 60 * 60 * 1000) {
+      setDeletableOrderId(null); return;
+    }
+
     // Block delete if a wallet clear (transfer_out) happened after this order was created.
     // That means the sale's money already moved to the owner — deleting would cause a negative balance.
     const { data: clearData } = await supabase
@@ -1231,6 +1236,11 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     const newest = ownerOrders.reduce((a, b) =>
       new Date(a.created_at) > new Date(b.created_at) ? a : b
     );
+
+    // Hide delete button if order is older than 1 hour
+    if (Date.now() - new Date(newest.created_at).getTime() > 60 * 60 * 1000) {
+      setDeletableOrderId(null); return;
+    }
 
     const { data } = await supabase
       .from("cashier_last_delete")

@@ -611,7 +611,19 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         )}
       </div>
       <button
-        onClick={() => { if (allChanged.length > 0) setShowPreview(true); }}
+        onClick={() => {
+          // Block if any item has qty > 0 but cp or sp is 0
+          const invalid = updates.find((p) => {
+            const cp = parseFloat(costPrices[p.id] ?? "") || Number(p.cost_price ?? 0);
+            const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
+            return cp === 0 || sp === 0;
+          });
+          if (invalid) {
+            toast.error(`"${invalid.name}" has qty > 0 but Cost Price or Sell Price is $0.00 — set both prices first.`);
+            return;
+          }
+          if (allChanged.length > 0) setShowPreview(true);
+        }}
         disabled={busy || allChanged.length === 0}
         className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
         style={{ background: "var(--gradient-hero)" }}
@@ -673,6 +685,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                     const hasAdd = parseInt(addVal, 10) > 0;
                     const cpVal = costPrices[p.id] ?? "";
                     const spVal = sellPrices[p.id] ?? "";
+                    const cpIsZero = hasAdd && (parseFloat(cpVal) || 0) === 0;
+                    const spIsZero = hasAdd && (parseFloat(spVal) || 0) === 0;
                     return (
                       <tr
                         key={p.id}
@@ -696,7 +710,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           <div
                             onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "cp" ? null : { id: p.id, field: "cp" })}
                             className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
-                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "cp" ? "var(--primary)" : "var(--border)", color: "var(--muted-foreground)" }}
+                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "cp" ? "var(--primary)" : cpIsZero ? "#ef4444" : "var(--border)", color: "var(--muted-foreground)" }}
                           >
                             {cpVal || "0.00"}
                           </div>
@@ -706,7 +720,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           <div
                             onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "sp" ? null : { id: p.id, field: "sp" })}
                             className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
-                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "sp" ? "var(--primary)" : "var(--border)", color: "var(--foreground)" }}
+                            style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "sp" ? "var(--primary)" : spIsZero ? "#ef4444" : "var(--border)", color: "var(--foreground)" }}
                           >
                             {spVal || "0.00"}
                           </div>

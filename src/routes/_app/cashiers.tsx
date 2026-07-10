@@ -270,7 +270,10 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
                 const monthRecords = getRecordsForMonth(month);
                 const monthTotal = monthRecords
                   .filter((r) => r.kind === "order")
-                  .reduce((s, r) => s + Number((r.data as Order).total), 0);
+                  .reduce((s, r) => s + Number((r.data as Order).total), 0)
+                  + monthRecords
+                  .filter((r) => r.kind === "tx" && (r.data as WalletTx).type === "credit_payment" && Number((r.data as WalletTx).amount) > 0)
+                  .reduce((s, r) => s + Number((r.data as WalletTx).amount), 0);
                 const hasCleared = monthRecords.some((r) => r.kind === "tx");
                 const isOpen = selectedMonth === month;
 
