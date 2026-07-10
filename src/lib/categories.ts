@@ -1,9 +1,10 @@
 export const CATEGORIES = [
-  { value: "beers",       label: "Beers",       icon: "🍺" },
-  { value: "liquor",      label: "Liquor",      icon: "🍾" },
-  { value: "drinks",      label: "Drinks",      icon: "🧃" },
-  { value: "snacks",      label: "Snacks",      icon: "🍟" },
-  { value: "cigarettes",  label: "Cigarettes",  icon: "🚬" },
+  { value: "beers",          label: "Beers",          icon: "🍺" },
+  { value: "liquor",         label: "Liquor",         icon: "🍾" },
+  { value: "drinks",         label: "Drinks",         icon: "🧃" },
+  { value: "snacks",         label: "Snacks",         icon: "🍟" },
+  { value: "cigarettes",     label: "Cigarettes",     icon: "🚬" },
+  { value: "miscellaneous",  label: "Misc",           icon: "📦" },
 ] as const;
 
 export type CategoryValue = typeof CATEGORIES[number]["value"];

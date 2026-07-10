@@ -519,8 +519,8 @@ export default function RegisterPage() {
     <>
       {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        {/* Category tabs — icons only, 5 across */}
-        <div className="max-w-2xl mx-auto grid grid-cols-5 gap-2">
+        {/* Category tabs — icons only, 6 across */}
+        <div className="max-w-2xl mx-auto grid grid-cols-6 gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
