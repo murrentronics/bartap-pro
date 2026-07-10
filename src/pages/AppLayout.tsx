@@ -228,7 +228,7 @@ export default function AppLayout() {
                 Menu
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[100]"
+                <div className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[9999]"
                   style={{ background: "var(--gradient-card)" }}>
                   <Link to="/billing" className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary">
                     <CreditCard className="h-5 w-5 shrink-0" /> {t("billing", "Billing")}
@@ -321,7 +321,7 @@ export default function AppLayout() {
       {/* ── CASHIER MENU — at root level, always above page content ── */}
       {menuOpen && isCashier && (
         <>
-          <div className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[100] overflow-y-auto"
+          <div className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
             style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -373,7 +373,7 @@ export default function AppLayout() {
       {/* ── OWNER / ADMIN MENU — at root level, always above page content ── */}
       {menuOpen && !isCashier && (
         <>
-          <div className="fixed left-0 right-0 border border-border shadow-2xl z-[100] overflow-y-auto"
+          <div className="fixed left-0 right-0 border border-border shadow-2xl z-[9999] overflow-y-auto"
             style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
