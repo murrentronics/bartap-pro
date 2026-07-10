@@ -1,24 +1,23 @@
-/**
+﻿/**
  * MusicPage
  *
  * Two views controlled by `ytActive` (a video ID is set in YouTubeContext):
  *
- * VIEW A — Local player  (ytActive = false)
+ * VIEW A ΓÇö Local player  (ytActive = false)
  *   Compact player strip at top + scrollable Playlist / Files tabs
  *   Normal page flow, no fixed positioning, no overflow issues
- *   YouTube tab shows search — tapping a result sets videoId → switches to View B
+ *   YouTube tab shows search ΓÇö tapping a result sets videoId ΓåÆ switches to View B
  *
- * VIEW B — YouTube fullscreen  (ytActive = true)
+ * VIEW B ΓÇö YouTube fullscreen  (ytActive = true)
  *   The iframe is rendered in AppLayout fixed below the header (z-35)
- *   This page renders ONLY a thin "← Back" bar (z-36) at the very top of its area
+ *   This page renders ONLY a thin "ΓåÉ Back" bar (z-36) at the very top of its area
  *   Everything else is transparent so the iframe fills the screen
- *   User taps ← Back → clears videoId → back to View A (audio stops)
+ *   User taps ΓåÉ Back ΓåÆ clears videoId ΓåÆ back to View A (audio stops)
  *
  * Screen never sleeps while this page is mounted (WakeLock API).
  */
 
 import { useRef, useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useMusicPlayer } from "@/lib/MusicPlayerContext";
@@ -50,14 +49,14 @@ function decodeHtml(str: string): string {
 }
 
 const QUICK_SEARCHES = [
-  { label: "🔥 Latest Soca",      q: "latest soca 2025" },
-  { label: "💃 Latest Dancehall", q: "latest dancehall 2025" },
-  { label: "🎵 Latest Hip Hop",   q: "latest hip hop 2025" },
-  { label: "🇹🇹 Latest Trinibad", q: "latest trinibad 2025" },
-  { label: "🌴 Latest Reggae",    q: "latest reggae 2025" },
-  { label: "😌 Latest R&B",       q: "latest rnb 2025" },
-  { label: "🍹 Bar Vibes",        q: "bar background music mix 2025" },
-  { label: "🎶 Top Hits",         q: "top hits playlist 2025" },
+  { label: "≡ƒöÑ Latest Soca",      q: "latest soca 2025" },
+  { label: "≡ƒÆâ Latest Dancehall", q: "latest dancehall 2025" },
+  { label: "≡ƒÄ╡ Latest Hip Hop",   q: "latest hip hop 2025" },
+  { label: "≡ƒç╣≡ƒç╣ Latest Trinibad", q: "latest trinibad 2025" },
+  { label: "≡ƒî┤ Latest Reggae",    q: "latest reggae 2025" },
+  { label: "≡ƒÿî Latest R&B",       q: "latest rnb 2025" },
+  { label: "≡ƒì╣ Bar Vibes",        q: "bar background music mix 2025" },
+  { label: "≡ƒÄ╢ Top Hits",         q: "top hits playlist 2025" },
 ];
 
 export default function MusicPage() {
@@ -84,7 +83,7 @@ export default function MusicPage() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wakeLockRef    = useRef<any>(null);
 
-  // ── Keep screen awake the entire time this page is open ──────────────────
+  // ΓöÇΓöÇ Keep screen awake the entire time this page is open ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     const acquire = async () => {
       try {
@@ -164,7 +163,7 @@ export default function MusicPage() {
     return <Repeat className="h-4 w-4" />;
   };
 
-  // ── Auto-scroll saved list to the playing item when tab opens ──────────
+  // ΓöÇΓöÇ Auto-scroll saved list to the playing item when tab opens ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     if (ytSubTab !== "saved") return;
     // Use a short timeout to allow the view to fully render (especially after exiting fullscreen)
@@ -172,14 +171,14 @@ export default function MusicPage() {
       if (playingRowRef.current && savedListRef.current) {
         playingRowRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
       } else if (savedListRef.current) {
-        // No song playing — scroll to top
+        // No song playing ΓÇö scroll to top
         savedListRef.current.scrollTo({ top: 0, behavior: "instant" });
       }
     }, 80);
     return () => clearTimeout(timer);
   }, [ytSubTab, showYTFullscreen]);
 
-  // ── Listen for YouTube video ended → auto-play next from history ──────
+  // ΓöÇΓöÇ Listen for YouTube video ended ΓåÆ auto-play next from history ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       try {
@@ -205,24 +204,29 @@ export default function MusicPage() {
 
   const ytActive = !!yt.videoId; // video is loaded in iframe (may or may not be fullscreen)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW B — YouTube fullscreen (only when showYTFullscreen is true)
-  // ─────────────────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // VIEW B ΓÇö YouTube fullscreen (only when showYTFullscreen is true)
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   if (showYTFullscreen && yt.videoId) {
     return (
       <div className="-mx-3 -mt-3" style={{ minHeight: "calc(100vh - 44px)" }}>
 
-        {/* No overlay — YouTube native controls are fully accessible */}
+        {/* No overlay ΓÇö YouTube native controls are fully accessible */}
 
-        {/* ── Covers + footer rendered via portal to escape isolation:isolate on <main> ── */}
-        {!searchOpen && createPortal(
+        {/* ΓöÇΓöÇ Pixel covers over YouTube chrome buttons only ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            These transparent divs sit exactly over the YouTube UI buttons
+            that would open external apps or trigger unwanted actions.
+            The center video area and play/pause button remain fully tappable. */}
+        {!searchOpen && (
           <>
-            {/* TOP COVER */}
+            {/* ΓöÇΓöÇ TOP COVER: buries the entire YouTube title/channel/icon bar ΓöÇΓöÇ
+                YouTube's top chrome is ~220px tall on mobile. We cover it all
+                with solid black and show our own now-playing strip at the top. */}
             <div style={{
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
-              left: 0, right: 0, height: 280,
-              zIndex: 99, background: "#000", pointerEvents: "auto",
+              left: 0, right: 0, height: 220,
+              zIndex: 36, background: "#000", pointerEvents: "auto",
               display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
             }}>
               {/* Animated bars */}
@@ -240,24 +244,23 @@ export default function MusicPage() {
                 color: "#fff", fontSize: 12, fontWeight: 800,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
               }}>
-                {yt.nowPlayingTitle || "Playing…"}
+                {yt.nowPlayingTitle || "PlayingΓÇª"}
               </span>
             </div>
 
-            {/* ── BOTTOM COVER: full-width black strip over entire YT controls bar ──
+            {/* ΓöÇΓöÇ BOTTOM COVER: full-width black strip over entire YT controls bar ΓöÇΓöÇ
                 Anchored to bottom: 0, tall enough to cover all of YouTube's
                 controls row plus any safe-area gap. Footer sits on top (z:37). */}
             <div style={{
               position: "fixed",
               bottom: 0, left: 0, right: 0,
-              height: "calc(250px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 99, background: "#000", pointerEvents: "auto",
+              height: "calc(200px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
-          </>,
-          document.body
+          </>
         )}
 
-        {/* Search panel — slides in over the iframe when searchOpen */}
+        {/* Search panel ΓÇö slides in over the iframe when searchOpen */}
         {searchOpen ? (
           <div
             style={{
@@ -281,7 +284,7 @@ export default function MusicPage() {
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && yt.searchesRemaining > 0 && handleSearch()}
-                  placeholder="Search songs, artists…"
+                  placeholder="Search songs, artistsΓÇª"
                   className="pl-9 text-sm bg-black/60 border-red-500/40 text-white placeholder:text-white/30 h-10 rounded-xl"
                 />
               </div>
@@ -299,7 +302,7 @@ export default function MusicPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            {/* Quota bar — full pill, colored fill shows % remaining, text inside */}
+            {/* Quota bar ΓÇö full pill, colored fill shows % remaining, text inside */}
             <div className="px-4 pb-2 shrink-0">
               {yt.searchesRemaining > 0 ? (
                 <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
@@ -317,7 +320,7 @@ export default function MusicPage() {
               ) : (
                 <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.25)" }}>
                   <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-red-400 drop-shadow">
-                    Limit reached — resets in {yt.searchResetTime}
+                    Limit reached ΓÇö resets in {yt.searchResetTime}
                   </span>
                 </div>
               )}
@@ -328,7 +331,7 @@ export default function MusicPage() {
               {yt.searching && (
                 <div className="flex items-center justify-center py-10 gap-3 text-white/40">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">Searching…</span>
+                  <span className="text-sm">SearchingΓÇª</span>
                 </div>
               )}
               {yt.searchError && !yt.searching && (
@@ -387,15 +390,13 @@ export default function MusicPage() {
               )}
             </div>
           </div>
-        ) : null}
-
-        {/* Footer (Save + Exit) — portal to escape isolation:isolate */}
-        {!searchOpen && createPortal(
+        ) : (
+          /* ΓöÇΓöÇ Minimised footer ΓÇö exit + save ΓöÇΓöÇ */
           <div
             style={{
               position: "fixed",
               left: 0, right: 0, bottom: 0,
-              zIndex: 99,
+              zIndex: 37,
               background: "rgba(0,0,0,0.82)",
               borderTop: "1px solid rgba(239,68,68,0.2)",
               backdropFilter: "blur(8px)",
@@ -425,7 +426,7 @@ export default function MusicPage() {
                     className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
                     style={{ background: alreadySaved ? "rgba(180,0,0,0.85)" : "rgba(22,163,74,0.85)" }}
                   >
-                    {alreadySaved ? "✕ Remove" : "+ Save"}
+                    {alreadySaved ? "Γ£ò Remove" : "+ Save"}
                   </button>
                 );
               })()}
@@ -434,6 +435,7 @@ export default function MusicPage() {
                 onClick={() => {
                   setShowYTFullscreen(false);
                   setLastMainTab("youtube");
+                  // Switch to saved tab ΓÇö the auto-scroll useEffect will scroll to the playing item
                   setYtSubTab("saved");
                 }}
                 className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
@@ -448,22 +450,21 @@ export default function MusicPage() {
                 to   { transform: scaleY(1); }
               }
             `}</style>
-          </div>,
-          document.body
+          </div>
         )}
       </div>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW A — Local player + Playlist / Files / YouTube search
-  // ─────────────────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // VIEW A ΓÇö Local player + Playlist / Files / YouTube search
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const onYouTubeTab = lastMainTab === "youtube";
 
   return (
     <div className="-mx-3 -mt-3" style={{ background: "#000", height: "calc(100vh - 44px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {/* ── Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ── */}
+      {/* ΓöÇΓöÇ Top section: MP3 player (Playlist/Files) OR YouTube mini-player (YouTube tab) ΓöÇΓöÇ */}
       {onYouTubeTab ? (
         /* YouTube mini now-playing strip */
         <div
@@ -491,12 +492,12 @@ export default function MusicPage() {
                 <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
                 <p className="text-red-400/60 text-[10px] mt-0.5">YouTube playing in background</p>
               </div>
-              {/* Visual cue — not a separate tap target anymore */}
+              {/* Visual cue ΓÇö not a separate tap target anymore */}
               <div
                 className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 flex items-center pointer-events-none"
                 style={{ background: "rgba(239,68,68,0.6)" }}
               >
-                ▶ Resume
+                Γû╢ Resume
               </div>
             </div>
           ) : (
@@ -507,7 +508,7 @@ export default function MusicPage() {
           )}
         </div>
       ) : (
-      /* ── Compact MP3 player strip ── */
+      /* ΓöÇΓöÇ Compact MP3 player strip ΓöÇΓöÇ */
       <div
         className="relative px-4 pt-3 pb-3"
         style={{
@@ -586,7 +587,7 @@ export default function MusicPage() {
       </div>
       )} {/* end MP3 player / YouTube mini-player conditional */}
 
-      {/* ── Tabs — scrollable, no fixed positioning ───────────────────── */}
+      {/* ΓöÇΓöÇ Tabs ΓÇö scrollable, no fixed positioning ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       <div style={{ background: "#0d1117", flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Tabs defaultValue={lastMainTab} onValueChange={v => setLastMainTab(v)} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <TabsList className="grid grid-cols-3 mx-3 mt-2 h-14"
@@ -682,10 +683,10 @@ export default function MusicPage() {
             </div>
           </TabsContent>
 
-          {/* YouTube — search + sub-tabs */}
+          {/* YouTube ΓÇö search + sub-tabs */}
           <TabsContent value="youtube" className="mt-2" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
-            {/* ── Sticky header: search bar + quota + sub-tabs ── */}
+            {/* ΓöÇΓöÇ Sticky header: search bar + quota + sub-tabs ΓöÇΓöÇ */}
             <div className="px-3 pb-2 shrink-0 space-y-3">
 
               {/* Search bar */}
@@ -698,7 +699,7 @@ export default function MusicPage() {
                     onKeyDown={e => {
                       if (e.key === "Enter") { handleSearch(); setYtSubTab("results"); }
                     }}
-                    placeholder="Search songs, artists…"
+                    placeholder="Search songs, artistsΓÇª"
                     className="pl-9 pr-14 text-sm bg-black/50 border-red-500/40 text-white placeholder:text-white/30 h-11 rounded-xl"
                   />
                   {searchInput && (
@@ -738,7 +739,7 @@ export default function MusicPage() {
                 ) : (
                   <div className="relative h-7 w-full rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.25)" }}>
                     <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-red-400 drop-shadow">
-                      Limit reached — resets in {yt.searchResetTime}
+                      Limit reached ΓÇö resets in {yt.searchResetTime}
                     </span>
                   </div>
                 )}
@@ -763,16 +764,16 @@ export default function MusicPage() {
               </div>
             </div>
 
-            {/* ── Scrollable results area ── */}
+            {/* ΓöÇΓöÇ Scrollable results area ΓöÇΓöÇ */}
             <div className="flex-1 overflow-y-auto px-3 pb-8" ref={savedListRef}>
 
-              {/* ── Results sub-tab ── */}
+              {/* ΓöÇΓöÇ Results sub-tab ΓöÇΓöÇ */}
               {ytSubTab === "results" && (
                 <>
                   {yt.searching && (
                     <div className="flex items-center justify-center py-10 gap-3 text-white/40">
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      <span className="text-sm">Searching…</span>
+                      <span className="text-sm">SearchingΓÇª</span>
                     </div>
                   )}
                   {yt.searchError && !yt.searching && (
@@ -844,7 +845,7 @@ export default function MusicPage() {
                             title={alreadySaved ? "Already saved" : "Save to Saved"}>
                             <span className="text-xl font-black leading-none"
                               style={{ color: alreadySaved ? "rgba(34,197,94,0.8)" : "rgba(239,68,68,0.7)" }}>
-                              {alreadySaved ? "✓" : "+"}
+                              {alreadySaved ? "Γ£ô" : "+"}
                             </span>
                           </button>
                         </div>
@@ -855,7 +856,7 @@ export default function MusicPage() {
                 </>
               )}
 
-              {/* ── Saved sub-tab ── */}
+              {/* ΓöÇΓöÇ Saved sub-tab ΓöÇΓöÇ */}
               {ytSubTab === "saved" && (
                 <>
                   {yt.history.length === 0 ? (
@@ -871,7 +872,7 @@ export default function MusicPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
                           <p className="text-[10px]">
-                            <span className="text-white/30">· Limit: </span>
+                            <span className="text-white/30">┬╖ Limit: </span>
                             <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
                           </p>
                         </div>
@@ -924,7 +925,7 @@ export default function MusicPage() {
               )}
             </div>{/* end scrollable area */}
 
-            {/* ── Clear All confirm modal ── */}
+            {/* ΓöÇΓöÇ Clear All confirm modal ΓöÇΓöÇ */}
             {showClearConfirm && (
               <div
                 style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}
@@ -954,7 +955,7 @@ export default function MusicPage() {
               </div>
             )}
 
-            {/* ── Tips modal ── */}
+            {/* ΓöÇΓöÇ Tips modal ΓöÇΓöÇ */}
             {showTips && (
               <div
                 style={{
@@ -993,34 +994,34 @@ export default function MusicPage() {
 
                     {[
                       {
-                        emoji: "🔍",
+                        emoji: "≡ƒöì",
                         title: "You get 40 searches per day",
-                        body: "Each search costs 1 of your 40 daily searches. The counter resets every night at midnight. Use them wisely — long mixes and playlists are worth more than individual songs.",
+                        body: "Each search costs 1 of your 40 daily searches. The counter resets every night at midnight. Use them wisely ΓÇö long mixes and playlists are worth more than individual songs.",
                       },
                       {
-                        emoji: "📚",
+                        emoji: "≡ƒôÜ",
                         title: "Build your Saved list over a few days",
-                        body: "Tap the + button on any search result to save it. You can save up to 300 tracks. Once your Saved list is full, you can run your bar all night from it alone — zero searches needed.",
+                        body: "Tap the + button on any search result to save it. You can save up to 300 tracks. Once your Saved list is full, you can run your bar all night from it alone ΓÇö zero searches needed.",
                       },
                       {
-                        emoji: "▶️",
+                        emoji: "Γû╢∩╕Å",
                         title: "Playing from Saved is always free",
                         body: "Tapping a song in your Saved list costs no searches at all. The video ID is already saved locally so it plays instantly without touching your daily quota.",
                       },
                       {
-                        emoji: "💾",
+                        emoji: "≡ƒÆ╛",
                         title: "Save from the fullscreen player too",
                         body: "While a song is playing fullscreen, tap the green Save button in the footer to add it to your Saved list. If it already shows a checkmark it's already saved.",
                       },
                       {
-                        emoji: "🎵",
+                        emoji: "≡ƒÄ╡",
                         title: "Search for long mixes, not single songs",
                         body: "A 2-hour mix uses the same 1 search as a 3-minute song. Search for \"dancehall mix 2024\", \"soca party mix\", or \"bar background music\" to get hours of music per search.",
                       },
                       {
-                        emoji: "📋",
+                        emoji: "≡ƒôï",
                         title: "Use Quick Play to save searches",
-                        body: "The Quick Play buttons on the Results tab are pre-loaded searches for common bar vibes. Tap one to get great music without typing — and save your manual searches for specific requests.",
+                        body: "The Quick Play buttons on the Results tab are pre-loaded searches for common bar vibes. Tap one to get great music without typing ΓÇö and save your manual searches for specific requests.",
                       },
                     ].map((tip, i) => (
                       <div key={i}
