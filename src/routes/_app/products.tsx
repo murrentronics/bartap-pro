@@ -1287,7 +1287,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     } else {
       // ── INSERT new product ───────────────────────────────────────────────
       const { data: inserted, error } = await supabase.from("products").insert({
-        owner_id: profile.id, name: name.trim(), price: Number(price), cost_price: costVal, image_url, category,
+        owner_id: ownerId, name: name.trim(), price: Number(price), cost_price: costVal, image_url, category,
       }).select("*").single();
       setBusy(false);
       if (error) { toast.error(error.message); return; }
