@@ -2032,19 +2032,19 @@ function CreditSaleOverlay({
 
         {/* ΓöÇΓöÇ Step 2b: Confirm account selection ΓöÇΓöÇ */}
         {confirmPick && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-3xl">
-            <div className="w-full px-8 py-10 space-y-4 text-center">
-              <h3 className="font-black text-xl">{t("confirm_customer", "Confirm Customer?")}</h3>
-              <p className="text-muted-foreground text-sm">{t("charge_to", "Charge this order to")}</p>
-              <p className="font-black text-2xl">{confirmPick.full_name}</p>
-              <p className="font-black text-3xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl" style={{ background: "var(--gradient-card)" }}>
+              <h3 className="font-black text-2xl">{t("confirm_customer", "Confirm Customer?")}</h3>
+              <p className="text-muted-foreground text-base">{t("charge_to", "Charge this order to")}</p>
+              <p className="font-black text-3xl">{confirmPick.full_name}</p>
+              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
               {Number(confirmPick.balance_owed) > 0 && (
-                <p className="text-sm text-red-400 font-semibold">Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}</p>
+                <p className="text-base text-red-400 font-semibold">Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}</p>
               )}
               <div className="flex gap-3 pt-4">
-                <Button variant="outline" className="flex-1 h-14 font-black text-base" onClick={() => setConfirmPick(null)}>{t("cancel", "Cancel")}</Button>
+                <Button variant="outline" className="flex-1 h-16 font-black text-base" onClick={() => setConfirmPick(null)}>{t("cancel", "Cancel")}</Button>
                 <Button
-                  className="flex-1 h-14 font-black text-base"
+                  className="flex-1 h-16 font-black text-base"
                   disabled={busy}
                   onClick={() => { chargeAccount(confirmPick); setConfirmPick(null); }}
                   style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}

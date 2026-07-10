@@ -18,6 +18,7 @@
  */
 
 import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useMusicPlayer } from "@/lib/MusicPlayerContext";
@@ -213,15 +214,10 @@ export default function MusicPage() {
 
         {/* No overlay — YouTube native controls are fully accessible */}
 
-        {/* ── Pixel covers over YouTube chrome buttons only ──────────────────
-            These transparent divs sit exactly over the YouTube UI buttons
-            that would open external apps or trigger unwanted actions.
-            The center video area and play/pause button remain fully tappable. */}
-        {!searchOpen && (
+        {/* ── Covers + footer rendered via portal to escape isolation:isolate on <main> ── */}
+        {!searchOpen && createPortal(
           <>
-            {/* ── TOP COVER: buries the entire YouTube title/channel/icon bar ──
-                YouTube's top chrome is ~220px tall on mobile. We cover it all
-                with solid black and show our own now-playing strip at the top. */}
+            {/* TOP COVER */}
             <div style={{
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
@@ -257,7 +253,8 @@ export default function MusicPage() {
               height: "calc(250px + env(safe-area-inset-bottom, 0px))",
               zIndex: 200, background: "#000", pointerEvents: "auto",
             }} />
-          </>
+          </>,
+          document.body
         )}
 
         {/* Search panel — slides in over the iframe when searchOpen */}
@@ -390,8 +387,10 @@ export default function MusicPage() {
               )}
             </div>
           </div>
-        ) : (
-          /* ── Minimised footer — exit + save ── */
+        ) : null}
+
+        {/* Footer (Save + Exit) — portal to escape isolation:isolate */}
+        {!searchOpen && createPortal(
           <div
             style={{
               position: "fixed",
@@ -435,7 +434,6 @@ export default function MusicPage() {
                 onClick={() => {
                   setShowYTFullscreen(false);
                   setLastMainTab("youtube");
-                  // Switch to saved tab — the auto-scroll useEffect will scroll to the playing item
                   setYtSubTab("saved");
                 }}
                 className="h-16 px-7 rounded-2xl flex items-center gap-2 text-base font-black text-white shrink-0 active:scale-95 transition"
@@ -450,7 +448,8 @@ export default function MusicPage() {
                 to   { transform: scaleY(1); }
               }
             `}</style>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
