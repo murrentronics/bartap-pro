@@ -222,7 +222,7 @@ export default function MusicPage() {
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
               left: 0, right: 0, height: 280,
-              zIndex: 99, background: "#000", pointerEvents: "auto",
+              zIndex: 50, background: "#000", pointerEvents: "auto",
               display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
             }}>
               {/* Animated bars */}
@@ -251,7 +251,7 @@ export default function MusicPage() {
               position: "fixed",
               bottom: 0, left: 0, right: 0,
               height: "calc(250px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 99, background: "#000", pointerEvents: "auto",
+              zIndex: 50, background: "#000", pointerEvents: "auto",
             }} />
           </>,
           document.body
@@ -395,7 +395,7 @@ export default function MusicPage() {
             style={{
               position: "fixed",
               left: 0, right: 0, bottom: 0,
-              zIndex: 99,
+              zIndex: 50,
               background: "rgba(0,0,0,0.82)",
               borderTop: "1px solid rgba(239,68,68,0.2)",
               backdropFilter: "blur(8px)",
