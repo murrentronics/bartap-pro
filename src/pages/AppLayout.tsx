@@ -401,6 +401,7 @@ export default function AppLayout() {
                     </button>
                   );
                 })}
+                {!isAdmin && (
                 <button onClick={() => { setMenuOpen(false); nav("/language"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
@@ -410,6 +411,7 @@ export default function AppLayout() {
                   </div>
                   <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
                 </button>
+                )}
                 {isChainOwner && (
                   <button onClick={() => { setMenuOpen(false); nav("/switch-bar"); }}
                     className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"

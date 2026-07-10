@@ -81,9 +81,9 @@ function AnnualFeeBadge({ ownerId }: { ownerId: string }) {
 
   if (amount === null) return null;
   return (
-    <div className="shrink-0 text-right">
-      <div className="text-2xl font-black text-primary leading-none">${amount.toFixed(0)}</div>
-      <div className="text-[10px] text-muted-foreground font-semibold mt-0.5">TT / yr</div>
+    <div className="shrink-0 text-right self-start">
+      <div className="text-2xl font-black text-white leading-none">${amount.toFixed(0)}</div>
+      <div className="text-[10px] text-white/60 font-bold mt-0.5">TT / yr</div>
     </div>
   );
 }
@@ -153,8 +153,7 @@ function SubscriptionBadge({ ownerId }: {
         <CalendarClock className="h-3.5 w-3.5 shrink-0" />
       )}
       <span>
-        {paidCount} cycle{paidCount !== 1 ? 's' : ''} • ${profile.planAmount?.toFixed(2) || '0.00'} • Due {formatDate(dueDate)}
-        {isNearExpiry && ` (${daysUntil}d)`}
+        Due {formatDate(dueDate)}{isNearExpiry && ` (${daysUntil}d)`}
       </span>
     </div>
   );
@@ -1128,6 +1127,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [nearExpiryCount, setNearExpiryCount] = useState(0);
+  const [outerTab, setOuterTab] = useState("users");
 
   useEffect(() => {
     if (!loading && profile && profile.role !== "admin") {
@@ -1234,15 +1234,18 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="users">
+      <Tabs value={outerTab} onValueChange={setOuterTab}>
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="users" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Users</TabsTrigger>
-          <TabsTrigger value="import" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Import</TabsTrigger>
-          <TabsTrigger value="templates" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Templates</TabsTrigger>
-          <TabsTrigger value="youtube" className="gap-1 data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">
-            <Youtube className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">YouTube</span>
-          </TabsTrigger>
+          {(["users","import","templates","youtube"] as const).map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="gap-1"
+              style={outerTab !== tab ? { background: "transparent", boxShadow: "none", color: "var(--muted-foreground)" } : {}}
+            >
+              {tab === "youtube" ? <><Youtube className="h-3.5 w-3.5" /><span className="hidden sm:inline">YouTube</span></> : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="users" className="space-y-4 mt-4">
@@ -1326,7 +1329,7 @@ export default function AdminPage() {
                         {r.phone && (
                           <a
                             href={`tel:${r.phone}`}
-                            className="inline-flex items-center gap-2 text-xs font-bold text-foreground bg-muted border border-border rounded-lg px-3 py-1.5 hover:bg-primary hover:text-primary-foreground hover:border-primary transition active:scale-95"
+                            className="inline-flex items-center gap-2 text-xs font-black text-black bg-primary border border-primary rounded-lg px-3 py-1.5 hover:opacity-90 transition active:scale-95"
                             title={`Call ${r.username}`}
                           >
                             📞 {r.phone}
