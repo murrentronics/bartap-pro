@@ -64,12 +64,17 @@ function AnnualFeeBadge({ ownerId }: { ownerId: string }) {
     (async () => {
       const { data: payments } = await supabase
         .from("billing_payments")
-        .select("plan_id")
+        .select("plan_id, amount")
         .eq("owner_id", ownerId)
         .eq("status", "paid")
-        .order("paid_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1);
       if (!payments?.length) return;
+      // Use amount directly from payment row (faster, no extra query)
+      if (payments[0].amount) {
+        setAmount(Number(payments[0].amount));
+        return;
+      }
       const { data: plan } = await supabase
         .from("billing_plans")
         .select("amount")
@@ -1241,7 +1246,10 @@ export default function AdminPage() {
               key={tab}
               value={tab}
               className="gap-1"
-              style={outerTab !== tab ? { background: "transparent", boxShadow: "none", color: "var(--muted-foreground)" } : {}}
+              style={outerTab === tab
+                ? { background: "var(--gradient-hero)", color: "#fff", boxShadow: "0 2px 8px rgba(251,146,60,0.4)" }
+                : { background: "transparent", boxShadow: "none", color: "var(--muted-foreground)" }
+              }
             >
               {tab === "youtube" ? <><Youtube className="h-3.5 w-3.5" /><span className="hidden sm:inline">YouTube</span></> : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </TabsTrigger>

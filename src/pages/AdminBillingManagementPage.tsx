@@ -30,11 +30,12 @@ export default function AdminBillingManagementPage() {
   const [selectedPayment, setSelectedPayment] = useState<PaymentWithOwner | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<"pending" | "paid" | "rejected">("pending");
+  const [filter, setFilter] = useState<"pending" | "paid" | "rejected" | "due">("pending");
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [stats, setStats] = useState({ pending: 0, paid: 0, revenue: 0 });
+  const [stats, setStats] = useState({ pending: 0, paid: 0, revenue: 0, dueSoonCount: 0, dueSoonTotal: 0 });
   const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [dueSoonList, setDueSoonList] = useState<{ username: string; amount: number; dueDate: string; daysLeft: number }[]>([]);
   
   const PAGE_SIZE = 100;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -58,6 +59,7 @@ export default function AdminBillingManagementPage() {
     }
 
     // Get total count for pagination
+    if (filter === "due") return; // due list is handled by loadStats
     const { count } = await supabase
       .from("billing_payments")
       .select("*", { count: "exact", head: true })
@@ -93,7 +95,56 @@ export default function AdminBillingManagementPage() {
       supabase.from("billing_payments").select("amount").eq("status", "paid"),
     ]);
     const revenue = (paidData ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
-    setStats({ pending: pendingCount ?? 0, paid: paidCount ?? 0, revenue });
+
+    // Due soon: approved owners whose subscription_end_date is within 7 days
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    const { data: dueSoonProfiles } = await supabase
+      .from("profiles")
+      .select("id, subscription_end_date")
+      .eq("status", "approved")
+      .eq("role", "owner")
+      .lte("subscription_end_date", sevenDaysFromNow.toISOString())
+      .gte("subscription_end_date", new Date().toISOString());
+
+    // Get their latest paid payment amounts
+    let dueSoonTotal = 0;
+    const dueSoonCount = (dueSoonProfiles ?? []).length;
+    if (dueSoonCount > 0) {
+      for (const p of dueSoonProfiles ?? []) {
+        const { data: lastPayment } = await supabase
+          .from("billing_payments")
+          .select("amount")
+          .eq("owner_id", p.id)
+          .eq("status", "paid")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastPayment) dueSoonTotal += Number(lastPayment.amount);
+      }
+    }
+    setStats({ pending: pendingCount ?? 0, paid: paidCount ?? 0, revenue, dueSoonCount, dueSoonTotal });
+
+    // Build due-soon list for the Due tab
+    const list: { username: string; amount: number; dueDate: string; daysLeft: number }[] = [];
+    for (const p of dueSoonProfiles ?? []) {
+      const { data: ownerProfile } = await supabase
+        .from("profiles").select("username").eq("id", p.id).single();
+      const { data: lastPayment } = await supabase
+        .from("billing_payments").select("amount")
+        .eq("owner_id", p.id).eq("status", "paid")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const dueDate = new Date(p.subscription_end_date);
+      const daysLeft = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
+      list.push({
+        username: ownerProfile?.username ?? "Unknown",
+        amount: lastPayment ? Number(lastPayment.amount) : 0,
+        dueDate: dueDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+        daysLeft,
+      });
+    }
+    list.sort((a, b) => a.daysLeft - b.daysLeft);
+    setDueSoonList(list);
   };
 
   const filterPayments = () => {
@@ -306,7 +357,7 @@ export default function AdminBillingManagementPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4">
             <p className="text-sm text-muted-foreground mb-1">Pending Payments</p>
             <p className="text-3xl font-black text-yellow-500">{totalPending}</p>
@@ -318,6 +369,11 @@ export default function AdminBillingManagementPage() {
           <Card className="p-4">
             <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
             <p className="text-3xl font-black text-primary">${totalRevenue.toFixed(2)}</p>
+          </Card>
+          <Card className="p-4 border-orange-500/40 bg-orange-500/5 cursor-pointer active:scale-[0.98] transition" onClick={() => setFilter("due")}>
+            <p className="text-sm text-muted-foreground mb-1">Due Within 7 Days</p>
+            <p className="text-3xl font-black text-orange-400">{stats.dueSoonCount}</p>
+            <p className="text-xs text-orange-400 font-bold mt-1">${stats.dueSoonTotal.toFixed(0)} TT due</p>
           </Card>
         </div>
 
@@ -334,14 +390,15 @@ export default function AdminBillingManagementPage() {
               />
             </div>
             <div className="flex gap-2">
-              {(["pending", "paid", "rejected"] as const).map((f) => (
+              {(["pending", "paid", "rejected", "due"] as const).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
                   onClick={() => { setFilter(f); setPage(0); }}
                   className="capitalize"
+                  style={f === "due" && filter === f ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}
                 >
-                  {f}
+                  {f === "due" ? "⏰ Due" : f}
                 </Button>
               ))}
             </div>
@@ -350,7 +407,32 @@ export default function AdminBillingManagementPage() {
 
         {/* Payments List */}
         <Card className="p-6">
-          {filteredPayments.length === 0 ? (
+          {filter === "due" ? (
+            dueSoonList.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No payments due within 7 days</p>
+            ) : (
+              <div className="space-y-3">
+                {dueSoonList.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-orange-500/30 bg-orange-500/5">
+                    <div>
+                      <p className="font-black text-base">{item.username}</p>
+                      <p className="text-xs text-orange-400 font-bold mt-0.5">
+                        Due {item.dueDate} · {item.daysLeft === 0 ? "Today" : `${item.daysLeft}d`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black text-orange-400">${item.amount.toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">TT / yr</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-3 border-t border-border mt-3">
+                  <p className="text-sm font-black text-muted-foreground">Total Due</p>
+                  <p className="text-2xl font-black text-orange-400">${stats.dueSoonTotal.toFixed(0)} TT</p>
+                </div>
+              </div>
+            )
+          ) : filteredPayments.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No payments found</p>
           ) : (
             <>
