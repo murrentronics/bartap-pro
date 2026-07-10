@@ -1329,7 +1329,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
   const total = allFlatVisible.length;
   const totalPages = Math.max(1, Math.ceil(total / TX_PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
-  const flatRecords = allFlat.slice(safePage * TX_PAGE_SIZE, safePage * TX_PAGE_SIZE + TX_PAGE_SIZE);
+  const flatRecords = allFlatVisible.slice(safePage * TX_PAGE_SIZE, safePage * TX_PAGE_SIZE + TX_PAGE_SIZE);
   const pageRecordCount = flatRecords.length;
 
   const deleteLatestOrder = async (order: Order) => {
