@@ -25,6 +25,9 @@ import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/bill
 const SETUP_FEE  = 200;
 const TABLET_FEE = 600;
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
+// Special chain plan pricing for renard
+const SPECIAL_CHAIN_UPGRADE = 1000;   // one-time upgrade price
+const SPECIAL_CHAIN_RENEWAL = 1800;   // annual renewal from year 2
 
 // Fallback used when the chain plan row hasn't been added to billing_plans yet
 const CHAIN_FALLBACK: BillingPlan = {
@@ -351,20 +354,21 @@ export default function BillingPage() {
                       {chainDaysLeft !== null && !chainOverdue && chainDaysLeft <= 30 && ` (${chainDaysLeft}d)`}
                     </span>
                   </div>
-                  {!pendingPayment && !isSpecial && (
+                  {!pendingPayment && (
                     chainCanRenew ? (
                       <button
                         onClick={() => {
                           const plan = chainPlan ?? { id: "chain", name: "Chain of Bars Plan", amount: 3000, plan_type: "chain", duration_months: 12 } as unknown as BillingPlan;
-                          setSelectedPlan(plan);
-                          setRenewMode("basic"); // reuse basic renewal path (no addons)
+                          const effectivePlan = isSpecial ? { ...plan, amount: SPECIAL_CHAIN_RENEWAL } : plan;
+                          setSelectedPlan(effectivePlan as BillingPlan);
+                          setRenewMode("basic");
                           setStep("payment");
                         }}
                         className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${chainOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}
                       >
                         {chainOverdue
-                          ? `⚠️ Renew Now — $${chainPlan?.amount.toFixed(0) ?? "3000"} TT`
-                          : `Renew Chain Plan — $${chainPlan?.amount.toFixed(0) ?? "3000"} TT`}
+                          ? `⚠️ Renew Now — $${isSpecial ? SPECIAL_CHAIN_RENEWAL.toFixed(0) : (chainPlan?.amount.toFixed(0) ?? "3000")} TT`
+                          : `Renew Chain Plan — $${isSpecial ? SPECIAL_CHAIN_RENEWAL.toFixed(0) : (chainPlan?.amount.toFixed(0) ?? "3000")} TT`}
                       </button>
                     ) : (
                       <p className="text-xs text-center text-gray-400">
@@ -508,12 +512,11 @@ export default function BillingPage() {
                 </>
               )} {/* end !isChain */}
 
-              {/* ── Upgrade to Chain — shown to all active non-chain, non-special owners ── */}
-              {!isChain && !isSpecial && !pendingPayment && (
+              {/* ── Upgrade to Chain — shown to all active non-chain owners (special pricing for renard) ── */}
+              {!isChain && !pendingPayment && (
                 <div
                   className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative bg-white"
                 >
-                  {/* Multi-bar badge */}
                   <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                     Upgrade
                   </div>
@@ -527,8 +530,11 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <p className="text-2xl font-black text-orange-700 mb-1">
-                    ${chainPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT / year</span>
+                    ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT {isSpecial ? "(first year)" : "/ year"}</span>
                   </p>
+                  {isSpecial && (
+                    <p className="text-xs text-gray-500 mb-2">Annual renewal from year 2: ${SPECIAL_CHAIN_RENEWAL.toFixed(0)} TT/yr</p>
+                  )}
                   <ul className="space-y-1 mb-4">
                     {["Up to 10 fully independent bars", "Per-bar items, wallet & cashiers", "One-click bar switching"].map(f => (
                       <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
@@ -538,11 +544,17 @@ export default function BillingPage() {
                     ))}
                   </ul>
                   <button
-                    onClick={() => { setSelectedPlan(chainPlan); setStep("addons"); }}
+                    onClick={() => {
+                      const plan = isSpecial
+                        ? { ...chainPlan, amount: SPECIAL_CHAIN_UPGRADE }
+                        : chainPlan;
+                      setSelectedPlan(plan as BillingPlan);
+                      setStep("addons");
+                    }}
                     className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
                     style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
                   >
-                    Upgrade to Chain — ${chainPlan.amount.toFixed(0)} TT/yr
+                    Upgrade to Chain — ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} TT
                   </button>
                 </div>
               )}

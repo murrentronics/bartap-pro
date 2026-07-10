@@ -56,6 +56,38 @@ function formatDate(d: Date): string {
 }
 
 // ─── Subscription Badge ───────────────────────────────────────────────────────
+// ─── Annual Fee Badge — shown big on right of card ───────────────────────────
+function AnnualFeeBadge({ ownerId }: { ownerId: string }) {
+  const [amount, setAmount] = useState<number | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: payments } = await supabase
+        .from("billing_payments")
+        .select("plan_id")
+        .eq("owner_id", ownerId)
+        .eq("status", "paid")
+        .order("paid_at", { ascending: false })
+        .limit(1);
+      if (!payments?.length) return;
+      const { data: plan } = await supabase
+        .from("billing_plans")
+        .select("amount")
+        .eq("id", payments[0].plan_id)
+        .single();
+      if (plan) setAmount(plan.amount);
+    })();
+  }, [ownerId]);
+
+  if (amount === null) return null;
+  return (
+    <div className="shrink-0 text-right">
+      <div className="text-2xl font-black text-primary leading-none">${amount.toFixed(0)}</div>
+      <div className="text-[10px] text-muted-foreground font-semibold mt-0.5">TT / yr</div>
+    </div>
+  );
+}
+
 function SubscriptionBadge({ ownerId }: {
   ownerId: string;
 }) {
@@ -1175,8 +1207,9 @@ export default function AdminPage() {
       : rows;
     return {
       pending: filtered.filter((r) => r.status === "pending"),
-      approved: filtered.filter((r) => r.status === "approved"),
-      suspended: filtered.filter((r) => r.status === "suspended"),
+      // Approved: hide bar sub-accounts (chain bars) — only show real account owners
+      approved: filtered.filter((r) => r.status === "approved" && !r.is_bar_account),
+      suspended: filtered.filter((r) => r.status === "suspended" && !r.is_bar_account),
       expelled: filtered.filter((r) => r.status === "expelled"),
     };
   }, [rows, q]);
@@ -1203,10 +1236,10 @@ export default function AdminPage() {
 
       <Tabs defaultValue="users">
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="import">Import</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="youtube" className="gap-1">
+          <TabsTrigger value="users" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Users</TabsTrigger>
+          <TabsTrigger value="import" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Import</TabsTrigger>
+          <TabsTrigger value="templates" className="data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">Templates</TabsTrigger>
+          <TabsTrigger value="youtube" className="gap-1 data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground">
             <Youtube className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">YouTube</span>
           </TabsTrigger>
@@ -1265,8 +1298,8 @@ export default function AdminPage() {
                 )}
                 {buckets[k].map((r) => (
                   <div key={r.id} className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold">{r.username}</span>
                           {r.plan_type === "chain" && (
@@ -1293,7 +1326,7 @@ export default function AdminPage() {
                         {r.phone && (
                           <a
                             href={`tel:${r.phone}`}
-                            className="text-xs text-muted-foreground hover:text-foreground truncate block"
+                            className="inline-flex items-center gap-2 text-xs font-bold text-foreground bg-muted border border-border rounded-lg px-3 py-1.5 hover:bg-primary hover:text-primary-foreground hover:border-primary transition active:scale-95"
                             title={`Call ${r.username}`}
                           >
                             📞 {r.phone}
@@ -1308,7 +1341,12 @@ export default function AdminPage() {
                           Joined {new Date(r.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      {/* Annual fee — fetched by SubscriptionBadge, shown big on right */}
+                      {(k === "approved" || k === "suspended") && (
+                        <AnnualFeeBadge ownerId={r.id} />
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                         {k === "pending" && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">Awaiting payment approval in Billing tab</span>
@@ -1371,7 +1409,6 @@ export default function AdminPage() {
                           <span className="text-xs text-muted-foreground">Account expelled - no actions available</span>
                         )}
                       </div>
-                    </div>
                     {/* Subscription reminder — show for approved/suspended users */}
                     {(k === "approved" || k === "suspended") && (
                       <SubscriptionBadge ownerId={r.id} />
