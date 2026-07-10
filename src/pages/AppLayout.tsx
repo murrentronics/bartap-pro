@@ -447,7 +447,7 @@ export default function AppLayout() {
         </>
       )}
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none", isolation: "isolate" }}>
+      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <Outlet />
       </main>
 

@@ -214,18 +214,17 @@ export default function MusicPage() {
 
         {/* No overlay — YouTube native controls are fully accessible */}
 
-        {/* ── Covers + footer rendered via portal to escape isolation:isolate on <main> ── */}
-        {!searchOpen && createPortal(
+        {/* ── Pixel covers over YouTube chrome buttons only ── */}
+        {!searchOpen && (
           <>
             {/* TOP COVER */}
             <div style={{
               position: "fixed",
               top: "calc(44px + env(safe-area-inset-top, 0px))",
               left: 0, right: 0, height: 280,
-              zIndex: 50, background: "#000", pointerEvents: "auto",
+              zIndex: 36, background: "#000", pointerEvents: "auto",
               display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
             }}>
-              {/* Animated bars */}
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 18, flexShrink: 0, marginTop: 2 }}>
                 {[0,1,2,3].map((b) => (
                   <div key={b} style={{
@@ -244,17 +243,14 @@ export default function MusicPage() {
               </span>
             </div>
 
-            {/* ── BOTTOM COVER: full-width black strip over entire YT controls bar ──
-                Anchored to bottom: 0, tall enough to cover all of YouTube's
-                controls row plus any safe-area gap. Footer sits on top (z:37). */}
+            {/* BOTTOM COVER */}
             <div style={{
               position: "fixed",
               bottom: 0, left: 0, right: 0,
               height: "calc(250px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 50, background: "#000", pointerEvents: "auto",
+              zIndex: 36, background: "#000", pointerEvents: "auto",
             }} />
-          </>,
-          document.body
+          </>
         )}
 
         {/* Search panel — slides in over the iframe when searchOpen */}
@@ -395,7 +391,7 @@ export default function MusicPage() {
             style={{
               position: "fixed",
               left: 0, right: 0, bottom: 0,
-              zIndex: 50,
+              zIndex: 37,
               background: "rgba(0,0,0,0.82)",
               borderTop: "1px solid rgba(239,68,68,0.2)",
               backdropFilter: "blur(8px)",
