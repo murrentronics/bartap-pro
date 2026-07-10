@@ -1341,9 +1341,9 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   </button>
                 )}
               </div>
-              {/* Category tabs */}
+              {/* Category tabs — no Misc since templates aren't available for that category */}
               <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.map((cat) => (
+                {CATEGORIES.filter((cat) => cat.value !== "miscellaneous").map((cat) => (
                   <button
                     key={cat.value}
                     onClick={() => setTemplateCat(cat.value)}

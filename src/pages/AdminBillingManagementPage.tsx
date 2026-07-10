@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Search, DollarSign, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Search, DollarSign, Trash2, AlertCircle } from "lucide-react";
 import type { BillingPayment } from "@/types/billing";
 
 type PaymentWithOwner = BillingPayment & {
@@ -368,7 +368,7 @@ export default function AdminBillingManagementPage() {
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-            <p className="text-3xl font-black text-primary">${totalRevenue.toFixed(2)}</p>
+            <p className="text-xl font-black text-primary">${totalRevenue.toFixed(0)}</p>
           </Card>
           <Card className="p-4 border-orange-500/40 bg-orange-500/5 cursor-pointer active:scale-[0.98] transition" onClick={() => setFilter("due")}>
             <p className="text-sm text-muted-foreground mb-1">Due Within 7 Days</p>
@@ -390,15 +390,19 @@ export default function AdminBillingManagementPage() {
               />
             </div>
             <div className="flex gap-2">
-              {(["pending", "paid", "rejected", "due"] as const).map((f) => (
+              {(["pending", "due", "paid", "rejected"] as const).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
                   onClick={() => { setFilter(f); setPage(0); }}
-                  className="capitalize"
+                  title={f.charAt(0).toUpperCase() + f.slice(1)}
+                  className="w-10 h-10 p-0 shrink-0"
                   style={f === "due" && filter === f ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}
                 >
-                  {f === "due" ? "⏰ Due" : f}
+                  {f === "pending"  && <Clock       className="h-4 w-4 text-yellow-500" />}
+                  {f === "due"      && <AlertCircle className="h-4 w-4 text-orange-400" />}
+                  {f === "paid"     && <CheckCircle className="h-4 w-4 text-green-500"  />}
+                  {f === "rejected" && <XCircle     className="h-4 w-4 text-red-500"    />}
                 </Button>
               ))}
             </div>

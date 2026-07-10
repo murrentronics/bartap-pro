@@ -959,7 +959,7 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
           <div>
             <Label className="text-xs mb-1.5 block">Category</Label>
             <div className="grid grid-cols-5 gap-2">
-              {CATEGORIES.map((cat) => (
+              {CATEGORIES.filter((cat) => cat.value !== "miscellaneous").map((cat) => (
                 <button key={cat.value} type="button"
                   onClick={() => setCategory(cat.value)}
                   className={`h-14 rounded-xl font-bold text-2xl transition ${
