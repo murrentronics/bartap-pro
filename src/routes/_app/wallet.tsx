@@ -1016,23 +1016,59 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
       doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
       doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
 
-      // ── Rows — monthly expenses only ──────────────────────────────────────
+      // ── Rows — grouped by date ────────────────────────────────────────────
+      // Sort by date descending then group
+      const byDate: Record<string, typeof mExpenses> = {};
       mExpenses.forEach((e) => {
+        const dk = e.expense_date; // "YYYY-MM-DD"
+        if (!byDate[dk]) byDate[dk] = [];
+        byDate[dk].push(e);
+      });
+      const dateKeys = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+
+      dateKeys.forEach((dk) => {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
-        const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+
+        // Date header row
+        const dateStr = new Date(dk + "T00:00:00").toLocaleDateString("en-GB", {
           day: "numeric", month: "short", year: "numeric",
         });
-        doc.setFont("helvetica", "bold");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(80, 50, 10);
         doc.text(dateStr, LM, y);
-        doc.setTextColor(180, 40, 40);
-        doc.text("$" + Number(e.amount).toFixed(2), RM, y, { align: "right" });
-        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); y += 5;
-        if (e.description) {
-          doc.setTextColor(100, 100, 100); doc.setFontSize(8);
-          doc.text("  " + e.description, LM, y);
-          doc.setTextColor(0, 0, 0); doc.setFontSize(9); y += 4;
-        }
-        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
+        y += 5;
+
+        // Items under this date
+        byDate[dk].forEach((e) => {
+          if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+
+          // Description line
+          const desc = e.description?.trim() || "Expense";
+          doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(40, 40, 40);
+          // Wrap long descriptions
+          const maxW = RM - LM - 30;
+          const lines = doc.splitTextToSize("  " + desc, maxW);
+          lines.forEach((line: string, li: number) => {
+            if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+            if (li === 0) {
+              // First line — print amount on same row
+              doc.text(line, LM, y);
+              doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(180, 40, 40);
+              doc.text("$" + Number(e.amount).toFixed(2), RM, y, { align: "right" });
+              doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal");
+            } else {
+              doc.text(line, LM, y);
+            }
+            y += 4.5;
+          });
+
+          // Thin separator between items
+          doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM + 4, y, RM, y);
+          y += 3;
+        });
+
+        // Slightly thicker separator between date groups
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y);
+        y += 4;
       });
 
       // ── This month subtotal ───────────────────────────────────────────────
