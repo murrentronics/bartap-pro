@@ -48,7 +48,7 @@ function ConfirmModal({
 }: ConfirmOptions & { onResult: (r: boolean) => void }) {
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={() => onResult(false)}
     >
       <div
