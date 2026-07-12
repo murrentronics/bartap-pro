@@ -223,6 +223,8 @@ export default function AdminBillingManagementPage() {
           premiumEnd.setMonth(premiumEnd.getMonth() + plan.duration_months);
 
           await supabase.from("profiles").update({
+            status: "approved",
+            billing_status: "active",
             plan_type: "premium",
             premium_subscription_start_date: startDate.toISOString(),
             premium_subscription_end_date: premiumEnd.toISOString(),

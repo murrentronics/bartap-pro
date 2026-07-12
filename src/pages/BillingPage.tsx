@@ -382,6 +382,8 @@ export default function BillingPage() {
               {/* Basic + Premium + Machines cards — hidden for chain owners */}
               {!isChain && (
                 <>
+                  {/* Basic Plan card — only shown to basic plan owners */}
+                  {isBasic && (
                   <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -415,6 +417,7 @@ export default function BillingPage() {
                       )
                     )}
                   </div>
+                  )} {/* end isBasic */}
 
                   {/* Premium plan card */}
                   {isPremium && !isSpecial && (
@@ -563,7 +566,7 @@ export default function BillingPage() {
           )} {/* end hasActive */}
 
           {/* Pending setup / expired — go to plan selection */}
-          {(isNewSignup || isExpiredRenew) && !pendingPayment && (
+          {(isNewSignup || isExpiredRenew) && !pendingPayment && !hasActive && (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center space-y-4 shadow-sm">
               <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
                 <CreditCard className="h-7 w-7 text-orange-700" />

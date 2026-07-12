@@ -39,6 +39,7 @@ BEGIN
     ELSIF v_plan_type = 'premium' THEN
       -- Premium plan: update premium dates only, do NOT touch subscription_end_date
       UPDATE public.profiles SET
+        status                           = 'approved',
         billing_status                   = 'active',
         music_addon                      = true,
         plan_type                        = 'premium',
