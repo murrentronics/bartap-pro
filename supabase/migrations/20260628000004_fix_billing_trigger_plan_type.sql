@@ -55,6 +55,25 @@ BEGIN
         machines_addon_end_date   = NEW.next_due_date
       WHERE id = NEW.owner_id;
 
+    ELSIF v_plan_type = 'machines_only' THEN
+      -- Machines Only plan: activate machines, set status approved
+      UPDATE public.profiles SET
+        status                    = 'approved',
+        billing_status            = 'active',
+        music_addon               = true,
+        plan_type                 = 'machines_only',
+        machines_addon_active     = true,
+        bar_addon_active          = false,
+        machines_addon_start_date = COALESCE(NEW.payment_date, now()),
+        machines_addon_end_date   = NEW.next_due_date
+      WHERE id = NEW.owner_id;
+
+    ELSIF v_plan_type = 'bar_addon' THEN
+      -- Bar add-on for machines_only users
+      UPDATE public.profiles SET
+        bar_addon_active = true
+      WHERE id = NEW.owner_id;
+
     END IF;
 
   END IF;

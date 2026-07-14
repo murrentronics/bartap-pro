@@ -32,30 +32,24 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function startOf(filter: FilterType, from?: string): Date {
-  const now = from ? new Date(from) : new Date();
-  const d = new Date(now);
-  if (filter === "day")   { d.setHours(0, 0, 0, 0); }
-  if (filter === "week")  { d.setDate(d.getDate() - d.getDay()); d.setHours(0, 0, 0, 0); }
-  if (filter === "month") { d.setDate(1); d.setHours(0, 0, 0, 0); }
-  if (filter === "year")  { d.setMonth(0, 1); d.setHours(0, 0, 0, 0); }
-  return d;
-}
+function toISO(d: Date) { return d.toISOString().slice(0, 10); }
 
-function endOf(filter: FilterType, to?: string): Date {
-  const now = to ? new Date(to) : new Date();
-  const d = new Date(now);
-  d.setHours(23, 59, 59, 999);
-  return d;
+function addDays(date: string, days: number): string {
+  const d = new Date(date + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return toISO(d);
 }
 
 function filterLabel(filter: FilterType, from: string, to: string): string {
-  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
-  if (filter === "day")   return new Date().toLocaleDateString("en-GB", opts);
-  if (filter === "week")  return "This Week";
-  if (filter === "month") return new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-  if (filter === "year")  return new Date().getFullYear().toString();
-  return `${new Date(from).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${new Date(to).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  const fmt2 = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (filter === "day")    return fmt2(from);
+  if (filter === "week")   return `${fmt2(from)} – ${fmt2(to)}`;
+  if (filter === "month") {
+    const d = new Date(from + "T00:00:00");
+    return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  }
+  if (filter === "year")   return from.slice(0, 4);
+  return `${fmt2(from)} – ${fmt2(to)}`;
 }
 
 // Aggregate item quantities across orders
@@ -80,10 +74,14 @@ export default function SummaryPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
 
-  const [filter, setFilter] = useState<FilterType>("day");
-  const [fromDate, setFromDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [toDate,   setToDate]   = useState(() => new Date().toISOString().slice(0, 10));
-  const [showPeriod, setShowPeriod] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [filter,    setFilter]   = useState<FilterType>("day");
+  const [fromDate,  setFromDate] = useState(today);
+  const [toDate,    setToDate]   = useState(today);
+  const [selMonth,  setSelMonth] = useState(() => new Date().getMonth());
+  const [selYear,   setSelYear]  = useState(() => new Date().getFullYear());
+  const [earliestDate,   setEarliestDate]   = useState<string>("2020-01-01");
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
   const [orders,   setOrders]   = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -93,21 +91,53 @@ export default function SummaryPage() {
 
   const ownerId = profile ? effectiveOwnerId(profile.id) : "";
 
+  // Fetch earliest record once to bound pickers + build year list
+  useEffect(() => {
+    if (!ownerId) return;
+    Promise.all([
+      supabase.from("orders").select("created_at").eq("owner_id", ownerId)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle(),
+      supabase.from("owner_expenses").select("expense_date").eq("owner_id", ownerId)
+        .order("expense_date", { ascending: true }).limit(1).maybeSingle(),
+    ]).then(([ordRes, expRes]) => {
+      const candidates: string[] = [];
+      if (ordRes.data?.created_at) candidates.push(ordRes.data.created_at.slice(0, 10));
+      if (expRes.data?.expense_date) candidates.push(expRes.data.expense_date);
+      const earliest = candidates.sort()[0] ?? "2020-01-01";
+      setEarliestDate(earliest);
+      const startYr = parseInt(earliest.slice(0, 4));
+      const endYr   = new Date().getFullYear();
+      const yrs: number[] = [];
+      for (let y = endYr; y >= startYr; y--) yrs.push(y);
+      setAvailableYears(yrs);
+    });
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync fromDate/toDate when filter or selMonth/selYear change
+  useEffect(() => {
+    if (filter === "day") {
+      setToDate(fromDate);
+    } else if (filter === "week") {
+      const end = new Date(fromDate + "T00:00:00");
+      end.setDate(end.getDate() + 6);
+      setToDate(end.toISOString().slice(0, 10));
+    } else if (filter === "month") {
+      const first = new Date(selYear, selMonth, 1);
+      const last  = new Date(selYear, selMonth + 1, 0);
+      setFromDate(first.toISOString().slice(0, 10));
+      setToDate(last.toISOString().slice(0, 10));
+    } else if (filter === "year") {
+      setFromDate(`${selYear}-01-01`);
+      setToDate(`${selYear}-12-31`);
+    }
+    // period: fromDate/toDate set directly by calendar inputs
+  }, [filter, fromDate, selMonth, selYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
-
-    let start: Date, end: Date;
-    if (filter === "period") {
-      start = new Date(fromDate + "T00:00:00");
-      end   = new Date(toDate   + "T23:59:59");
-    } else {
-      start = startOf(filter);
-      end   = endOf(filter);
-    }
-
-    const startIso = start.toISOString();
-    const endIso   = end.toISOString();
+    const startIso = new Date(fromDate + "T00:00:00").toISOString();
+    const endIso   = new Date(toDate   + "T23:59:59").toISOString();
 
     const [ordersRes, expensesRes] = await Promise.all([
       supabase
@@ -121,15 +151,15 @@ export default function SummaryPage() {
         .from("owner_expenses")
         .select("id, amount, description, expense_date")
         .eq("owner_id", ownerId)
-        .gte("expense_date", start.toISOString().slice(0, 10))
-        .lte("expense_date", end.toISOString().slice(0, 10))
+        .gte("expense_date", fromDate)
+        .lte("expense_date", toDate)
         .order("expense_date", { ascending: false }),
     ]);
 
     setOrders((ordersRes.data ?? []) as Order[]);
     setExpenses((expensesRes.data ?? []) as Expense[]);
     setLoading(false);
-  }, [ownerId, filter, fromDate, toDate]);
+  }, [ownerId, fromDate, toDate]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -301,7 +331,7 @@ export default function SummaryPage() {
         {FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => { setFilter(f.key); if (f.key === "period") setShowPeriod(true); else setShowPeriod(false); }}
+            onClick={() => setFilter(f.key)}
             className="flex-1 h-9 rounded-xl text-xs font-black transition active:scale-[0.97]"
             style={filter === f.key
               ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
@@ -312,27 +342,89 @@ export default function SummaryPage() {
         ))}
       </div>
 
-      {/* Period date pickers */}
+      {/* ── Day picker — calendar ── */}
+      {filter === "day" && (
+        <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Day</label>
+          <input type="date" value={fromDate} max={today} min={earliestDate}
+            onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
+            className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+          <p className="text-xs text-muted-foreground">Showing data for: <span className="font-black text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></p>
+        </div>
+      )}
+
+      {/* ── Week picker — pick start day, shows +6 days ── */}
+      {filter === "week" && (
+        <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Week Start</label>
+          <input type="date" value={fromDate} max={today} min={earliestDate}
+            onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
+            className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+          <p className="text-xs text-muted-foreground">
+            Period: <span className="font-black text-foreground">
+              {new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              {" → "}
+              {new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* ── Month picker — month + year dropdowns ── */}
+      {filter === "month" && (
+        <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Month</label>
+          <div className="flex gap-3">
+            <select value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}
+              className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
+              {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
+            <select value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}
+              className="w-28 h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
+              {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ── Year picker — only years with data ── */}
+      {filter === "year" && (
+        <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Year</label>
+          <div className="flex flex-wrap gap-2">
+            {availableYears.map((y) => (
+              <button key={y} onClick={() => setSelYear(y)}
+                className="h-11 px-6 rounded-xl text-sm font-black transition active:scale-95"
+                style={selYear === y
+                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                  : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Period picker — two calendars ── */}
       {filter === "period" && (
-        <div className="flex gap-3 items-center">
-          <div className="flex-1">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">From</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="mt-1 w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-            />
+        <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">From</label>
+              <input type="date" value={fromDate} min={earliestDate} max={toDate}
+                onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
+                className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">To</label>
+              <input type="date" value={toDate} min={fromDate} max={today}
+                onChange={(e) => { if (e.target.value) setToDate(e.target.value); }}
+                className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+            </div>
           </div>
-          <div className="flex-1">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">To</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="mt-1 w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
+          <p className="text-xs text-muted-foreground">Earliest record: <span className="font-black text-foreground">{new Date(earliestDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
         </div>
       )}
 

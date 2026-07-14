@@ -40,6 +40,11 @@ export default function AppLayout() {
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
+    // Machines-only approved owner → land on /machines, not /register
+    if (!loading && profile?.role === "owner" && profile.status === "approved" && profile.plan_type === "machines_only"
+      && loc.pathname === "/register") {
+      nav("/machines", { replace: true });
+    }
     // Chain owner with no bar selected → force them to pick a bar first
     if (!loading && isChainOwner && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
       nav("/switch-bar", { replace: true });
