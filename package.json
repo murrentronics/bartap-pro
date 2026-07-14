@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "build:android": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192 --max-semi-space-size=128\" vite build --config vite.capacitor.config.ts",
-    "build:web": "vite build --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts && node -e \"require('fs').renameSync('dist/web/index.web.html','dist/web/index.html')\"",
     "cap:sync": "node scripts/bump-version.cjs && npm run build:android && npm run build:web && node scripts/cap-sync.cjs",
     "cap:open": "npx cap open android",
     "android": "npm run cap:sync && npm run cap:open"

@@ -1747,6 +1747,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     totalIncome: number;
     stockResaleValue: number;
     stockExpectedProfit: number;
+    stockCost: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
@@ -1805,7 +1806,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Expected profit = what you'd make selling all stock at retail minus what it cost to buy
     const stockExpectedProfit = stockResaleValue - closedStockCost;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit });
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -1844,6 +1845,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const netProfit = totalIncome - totalExpenses;
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
   const stockExpectedProfit = financialSummary ? financialSummary.stockExpectedProfit : 0;
+  const stockCost = financialSummary ? financialSummary.stockCost : 0;
   const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
@@ -1873,13 +1875,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {/* Total Expenses */}
+              {/* Stock Expense — current total cost price of all stock on hand */}
               <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingDown className="h-3 w-3" /> Expenses
+                  <TrendingDown className="h-3 w-3" /> Stock Expense
                 </div>
-                <div className="font-black text-sm leading-tight" style={{ color: hasFinancials ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {hasFinancials ? `$${fmt(totalExpenses)}` : "—"}
+                <div className="font-black text-sm leading-tight" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
                 </div>
               </div>
 

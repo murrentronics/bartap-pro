@@ -133,6 +133,10 @@ jobs:
       - name: Build web bundle
         run: npx cross-env NODE_OPTIONS="--max-old-space-size=4096" vite build --config vite.web.config.ts
 
+      # Rename index.web.html → index.html so Cloudflare Pages serves it correctly
+      - name: Fix web index filename
+        run: mv dist/web/index.web.html dist/web/index.html
+
       # ── 18. Deploy web build to Cloudflare Pages ──────────────────────────
       - name: Deploy to Cloudflare Pages (bartendazpro-web)
         uses: cloudflare/wrangler-action@v3
