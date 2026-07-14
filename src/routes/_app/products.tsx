@@ -1009,7 +1009,7 @@ export default function ProductsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No {CATEGORIES.find(c=>c.value===category)?.label ?? category} yet — tap Add Item.</div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
             {filtered.map((p) => (
               <div key={p.id} className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
                 <div className="aspect-[3/4] relative w-full">

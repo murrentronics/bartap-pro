@@ -135,13 +135,13 @@ export default function AppLayout() {
   // Load owner plan to decide whether to show Machines in nav — must be before early returns (Rules of Hooks)
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);
   const [ownerHasBar, setOwnerHasBar] = useState(true); // false only for machines_only without bar_addon
+  const [isMachinesOnlyUser, setIsMachinesOnlyUser] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState("");
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setOwnerEmail(user?.email ?? "");
       if (!profile?.id) return;
-      // For chain owners, check the active bar's machines status; otherwise check own profile
       const ownerId = isChainOwner && activeBarId
         ? activeBarId
         : profile.role === "cashier" ? profile.parent_id : profile.id;
@@ -151,10 +151,10 @@ export default function AppLayout() {
       const planType = data?.plan_type ?? "basic";
       const addonActive = data?.machines_addon_active ?? false;
       const barAddonActive = data?.bar_addon_active ?? false;
-      const isMachinesOnly = planType === "machines_only";
-      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || isMachinesOnly || user?.email === "renard.sankersingh@gmail.com");
-      // Bar items hidden for machines_only unless they've added the bar_addon
-      setOwnerHasBar(!isMachinesOnly || barAddonActive || user?.email === "renard.sankersingh@gmail.com");
+      const machinesOnly = planType === "machines_only";
+      setIsMachinesOnlyUser(machinesOnly);
+      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || user?.email === "renard.sankersingh@gmail.com");
+      setOwnerHasBar(!machinesOnly || barAddonActive || user?.email === "renard.sankersingh@gmail.com");
     };
     load();
   }, [profile?.id, isChainOwner, activeBarId]);
@@ -274,6 +274,13 @@ export default function AppLayout() {
         { to: "/admin",          label: "Users",   icon: Users },
         { to: "/admin/billing",  label: t("billing", "Billing"), icon: DollarSign },
         { to: "/admin/banking",  label: "Banking", icon: Building2 },
+      ]
+    : isMachinesOnlyUser ? [
+        // Machines-only plan: Machines first, then Cashiers, Billing, Profile only
+        { to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 },
+        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
+        ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"),   icon: CreditCard }] : []),
+        ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
     : [
         ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
@@ -412,7 +419,7 @@ export default function AppLayout() {
                     </button>
                   );
                 })}
-                {!isAdmin && (
+                {!isAdmin && !isMachinesOnlyUser && (
                 <button onClick={() => { setMenuOpen(false); nav("/language"); }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>

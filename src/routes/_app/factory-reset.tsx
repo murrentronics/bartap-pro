@@ -27,6 +27,7 @@ export default function FactoryResetPage() {
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [hasMachines, setHasMachines] = useState(false);
+  const [isMachinesOnlyPlan, setIsMachinesOnlyPlan] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -36,7 +37,9 @@ export default function FactoryResetPage() {
       .eq("id", profile.id)
       .single()
       .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean } | null }) => {
-        setHasMachines(data?.plan_type === "premium" || !!data?.machines_addon_active);
+        const machOnly = data?.plan_type === "machines_only";
+        setIsMachinesOnlyPlan(machOnly);
+        setHasMachines(data?.plan_type === "premium" || machOnly || !!data?.machines_addon_active);
       });
   }, [profile?.id]);
 
@@ -288,12 +291,12 @@ export default function FactoryResetPage() {
 
           <div className="space-y-3">
             {([
-              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities.", machinesOnly: false },
-              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",  machinesOnly: false },
-              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Machines",              desc: "Machine entries, payouts, floats",                                       machinesOnly: true  },
-              { value: "both"           as ResetTarget, icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                  machinesOnly: true  },
-            ] as { value: ResetTarget; icon: React.ElementType; label: string; desc: string; machinesOnly: boolean }[])
-              .filter((opt) => !opt.machinesOnly || hasMachines)
+              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities.", machinesOnly: false, barOnly: true  },
+              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",  machinesOnly: false, barOnly: true  },
+              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Machines Reset",        desc: "Wipe machine entries, payouts and floats",                               machinesOnly: true,  barOnly: false },
+              { value: "both"           as ResetTarget, icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                  machinesOnly: true,  barOnly: false },
+            ] as { value: ResetTarget; icon: React.ElementType; label: string; desc: string; machinesOnly: boolean; barOnly: boolean }[])
+              .filter((opt) => (!opt.machinesOnly || hasMachines) && (!opt.barOnly || !isMachinesOnlyPlan))
               .map(({ value, icon: Icon, label, desc }) => (
                 <button
                   key={String(value)}

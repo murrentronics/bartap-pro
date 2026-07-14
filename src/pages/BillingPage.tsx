@@ -193,7 +193,9 @@ export default function BillingPage() {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const pendingPayment  = payments.find(p => p.status === "pending");
-  const hasActive       = profile?.billing_status === "active";
+  const hasActive       = profile?.billing_status === "active" ||
+    // machines_only fallback: if machines_addon_active is set, they're active
+    (profile?.plan_type === "machines_only" && !!profile?.machines_addon_active);
   const isSpecial       = userEmail === SPECIAL_EMAIL;
   const isBasic         = !profile?.plan_type || profile.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium";
