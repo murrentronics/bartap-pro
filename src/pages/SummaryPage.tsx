@@ -2,7 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { downloadPdf } from "@/lib/download";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type OrderItem = { name: string; qty: number; price: number };
@@ -84,6 +88,8 @@ export default function SummaryPage() {
   const [orders,   setOrders]   = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded,  setDownloaded]  = useState(false);
 
   const ownerId = profile ? effectiveOwnerId(profile.id) : "";
 
@@ -144,14 +150,150 @@ export default function SummaryPage() {
     { key: "period", label: "Period" },
   ];
 
+  const handleDownloadPdf = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const businessName = profile.username ?? "Owner";
+      const periodLabel  = filterLabel(filter, fromDate, toDate);
+      const generated    = new Date().toLocaleString("en-GB", {
+        hour: "2-digit", minute: "2-digit", hour12: true,
+        day: "numeric", month: "short", year: "numeric",
+      });
+
+      let y = await drawHeader(doc, businessName, "Summary Report", periodLabel, generated);
+
+      // Generated line
+      doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(150, 100, 30);
+      doc.text("Generated: " + generated + "  |  Filter: " + filter.toUpperCase() + (filter === "period" ? " (" + fromDate + " → " + toDate + ")" : ""), LM, y);
+      doc.setTextColor(0, 0, 0); y += 5;
+
+      // Summary box
+      const boxH = 28;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, RM - LM, boxH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, RM - LM, boxH, 2, 2, "S");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(100, 70, 10);
+      doc.text("SUMMARY — " + periodLabel.toUpperCase(), LM + 3, y + 5);
+
+      const colW = (RM - LM) / 3;
+      const summCols = [
+        { label: "Income",  value: "$" + fmt(totalIncome),   color: [40, 140, 40]  as [number,number,number] },
+        { label: "Expense", value: "$" + fmt(totalExpenses), color: [180, 40, 40]  as [number,number,number] },
+        { label: "Profit",  value: (totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit), color: (totalProfit >= 0 ? [40,140,40] : [180,40,40]) as [number,number,number] },
+      ];
+      summCols.forEach((col, i) => {
+        const cx = LM + i * colW + colW / 2;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+        doc.text(col.label, cx, y + 13, { align: "center" });
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+        doc.setTextColor(col.color[0], col.color[1], col.color[2]);
+        doc.text(col.value, cx, y + 21, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0); y += boxH + 6;
+
+      // Items sold section
+      if (items.length > 0) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
+        doc.text("ITEMS SOLD", LM, y);
+        doc.text("QTY", LM + 100, y, { align: "right" });
+        doc.text("REVENUE", RM, y, { align: "right" }); y += 3;
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
+
+        items.forEach((it) => {
+          if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+          doc.text(it.name, LM, y);
+          doc.setTextColor(100, 100, 100);
+          doc.text(String(it.qty), LM + 100, y, { align: "right" });
+          doc.setFont("helvetica", "bold"); doc.setTextColor(40, 140, 40);
+          doc.text("$" + fmt(it.revenue), RM, y, { align: "right" });
+          doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+          y += 5;
+          doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 3;
+        });
+
+        // Total row
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
+        doc.text("TOTAL INCOME", LM, y);
+        doc.setTextColor(40, 140, 40);
+        doc.text("$" + fmt(totalIncome), RM, y, { align: "right" });
+        doc.setTextColor(0, 0, 0); y += 8;
+      }
+
+      // Expenses section
+      if (expenses.length > 0) {
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
+        doc.text("EXPENSES", LM, y);
+        doc.text("DATE", LM + 100, y, { align: "right" });
+        doc.text("AMOUNT", RM, y, { align: "right" }); y += 3;
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
+
+        expenses.forEach((e) => {
+          if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+          const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+          doc.text(e.description || "Expense", LM, y);
+          doc.setTextColor(100, 100, 100);
+          doc.text(dateStr, LM + 100, y, { align: "right" });
+          doc.setFont("helvetica", "bold"); doc.setTextColor(180, 40, 40);
+          doc.text("$" + fmt(Number(e.amount)), RM, y, { align: "right" });
+          doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+          y += 5;
+          doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 3;
+        });
+
+        // Total row
+        if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+        doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
+        doc.text("TOTAL EXPENSES", LM, y);
+        doc.setTextColor(180, 40, 40);
+        doc.text("$" + fmt(totalExpenses), RM, y, { align: "right" });
+        doc.setTextColor(0, 0, 0); y += 8;
+      }
+
+      addFootersToAllPages(doc);
+      const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, "-");
+      await downloadPdf(`summary-${safePeriod}.pdf`, doc.output("datauristring"));
+      toast.success("PDF saved to Downloads folder");
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 5000);
+    } catch (err: any) {
+      console.error("Summary PDF error:", err);
+      toast.error("Download failed: " + (err?.message ?? "unknown error"));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-5 pb-24">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-black">Summary</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {filterLabel(filter, fromDate, toDate)}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black">Summary</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {filterLabel(filter, fromDate, toDate)}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 font-black"
+          disabled={downloading || loading}
+          onClick={handleDownloadPdf}
+          style={downloaded ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+          {downloading
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : downloaded
+            ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            : <Download className="h-3 w-3" />}
+          {downloading ? "…" : downloaded ? "Done" : "PDF"}
+        </Button>
       </div>
 
       {/* Filter tabs */}

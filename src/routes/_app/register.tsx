@@ -519,18 +519,17 @@ export default function RegisterPage() {
     <>
       {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        {/* Category tabs — icons only, 6 across */}
+        {/* Category tabs — icons + label, 6 across */}
         <div className="max-w-2xl mx-auto grid grid-cols-6 gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => {
-                // Reset bar edit state when switching category
                 handleBarDone();
                 setCategory(cat.value);
                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
               }}
-              className={`h-14 rounded-xl font-bold text-2xl transition ${
+              className={`h-14 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
                 category === cat.value
                   ? "text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -538,7 +537,10 @@ export default function RegisterPage() {
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              {cat.icon}
+              <span className="text-xl leading-none">{cat.icon}</span>
+              <span className="text-[9px] font-black leading-none tracking-tight">
+                {cat.value === "miscellaneous" ? "Misc." : cat.label}
+              </span>
             </button>
           ))}
         </div>
@@ -624,7 +626,7 @@ export default function RegisterPage() {
                 {/* Grid — normal scrolling, taps drive selection/swap */}
                 <div
                   ref={barEditGridRef}
-                  className="grid grid-cols-3 gap-2"
+                  className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2"
                   onContextMenu={(e) => e.preventDefault()}
                   style={{ touchAction: "pan-y" }}
                 >
@@ -731,7 +733,7 @@ export default function RegisterPage() {
               /* ── Normal mode: plain grid ── */
               <>
                 <div
-                  className="grid grid-cols-3 gap-2"
+                  className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2"
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   {barOrdered.map((p) => {

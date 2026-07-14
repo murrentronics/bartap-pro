@@ -221,7 +221,7 @@ export default function AppLayout() {
           className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-border"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
-          <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto px-3 h-11 flex items-center justify-between">
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
             <div className="flex items-center gap-2" ref={menuRef}>
               <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">{profile.username}</span>
@@ -248,7 +248,7 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
-        <main className="max-w-2xl mx-auto px-3 py-3">
+        <main className="max-w-2xl lg:max-w-4xl mx-auto px-3 py-3">
           <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
             <div className="max-w-md text-center space-y-6">
               <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500/20 border border-yellow-500/40">
@@ -289,7 +289,7 @@ export default function AppLayout() {
         className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
+        <div className="max-w-2xl lg:max-w-4xl mx-auto px-3 h-11 flex items-center justify-between">
 
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -329,14 +329,14 @@ export default function AppLayout() {
       {menuOpen && isCashier && (
         <>
           <div className="fixed inset-x-0 mx-auto max-w-2xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
+            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-border/50">
+            <div className="px-4 py-4 border-b border-border/50">
               <span className="text-sm font-black text-foreground">{profile.username}</span>
             </div>
-            <div className="p-3 pb-[30vh]">
+            <div className="p-4 pb-[30vh]">
               <div className="grid grid-cols-3 gap-3">
                 {navItems.map((it) => {
                   const active = loc.pathname.startsWith(it.to);
@@ -381,16 +381,16 @@ export default function AppLayout() {
       {menuOpen && !isCashier && (
         <>
           <div className="fixed inset-x-0 mx-auto max-w-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
+            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-3 border-b border-border/50">
+            <div className="px-5 py-4 border-b border-border/50">
               <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
               {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
               {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
             </div>
-            <div className="p-3 pb-[30vh]">
+            <div className="p-4 pb-[30vh]">
               <div className="grid grid-cols-3 gap-3">
                 {navItems.map((it) => {
                   const active = loc.pathname.startsWith(it.to);
@@ -455,7 +455,7 @@ export default function AppLayout() {
         </>
       )}
 
-      <main className="max-w-2xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+      <main className="max-w-2xl lg:max-w-4xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <Outlet />
       </main>
 

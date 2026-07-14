@@ -984,13 +984,16 @@ export default function ProductsPage() {
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-14 rounded-xl font-bold text-2xl transition ${
+              className={`h-14 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
                 category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              {cat.icon}
+              <span className="text-xl leading-none">{cat.icon}</span>
+              <span className="text-[9px] font-black leading-none tracking-tight">
+                {cat.value === "miscellaneous" ? "Misc." : cat.label}
+              </span>
             </button>
           ))}
         </div>
