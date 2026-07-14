@@ -81,7 +81,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) load(session.user.id);
-      else { ownerIdRef.current = null; setQuotaCount(0); }
+      else { ownerIdRef.current = null; setQuotaCount(0); setVideoId(null); }
     });
     return () => sub.subscription.unsubscribe();
   }, []);

@@ -128,3 +128,15 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 17. Build web bundle for Safari/browser (iPhone support) ──────────
+      - name: Build web bundle
+        run: npx cross-env NODE_OPTIONS="--max-old-space-size=4096" vite build --config vite.web.config.ts
+
+      # ── 18. Deploy web build to Cloudflare Pages ──────────────────────────
+      - name: Deploy to Cloudflare Pages (bartendazpro-web)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/web --project-name=bartendazpro-web --commit-dirty=true
