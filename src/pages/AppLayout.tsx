@@ -486,37 +486,27 @@ export default function AppLayout() {
             background: "#000",
             visibility: yt.ytFullscreen ? "visible" : "hidden",
             pointerEvents: yt.ytFullscreen ? "auto" : "none",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
           }}
         >
-          {/* Constrain iframe to app max-width, portrait aspect ratio */}
-          <div style={{
-            width: "100%",
-            maxWidth: "896px",   // matches lg:max-w-4xl
-            height: "100%",
-            position: "relative",
-          }}>
-            <iframe
-              id="yt-iframe"
-              src={
-                yt.isPlaylist
-                  ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
-                  : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
-              }
-              allow="autoplay; fullscreen; encrypted-media"
-              allowFullScreen
-              style={{ width: "100%", height: "100%", border: "none" }}
-              title="YouTube Player"
-              onLoad={(e) => {
-                const iframe = e.currentTarget as HTMLIFrameElement;
-                iframe.contentWindow?.postMessage(
-                  JSON.stringify({ event: "listening" }), "*"
-                );
-              }}
-            />
-          </div>
+          {/* Iframe fills full area — YouTube handles aspect ratio internally */}
+          <iframe
+            id="yt-iframe"
+            src={
+              yt.isPlaylist
+                ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
+                : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
+            }
+            allow="autoplay; fullscreen; encrypted-media"
+            allowFullScreen
+            style={{ width: "100%", height: "100%", border: "none" }}
+            title="YouTube Player"
+            onLoad={(e) => {
+              const iframe = e.currentTarget as HTMLIFrameElement;
+              iframe.contentWindow?.postMessage(
+                JSON.stringify({ event: "listening" }), "*"
+              );
+            }}
+          />
         </div>
       )}
 
