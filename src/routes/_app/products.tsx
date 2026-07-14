@@ -755,12 +755,16 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
 
         {/* Numpad — shown above bottom save bar when a cell is active */}
         {activeNumpad && (
-          <div className="shrink-0 border-t border-border px-4 pt-3 pb-1" style={{ background: "var(--background)" }}>
+          <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                 {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : "Add Qty"}
               </span>
-              <button onClick={() => setActiveNumpad(null)} className="text-xs font-black text-primary">Done</button>
+              <button onClick={() => setActiveNumpad(null)}
+                className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                Done ✓
+              </button>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
               {["1","2","3","4","5","6","7","8","9", activeNumpad.field !== "qty" ? "." : "", "0","⌫"].map((k, i) => (
@@ -990,8 +994,8 @@ export default function ProductsPage() {
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              <span className="text-xl leading-none">{cat.icon}</span>
-              <span className="text-[9px] font-black leading-none tracking-tight">
+              <span className="text-xl sm:text-2xl leading-none">{cat.icon}</span>
+              <span className="hidden sm:block text-[11px] font-black leading-none">
                 {cat.value === "miscellaneous" ? "Misc." : cat.label}
               </span>
             </button>

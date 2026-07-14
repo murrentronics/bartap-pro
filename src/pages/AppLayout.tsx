@@ -221,7 +221,7 @@ export default function AppLayout() {
           className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b border-border"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
-          <div className="max-w-2xl lg:max-w-4xl mx-auto px-3 h-11 flex items-center justify-between">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
             <div className="flex items-center gap-2" ref={menuRef}>
               <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">{profile.username}</span>
@@ -289,7 +289,7 @@ export default function AppLayout() {
         className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <div className="max-w-2xl lg:max-w-4xl mx-auto px-3 h-11 flex items-center justify-between">
+        <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
 
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -328,8 +328,8 @@ export default function AppLayout() {
       {/* ── CASHIER MENU — at root level, always above page content ── */}
       {menuOpen && isCashier && (
         <>
-          <div className="fixed inset-x-0 mx-auto max-w-2xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+          <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
+            style={{ top: "calc(56px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -380,8 +380,8 @@ export default function AppLayout() {
       {/* ── OWNER / ADMIN MENU — at root level, always above page content ── */}
       {menuOpen && !isCashier && (
         <>
-          <div className="fixed inset-x-0 mx-auto max-w-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+          <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl border border-border shadow-2xl z-[9999] overflow-y-auto"
+            style={{ top: "calc(56px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -468,7 +468,7 @@ export default function AppLayout() {
         <div
           style={{
             position: "fixed",
-            top: "calc(44px + env(safe-area-inset-top, 0px))",
+            top: "calc(56px + env(safe-area-inset-top, 0px))",
             left: 0, right: 0, bottom: 0,
             zIndex: 35,
             background: "#000",

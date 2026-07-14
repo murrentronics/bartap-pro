@@ -656,7 +656,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                   <div key={month} className="rounded-2xl border border-border overflow-hidden">
                     <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
                       onClick={() => setSelectedMonth(isOpen ? null : month)}>
-                      <span className="font-black text-sm">{month}</span>
+                      <span className="font-black text-sm sm:text-base lg:text-lg">{month}</span>
                       <div className="flex items-center gap-3">
                         <span className="font-black text-primary">${fmt(monthTotal)}</span>
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" type="button"
@@ -666,8 +666,8 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                           {downloadingMonth === month
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : downloadedMonth === month
-                            ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            : <Download className="h-3 w-3" />}
+                            ? <svg className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            : <Download className="h-3 w-3 sm:h-4 sm:w-4" />}
                           {downloadingMonth === month ? "…" : downloadedMonth === month ? "Done" : "PDF"}
                         </Button>
                         <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
@@ -1129,7 +1129,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
                   onClick={() => setOpenMonth(isOpen ? null : mk)}>
                   <div className="flex items-center gap-3">
-                    <span className="font-black text-sm">{monthLabel(mk)}</span>
+                    <span className="font-black text-sm sm:text-base lg:text-lg">{monthLabel(mk)}</span>
                     <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1146,8 +1146,8 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                       {downloadingMonth === mk
                         ? <Loader2 className="h-3 w-3 animate-spin" />
                         : downloadedMonth === mk
-                        ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                        : <Download className="h-3 w-3" />}
+                        ? <svg className="h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        : <Download className="h-3 w-3 sm:h-4 sm:w-4" />}
                       {downloadingMonth === mk ? "…" : downloadedMonth === mk ? "Done" : "PDF"}
                     </Button>
                     <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -1167,7 +1167,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                         return (
                           <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="font-black text-sm">{title}</div>
+                              <div className="font-black text-sm sm:text-base lg:text-lg">{title}</div>
                               <div className="mt-1 space-y-0.5">
                                 {itemLines.map((line, i) => {
                                   // Split "Name ×qty @ $cp each = $total" at " = "
@@ -1205,7 +1205,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                       return (
                         <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="font-black text-sm">{title}</div>
+                            <div className="font-black text-sm sm:text-base lg:text-lg">{title}</div>
                             {detail && (
                               <div className="text-xs text-muted-foreground mt-0.5 break-words whitespace-normal">
                                 {detail}
@@ -1885,19 +1885,19 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <>
             {/* Total Expense + Total Profit — first row */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingDown className="h-3 w-3" /> Total Expense
+              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" /> Total Expense
                 </div>
-                <div className="font-black text-sm leading-tight" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                   {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
                 </div>
               </div>
-              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3" /> Total Profit
+              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Total Profit
                 </div>
-                <div className="font-black text-sm leading-tight" style={{
+                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
                   color: !hasFinancials ? "rgba(255,255,255,0.3)"
                     : netProfit >= 0 ? "#86efac"
                     : "#fca5a5"
@@ -1910,21 +1910,21 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             {/* Stock Expense + Net Profit — second row */}
             <div className="grid grid-cols-2 gap-2">
               {/* Stock Expense — current total cost price of all stock on hand */}
-              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingDown className="h-3 w-3" /> Stock Expense
+              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Expense
                 </div>
-                <div className="font-black text-sm leading-tight" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                   {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
                 </div>
               </div>
 
               {/* Net Profit */}
-              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3" /> Net Profit
+              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Net Profit
                 </div>
-                <div className="font-black text-sm leading-tight" style={{
+                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
                   color: !hasFinancials ? "rgba(255,255,255,0.3)"
                     : netProfit >= 0 ? "#86efac"
                     : "#fca5a5"
@@ -1941,18 +1941,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           {/* Stock Resale + Expected Profit — 2 cards */}
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <BarChart3 className="h-3 w-3" /> Stock Resale Cost
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Resale Cost
               </div>
-              <span className="font-black text-sm" style={{ color: "#eab308" }}>
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#eab308" }}>
                 ${fmt(stockResaleValue)}
               </span>
             </div>
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <TrendingUp className="h-3 w-3" /> Expected Profit
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Expected Profit
               </div>
-              <span className="font-black text-sm" style={{
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{
                 color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5"
               }}>
                 {stockExpectedProfit >= 0 ? "+" : ""}${fmt(stockExpectedProfit)}
@@ -1963,16 +1963,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           {/* Total Income + Today's Income — full bottom row */}
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3" /> Total Income
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
               </div>
-              <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
             </div>
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3" /> Today's Income
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Today's Income
               </div>
-              <span className="font-black text-sm" style={{ color: todayIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: todayIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                 {todayIncome > 0 ? `$${fmt(todayIncome)}` : "—"}
               </span>
             </div>
@@ -2032,4 +2032,9 @@ export default function WalletPage() {
   if (walletProfile.role === "owner") return <OwnerWallet profile={walletProfile} />;
   return <CashierWallet profile={walletProfile} />;
 }
+
+
+
+
+
 

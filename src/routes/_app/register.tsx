@@ -537,8 +537,8 @@ export default function RegisterPage() {
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              <span className="text-xl leading-none">{cat.icon}</span>
-              <span className="text-[9px] font-black leading-none tracking-tight">
+              <span className="text-xl sm:text-2xl leading-none">{cat.icon}</span>
+              <span className="hidden sm:block text-[11px] font-black leading-none">
                 {cat.value === "miscellaneous" ? "Misc." : cat.label}
               </span>
             </button>
