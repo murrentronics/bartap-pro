@@ -1306,8 +1306,55 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+  // ── Summary filter ──────────────────────────────────────────────────────────
+  type SummaryFilter = "all" | "day" | "week" | "month" | "year";
+  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
+  const [showSummaryPicker, setShowSummaryPicker] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [pickerDate,  setPickerDate]  = useState(today);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+  const [pickerYear,  setPickerYear]  = useState(new Date().getFullYear());
+
+  // Reset picker to today when filter changes
+  const handleFilterChange = (f: SummaryFilter) => {
+    setSummaryFilter(f);
+    setPickerDate(today);
+    setPickerMonth(new Date().getMonth());
+    setPickerYear(new Date().getFullYear());
+  };
+
+  // Compute filtered date range
+  const getFilterRange = (): { start: string; end: string } | null => {
+    if (summaryFilter === "all") return null;
+    if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
+    if (summaryFilter === "week") {
+      const end = new Date(pickerDate + "T00:00:00");
+      end.setDate(end.getDate() + 6);
+      return { start: pickerDate, end: end.toISOString().slice(0, 10) };
+    }
+    if (summaryFilter === "month") {
+      const first = new Date(pickerYear, pickerMonth, 1);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0);
+      return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
+    }
+    if (summaryFilter === "year") {
+      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
+    }
+    return null;
+  };
+
+  const filterRange = getFilterRange();
+
   // All records sorted newest first
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  // Filtered entries for stat cards
+  const filteredEntries = filterRange
+    ? sorted.filter(e => {
+        const d = e.created_at.slice(0, 10);
+        return d >= filterRange.start && d <= filterRange.end;
+      })
+    : sorted;
 
   // Group by YYYY-MM
   const byMonth: Record<string, MachineEntry[]> = {};
@@ -1324,9 +1371,9 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       .toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
 
-  // All-time totals
-  const totalPayout = sorted.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
-  const totalIncome = sorted.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  // All-time totals (use filtered entries)
+  const totalPayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+  const totalIncome = filteredEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
   const buildPdf = async (
@@ -1448,21 +1495,101 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
   return (
     <div className="space-y-3">
-      {/* Header — all-time totals + Download All */}
+      {/* Header — totals + Download All */}
       <div className="rounded-2xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{sorted.length} records</span>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
-            disabled={downloading} onClick={handleDownloadAll}
-            style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
-            {downloading
-              ? <Loader2 className="h-3 w-3 animate-spin" />
-              : downloadedAll
-              ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              : <Download className="h-3 w-3" />}
-            {downloadedAll ? "Done" : "All PDF"}
-          </Button>
+          <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{filteredEntries.length} records</span>
+          <div className="flex items-center gap-2">
+            {/* Summary filter button */}
+            <button
+              onClick={() => setShowSummaryPicker(v => !v)}
+              className="h-8 px-3 rounded-lg text-xs font-black flex items-center gap-1.5 transition active:scale-95"
+              style={summaryFilter !== "all"
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+              📊 {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
+            </button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
+              disabled={downloading} onClick={handleDownloadAll}
+              style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+              {downloading
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : downloadedAll
+                ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                : <Download className="h-3 w-3" />}
+              {downloadedAll ? "Done" : "All PDF"}
+            </Button>
+          </div>
         </div>
+
+        {/* ── Summary picker row — visible when showSummaryPicker ── */}
+        {showSummaryPicker && (
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Filter tabs */}
+            <div className="flex gap-1">
+              {(["all","day","week","month","year"] as SummaryFilter[]).map(f => (
+                <button key={f} onClick={() => handleFilterChange(f)}
+                  className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
+                  style={summaryFilter === f
+                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                    : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
+                  {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            {/* Day picker */}
+            {summaryFilter === "day" && (
+              <input type="date" value={pickerDate} max={today}
+                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+            )}
+            {/* Week picker */}
+            {summaryFilter === "week" && (
+              <div className="space-y-1">
+                <input type="date" value={pickerDate} max={today}
+                  onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <p className="text-[10px] text-muted-foreground px-1">
+                  {new Date(pickerDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  {" → "}
+                  {(() => { const d = new Date(pickerDate + "T00:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); })()}
+                </p>
+              </div>
+            )}
+            {/* Month picker */}
+            {summaryFilter === "month" && (
+              <div className="flex gap-2">
+                <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
+                  className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+                  {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m,i) => (
+                    <option key={i} value={i}>{m}</option>
+                  ))}
+                </select>
+                <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
+                  className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+                  {Array.from({ length: new Date().getFullYear() - 2023 + 1 }, (_, i) => 2024 + i).reverse().map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {/* Year picker */}
+            {summaryFilter === "year" && (
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from({ length: new Date().getFullYear() - 2023 + 1 }, (_, i) => 2024 + i).reverse().map(y => (
+                  <button key={y} onClick={() => setPickerYear(y)}
+                    className="h-8 px-4 rounded-lg text-xs font-black transition active:scale-95"
+                    style={pickerYear === y
+                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                      : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
+                    {y}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Payout</div>

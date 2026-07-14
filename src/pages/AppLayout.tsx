@@ -484,30 +484,39 @@ export default function AppLayout() {
             left: 0, right: 0, bottom: 0,
             zIndex: 35,
             background: "#000",
-            // Visible ONLY when fullscreen mode is active
             visibility: yt.ytFullscreen ? "visible" : "hidden",
             pointerEvents: yt.ytFullscreen ? "auto" : "none",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
           }}
         >
-          <iframe
-            id="yt-iframe"
-            src={
-              yt.isPlaylist
-                ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
-                : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
-            }
-            allow="autoplay; fullscreen; encrypted-media"
-            allowFullScreen
-            style={{ width: "100%", height: "100%", border: "none" }}
-            title="YouTube Player"
-            onLoad={(e) => {
-              // Tell the iframe to send state change events back via postMessage
-              const iframe = e.currentTarget as HTMLIFrameElement;
-              iframe.contentWindow?.postMessage(
-                JSON.stringify({ event: "listening" }), "*"
-              );
-            }}
-          />
+          {/* Constrain iframe to app max-width, portrait aspect ratio */}
+          <div style={{
+            width: "100%",
+            maxWidth: "896px",   // matches lg:max-w-4xl
+            height: "100%",
+            position: "relative",
+          }}>
+            <iframe
+              id="yt-iframe"
+              src={
+                yt.isPlaylist
+                  ? `https://www.youtube-nocookie.com/embed/videoseries?list=${yt.videoId}&autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
+                  : `https://www.youtube-nocookie.com/embed/${yt.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1`
+              }
+              allow="autoplay; fullscreen; encrypted-media"
+              allowFullScreen
+              style={{ width: "100%", height: "100%", border: "none" }}
+              title="YouTube Player"
+              onLoad={(e) => {
+                const iframe = e.currentTarget as HTMLIFrameElement;
+                iframe.contentWindow?.postMessage(
+                  JSON.stringify({ event: "listening" }), "*"
+                );
+              }}
+            />
+          </div>
         </div>
       )}
 

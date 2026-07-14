@@ -114,24 +114,66 @@ export default function SummaryPage() {
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync fromDate/toDate when filter or selMonth/selYear change
+  // When switching filter tabs, always reset to today
   useEffect(() => {
+    const nowToday = new Date().toISOString().slice(0, 10);
+    const nowMonth = new Date().getMonth();
+    const nowYear  = new Date().getFullYear();
+
     if (filter === "day") {
-      setToDate(fromDate);
+      setFromDate(nowToday);
+      setToDate(nowToday);
     } else if (filter === "week") {
-      const end = new Date(fromDate + "T00:00:00");
+      setFromDate(nowToday);
+      const end = new Date();
       end.setDate(end.getDate() + 6);
       setToDate(end.toISOString().slice(0, 10));
     } else if (filter === "month") {
-      const first = new Date(selYear, selMonth, 1);
-      const last  = new Date(selYear, selMonth + 1, 0);
+      setSelMonth(nowMonth);
+      setSelYear(nowYear);
+      const first = new Date(nowYear, nowMonth, 1);
+      const last  = new Date(nowYear, nowMonth + 1, 0);
       setFromDate(first.toISOString().slice(0, 10));
       setToDate(last.toISOString().slice(0, 10));
     } else if (filter === "year") {
-      setFromDate(`${selYear}-01-01`);
-      setToDate(`${selYear}-12-31`);
+      setSelYear(nowYear);
+      setFromDate(`${nowYear}-01-01`);
+      setToDate(`${nowYear}-12-31`);
+    } else if (filter === "period") {
+      setFromDate(nowToday);
+      setToDate(nowToday);
     }
-    // period: fromDate/toDate set directly by calendar inputs
-  }, [filter, fromDate, selMonth, selYear]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filter]); // only fire when filter tab changes
+
+  // When user changes the month/year dropdowns, update fromDate/toDate
+  useEffect(() => {
+    if (filter !== "month") return;
+    const first = new Date(selYear, selMonth, 1);
+    const last  = new Date(selYear, selMonth + 1, 0);
+    setFromDate(first.toISOString().slice(0, 10));
+    setToDate(last.toISOString().slice(0, 10));
+  }, [selMonth, selYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When user changes year button, update fromDate/toDate
+  useEffect(() => {
+    if (filter !== "year") return;
+    setFromDate(`${selYear}-01-01`);
+    setToDate(`${selYear}-12-31`);
+  }, [selYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When user picks a day, keep toDate = fromDate
+  useEffect(() => {
+    if (filter !== "day") return;
+    setToDate(fromDate);
+  }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When user picks a week start, recalc toDate
+  useEffect(() => {
+    if (filter !== "week") return;
+    const end = new Date(fromDate + "T00:00:00");
+    end.setDate(end.getDate() + 6);
+    setToDate(end.toISOString().slice(0, 10));
+  }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     if (!ownerId) return;

@@ -536,23 +536,28 @@ export default function BillingPage() {
                           <p className="text-xs text-gray-500">${machinesOnlyPlan?.amount.toFixed(0) ?? "800"} TT / year</p>
                         </div>
                       </div>
-                      <span className="text-xs font-black px-2.5 py-1 rounded-full bg-green-100 text-green-600">ACTIVE</span>
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+                        {addonOverdue ? "OVERDUE" : "ACTIVE"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm mb-3">
                       <span className="text-gray-500">Renews</span>
-                      <span className="font-bold text-gray-800">
-                        {profile?.machines_addon_end_date
-                          ? new Date(profile.machines_addon_end_date).toLocaleDateString("en-GB")
-                          : "—"}
+                      <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
+                        {addonEnd ? addonEnd.toLocaleDateString("en-GB") : "—"}
+                        {addonDaysLeft !== null && !addonOverdue && addonDaysLeft <= 30 && ` (${addonDaysLeft}d)`}
                       </span>
                     </div>
                     {!pendingPayment && (
-                      <button onClick={() => { setSelectedPlan(machinesOnlyPlan ?? null); setRenewMode("basic"); setStep("payment"); }}
-                        disabled={!machinesOnlyPlan}
-                        className="w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50"
-                        style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}>
-                        Renew Machines Only — ${machinesOnlyPlan?.amount.toFixed(0) ?? "800"} TT
-                      </button>
+                      addonCanRenew ? (
+                        <button onClick={() => { setSelectedPlan(machinesOnlyPlan ?? null); setRenewMode("basic"); setStep("payment"); }}
+                          disabled={!machinesOnlyPlan}
+                          className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50 ${addonOverdue ? "bg-red-500" : ""}`}
+                          style={!addonOverdue ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}>
+                          {addonOverdue ? "⚠️ Renew Now — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "800") + " TT" : "Renew Machines Only — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "800") + " TT"}
+                        </button>
+                      ) : (
+                        <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
+                      )
                     )}
                   </div>
 

@@ -744,14 +744,14 @@ export default function MusicPage() {
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.05)" }}>
                 <button
                   onClick={() => setYtSubTab("results")}
-                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "results" ? "text-white" : "text-white/40 hover:text-white/70"}`}
+                  className={`flex-1 h-11 rounded-lg text-sm font-bold transition ${ytSubTab === "results" ? "text-white" : "text-white/40 hover:text-white/70"}`}
                   style={ytSubTab === "results" ? { background: "rgba(239,68,68,0.7)" } : {}}
                 >
                   Results {yt.results.length > 0 && `(${yt.results.length})`}
                 </button>
                 <button
                   onClick={() => setYtSubTab("saved")}
-                  className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${ytSubTab === "saved" ? "text-white" : "text-white/40 hover:text-white/70"}`}
+                  className={`flex-1 h-11 rounded-lg text-sm font-bold transition ${ytSubTab === "saved" ? "text-white" : "text-white/40 hover:text-white/70"}`}
                   style={ytSubTab === "saved" ? { background: "rgba(239,68,68,0.7)" } : {}}
                 >
                   Saved {yt.history.length > 0 && `(${yt.history.length})`}
@@ -780,12 +780,12 @@ export default function MusicPage() {
                   )}
                   {!yt.searching && yt.results.length === 0 && !yt.searchError && (
                     <div>
-                      <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-2">Quick Play</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-wider mb-3">Quick Play</p>
+                      <div className="grid grid-cols-2 gap-3">
                         {QUICK_SEARCHES.map(({ label, q }) => (
                           <button key={q}
                             onClick={() => { setSearchInput(q); yt.setQuery(q); yt.search(q); setYtSubTab("results"); }}
-                            className="px-3 py-3 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
+                            className="px-3 py-4 rounded-xl text-sm font-bold text-white text-left active:scale-95 transition leading-tight"
                             style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                             {label}
                           </button>
