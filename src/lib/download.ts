@@ -18,9 +18,21 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
     await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
   } else {
     const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-    Object.assign(document.createElement("a"), { href: url, download: filename }).click();
-    URL.revokeObjectURL(url);
+    const blob  = new Blob([bytes], { type: "application/pdf" });
+    const url   = URL.createObjectURL(blob);
+
+    // Safari on iOS doesn't support <a download> — open in new tab instead
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isSafari || isIOS) {
+      window.open(url, "_blank");
+      // Revoke after a short delay to allow the new tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+      Object.assign(document.createElement("a"), { href: url, download: filename }).click();
+      URL.revokeObjectURL(url);
+    }
   }
 }
 

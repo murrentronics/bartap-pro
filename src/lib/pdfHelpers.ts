@@ -51,8 +51,10 @@ export async function drawHeader(
 
   // Try to embed the logo PNG
   const logoDataUrl = await getLogoDataUrl();
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+  if (logoDataUrl && logoDataUrl.startsWith("data:image/png")) {
+    try {
+      doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+    } catch { /* logo failed — skip it, PDF still works */ }
   }
 
   const textX = logoX + logoSize + 4;

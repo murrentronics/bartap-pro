@@ -133,6 +133,10 @@ jobs:
       - name: Build web bundle
         run: npx cross-env NODE_OPTIONS="--max-old-space-size=4096" vite build --config vite.web.config.ts
 
+      # Copy logo.png into web public folder so PDF exports work
+      - name: Copy logo to web public
+        run: cp public/logo.png public-web/logo.png
+
       # Rename index.web.html → index.html so Cloudflare Pages serves it correctly
       - name: Fix web index filename
         run: mv dist/web/index.web.html dist/web/index.html
