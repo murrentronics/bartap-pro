@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   CreditCard, CheckCircle, Clock, AlertCircle, Copy,
-  Star, Gamepad2, ChevronRight, ArrowLeft, Check, GitBranch,
+  Star, Gamepad2, ChevronRight, ArrowLeft, Check, GitBranch, Wine,
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
@@ -198,12 +198,16 @@ export default function BillingPage() {
   const isBasic         = !profile?.plan_type || profile.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium";
   const isChain         = profile?.plan_type === "chain";
+  const isMachinesOnly  = profile?.plan_type === "machines_only";
   const hasMachinesAddon = !!profile?.machines_addon_active;
+  const hasBarAddon     = !!profile?.bar_addon_active;
 
   const basicPlan         = plans.find(p => p.plan_type === "basic");
   const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
   const premiumPlan       = plans.find(p => p.plan_type === "premium");
   const chainPlan         = plans.find(p => p.plan_type === "chain") ?? CHAIN_FALLBACK;
+  const machinesOnlyPlan  = plans.find(p => p.plan_type === "machines_only");
+  const barAddonPlan      = plans.find(p => p.plan_type === "bar_addon");
 
   const basicEnd      = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const basicDaysLeft = basicEnd ? Math.ceil((basicEnd.getTime() - Date.now()) / 86400000) : null;
@@ -380,7 +384,7 @@ export default function BillingPage() {
               )}
 
               {/* Basic + Premium + Machines cards — hidden for chain owners */}
-              {!isChain && (
+              {!isChain && !isMachinesOnly && (
                 <>
                   {/* Basic Plan card — only shown to basic plan owners */}
                   {isBasic && (
@@ -513,7 +517,84 @@ export default function BillingPage() {
                     )
                   )}
                 </>
-              )} {/* end !isChain */}
+              )} {/* end !isChain && !isMachinesOnly */}
+
+              {/* ── Machines Only active cards ── */}
+              {isMachinesOnly && (
+                <>
+                  {/* Machines Only plan status card */}
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <Gamepad2 className="h-4 w-4 text-orange-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Machines Only Plan</p>
+                          <p className="text-xs text-gray-500">${machinesOnlyPlan?.amount.toFixed(0) ?? "800"} TT / year</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black px-2.5 py-1 rounded-full bg-green-100 text-green-600">ACTIVE</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mb-3">
+                      <span className="text-gray-500">Renews</span>
+                      <span className="font-bold text-gray-800">
+                        {profile?.machines_addon_end_date
+                          ? new Date(profile.machines_addon_end_date).toLocaleDateString("en-GB")
+                          : "—"}
+                      </span>
+                    </div>
+                    {!pendingPayment && (
+                      <button onClick={() => { setSelectedPlan(machinesOnlyPlan ?? null); setRenewMode("basic"); setStep("payment"); }}
+                        disabled={!machinesOnlyPlan}
+                        className="w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50"
+                        style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}>
+                        Renew Machines Only — ${machinesOnlyPlan?.amount.toFixed(0) ?? "800"} TT
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Bar Add-on card */}
+                  {!pendingPayment && (
+                    hasBarAddon ? (
+                      <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                              <Wine className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-black text-gray-900 text-sm">Bar Add-on</p>
+                              <p className="text-xs text-gray-500">${barAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
+                            </div>
+                          </div>
+                          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-green-100 text-green-600">ACTIVE</span>
+                        </div>
+                        <button onClick={() => { setSelectedPlan(barAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                          disabled={!barAddonPlan}
+                          className="w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition bg-blue-600 text-white disabled:opacity-50">
+                          Renew Bar Add-on — ${barAddonPlan?.amount.toFixed(0) ?? "600"} TT
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setSelectedPlan(barAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                        disabled={!barAddonPlan}
+                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Wine className="h-5 w-5 text-blue-600" />
+                            <div>
+                              <p className="font-black text-gray-900 text-sm">Add Bar POS</p>
+                              <p className="text-xs text-gray-500 mt-0.5">Add full bar register & credit — $600 TT/yr</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        </div>
+                      </button>
+                    )
+                  )}
+                </>
+              )} {/* end isMachinesOnly */}
 
               {/* ── Upgrade to Chain — shown to all active non-chain owners (special pricing for renard) ── */}
               {!isChain && !pendingPayment && (
@@ -747,6 +828,48 @@ export default function BillingPage() {
                   style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
                 >
                   Select Chain Plan
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Machines Only plan card — full width */}
+          {machinesOnlyPlan && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white shadow-md overflow-hidden relative">
+              <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Machines
+              </div>
+              <div className="h-2 bg-gradient-to-r from-orange-600 to-amber-400" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                    <Gamepad2 className="h-4 w-4 text-orange-700" />
+                  </div>
+                  <h3 className="font-black text-gray-900 text-lg">Machines Only</h3>
+                </div>
+                <p className="text-3xl font-black text-orange-700 mt-2">${machinesOnlyPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-4">Payout & income tracking — add Bar POS for $600 TT/yr extra</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
+                  {[
+                    "Machines payout tracker",
+                    "Per-screen profit reports",
+                    "Float session management",
+                    "Full history PDF export",
+                    "Add Bar POS as add-on",
+                    "Upgrade to Chain anytime",
+                  ].map(f => (
+                    <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("addons"); }}
+                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
+                  style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                >
+                  Select Machines Only
                 </button>
               </div>
             </div>

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout() {
@@ -129,6 +129,7 @@ export default function AppLayout() {
 
   // Load owner plan to decide whether to show Machines in nav — must be before early returns (Rules of Hooks)
   const [ownerHasMachines, setOwnerHasMachines] = useState(false);
+  const [ownerHasBar, setOwnerHasBar] = useState(true); // false only for machines_only without bar_addon
   const [ownerEmail, setOwnerEmail] = useState("");
   useEffect(() => {
     const load = async () => {
@@ -141,10 +142,14 @@ export default function AppLayout() {
         : profile.role === "cashier" ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
-        .select("plan_type, machines_addon_active").eq("id", ownerId).single();
+        .select("plan_type, machines_addon_active, bar_addon_active").eq("id", ownerId).single();
       const planType = data?.plan_type ?? "basic";
       const addonActive = data?.machines_addon_active ?? false;
-      setOwnerHasMachines(planType === "premium" || addonActive || user?.email === "renard.sankersingh@gmail.com");
+      const barAddonActive = data?.bar_addon_active ?? false;
+      const isMachinesOnly = planType === "machines_only";
+      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || isMachinesOnly || user?.email === "renard.sankersingh@gmail.com");
+      // Bar items hidden for machines_only unless they've added the bar_addon
+      setOwnerHasBar(!isMachinesOnly || barAddonActive || user?.email === "renard.sankersingh@gmail.com");
     };
     load();
   }, [profile?.id, isChainOwner, activeBarId]);
@@ -266,13 +271,14 @@ export default function AppLayout() {
         { to: "/admin/banking",  label: "Banking", icon: Building2 },
       ]
     : [
-        { to: "/register", label: t("bar", "Bar"),           icon: Wine },
-        { to: "/credit",   label: t("credit", "Credit"),     icon: Receipt },
+        ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
+        ...(ownerHasBar ? [{ to: "/credit",   label: t("credit", "Credit"), icon: Receipt }] : []),
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
-        ...(isOwner ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
-        ...(isOwner ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
+        ...(isOwner && ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
+        ...(isOwner && ownerHasBar ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
+        ...(isOwner ? [{ to: "/summary",  label: "Summary",              icon: BarChart3 }] : []),
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"), icon: UserCircle }] : []),
       ];
@@ -322,7 +328,7 @@ export default function AppLayout() {
       {/* ── CASHIER MENU — at root level, always above page content ── */}
       {menuOpen && isCashier && (
         <>
-          <div className="fixed left-0 right-0 rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
+          <div className="fixed inset-x-0 mx-auto max-w-2xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
             style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -374,7 +380,7 @@ export default function AppLayout() {
       {/* ── OWNER / ADMIN MENU — at root level, always above page content ── */}
       {menuOpen && !isCashier && (
         <>
-          <div className="fixed left-0 right-0 border border-border shadow-2xl z-[9999] overflow-y-auto"
+          <div className="fixed inset-x-0 mx-auto max-w-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
             style={{ top: "calc(44px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}

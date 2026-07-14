@@ -27,6 +27,8 @@ export type Profile = {
   chain_addon_active?: boolean;
   chain_bar_count?: number;
   is_bar_account?: boolean;
+  is_machines_account?: boolean;
+  bar_addon_active?: boolean;
 };
 
 type AuthCtx = {

@@ -17,6 +17,7 @@ export default function CreateBarPage() {
   const [barName, setBarName] = useState("");
   const [barLocation, setBarLocation] = useState("");
   const [hasMachines, setHasMachines] = useState(false);
+  const [accountType, setAccountType] = useState<"bar" | "bar_machines" | "machines_only">("bar");
   const [copyItems, setCopyItems] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -45,7 +46,7 @@ export default function CreateBarPage() {
   }
 
   // If this is the first bar (chainBars.length === 0), skip the copyItems question
-  const needsCopyAnswer = chainBars.length > 0;
+  const needsCopyAnswer = chainBars.length > 0 && accountType !== "machines_only";
   const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2 && (!needsCopyAnswer || copyItems !== null);
 
   const handleCreate = async () => {
@@ -54,6 +55,36 @@ export default function CreateBarPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+
+      if (accountType === "machines_only") {
+        // Call create-machines function
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-machines`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token ?? ""}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          },
+          body: JSON.stringify({
+            p_name:     barName.trim(),
+            p_location: barLocation.trim(),
+          }),
+        });
+        const data = await res.json() as { machines_id?: string; error?: string };
+        if (!res.ok || data.error) { toast.error(data.error ?? "Failed to create account"); return; }
+        await refreshBars();
+        if (data.machines_id) {
+          setActiveBarId(data.machines_id);
+          toast.success(`"${barName.trim()}" created — switched to this account`);
+          nav("/machines");
+        } else {
+          toast.success("Machines account created");
+          nav("/switch-bar");
+        }
+        return;
+      }
+
+      // Bar or Bar + Machines
       const res = await fetch(`${supabaseUrl}/functions/v1/create-bar`, {
         method: "POST",
         headers: {
@@ -64,15 +95,12 @@ export default function CreateBarPage() {
         body: JSON.stringify({
           p_name:           barName.trim(),
           p_location:       barLocation.trim(),
-          p_has_machines:   hasMachines,
+          p_has_machines:   accountType === "bar_machines",
           p_copy_items:     copyItems === true,
         }),
       });
       const data = await res.json() as { bar_id?: string; error?: string };
-      if (!res.ok || data.error) {
-        toast.error(data.error ?? "Failed to create bar");
-        return;
-      }
+      if (!res.ok || data.error) { toast.error(data.error ?? "Failed to create bar"); return; }
       await refreshBars();
       if (data.bar_id) {
         setActiveBarId(data.bar_id);
@@ -83,7 +111,7 @@ export default function CreateBarPage() {
         nav("/switch-bar");
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create bar");
+      toast.error(err instanceof Error ? err.message : "Failed to create");
     } finally {
       setBusy(false);
     }
@@ -102,9 +130,9 @@ export default function CreateBarPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-black">Add New Bar</h1>
+        <h1 className="text-2xl font-black">Add New Account</h1>
         <p className="text-sm text-muted-foreground">
-          Each bar is fully independent — its own items, wallet, cashiers, and records.
+          Each account is fully independent — its own wallet, cashiers, and records.
         </p>
       </div>
 
@@ -140,45 +168,59 @@ export default function CreateBarPage() {
           />
         </div>
 
-        {/* Bar type toggle */}
+        {/* Account type toggle */}
         <div className="space-y-2">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Bar Type
+            Account Type
           </Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => setHasMachines(false)}
+              onClick={() => setAccountType("bar")}
               className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
               style={{
-                background: !hasMachines ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                borderColor: !hasMachines ? "var(--primary)" : "var(--border)",
+                background: accountType === "bar" ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
+                borderColor: accountType === "bar" ? "var(--primary)" : "var(--border)",
               }}
             >
-              <Wine className={`h-5 w-5 ${!hasMachines ? "text-primary" : "text-muted-foreground"}`} />
-              <span className={`text-xs font-black ${!hasMachines ? "text-primary" : "text-muted-foreground"}`}>
+              <Wine className={`h-5 w-5 ${accountType === "bar" ? "text-primary" : "text-muted-foreground"}`} />
+              <span className={`text-xs font-black ${accountType === "bar" ? "text-primary" : "text-muted-foreground"}`}>
                 Bar only
               </span>
             </button>
             <button
               type="button"
-              onClick={() => setHasMachines(true)}
+              onClick={() => setAccountType("bar_machines")}
               className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
               style={{
-                background: hasMachines ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                borderColor: hasMachines ? "var(--primary)" : "var(--border)",
+                background: accountType === "bar_machines" ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
+                borderColor: accountType === "bar_machines" ? "var(--primary)" : "var(--border)",
               }}
             >
-              <Gamepad2 className={`h-5 w-5 ${hasMachines ? "text-primary" : "text-muted-foreground"}`} />
-              <span className={`text-xs font-black ${hasMachines ? "text-primary" : "text-muted-foreground"}`}>
+              <Gamepad2 className={`h-5 w-5 ${accountType === "bar_machines" ? "text-primary" : "text-muted-foreground"}`} />
+              <span className={`text-xs font-black ${accountType === "bar_machines" ? "text-primary" : "text-muted-foreground"}`}>
                 Bar + Machines
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("machines_only")}
+              className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
+              style={{
+                background: accountType === "machines_only" ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
+                borderColor: accountType === "machines_only" ? "#7c3aed" : "var(--border)",
+              }}
+            >
+              <Gamepad2 className={`h-5 w-5 ${accountType === "machines_only" ? "text-purple-500" : "text-muted-foreground"}`} />
+              <span className={`text-xs font-black ${accountType === "machines_only" ? "text-purple-500" : "text-muted-foreground"}`}>
+                Machines only
               </span>
             </button>
           </div>
         </div>
 
-        {/* Copy items — only shown when there's at least one existing bar */}
-        {chainBars.length > 0 && (
+        {/* Copy items — only shown for bar types when there's at least one existing bar */}
+        {accountType !== "machines_only" && chainBars.length > 0 && (
           <div className="space-y-2">
             <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
               Copy Items from Bar 1?
@@ -228,7 +270,9 @@ export default function CreateBarPage() {
         style={{ background: canCreate && !busy ? "var(--gradient-hero)" : undefined }}
       >
         {busy ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Creating bar…</>
+          <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
+        ) : accountType === "machines_only" ? (
+          "Create Machines Account"
         ) : (
           "Create Bar"
         )}

@@ -1748,12 +1748,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     stockResaleValue: number;
     stockExpectedProfit: number;
     stockCost: number;
+    todayIncome: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes] = await Promise.all([
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       // Transfer-in: cashier balances cleared to owner
@@ -1771,6 +1774,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         .select("revenue, product_id, products(price)")
         .eq("owner_id", profile.id)
         .eq("status", "open"),
+      // Today's orders total
+      supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayStart.toISOString()),
     ]);
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
@@ -1806,7 +1811,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Expected profit = what you'd make selling all stock at retail minus what it cost to buy
     const stockExpectedProfit = stockResaleValue - closedStockCost;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost });
+    const todayIncome = (todayOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -1842,6 +1849,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
+  const todayIncome = financialSummary ? financialSummary.todayIncome : 0;
   const netProfit = totalIncome - totalExpenses;
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
   const stockExpectedProfit = financialSummary ? financialSummary.stockExpectedProfit : 0;
@@ -1871,9 +1879,35 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           {/* Mini stat cards */}
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">
-              {[0, 1].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
             </div>
           ) : (
+            <>
+            {/* Total Expense + Total Profit — first row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingDown className="h-3 w-3" /> Total Expense
+                </div>
+                <div className="font-black text-sm leading-tight" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  <TrendingUp className="h-3 w-3" /> Total Profit
+                </div>
+                <div className="font-black text-sm leading-tight" style={{
+                  color: !hasFinancials ? "rgba(255,255,255,0.3)"
+                    : netProfit >= 0 ? "#86efac"
+                    : "#fca5a5"
+                }}>
+                  {hasFinancials ? `${netProfit >= 0 ? "+" : ""}$${fmt(netProfit)}` : "—"}
+                </div>
+              </div>
+            </div>
+
+            {/* Stock Expense + Net Profit — second row */}
             <div className="grid grid-cols-2 gap-2">
               {/* Stock Expense — current total cost price of all stock on hand */}
               <div className="rounded-2xl p-3 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -1901,6 +1935,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* Stock Resale + Expected Profit — 2 cards */}
@@ -1925,12 +1960,22 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           </div>
 
-          {/* Income — full width row (replaces Available Balance) */}
-          <div className="flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
-              <DollarSign className="h-3.5 w-3.5" /> Income
+          {/* Total Income + Today's Income — full bottom row */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3" /> Total Income
+              </div>
+              <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
             </div>
-            <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3" /> Today's Income
+              </div>
+              <span className="font-black text-sm" style={{ color: todayIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                {todayIncome > 0 ? `$${fmt(todayIncome)}` : "—"}
+              </span>
+            </div>
           </div>
         </div>
       </section>

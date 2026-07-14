@@ -639,7 +639,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   return (
     <>
     <div className="fixed inset-0 z-[70] flex flex-col bg-background" onClick={onClose}>
-      <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col h-full max-w-4xl mx-auto w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3 border-b border-border shrink-0"
           style={{ paddingTop: "calc(44px + env(safe-area-inset-top, 0px) + 0.75rem)" }}>
@@ -647,8 +647,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
             <ListChecks className="h-5 w-5" style={{ color: "var(--primary)" }} />
             <span className="text-lg font-black">Bulk Edit Stock</span>
           </div>
-          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 bg-muted hover:bg-muted/80 transition active:scale-95">
+            <X className="h-4 w-4" /> Exit
           </button>
         </div>
 
@@ -660,12 +660,12 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <table className="min-w-[600px] w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background border-b border-border">
               <tr>
-                <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-8"></th>
+                <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-10 sm:w-14"></th>
                 <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[110px]">Name</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px]">Cost $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px]">Sell $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px]">Qty</th>
-                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px]" style={{ color: "var(--primary)" }}>+ Add</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Cost $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Sell $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px] sm:w-[60px]">Qty</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px] sm:w-[96px]" style={{ color: "var(--primary)" }}>+ Add</th>
               </tr>
             </thead>
             <tbody>
@@ -694,8 +694,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         style={hasAdd ? { background: "rgba(251,146,60,0.07)" } : {}}
                       >
                         {/* Thumbnail */}
-                        <td className="pl-3 pr-2 py-1.5 w-8">
-                          <div className="h-8 w-8 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base" style={{ background: "var(--gradient-card)" }}>
+                        <td className="pl-3 pr-2 py-1.5 w-10 sm:w-14">
+                          <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base sm:text-xl" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url
                               ? <img src={p.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                               : categoryIcon(p.category ?? "drinks")}
@@ -706,36 +706,36 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
                         </td>
                         {/* Cost price — editable */}
-                        <td className="px-2 py-1.5 w-[76px]">
+                        <td className="px-2 py-1.5 w-[76px] sm:w-[96px]">
                           <div
                             onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "cp" ? null : { id: p.id, field: "cp" })}
-                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                            className="h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
                             style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "cp" ? "var(--primary)" : cpIsZero ? "#ef4444" : "var(--border)", color: "var(--muted-foreground)" }}
                           >
                             {cpVal || "0.00"}
                           </div>
                         </td>
                         {/* Sell price — editable */}
-                        <td className="px-2 py-1.5 w-[76px]">
+                        <td className="px-2 py-1.5 w-[76px] sm:w-[96px]">
                           <div
                             onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "sp" ? null : { id: p.id, field: "sp" })}
-                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                            className="h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
                             style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "sp" ? "var(--primary)" : spIsZero ? "#ef4444" : "var(--border)", color: "var(--foreground)" }}
                           >
                             {spVal || "0.00"}
                           </div>
                         </td>
                         {/* Current qty — read only */}
-                        <td className="px-2 py-1.5 text-right w-[46px]">
-                          <span className={`font-black text-xs ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                        <td className="px-2 py-1.5 text-right w-[46px] sm:w-[60px]">
+                          <span className={`font-black text-xs sm:text-sm ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
                             {p.stock_qty ?? 0}
                           </span>
                         </td>
                         {/* New qty input */}
-                        <td className="pr-4 pl-2 py-1.5 text-right w-[76px]">
+                        <td className="pr-4 pl-2 py-1.5 text-right w-[76px] sm:w-[96px]">
                           <div
                             onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "qty" ? null : { id: p.id, field: "qty" })}
-                            className="h-8 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                            className="h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
                             style={{
                               borderColor: activeNumpad?.id === p.id && activeNumpad.field === "qty" ? "var(--primary)" : hasAdd ? "var(--primary)" : "var(--border)",
                               color: hasAdd ? "var(--primary)" : "var(--muted-foreground)",
@@ -769,7 +769,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                   key={i}
                   type="button"
                   onClick={() => handleNumpad(k)}
-                  className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
+                  className={`h-11 sm:h-14 rounded-xl font-black text-lg sm:text-xl transition active:scale-95 ${
                     k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
                   }`}
                 >{k}</button>
@@ -785,7 +785,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
 
     {/* ── Preview / Confirm modal ── */}
     {showPreview && (
-      <div className="fixed inset-0 z-[80] flex flex-col bg-background">
+      <div className="fixed inset-0 z-[80] flex flex-col items-center bg-background">
+        <div className="flex flex-col h-full w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-border shrink-0">
           <div>
@@ -872,6 +873,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Save"}
           </button>
         </div>
+        </div>{/* end max-w-2xl wrapper */}
       </div>
     )}
     </>
@@ -1000,7 +1002,7 @@ export default function ProductsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">No {CATEGORIES.find(c=>c.value===category)?.label ?? category} yet — tap Add Item.</div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
             {filtered.map((p) => (
               <div key={p.id} className="flex flex-col rounded-2xl overflow-hidden border border-border" style={{ background: "var(--gradient-card)" }}>
                 <div className="aspect-[3/4] relative w-full">

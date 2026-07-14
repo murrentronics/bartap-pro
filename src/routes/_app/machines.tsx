@@ -662,6 +662,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col overflow-hidden"
       style={{ background: "var(--background)" }}>
+      {/* Constrain content to max-w-2xl on tablets/desktop */}
+      <div className="flex flex-col h-full w-full max-w-2xl mx-auto">
       {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-3 border-b border-border bg-background/95 backdrop-blur z-10"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)", paddingBottom: "0.5rem" }}>
@@ -957,6 +959,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </button>
         </div>
       )}
+      </div>{/* end max-w-2xl wrapper */}
     </div>
   );
 }

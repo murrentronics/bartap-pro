@@ -193,6 +193,8 @@ export default function AdminBillingManagementPage() {
         const isPremium = (plan as any).plan_type === "premium";
         const isMachinesAddon = (plan as any).plan_type === "machines_addon";
         const isChainPlan = (plan as any).plan_type === "chain";
+        const isMachinesOnly = (plan as any).plan_type === "machines_only";
+        const isBarAddon = (plan as any).plan_type === "bar_addon";
 
         if (isChainPlan) {
           // Chain plan: set plan_type = "chain", chain_addon_active = true,
@@ -212,6 +214,35 @@ export default function AdminBillingManagementPage() {
           }).eq("id", selectedPayment.owner_id);
 
           updates.next_due_date = chainEnd.toISOString();
+
+        } else if (isMachinesOnly) {
+          // Machines Only: activate machines, hide bar features
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + plan.duration_months);
+
+          await supabase.from("profiles").update({
+            status: "approved",
+            billing_status: "active",
+            plan_type: "machines_only",
+            machines_addon_active: true,
+            machines_addon_start_date: startDate.toISOString(),
+            machines_addon_end_date: endDate.toISOString(),
+            bar_addon_active: false,
+            music_addon: true,
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = endDate.toISOString();
+
+        } else if (isBarAddon) {
+          // Bar Add-on: machines_only user adding bar POS access
+          const addonEnd = new Date(startDate);
+          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
+
+          await supabase.from("profiles").update({
+            bar_addon_active: true,
+          }).eq("id", selectedPayment.owner_id);
+
+          updates.next_due_date = addonEnd.toISOString();
 
         } else if (isPremium) {
           // Premium: extend premium_subscription_end_date independently

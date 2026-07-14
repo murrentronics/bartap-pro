@@ -1,0 +1,120 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Verify caller is authenticated
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Verify caller is a chain owner
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("role, plan_type, chain_bar_count, chain_addon_active")
+      .eq("id", user.id)
+      .single();
+
+    if (!ownerProfile || ownerProfile.role !== "owner" || ownerProfile.plan_type !== "chain") {
+      return new Response(JSON.stringify({ error: "Chain plan required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Count existing sub-accounts (bars + machines combined)
+    const { count: subCount } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("parent_id", user.id)
+      .eq("is_bar_account", true);
+
+    if ((subCount ?? 0) >= 9) {
+      return new Response(JSON.stringify({ error: "Maximum 10 sub-accounts reached" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { p_name, p_location } = await req.json();
+    if (!p_name?.trim() || !p_location?.trim()) {
+      return new Response(JSON.stringify({ error: "Name and location required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Create auth user (fake email, never logs in directly)
+    const fakeEmail = `machines-${crypto.randomUUID()}@chain.internal`;
+    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
+      email: fakeEmail,
+      password: crypto.randomUUID(),
+      email_confirm: true,
+      user_metadata: {
+        username: p_name.trim(),
+        role: "owner",
+        parent_id: user.id,
+      },
+    });
+
+    if (createError || !authData.user) {
+      return new Response(JSON.stringify({ error: createError?.message ?? "Failed to create account" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const machinesId = authData.user.id;
+
+    // Upsert profile — machines only, no bar
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({
+        id:                     machinesId,
+        username:               p_name.trim(),
+        role:                   "owner",
+        parent_id:              user.id,
+        wallet_balance:         0,
+        status:                 "approved",
+        address:                p_location.trim(),
+        is_bar_account:         true,        // reuse flag so chain RLS applies
+        is_machines_account:    true,        // marks this as machines-only
+        machines_addon_active:  true,        // machines enabled
+        bar_addon_active:       false,       // bar disabled unless added later
+        plan_type:              "chain",
+        chain_addon_active:     false,
+        billing_status:         "active",
+      }, { onConflict: "id" });
+
+    if (profileError) {
+      await supabase.auth.admin.deleteUser(machinesId);
+      return new Response(JSON.stringify({ error: profileError.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Increment chain_bar_count on master
+    await supabase
+      .from("profiles")
+      .update({ chain_bar_count: (ownerProfile.chain_bar_count ?? 1) + 1 })
+      .eq("id", user.id);
+
+    return new Response(JSON.stringify({ machines_id: machinesId }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+});
