@@ -294,13 +294,31 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
 
-    if (total > Number(profile.wallet_balance)) {
-      toast.error(`Insufficient balance. Wallet: $${fmt(Number(profile.wallet_balance))} · Expense: $${fmt(total)}`);
+    // Load current owner float
+    const ownerId = profile.parent_id ?? profile.id;
+    const { data: ownerProfile } = await sb.from("profiles")
+      .select("cashier_float, wallet_balance")
+      .eq("id", ownerId)
+      .single();
+
+    const currentFloat = Number(ownerProfile?.cashier_float ?? 0);
+    const cashierWallet = Number(profile.wallet_balance);
+
+    // Float covers first — wallet only kicks in when float hits 0
+    const floatCovers = Math.min(currentFloat, total);         // how much float pays
+    const walletCovers = total - floatCovers;                  // remainder from cashier wallet
+
+    if (walletCovers > cashierWallet) {
+      const shortfall = walletCovers - cashierWallet;
+      toast.error(
+        currentFloat > 0
+          ? `Insufficient funds. Float covers $${fmt(floatCovers)}, wallet covers $${fmt(cashierWallet)} — short $${fmt(shortfall)}`
+          : `Insufficient wallet balance. Wallet: $${fmt(cashierWallet)} · Expense: $${fmt(total)}`
+      );
       return;
     }
 
     setSavingExpense(true);
-    const ownerId = profile.parent_id ?? profile.id;
     const cashierName = profile.username ?? profile.id;
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
 
@@ -323,20 +341,48 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       const expenseNote = valid.length === 1
         ? `Expense: ${valid[0].description.trim()}`
         : `Bulk Expense (${valid.length} items)`;
-      const { error: txError } = await sb.from("wallet_transactions").insert({
-        profile_id: profile.id,
-        amount: total,
-        type: "cashier_expense",
-        note: expenseNote,
-      });
-      if (txError) { toast.error(txError.message); return; }
 
-      const { error: balError } = await (supabase as any).from("profiles")
-        .update({ wallet_balance: Number(profile.wallet_balance) - total })
-        .eq("id", profile.id);
-      if (balError) { toast.error(balError.message); return; }
+      // Deduct from float first
+      if (floatCovers > 0) {
+        const newFloat = currentFloat - floatCovers;
+        const { error: floatErr } = await sb.from("profiles")
+          .update({ cashier_float: newFloat })
+          .eq("id", ownerId);
+        if (floatErr) { toast.error(floatErr.message); return; }
+      }
 
-      toast.success("Expense saved");
+      // Deduct remainder from cashier wallet
+      if (walletCovers > 0) {
+        const { error: txError } = await sb.from("wallet_transactions").insert({
+          profile_id: profile.id,
+          amount: walletCovers,
+          type: "cashier_expense",
+          note: expenseNote,
+        });
+        if (txError) { toast.error(txError.message); return; }
+
+        const { error: balError } = await (supabase as any).from("profiles")
+          .update({ wallet_balance: cashierWallet - walletCovers })
+          .eq("id", profile.id);
+        if (balError) { toast.error(balError.message); return; }
+      } else {
+        // Float covered 100% — still record the wallet_transaction as $0 expense for history
+        const { error: txError } = await sb.from("wallet_transactions").insert({
+          profile_id: profile.id,
+          amount: total,
+          type: "cashier_expense",
+          note: expenseNote + " [from float]",
+        });
+        if (txError) { toast.error(txError.message); return; }
+      }
+
+      toast.success(
+        floatCovers > 0 && walletCovers === 0
+          ? `Expense saved — deducted $${fmt(total)} from float`
+          : floatCovers > 0
+          ? `Expense saved — $${fmt(floatCovers)} from float, $${fmt(walletCovers)} from wallet`
+          : "Expense saved"
+      );
       setExpenseLines([{ description: "", amount: "" }]);
       setShowAddExpense(false);
       setConfirmingExpense(false);
@@ -1122,12 +1168,14 @@ function NumPad({
   onDone,
   onCancel,
   label,
+  confirmLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
   onDone: () => void;
   onCancel: () => void;
   label?: string;
+  confirmLabel?: string;
 }) {
   const press = (key: string) => {
     if (key === "⌫") {
@@ -1195,7 +1243,7 @@ function NumPad({
         <button onClick={onDone}
           className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition"
           style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
-          Done
+          {confirmLabel ?? "Done"}
         </button>
       </div>
     </div>
@@ -2178,12 +2226,36 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
 }
 
 // ─── Owner Wallet ─────────────────────────────────────────────────────────────
-function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string } }) {
+function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: number; cashier_float?: number; role: string; username?: string } }) {
   const { t } = useTranslation();
+  const { refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<"transactions" | "financials">("transactions");
   const [showStatement, setShowStatement] = useState(false);
   // Derive balance directly from the prop so it updates when refreshProfile() runs
   const balance = Number(profile.wallet_balance);
+
+  // ── Cashier Float ───────────────────────────────────────────────────────────
+  const [cashierFloat, setCashierFloat] = useState<number>(Number(profile.cashier_float ?? 0));
+  const [showSetFloat, setShowSetFloat] = useState(false);
+  const [floatInput, setFloatInput] = useState("");
+  const [savingFloat, setSavingFloat] = useState(false);
+
+  // Keep local float in sync when profile refreshes
+  useEffect(() => { setCashierFloat(Number(profile.cashier_float ?? 0)); }, [profile.cashier_float]);
+
+  const handleSetFloat = async () => {
+    const val = parseFloat(floatInput);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSavingFloat(true);
+    const { error } = await sb.from("profiles").update({ cashier_float: val }).eq("id", profile.id);
+    setSavingFloat(false);
+    if (error) { toast.error(error.message); return; }
+    setCashierFloat(val);
+    setFloatInput("");
+    setShowSetFloat(false);
+    toast.success(val === 0 ? "Float cleared" : "Float updated");
+    setTimeout(() => refreshProfile(), 300);
+  };
 
   // Financial summary state (loaded for hero display)
   const [financialSummary, setFinancialSummary] = useState<{
@@ -2424,6 +2496,23 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               </span>
             </div>
           </div>
+
+          {/* Cashier Float row — Set Float button (left) + Float Amount card (right) */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => { setFloatInput(cashierFloat > 0 ? String(cashierFloat) : ""); setShowSetFloat(true); }}
+              className="h-14 rounded-2xl font-black text-sm active:scale-95 transition flex items-center justify-center"
+              style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+              {cashierFloat > 0 ? "Update Float" : "Set Float"}
+            </button>
+            <div className="flex flex-col items-center justify-center gap-0.5 text-center rounded-2xl px-3 py-2.5"
+              style={{ background: "oklch(0.18 0.02 60)", border: cashierFloat > 0 ? "1px solid oklch(0.38 0.12 60)" : "1px solid oklch(0.28 0.04 60)" }}>
+              <div className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Cashier Float</div>
+              <span className="font-black text-sm sm:text-base" style={{ color: cashierFloat > 0 ? "#fbbf24" : "rgba(255,255,255,0.25)" }}>
+                {cashierFloat > 0 ? `$${fmt(cashierFloat)}` : "—"}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2463,6 +2552,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
       {showStatement && (
         <OwnerStatement profile={profile} onClose={() => setShowStatement(false)} />
+      )}
+
+      {/* Set / Update Float numpad */}
+      {showSetFloat && (
+        <NumPad
+          label={cashierFloat > 0 ? "Update Cashier Float" : "Set Cashier Float"}
+          value={floatInput}
+          onChange={setFloatInput}
+          onCancel={() => { setShowSetFloat(false); setFloatInput(""); }}
+          onDone={handleSetFloat}
+          confirmLabel={savingFloat ? "Saving…" : cashierFloat > 0 ? "Update Float" : "Set Float"}
+        />
       )}
     </div>
   );
