@@ -1503,10 +1503,12 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             <button
               onClick={() => setShowSummaryPicker(v => !v)}
               className="flex items-center gap-1.5 h-9 px-3 rounded-xl font-bold text-xs transition active:scale-95"
-              style={summaryFilter !== "all"
-                ? { background: "rgba(251,146,60,0.18)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.4)" }
-                : { background: "var(--gradient-card)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-              <BarChart3 className={`h-3.5 w-3.5 ${summaryFilter !== "all" ? "text-primary" : ""}`} />
+              style={{
+                background: "rgba(251,146,60,0.18)",
+                color: "var(--primary)",
+                border: "1px solid rgba(251,146,60,0.4)",
+              }}>
+              <BarChart3 className="h-3.5 w-3.5 text-primary" />
               {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
               {summaryFilter !== "all" && (
                 <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
@@ -1543,9 +1545,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             </div>
             {/* Day picker */}
             {summaryFilter === "day" && (
-              <input type="date" value={pickerDate} max={today}
-                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+              <div>
+                <input type="date" value={pickerDate} max={today}
+                  onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <p className="text-[10px] text-muted-foreground mt-1 px-1">
+                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                </p>
+              </div>
             )}
             {/* Week picker */}
             {summaryFilter === "week" && (
@@ -1610,6 +1617,70 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             </div>
           </div>
         </div>
+
+        {/* Machine performance breakdown — only shown when a filter is active */}
+        {summaryFilter !== "all" && (() => {
+          // Tally income and payout per machine for filtered entries
+          const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
+          filteredEntries.forEach(e => {
+            const m = machines.find(x => x.id === e.machine_id);
+            const name = m?.name ?? "Unknown";
+            if (!machineStats[e.machine_id]) machineStats[e.machine_id] = { name, income: 0, payout: 0 };
+            if (e.type === "income") machineStats[e.machine_id].income += Number(e.amount);
+            else machineStats[e.machine_id].payout += Number(e.amount);
+          });
+          const statList = Object.values(machineStats);
+          if (statList.length === 0) return null;
+          const byIncome = [...statList].sort((a, b) => b.income - a.income);
+          const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
+          return (
+            <div className="space-y-2 pt-1 border-t border-border/40">
+              {/* Income ranking */}
+              <div>
+                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Income by Machine</p>
+                <div className="space-y-1">
+                  {byIncome.map((m, i) => (
+                    <div key={m.name + "i"} className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                          <span className="text-xs font-black text-green-400 shrink-0 ml-2">${fmtWhole(m.income)}</span>
+                        </div>
+                        {/* Bar */}
+                        <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                          <div className="h-full rounded-full bg-green-500/60"
+                            style={{ width: byIncome[0].income > 0 ? `${(m.income / byIncome[0].income) * 100}%` : "0%" }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Payout ranking */}
+              <div>
+                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Payout by Machine</p>
+                <div className="space-y-1">
+                  {byPayout.filter(m => m.payout > 0).map((m, i) => (
+                    <div key={m.name + "p"} className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                          <span className="text-xs font-black text-red-400 shrink-0 ml-2">${fmtWhole(m.payout)}</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                          <div className="h-full rounded-full bg-red-500/60"
+                            style={{ width: byPayout[0].payout > 0 ? `${(m.payout / byPayout[0].payout) * 100}%` : "0%" }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Month accordions */}
