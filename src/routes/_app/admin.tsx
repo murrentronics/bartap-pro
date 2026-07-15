@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Check, X, Ban, UserMinus, RotateCw, Trash2, Loader2,
+  Check, X, Ban, UserMinus, RotateCw, RotateCcw, Trash2, Loader2,
   ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
   Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus, GitBranch,
 } from "lucide-react";
@@ -1376,6 +1376,10 @@ export default function AdminPage() {
                         )}
                         {k === "approved" && (
                           <>
+                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "pending"), "Set to Pending")}
+                              title="Revert to pending — user will see the select a plan page">
+                              <RotateCcw className="h-4 w-4 mr-1" /> Pending
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "suspended"), "Suspended")}>
                               <Ban className="h-4 w-4 mr-1" /> Suspend
                             </Button>

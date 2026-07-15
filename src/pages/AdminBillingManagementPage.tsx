@@ -340,15 +340,31 @@ export default function AdminBillingManagementPage() {
   const revokePayment = async () => {
     if (!selectedPayment) return;
     setLoading(true);
-    const { error } = await (supabase as any).rpc("admin_revoke_subscription", {
-      p_payment_id: selectedPayment.id,
+
+    // Call the admin-revoke-plan edge function — handles cashier deletion + profile reset
+    const { data: { session } } = await supabase.auth.getSession();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/admin-revoke-plan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token}`,
+        "apikey": supabaseKey,
+      },
+      body: JSON.stringify({ payment_id: selectedPayment.id }),
     });
+
     setLoading(false);
-    if (error) { toast.error("Revoke failed: " + error.message); return; }
+    const json = await res.json();
+    if (!res.ok) { toast.error("Revoke failed: " + (json.error ?? "unknown error")); return; }
+
     const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
     toast.success(
       planType === "chain"          ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
       planType === "basic"          ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
+      planType === "machines_only"  ? `${selectedPayment.profiles?.username} machines plan revoked — reset to pending` :
       planType === "premium"        ? `${selectedPayment.profiles?.username} downgraded to Basic` :
       planType === "machines_addon" ? `Machines add-on removed` :
       "Subscription revoked"
