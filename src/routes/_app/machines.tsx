@@ -1678,6 +1678,37 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   ))}
                 </div>
               </div>
+              {/* Profit ranking — income minus payout, highest to lowest */}
+              <div>
+                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Machine Profit</p>
+                <div className="space-y-1">
+                  {[...statList]
+                    .map(m => ({ ...m, profit: m.income - m.payout }))
+                    .sort((a, b) => b.profit - a.profit)
+                    .map((m, i) => {
+                      const maxAbs = Math.max(...statList.map(x => Math.abs(x.income - x.payout)), 1);
+                      const pct = Math.abs(m.profit) / maxAbs * 100;
+                      const isPos = m.profit >= 0;
+                      return (
+                        <div key={m.name + "prof"} className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                              <span className="text-xs font-black shrink-0 ml-2" style={{ color: isPos ? "#86efac" : "#fca5a5" }}>
+                                {isPos ? "+" : ""}${fmtWhole(m.profit)}
+                              </span>
+                            </div>
+                            <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                              <div className="h-full rounded-full"
+                                style={{ width: `${pct}%`, background: isPos ? "rgba(134,239,172,0.6)" : "rgba(252,165,165,0.6)" }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
             </div>
           );
         })()}
