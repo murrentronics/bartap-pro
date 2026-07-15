@@ -48,7 +48,15 @@ export default function AdminBillingManagementPage() {
   }, [profile, filter, page]);
 
   useEffect(() => {
-    filterPayments();
+    let filtered = payments;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.reference_number.toLowerCase().includes(term) ||
+        (p.profiles?.username ?? "").toLowerCase().includes(term)
+      );
+    }
+    setFilteredPayments(filtered);
   }, [payments, searchTerm]);
 
   const loadPayments = async () => {
@@ -145,20 +153,6 @@ export default function AdminBillingManagementPage() {
     }
     list.sort((a, b) => a.daysLeft - b.daysLeft);
     setDueSoonList(list);
-  };
-
-  const filterPayments = () => {
-    let filtered = payments;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.reference_number.toLowerCase().includes(term) ||
-        p.profiles?.username.toLowerCase().includes(term)
-      );
-    }
-
-    setFilteredPayments(filtered);
   };
 
   const updatePaymentStatus = async (status: "paid" | "rejected") => {
@@ -428,18 +422,19 @@ export default function AdminBillingManagementPage() {
 
         {/* Filters */}
         <Card className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by reference, username, or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2 w-full">
-              {(["pending", "due", "paid", "rejected"] as const).map((f) => (
+          {/* Search — full width row */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by reference or username..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {/* Tabs — full width row below search */}
+          <div className="flex gap-2 w-full">
+            {(["pending", "due", "paid", "rejected"] as const).map((f) => (
                 <Button
                   key={f}
                   variant={filter === f ? "default" : "outline"}
@@ -457,7 +452,6 @@ export default function AdminBillingManagementPage() {
                   {f === "paid"     && stats.paid     > 0 && <span className="text-[10px] font-black text-green-500">{stats.paid}</span>}
                 </Button>
               ))}
-            </div>
           </div>
         </Card>
 

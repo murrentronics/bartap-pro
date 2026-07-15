@@ -40,17 +40,12 @@ export default function AppLayout() {
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
-    // Approved owner on /billing or /register → redirect to correct landing page based on plan
+    // Approved owner on /register or /machines → redirect to correct landing page based on plan
     if (!loading && profile?.role === "owner" && profile.status === "approved") {
-      const onBillingOrRegister = loc.pathname === "/billing" || loc.pathname === "/register";
-      if (profile.plan_type === "machines_only" && onBillingOrRegister) {
+      if (profile.plan_type === "machines_only" && loc.pathname === "/register") {
         nav("/machines", { replace: true });
-      } else if (profile.plan_type !== "machines_only" && loc.pathname === "/register") {
-        // already on /register — no redirect needed (that is the bar landing page)
-      } else if (profile.plan_type !== "machines_only" && loc.pathname === "/billing") {
-        // came from pending → approved with a bar plan → go to bar
-        nav("/register", { replace: true });
       }
+      // All plan types can freely visit /billing
     }
     // Chain owner with no bar selected → force them to pick a bar first
     if (!loading && isChainOwner && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
