@@ -1548,9 +1548,9 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
               <div>
                 <input type="date" value={pickerDate} max={today}
                   onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-                <p className="text-[10px] text-muted-foreground mt-1 px-1">
-                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-center" />
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </p>
               </div>
             )}
@@ -1559,11 +1559,11 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
               <div className="space-y-1">
                 <input type="date" value={pickerDate} max={today}
                   onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-                <p className="text-[10px] text-muted-foreground px-1">
-                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-center" />
+                <p className="text-[10px] text-muted-foreground text-center">
+                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   {" → "}
-                  {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); })()}
+                  {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })()}
                 </p>
               </div>
             )}
@@ -1637,76 +1637,86 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             <div className="space-y-2 pt-1 border-t border-border/40">
               {/* Income ranking */}
               <div>
-                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Income by Machine</p>
+                <p className="text-[9px] sm:text-xs font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
                 <div className="space-y-1">
                   {byIncome.map((m, i) => (
-                    <div key={m.name + "i"} className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
-                          <span className="text-xs font-black text-green-400 shrink-0 ml-2">${fmtWhole(m.income)}</span>
-                        </div>
-                        {/* Bar */}
-                        <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
-                          <div className="h-full rounded-full bg-green-500/60"
-                            style={{ width: byIncome[0].income > 0 ? `${(m.income / byIncome[0].income) * 100}%` : "0%" }} />
+                    <div key={m.name + "i"}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                            <span className="text-xs font-black text-green-400 shrink-0 ml-2">${fmtWhole(m.income)}</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                            <div className="h-full rounded-full bg-green-500/60"
+                              style={{ width: byIncome[0].income > 0 ? `${(m.income / byIncome[0].income) * 100}%` : "0%" }} />
+                          </div>
                         </div>
                       </div>
+                      {i === 1 && i < byIncome.length - 1 && <div className="h-2" />}
                     </div>
                   ))}
                 </div>
               </div>
               {/* Payout ranking */}
               <div>
-                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Payout by Machine</p>
+                <p className="text-[9px] sm:text-xs font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
                 <div className="space-y-1">
                   {byPayout.filter(m => m.payout > 0).map((m, i) => (
-                    <div key={m.name + "p"} className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
-                          <span className="text-xs font-black text-red-400 shrink-0 ml-2">${fmtWhole(m.payout)}</span>
-                        </div>
-                        <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
-                          <div className="h-full rounded-full bg-red-500/60"
-                            style={{ width: byPayout[0].payout > 0 ? `${(m.payout / byPayout[0].payout) * 100}%` : "0%" }} />
+                    <div key={m.name + "p"}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                            <span className="text-xs font-black text-red-400 shrink-0 ml-2">${fmtWhole(m.payout)}</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                            <div className="h-full rounded-full bg-red-500/60"
+                              style={{ width: byPayout[0].payout > 0 ? `${(m.payout / byPayout[0].payout) * 100}%` : "0%" }} />
+                          </div>
                         </div>
                       </div>
+                      {i === 1 && i < byPayout.filter(m => m.payout > 0).length - 1 && <div className="h-2" />}
                     </div>
                   ))}
                 </div>
               </div>
-              {/* Profit ranking — income minus payout, highest to lowest */}
+              {/* Profit ranking — highest profit first, then smallest loss */}
               <div>
-                <p className="text-[9px] sm:text-xs font-black text-white/40 uppercase tracking-wider mb-1.5">Machine Profit</p>
+                <p className="text-[9px] sm:text-xs font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
                 <div className="space-y-1">
-                  {[...statList]
-                    .map(m => ({ ...m, profit: m.income - m.payout }))
-                    .sort((a, b) => b.profit - a.profit)
-                    .map((m, i) => {
-                      const maxAbs = Math.max(...statList.map(x => Math.abs(x.income - x.payout)), 1);
+                  {(() => {
+                    const profitList = [...statList]
+                      .map(m => ({ ...m, profit: m.income - m.payout }))
+                      .sort((a, b) => b.profit - a.profit);
+                    const maxAbs = Math.max(...profitList.map(x => Math.abs(x.profit)), 1);
+                    return profitList.map((m, i) => {
                       const pct = Math.abs(m.profit) / maxAbs * 100;
                       const isPos = m.profit >= 0;
                       return (
-                        <div key={m.name + "prof"} className="flex items-center gap-2">
-                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
-                              <span className="text-xs font-black shrink-0 ml-2" style={{ color: isPos ? "#86efac" : "#fca5a5" }}>
-                                {isPos ? "+" : ""}${fmtWhole(m.profit)}
-                              </span>
-                            </div>
-                            <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
-                              <div className="h-full rounded-full"
-                                style={{ width: `${pct}%`, background: isPos ? "rgba(134,239,172,0.6)" : "rgba(252,165,165,0.6)" }} />
+                        <div key={m.name + "prof"}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
+                                <span className="text-xs font-black shrink-0 ml-2" style={{ color: isPos ? "#86efac" : "#fca5a5" }}>
+                                  {isPos ? "+" : ""}${fmtWhole(m.profit)}
+                                </span>
+                              </div>
+                              <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
+                                <div className="h-full rounded-full"
+                                  style={{ width: `${pct}%`, background: isPos ? "rgba(134,239,172,0.6)" : "rgba(252,165,165,0.6)" }} />
+                              </div>
                             </div>
                           </div>
+                          {i === 1 && i < profitList.length - 1 && <div className="h-2" />}
                         </div>
                       );
-                    })}
+                    });
+                  })()}
                 </div>
               </div>
             </div>

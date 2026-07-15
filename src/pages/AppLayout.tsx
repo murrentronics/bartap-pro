@@ -269,7 +269,9 @@ export default function AppLayout() {
     );
   }
 
-  const navItems = isAdmin
+  const navItems = isPending
+    ? [] // pending users get no nav items — only Billing + Logout shown separately below
+    : isAdmin
     ? [
         { to: "/admin",          label: "Users",   icon: Users },
         { to: "/admin/billing",  label: t("billing", "Billing"), icon: DollarSign },
@@ -401,7 +403,32 @@ export default function AppLayout() {
               <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
               {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
               {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
+
             </div>
+
+            {/* Pending users — only Billing + Logout */}
+            {isPending ? (
+              <div className="p-4 space-y-3">
+                <button onClick={() => { setMenuOpen(false); nav("/billing"); }}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 w-full active:scale-95 transition-transform select-none"
+                  style={{ background: "var(--gradient-card)", borderColor: "var(--primary)", boxShadow: "0 6px 18px rgba(251,146,60,0.35)" }}>
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <CreditCard className="h-6 w-6 text-primary" />
+                  </div>
+                  <span className="text-xs font-black text-center leading-tight text-primary">{t("billing", "Billing")}</span>
+                </button>
+                <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 w-full active:scale-95 transition-transform select-none"
+                  style={{ background: "rgba(239,68,68,0.08)" }}>
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(239,68,68,0.12)" }}>
+                    <X className="h-6 w-6 text-destructive" />
+                  </div>
+                  <span className="text-xs font-black text-destructive text-center leading-tight">{t("logout", "Logout")}</span>
+                </button>
+              </div>
+            ) : (
             <div className="p-4 pb-[30vh]">
               <div className="grid grid-cols-3 gap-3">
                 {navItems.map((it) => {
@@ -463,6 +490,7 @@ export default function AppLayout() {
                 </button>
               </div>
             </div>
+            )} {/* end isPending ternary */}
           </div>
         </>
       )}
