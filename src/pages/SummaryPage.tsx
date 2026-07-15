@@ -74,7 +74,7 @@ export default function SummaryPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
   const [filter,    setFilter]   = useState<FilterType>("day");
   const [fromDate,  setFromDate] = useState(today);
   const [toDate,    setToDate]   = useState(today);
@@ -565,21 +565,61 @@ export default function SummaryPage() {
                 <span className="font-black text-sm">Expenses</span>
               </div>
               <div className="divide-y divide-border/50">
-                {expenses.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm truncate">{e.description || "Expense"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
+                {expenses.map((e) => {
+                  const raw = e.description ?? "Expense";
+                  const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n");
+                  const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+                    day: "numeric", month: "short", year: "numeric",
+                  });
+
+                  if (isBulk) {
+                    const lines = raw.split("\n").filter(Boolean);
+                    const title = lines[0];
+                    const itemLines = lines.slice(1);
+                    return (
+                      <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm">{title}</p>
+                          <div className="mt-1 space-y-0.5">
+                            {itemLines.map((line, i) => {
+                              const eqIdx = line.lastIndexOf(" = ");
+                              const left  = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
+                              const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
+                              return (
+                                <div key={i} className="flex items-center justify-between gap-2">
+                                  <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                                  {right && <span className="text-xs font-black" style={{ color: "#fca5a5" }}>{right}</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{dateStr}</p>
+                        </div>
+                        <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
+                          ${fmt(Number(e.amount))}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // Single item
+                  const atIdx = raw.indexOf(" ×");
+                  const hasDetail = atIdx !== -1;
+                  const title = hasDetail ? raw.slice(0, atIdx).trim() : raw;
+                  const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null;
+                  return (
+                    <div key={e.id} className="flex items-start justify-between px-4 py-3 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm">{title}</p>
+                        {detail && <p className="text-xs text-muted-foreground mt-0.5 break-words">{detail}</p>}
+                        <p className="text-xs text-muted-foreground mt-0.5">{dateStr}</p>
+                      </div>
+                      <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
+                        ${fmt(Number(e.amount))}
                       </p>
                     </div>
-                    <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
-                      ${fmt(Number(e.amount))}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="flex items-center justify-between px-4 py-3"
                   style={{ background: "rgba(239,68,68,0.06)" }}>
                   <span className="font-black text-sm">Total</span>

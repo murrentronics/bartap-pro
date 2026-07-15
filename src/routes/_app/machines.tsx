@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Plus, Loader2, ChevronLeft, Trash2, Download, X,
-  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell,
+  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
@@ -83,7 +83,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
   return (
     <div className="rounded-xl px-3 py-2 flex flex-col gap-0.5 text-center"
       style={{ background: "oklch(0.22 0.02 60)" }}>
-      <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{label}</div>
+      <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{label}</div>
       <div className="font-black text-xs" style={{ color }}>{value}</div>
     </div>
   );
@@ -1162,33 +1162,33 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="relative grid grid-cols-3 gap-2">
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("float_set", "Float Set")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("float_set", "Float Set")}</div>
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
               {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Payout")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Payout")}</div>
             <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
               {floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("remaining", "Remaining")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("remaining", "Remaining")}</div>
             <div className="font-black text-xs"
               style={{ color: remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
               {remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
             </div>
           </div>
         </div>
-        {/* Set Float button — owner only */}
+        {/* Set/Update Float button — same size as one float card */}
         {!isCashier && (
-          <div className="relative">
+          <div className="grid grid-cols-3">
             <button onClick={onSetFloat}
-              className="w-full py-2 rounded-xl text-xs font-black active:scale-95 transition"
-              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1px solid oklch(0.38 0.10 60)" }}>
+              className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center"
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
               {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
             </button>
           </div>
@@ -1457,21 +1457,9 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     return doc;
   };
 
-  // Saves via Cache + Share to avoid Android scoped-storage EACCES on Directory.Documents
+  // Saves via downloadPdf helper (handles both native Android and web correctly)
   const savePdfNative = async (filename: string, doc: import("jspdf").jsPDF) => {
-    const { Capacitor } = await import("@capacitor/core");
-    const base64 = doc.output("datauristring").replace(/^data:[^;]+;base64,/, "");
-    if (Capacitor.isNativePlatform()) {
-      const { Filesystem, Directory } = await import("@capacitor/filesystem");
-      const { Share } = await import("@capacitor/share");
-      const result = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache, recursive: true });
-      await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
-    } else {
-      const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-      Object.assign(document.createElement("a"), { href: url, download: filename }).click();
-      URL.revokeObjectURL(url);
-    }
+    await downloadPdf(filename, doc.output("datauristring"));
   };
 
   const handleDownloadAll = async () => {
@@ -1511,14 +1499,19 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{filteredEntries.length} records</span>
           <div className="flex items-center gap-2">
-            {/* Summary filter button */}
+            {/* Summary filter button — same style as Set Alerts */}
             <button
               onClick={() => setShowSummaryPicker(v => !v)}
-              className="h-8 px-3 rounded-lg text-xs font-black flex items-center gap-1.5 transition active:scale-95"
+              className="flex items-center gap-1.5 h-9 px-3 rounded-xl font-bold text-xs transition active:scale-95"
               style={summaryFilter !== "all"
-                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
-              📊 {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
+                ? { background: "rgba(251,146,60,0.18)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.4)" }
+                : { background: "var(--gradient-card)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+              <BarChart3 className={`h-3.5 w-3.5 ${summaryFilter !== "all" ? "text-primary" : ""}`} />
+              {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
+              {summaryFilter !== "all" && (
+                <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
+                  style={{ background: "var(--gradient-hero)" }}>✓</span>
+              )}
             </button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
               disabled={downloading} onClick={handleDownloadAll}
@@ -1603,15 +1596,15 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Payout</div>
-            <div className="font-black text-xs text-red-400">${fmtWhole(totalPayout)}</div>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Payout</div>
+            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalPayout)}</div>
           </div>
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Income</div>
-            <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Income</div>
+            <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(totalIncome)}</div>
           </div>
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Profit</div>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Profit</div>
             <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
               {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
             </div>
@@ -1634,11 +1627,11 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
               <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition"
                 onClick={() => setOpenMonth(isOpen ? null : mk)}>
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-black text-sm">{monthLabel(mk)}</span>
-                  <span className="text-xs text-muted-foreground">{mEntries.length} records</span>
+                  <span className="font-black text-sm sm:text-base lg:text-lg">{monthLabel(mk)}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">{mEntries.length} records</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  <span className={`text-xs sm:text-sm lg:text-base font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
                     {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
                   </span>
                   <button
@@ -1664,11 +1657,11 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   <div className="grid grid-cols-3 gap-2 px-4 py-2">
                     <div className="text-center">
                       <div className="text-[9px] text-muted-foreground">Payout</div>
-                      <div className="font-black text-xs text-red-400">${fmtWhole(mPayout)}</div>
+                      <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(mPayout)}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-[9px] text-muted-foreground">Income</div>
-                      <div className="font-black text-xs text-green-400">${fmtWhole(mIncome)}</div>
+                      <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(mIncome)}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-[9px] text-muted-foreground">Profit</div>
@@ -1863,7 +1856,7 @@ export default function MachinesPage() {
   const handleEnableMachines = async () => {
     if (!ownerId) return;
     setEnablingMachines(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("profiles")
       .update({ machines_addon_active: true })
       .eq("id", ownerId);
@@ -2426,3 +2419,7 @@ function SetAlertsModal({
     </div>
   );
 }
+
+
+
+

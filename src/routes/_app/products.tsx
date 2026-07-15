@@ -297,7 +297,7 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
           <button
             key={k}
             onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
-            className="flex-1 h-9 rounded-lg font-bold text-sm bg-muted hover:bg-muted/70 text-foreground transition active:scale-90 select-none"
+            className="flex-1 h-9 sm:h-12 rounded-lg font-bold text-sm sm:text-base bg-muted hover:bg-muted/70 text-foreground transition active:scale-90 select-none"
           >
             {k}
           </button>
@@ -310,9 +310,9 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
             <button
               key={k}
               onPointerDown={(e) => { e.preventDefault(); onKey(k); }}
-              className={`flex-1 max-w-[2.6rem] h-9 rounded-lg font-bold text-sm transition active:scale-90 select-none ${
+              className={`flex-1 max-w-[2.6rem] sm:max-w-[3.5rem] h-9 sm:h-12 rounded-lg font-bold text-sm sm:text-base transition active:scale-90 select-none ${
                 k === "⌫"
-                  ? "bg-destructive/30 text-destructive max-w-[3.5rem]"
+                  ? "bg-destructive/30 text-destructive max-w-[3.5rem] sm:max-w-[4.5rem]"
                   : "bg-muted hover:bg-muted/70 text-foreground"
               }`}
             >
@@ -325,7 +325,7 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
       <div className="flex justify-center gap-1 px-2">
         <button
           onPointerDown={(e) => { e.preventDefault(); onKey("SPACE"); }}
-          className="flex-1 h-9 rounded-lg bg-muted hover:bg-muted/70 text-xs font-bold text-muted-foreground transition active:scale-95 select-none"
+          className="flex-1 h-9 sm:h-12 rounded-lg bg-muted hover:bg-muted/70 text-xs sm:text-sm font-bold text-muted-foreground transition active:scale-95 select-none"
         >
           SPACE
         </button>

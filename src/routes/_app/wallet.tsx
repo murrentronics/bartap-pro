@@ -900,6 +900,53 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
 
+  // ── Add Expense form state ────────────────────────────────────────────────
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenseLines, setExpenseLines] = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
+  const [savingExpense, setSavingExpense] = useState(false);
+
+  const addExpenseLine = () => setExpenseLines(l => [...l, { description: "", amount: "" }]);
+  const removeExpenseLine = (i: number) => setExpenseLines(l => l.filter((_, idx) => idx !== i));
+  const updateLine = (i: number, field: "description" | "amount", val: string) =>
+    setExpenseLines(l => l.map((line, idx) => idx === i ? { ...line, [field]: val } : line));
+
+  const handleSaveExpense = async () => {
+    const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
+    if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
+    setSavingExpense(true);
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+    try {
+      if (valid.length === 1) {
+        // Single line — simple expense record
+        const { error } = await (sb as any).from("owner_expenses").insert({
+          owner_id: ownerId,
+          amount: parseFloat(valid[0].amount),
+          description: valid[0].description.trim(),
+          expense_date: today,
+        });
+        if (error) { toast.error(error.message); return; }
+      } else {
+        // Multiple lines — bulk style: one record with combined description and total
+        const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+        const bulkDesc = "Bulk Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
+        const { error } = await (sb as any).from("owner_expenses").insert({
+          owner_id: ownerId,
+          amount: total,
+          description: bulkDesc,
+          expense_date: today,
+        });
+        if (error) { toast.error(error.message); return; }
+      }
+      toast.success("Expense saved");
+      setExpenseLines([{ description: "", amount: "" }]);
+      setShowAddExpense(false);
+      loadData();
+      onDataChange?.();
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+
   // Accordion
   const [openMonth, setOpenMonth] = useState<string | null>(null);
 
@@ -1109,6 +1156,67 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     <div className="space-y-5 pt-2 pb-24">
 
       {/* ── Expense History by Month ──────────────────────────────────────── */}
+      {/* Add Expense button + form */}
+      <div className="space-y-2">
+        <button
+          onClick={() => setShowAddExpense(v => !v)}
+          className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] border"
+          style={showAddExpense
+            ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+            : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+          {showAddExpense ? "✕ Cancel" : "+ Add Expense"}
+        </button>
+
+        {showAddExpense && (
+          <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Expense Lines</p>
+            {expenseLines.map((line, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  value={line.description}
+                  onChange={e => updateLine(i, "description", e.target.value)}
+                  placeholder="Description (e.g. Staff Salary)"
+                  className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input
+                  value={line.amount}
+                  onChange={e => updateLine(i, "amount", e.target.value)}
+                  placeholder="$0.00"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-24 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                />
+                {expenseLines.length > 1 && (
+                  <button onClick={() => removeExpenseLine(i)}
+                    className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button onClick={addExpenseLine}
+              className="w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]">
+              + Add Line
+            </button>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-muted-foreground font-semibold">
+                Total: <span className="font-black text-foreground">
+                  ${expenseLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0).toFixed(2)}
+                </span>
+              </span>
+              <button onClick={handleSaveExpense} disabled={savingExpense}
+                className="h-10 px-6 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center gap-2 transition active:scale-95"
+                style={{ background: "var(--gradient-hero)" }}>
+                {savingExpense ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save Expense
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Expense history list */}
       {expenseMonths.length > 0 ? (
         <div className="space-y-2">
           <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>
@@ -1157,7 +1265,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                   <div className="border-t border-border divide-y divide-border/50">
                     {mExpenses.map((e) => {
                       const raw = e.description ?? "Stock expense";
-                      const isBulk = raw.startsWith("Bulk Stock Update\n");
+                      const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n");
 
                       if (isBulk) {
                         // Split into title + item lines
@@ -1919,19 +2027,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 </div>
               </div>
 
-              {/* Stock Profit */}
+              {/* Stock Profit = Stock Resale Cost − Stock Expense */}
               <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Profit
                 </div>
                 <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
-                  color: !hasFinancials ? "rgba(255,255,255,0.3)"
-                    : netProfit >= 0 ? "#86efac"
-                    : "#fca5a5"
+                  color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5"
                 }}>
-                  {hasFinancials
-                    ? `${netProfit >= 0 ? "+" : ""}$${fmt(netProfit)}`
-                    : "—"}
+                  {`${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(stockExpectedProfit)}`}
                 </div>
               </div>
             </div>
@@ -1953,13 +2057,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Expected Profit
               </div>
               {(() => {
-                // Total future profit = current profit + (stock resale - stock cost)
-                const futureProfit = netProfit + stockExpectedProfit;
+                // Expected Profit = Stock Profit (resale − cost) + Total Profit (income − expenses)
+                const expectedProfit = stockExpectedProfit + netProfit;
                 return (
                   <span className="font-black text-sm sm:text-base lg:text-lg" style={{
-                    color: futureProfit >= 0 ? "#86efac" : "#fca5a5"
+                    color: expectedProfit >= 0 ? "#86efac" : "#fca5a5"
                   }}>
-                    {futureProfit >= 0 ? "+" : ""}${fmt(futureProfit)}
+                    {expectedProfit >= 0 ? "+" : ""}${fmt(expectedProfit)}
                   </span>
                 );
               })()}
