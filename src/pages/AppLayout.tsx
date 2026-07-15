@@ -40,10 +40,17 @@ export default function AppLayout() {
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
-    // Machines-only approved owner → land on /machines, not /register
-    if (!loading && profile?.role === "owner" && profile.status === "approved" && profile.plan_type === "machines_only"
-      && loc.pathname === "/register") {
-      nav("/machines", { replace: true });
+    // Approved owner on /billing or /register → redirect to correct landing page based on plan
+    if (!loading && profile?.role === "owner" && profile.status === "approved") {
+      const onBillingOrRegister = loc.pathname === "/billing" || loc.pathname === "/register";
+      if (profile.plan_type === "machines_only" && onBillingOrRegister) {
+        nav("/machines", { replace: true });
+      } else if (profile.plan_type !== "machines_only" && loc.pathname === "/register") {
+        // already on /register — no redirect needed (that is the bar landing page)
+      } else if (profile.plan_type !== "machines_only" && loc.pathname === "/billing") {
+        // came from pending → approved with a bar plan → go to bar
+        nav("/register", { replace: true });
+      }
     }
     // Chain owner with no bar selected → force them to pick a bar first
     if (!loading && isChainOwner && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
@@ -157,7 +164,7 @@ export default function AppLayout() {
       setOwnerHasBar(!machinesOnly || barAddonActive || user?.email === "renard.sankersingh@gmail.com");
     };
     load();
-  }, [profile?.id, isChainOwner, activeBarId]);
+  }, [profile?.id, profile?.status, profile?.plan_type, profile?.machines_addon_active, profile?.bar_addon_active, isChainOwner, activeBarId]);
 
   // Realtime: re-check machines status when the active bar's profile updates
   // (e.g. after enabling machines from within the machines page)

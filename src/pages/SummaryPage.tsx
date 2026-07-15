@@ -364,7 +364,7 @@ export default function SummaryPage() {
             : downloaded
             ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
             : <Download className="h-3 w-3" />}
-          {downloading ? "…" : downloaded ? "Done" : "PDF"}
+          {downloading ? "…" : downloaded ? "Done" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} PDF`}
         </Button>
       </div>
 
@@ -431,20 +431,23 @@ export default function SummaryPage() {
         </div>
       )}
 
-      {/* ── Year picker — only years with data ── */}
+      {/* ── Year picker — dropdown showing current year + chevron ── */}
       {filter === "year" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
           <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Year</label>
-          <div className="flex flex-wrap gap-2">
-            {availableYears.map((y) => (
-              <button key={y} onClick={() => setSelYear(y)}
-                className="h-11 px-6 rounded-xl text-sm font-black transition active:scale-95"
-                style={selYear === y
-                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                  : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
-                {y}
-              </button>
-            ))}
+          <div className="relative">
+            <select
+              value={selYear}
+              onChange={(e) => setSelYear(Number(e.target.value))}
+              className="w-full h-11 rounded-xl border border-border bg-background pl-4 pr-10 text-sm font-black outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+              style={{ color: "var(--primary)" }}>
+              {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+              <svg className="h-4 w-4" style={{ color: "var(--primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
           </div>
         </div>
       )}

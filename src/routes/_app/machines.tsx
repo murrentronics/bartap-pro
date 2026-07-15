@@ -1523,7 +1523,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                 : downloadedAll
                 ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 : <Download className="h-3 w-3" />}
-              {downloadedAll ? "Done" : "All PDF"}
+              {downloadedAll ? "Done" : summaryFilter === "all" ? "All PDF" : `${summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)} PDF`}
             </Button>
           </div>
         </div>
@@ -1546,9 +1546,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             {/* Day picker */}
             {summaryFilter === "day" && (
               <div>
-                <input type="date" value={pickerDate} max={today}
-                  onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-center" />
+                <div className="relative">
+                  <input type="date" value={pickerDate} max={today}
+                    onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                    className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
+                  <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+                    {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </div>
+                </div>
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
                   {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </p>
@@ -1557,9 +1562,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
             {/* Week picker */}
             {summaryFilter === "week" && (
               <div className="space-y-1">
-                <input type="date" value={pickerDate} max={today}
-                  onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-center" />
+                <div className="relative">
+                  <input type="date" value={pickerDate} max={today}
+                    onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                    className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
+                  <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+                    {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </div>
+                </div>
                 <p className="text-[10px] text-muted-foreground text-center">
                   {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   {" → "}
@@ -1584,19 +1594,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                 </select>
               </div>
             )}
-            {/* Year picker — only years with actual records */}
+            {/* Year picker — dropdown of years with actual records */}
             {summaryFilter === "year" && (
-              <div className="flex flex-wrap gap-1.5">
+              <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
+                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
                 {availableYears.map(y => (
-                  <button key={y} onClick={() => setPickerYear(y)}
-                    className="h-8 px-4 rounded-lg text-xs font-black transition active:scale-95"
-                    style={pickerYear === y
-                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                      : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
-                    {y}
-                  </button>
+                  <option key={y} value={y}>{y}</option>
                 ))}
-              </div>
+              </select>
             )}
           </div>
         )}
@@ -1618,8 +1623,8 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
           </div>
         </div>
 
-        {/* Machine performance breakdown — only shown when a filter is active */}
-        {summaryFilter !== "all" && (() => {
+        {/* Machine performance breakdown — always shown when summary picker is open */}
+        {showSummaryPicker && (() => {
           // Tally income and payout per machine for filtered entries
           const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
           filteredEntries.forEach(e => {
@@ -1702,13 +1707,13 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-black text-white/80 truncate">{m.name}</span>
-                                <span className="text-xs font-black shrink-0 ml-2" style={{ color: isPos ? "#86efac" : "#fca5a5" }}>
+                                <span className="text-xs font-black shrink-0 ml-2" style={{ color: isPos ? "#86efac" : "#f472b6" }}>
                                   {isPos ? "+" : ""}${fmtWhole(m.profit)}
                                 </span>
                               </div>
                               <div className="h-1 rounded-full bg-white/10 mt-0.5 overflow-hidden">
                                 <div className="h-full rounded-full"
-                                  style={{ width: `${pct}%`, background: isPos ? "rgba(134,239,172,0.6)" : "rgba(252,165,165,0.6)" }} />
+                                  style={{ width: `${pct}%`, background: isPos ? "rgba(134,239,172,0.6)" : "rgba(244,114,182,0.6)" }} />
                               </div>
                             </div>
                           </div>

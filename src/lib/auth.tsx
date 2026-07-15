@@ -17,7 +17,7 @@ export type Profile = {
   billing_status?: string;
   subscription_end_date?: string;
   subscription_start_date?: string;
-  plan_type?: "basic" | "premium" | "chain";
+  plan_type?: "basic" | "premium" | "chain" | "machines_only";
   machines_addon_active?: boolean;
   machines_addon_start_date?: string;
   machines_addon_end_date?: string;

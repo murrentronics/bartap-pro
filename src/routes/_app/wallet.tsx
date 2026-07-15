@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -104,9 +104,10 @@ function PaginationBar({
 }
 
 // ─── Cashier Wallet ───────────────────────────────────────────────────────────
-function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string } }) {
+function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string; parent_id?: string | null } }) {
   const { t } = useTranslation();
   const { refreshProfile } = useAuth();
+  const [cashierTab, setCashierTab] = useState<"sales" | "expenses">("sales");
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
@@ -258,6 +259,101 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   };
 
 
+
+  // -- Cashier Expenses state
+  const [cashierExpenses, setCashierExpenses] = useState<OwnerExpense[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenseLines, setExpenseLines] = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [confirmingExpense, setConfirmingExpense] = useState(false);
+  const [openExpenseMonth, setOpenExpenseMonth] = useState<string | null>(null);
+
+  const addExpenseLine = () => setExpenseLines(l => [...l, { description: "", amount: "" }]);
+  const removeExpenseLine = (i: number) => setExpenseLines(l => l.filter((_, idx) => idx !== i));
+  const updateExpenseLine = (i: number, field: "description" | "amount", val: string) =>
+    setExpenseLines(l => l.map((line, idx) => idx === i ? { ...line, [field]: val } : line));
+
+  const loadCashierExpenses = useCallback(async () => {
+    setLoadingExpenses(true);
+    const { data } = await sb.from("owner_expenses")
+      .select("*")
+      .eq("owner_id", profile.parent_id ?? profile.id)
+      .ilike("description", `%[Cashier: ${profile.username ?? profile.id}]%`)
+      .order("created_at", { ascending: false });
+    setCashierExpenses((data ?? []) as OwnerExpense[]);
+    setLoadingExpenses(false);
+  }, [profile.id, profile.parent_id, profile.username]);
+
+  useEffect(() => {
+    if (cashierTab === "expenses") loadCashierExpenses();
+  }, [cashierTab, loadCashierExpenses]);
+
+  const handleSaveCashierExpense = async () => {
+    const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
+    if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
+    const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+
+    if (total > Number(profile.wallet_balance)) {
+      toast.error(`Insufficient balance. Wallet: $${fmt(Number(profile.wallet_balance))} · Expense: $${fmt(total)}`);
+      return;
+    }
+
+    setSavingExpense(true);
+    const ownerId = profile.parent_id ?? profile.id;
+    const cashierName = profile.username ?? profile.id;
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+
+    try {
+      let description: string;
+      if (valid.length === 1) {
+        description = `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} [Cashier: ${cashierName}]`;
+      } else {
+        description = "Non-Stock Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n") + `\n[Cashier: ${cashierName}]`;
+      }
+
+      const { error: expError } = await sb.from("owner_expenses").insert({
+        owner_id: ownerId,
+        amount: total,
+        description,
+        expense_date: today,
+      });
+      if (expError) { toast.error(expError.message); return; }
+
+      const expenseNote = valid.length === 1
+        ? `Expense: ${valid[0].description.trim()}`
+        : `Bulk Expense (${valid.length} items)`;
+      const { error: txError } = await sb.from("wallet_transactions").insert({
+        profile_id: profile.id,
+        amount: total,
+        type: "cashier_expense",
+        note: expenseNote,
+      });
+      if (txError) { toast.error(txError.message); return; }
+
+      const { error: balError } = await (supabase as any).from("profiles")
+        .update({ wallet_balance: Number(profile.wallet_balance) - total })
+        .eq("id", profile.id);
+      if (balError) { toast.error(balError.message); return; }
+
+      toast.success("Expense saved");
+      setExpenseLines([{ description: "", amount: "" }]);
+      setShowAddExpense(false);
+      setConfirmingExpense(false);
+      loadCashierExpenses();
+      setTimeout(() => refreshProfile(), 500);
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+
+  const cashierExpensesByMonth: Record<string, OwnerExpense[]> = {};
+  cashierExpenses.forEach((e) => {
+    const key = monthKey(e.expense_date);
+    if (!cashierExpensesByMonth[key]) cashierExpensesByMonth[key] = [];
+    cashierExpensesByMonth[key].push(e);
+  });
+  const cashierExpenseMonths = Object.keys(cashierExpensesByMonth).sort((a, b) => b.localeCompare(a));
   // Merge orders and txs into flat list sorted by date, capped at page size
   const flatRecords: Array<{ kind: "order"; data: Order; ts: number } | { kind: "tx"; data: WalletTx; ts: number }> = [
     ...orders.map((o) => ({ kind: "order" as const, data: o, ts: new Date(o.created_at).getTime() })),
@@ -282,6 +378,27 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
         </div>
       </section>
+      {/* ── Sales / Expenses Tabs ── */}
+      <div className="rounded-2xl border border-border overflow-hidden">
+        <div className="grid grid-cols-2">
+          <button
+            onClick={() => setCashierTab("sales")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              cashierTab === "sales" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            <Receipt className="h-4 w-4" /> Sales
+          </button>
+          <button
+            onClick={() => setCashierTab("expenses")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              cashierTab === "expenses" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            <TrendingDown className="h-4 w-4" /> Expenses
+          </button>
+        </div>
+      </div>
+
+      {cashierTab === "sales" && (
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-black text-xl">{t("records", "Records")}</h2>
@@ -302,6 +419,23 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                 const isBottlePack = tx.type === "bottle_finished" || tx.type === "pack_finished";
                 const isCreditPay  = tx.type === "credit_payment";
                 const isCreditCharge = tx.type === "credit_charge";
+                const isCashierExpense = tx.type === "cashier_expense";
+
+                if (isCashierExpense) {
+                  return (
+                    <div key={tx.id} className="rounded-xl p-4 border border-pink-500/30 flex items-center gap-3"
+                      style={{ background: "oklch(0.18 0.05 340 / 0.35)" }}>
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-pink-500/20 border-pink-500/30">
+                        <TrendingDown className="h-4 w-4 text-pink-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
+                        <div className="text-sm font-semibold text-pink-300 break-words whitespace-normal">{tx.note ?? "Expense"}</div>
+                      </div>
+                      <div className="font-black text-lg shrink-0 text-pink-400">-${fmt(Math.abs(Number(tx.amount)))}</div>
+                    </div>
+                  );
+                }
 
                 if (isTransferOut) {
                   return (
@@ -451,11 +585,187 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         )}
         <PaginationBar page={page} totalPages={totalPages} total={totalRecords} onPrev={handlePrev} onNext={handleNext} />
       </section>
+      )}
+
+      {cashierTab === "expenses" && (
+      <section className="space-y-3 pb-24">
+        {/* Add Expense form */}
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowAddExpense(v => !v)}
+            className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] border"
+            style={showAddExpense
+              ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+              : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+            {showAddExpense ? "✕ Cancel" : "+ Add Expense"}
+          </button>
+
+          {showAddExpense && (
+            <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Expense Lines</p>
+              {expenseLines.map((line, i) => (
+                <div key={i} className="space-y-1.5">
+                  <input
+                    value={line.description}
+                    onChange={e => updateExpenseLine(i, "description", e.target.value)}
+                    placeholder="Description (e.g. Staff Salary)"
+                    className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={line.amount}
+                      onChange={e => updateExpenseLine(i, "amount", e.target.value)}
+                      placeholder="$0.00"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    {expenseLines.length > 1 && (
+                      <button onClick={() => removeExpenseLine(i)}
+                        className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0">
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button onClick={addExpenseLine}
+                className="w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]">
+                + Add Line
+              </button>
+              <div className="pt-1 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    Total: <span className="font-black text-foreground">
+                      ${expenseLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0).toFixed(2)}
+                    </span>
+                  </span>
+                </div>
+                {!confirmingExpense ? (
+                  <button
+                    onClick={() => {
+                      const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
+                      if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
+                      setConfirmingExpense(true);
+                    }}
+                    className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    Save Expense
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs font-black text-center text-muted-foreground">Confirm save this expense?</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setConfirmingExpense(false)}
+                        className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95"
+                        style={{ background: "var(--gradient-card)" }}>
+                        ← Go Back
+                      </button>
+                      <button
+                        onClick={handleSaveCashierExpense}
+                        disabled={savingExpense}
+                        className="h-10 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 transition active:scale-95"
+                        style={{ background: "var(--gradient-hero)" }}>
+                        {savingExpense ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Confirm Save
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Expense history by month */}
+        {loadingExpenses ? (
+          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
+        ) : cashierExpenseMonths.length === 0 ? (
+          <div className="text-muted-foreground text-sm py-8 text-center">No expenses yet.</div>
+        ) : (
+          <div className="space-y-2">
+            <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>
+            {cashierExpenseMonths.map((mk) => {
+              const mExpenses = cashierExpensesByMonth[mk];
+              const mTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
+              const isOpen = openExpenseMonth === mk;
+              return (
+                <div key={mk} className="rounded-2xl border border-border overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                    onClick={() => setOpenExpenseMonth(isOpen ? null : mk)}>
+                    <div className="flex items-center gap-3">
+                      <span className="font-black text-sm sm:text-base">{monthLabel(mk)}</span>
+                      <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-pink-400 font-bold">-${fmt(mTotal)}</span>
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="border-t border-border divide-y divide-border/50">
+                      {mExpenses.map((e) => {
+                        const raw = (e.description ?? "").replace(/\[Cashier:[^\]]+\]\s*$/, "").trim();
+                        const isBulk = raw.startsWith("Bulk Expense") || raw.startsWith("Non-Stock Expense");
+                        if (isBulk) {
+                          const lines = raw.split("\n").filter(Boolean);
+                          const title = lines[0];
+                          const itemLines = lines.slice(1);
+                          return (
+                            <div key={e.id} className="px-4 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-black text-sm">{title}</div>
+                                  <div className="mt-1 space-y-0.5">
+                                    {itemLines.map((line, li) => {
+                                      const eqIdx = line.lastIndexOf(" = ");
+                                      const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
+                                      const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
+                                      if (left.startsWith("[Cashier:")) return null;
+                                      return (
+                                        <div key={li} className="flex items-center justify-between gap-2">
+                                          <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                                          {right && <span className="text-xs font-black text-pink-400 shrink-0">{right}</span>}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
+                                  </div>
+                                </div>
+                                <div className="shrink-0 font-black text-sm text-pink-400">-${fmt(Number(e.amount))}</div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold break-words">{raw || "Expense"}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
+                              </div>
+                            </div>
+                            <div className="shrink-0 font-black text-sm text-pink-400">-${fmt(Number(e.amount))}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      )}
     </div>
   );
 }
-
-// ─── Owner Statement Modal ────────────────────────────────────────────────────
 type OwnerFlatRecord =
   | { kind: "order"; data: Order; ts: number }
   | { kind: "tx"; data: WalletTx; ts: number };
@@ -893,7 +1203,7 @@ function NumPad({
 }
 
 // ─── Financials Tab ───────────────────────────────────────────────────────────
-function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string; totalIncome: number; onDataChange?: () => void }) {
+function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange }: { ownerId: string; ownerWalletBalance: number; totalIncome: number; onDataChange?: () => void }) {
   const [expenses, setExpenses] = useState<OwnerExpense[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
@@ -904,6 +1214,7 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [expenseLines, setExpenseLines] = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
   const [savingExpense, setSavingExpense] = useState(false);
+  const [confirmingExpense, setConfirmingExpense] = useState(false);
 
   const addExpenseLine = () => setExpenseLines(l => [...l, { description: "", amount: "" }]);
   const removeExpenseLine = (i: number) => setExpenseLines(l => l.filter((_, idx) => idx !== i));
@@ -916,30 +1227,23 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
     setSavingExpense(true);
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
     try {
-      if (valid.length === 1) {
-        // Single line — simple expense record
-        const { error } = await (sb as any).from("owner_expenses").insert({
-          owner_id: ownerId,
-          amount: parseFloat(valid[0].amount),
-          description: valid[0].description.trim(),
-          expense_date: today,
-        });
-        if (error) { toast.error(error.message); return; }
-      } else {
-        // Multiple lines — bulk style: one record with combined description and total
-        const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-        const bulkDesc = "Bulk Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
-        const { error } = await (sb as any).from("owner_expenses").insert({
-          owner_id: ownerId,
-          amount: total,
-          description: bulkDesc,
-          expense_date: today,
-        });
-        if (error) { toast.error(error.message); return; }
-      }
+      const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+      // Always use Non-Stock Expense title + description lines
+      const description = "Non-Stock Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
+      const { error } = await (sb as any).from("owner_expenses").insert({
+        owner_id: ownerId,
+        amount: total,
+        description,
+        expense_date: today,
+      });
+      if (error) { toast.error(error.message); return; }
+      // Deduct from owner wallet balance
+      const newBal = Number(ownerWalletBalance) - total;
+      await (sb as any).from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
       toast.success("Expense saved");
       setExpenseLines([{ description: "", amount: "" }]);
       setShowAddExpense(false);
+      setConfirmingExpense(false);
       loadData();
       onDataChange?.();
     } finally {
@@ -1171,46 +1475,76 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
           <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
             <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Expense Lines</p>
             {expenseLines.map((line, i) => (
-              <div key={i} className="flex gap-2 items-center">
+              <div key={i} className="space-y-1.5">
                 <input
                   value={line.description}
                   onChange={e => updateLine(i, "description", e.target.value)}
                   placeholder="Description (e.g. Staff Salary)"
-                  className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
                 />
-                <input
-                  value={line.amount}
-                  onChange={e => updateLine(i, "amount", e.target.value)}
-                  placeholder="$0.00"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-24 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                />
-                {expenseLines.length > 1 && (
-                  <button onClick={() => removeExpenseLine(i)}
-                    className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0">
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+                <div className="flex gap-2 items-center">
+                  <input
+                    value={line.amount}
+                    onChange={e => updateLine(i, "amount", e.target.value)}
+                    placeholder="$0.00"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {expenseLines.length > 1 && (
+                    <button onClick={() => removeExpenseLine(i)}
+                      className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             <button onClick={addExpenseLine}
               className="w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]">
               + Add Line
             </button>
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-muted-foreground font-semibold">
-                Total: <span className="font-black text-foreground">
-                  ${expenseLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0).toFixed(2)}
+            <div className="pt-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Total: <span className="font-black text-foreground">
+                    ${expenseLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0).toFixed(2)}
+                  </span>
                 </span>
-              </span>
-              <button onClick={handleSaveExpense} disabled={savingExpense}
-                className="h-10 px-6 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center gap-2 transition active:scale-95"
-                style={{ background: "var(--gradient-hero)" }}>
-                {savingExpense ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save Expense
-              </button>
+              </div>
+              {!confirmingExpense ? (
+                <button
+                  onClick={() => {
+                    const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
+                    if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
+                    setConfirmingExpense(true);
+                  }}
+                  className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95"
+                  style={{ background: "var(--gradient-hero)" }}>
+                  Save Expense
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-center text-muted-foreground">Confirm save this expense?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setConfirmingExpense(false)}
+                      className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95"
+                      style={{ background: "var(--gradient-card)" }}>
+                      ← Go Back
+                    </button>
+                    <button
+                      onClick={handleSaveExpense}
+                      disabled={savingExpense}
+                      className="h-10 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 transition active:scale-95"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {savingExpense ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Confirm Save
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1265,26 +1599,29 @@ function FinancialsTab({ ownerId, totalIncome, onDataChange }: { ownerId: string
                   <div className="border-t border-border divide-y divide-border/50">
                     {mExpenses.map((e) => {
                       const raw = e.description ?? "Stock expense";
-                      const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n");
+                      const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n") || raw.startsWith("Non-Stock Expense\n");
 
                       if (isBulk) {
                         // Split into title + item lines
                         const lines = raw.split("\n").filter(Boolean);
-                        const title = lines[0]; // "Bulk Stock Update"
-                        const itemLines = lines.slice(1); // each "Name ×qty @ $x = $y"
+                        const title = lines[0]; // e.g. "Non-Stock Expense" or "Bulk Stock Update"
+                        const itemLines = lines.slice(1);
                         return (
                           <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="font-black text-sm sm:text-base lg:text-lg">{title}</div>
                               <div className="mt-1 space-y-0.5">
                                 {itemLines.map((line, i) => {
-                                  // Split "Name ×qty @ $cp each = $total" at " = "
+                                  // "Name = $amount" format for non-stock, "Name ×qty @ $cp = $total" for stock
                                   const eqIdx = line.lastIndexOf(" = ");
                                   const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
                                   const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
+                                  // Strip [Cashier: ...] tag if present
+                                  const cleanLeft = left.replace(/\s*\[Cashier:[^\]]+\]/, "").trim();
+                                  if (cleanLeft.startsWith("[Cashier:")) return null; // skip the cashier-badge-only line
                                   return (
                                     <div key={i} className="flex items-center justify-between gap-2">
-                                      <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                                      <span className="text-xs text-muted-foreground flex-1">{cleanLeft}</span>
                                       {right && <span className="text-xs font-black text-red-400 shrink-0">{right}</span>}
                                     </div>
                                   );
@@ -2118,6 +2455,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       ) : (
         <FinancialsTab
           ownerId={profile.id}
+          ownerWalletBalance={profile.wallet_balance}
           totalIncome={totalIncome}
           onDataChange={loadSummary}
         />
