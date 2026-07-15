@@ -481,14 +481,17 @@ export default function AppLayout() {
           style={{
             position: "fixed",
             top: "calc(56px + env(safe-area-inset-top, 0px))",
-            left: 0, right: 0, bottom: 0,
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "100%",
+            maxWidth: "896px",
             zIndex: 35,
             background: "#000",
             visibility: yt.ytFullscreen ? "visible" : "hidden",
             pointerEvents: yt.ytFullscreen ? "auto" : "none",
           }}
         >
-          {/* Iframe fills full area — YouTube handles aspect ratio internally */}
           <iframe
             id="yt-iframe"
             src={

@@ -1,12 +1,15 @@
 import { Capacitor } from "@capacitor/core";
 
-/** Download a PDF file (base64 data URI from jsPDF) */
+/** Download a PDF file.
+ *  - Android native: write to cache + share sheet
+ *  - Web/desktop: create blob URL → download or open new tab (Safari)
+ *  Accepts either a base64 data URI string OR a jsPDF doc instance.
+ */
 export async function downloadPdf(filename: string, pdfBase64: string): Promise<void> {
-  const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
-  if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-
   if (Capacitor.isNativePlatform()) {
-    // Write to Cache then share — avoids EACCES on Android 10+ (no WRITE_EXTERNAL_STORAGE needed)
+    // Android: strip prefix, write base64 to cache, share
+    const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
+    if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
     const { Share } = await import("@capacitor/share");
     const result = await Filesystem.writeFile({
@@ -17,21 +20,37 @@ export async function downloadPdf(filename: string, pdfBase64: string): Promise<
     });
     await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
   } else {
-    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const blob  = new Blob([bytes], { type: "application/pdf" });
-    const url   = URL.createObjectURL(blob);
+    // Web: decode base64 safely without atob on the full string
+    const dataUri = pdfBase64;
+    let blob: Blob;
 
-    // Safari on iOS doesn't support <a download> — open in new tab instead
+    if (dataUri.startsWith("data:")) {
+      // Parse data URI manually — safer than atob on large strings
+      const [, b64] = dataUri.split(",");
+      if (!b64) throw new Error("PDF generation produced empty output");
+      const binStr = atob(b64);
+      const bytes  = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+      blob = new Blob([bytes], { type: "application/pdf" });
+    } else {
+      throw new Error("PDF generation produced unexpected output");
+    }
+
+    const url = URL.createObjectURL(blob);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
     if (isSafari || isIOS) {
       window.open(url, "_blank");
-      // Revoke after a short delay to allow the new tab to load
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } else {
-      Object.assign(document.createElement("a"), { href: url, download: filename }).click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
   }
 }

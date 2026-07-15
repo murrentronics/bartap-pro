@@ -1919,10 +1919,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 </div>
               </div>
 
-              {/* Net Profit */}
+              {/* Stock Profit */}
               <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Net Profit
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Profit
                 </div>
                 <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
                   color: !hasFinancials ? "rgba(255,255,255,0.3)"
@@ -1952,11 +1952,17 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
                 <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Expected Profit
               </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{
-                color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5"
-              }}>
-                {stockExpectedProfit >= 0 ? "+" : ""}${fmt(stockExpectedProfit)}
-              </span>
+              {(() => {
+                // Total future profit = current profit + (stock resale - stock cost)
+                const futureProfit = netProfit + stockExpectedProfit;
+                return (
+                  <span className="font-black text-sm sm:text-base lg:text-lg" style={{
+                    color: futureProfit >= 0 ? "#86efac" : "#fca5a5"
+                  }}>
+                    {futureProfit >= 0 ? "+" : ""}${fmt(futureProfit)}
+                  </span>
+                );
+              })()}
             </div>
           </div>
 

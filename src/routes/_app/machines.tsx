@@ -50,7 +50,12 @@ function fmt(n: number) {
 function fmtWhole(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+// Returns today's date as YYYY-MM-DD in Trinidad/Port_of_Spain time (UTC-4)
+function todayTT(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+  // en-CA gives YYYY-MM-DD format which is what we need for date inputs
+}
+function todayISO() { return todayTT(); }
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -1310,17 +1315,23 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
   type SummaryFilter = "all" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
   const [showSummaryPicker, setShowSummaryPicker] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayTT();
   const [pickerDate,  setPickerDate]  = useState(today);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
-  const [pickerYear,  setPickerYear]  = useState(new Date().getFullYear());
+
+  // Derive available years from actual entries
+  const availableYears = Array.from(
+    new Set(entries.map(e => parseInt(e.created_at.slice(0, 4))))
+  ).sort((a, b) => b - a);
+  const defaultYear = availableYears[0] ?? new Date().getFullYear();
+  const [pickerYear, setPickerYear] = useState(defaultYear);
 
   // Reset picker to today when filter changes
   const handleFilterChange = (f: SummaryFilter) => {
     setSummaryFilter(f);
     setPickerDate(today);
     setPickerMonth(new Date().getMonth());
-    setPickerYear(new Date().getFullYear());
+    setPickerYear(availableYears[0] ?? new Date().getFullYear());
   };
 
   // Compute filtered date range
@@ -1328,14 +1339,14 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     if (summaryFilter === "all") return null;
     if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
     if (summaryFilter === "week") {
-      const end = new Date(pickerDate + "T00:00:00");
+      const end = new Date(pickerDate + "T12:00:00");
       end.setDate(end.getDate() + 6);
-      return { start: pickerDate, end: end.toISOString().slice(0, 10) };
+      return { start: pickerDate, end: end.toLocaleDateString("en-CA") };
     }
     if (summaryFilter === "month") {
-      const first = new Date(pickerYear, pickerMonth, 1);
-      const last  = new Date(pickerYear, pickerMonth + 1, 0);
-      return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
+      const first = new Date(pickerYear, pickerMonth, 1, 12);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0, 12);
+      return { start: first.toLocaleDateString("en-CA"), end: last.toLocaleDateString("en-CA") };
     }
     if (summaryFilter === "year") {
       return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
@@ -1550,9 +1561,9 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
                   className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 <p className="text-[10px] text-muted-foreground px-1">
-                  {new Date(pickerDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                   {" → "}
-                  {(() => { const d = new Date(pickerDate + "T00:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); })()}
+                  {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); })()}
                 </p>
               </div>
             )}
@@ -1567,16 +1578,16 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                 </select>
                 <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
                   className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-                  {Array.from({ length: new Date().getFullYear() - 2023 + 1 }, (_, i) => 2024 + i).reverse().map(y => (
+                  {availableYears.map(y => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
               </div>
             )}
-            {/* Year picker */}
+            {/* Year picker — only years with actual records */}
             {summaryFilter === "year" && (
               <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: new Date().getFullYear() - 2023 + 1 }, (_, i) => 2024 + i).reverse().map(y => (
+                {availableYears.map(y => (
                   <button key={y} onClick={() => setPickerYear(y)}
                     className="h-8 px-4 rounded-lg text-xs font-black transition active:scale-95"
                     style={pickerYear === y
