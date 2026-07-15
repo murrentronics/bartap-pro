@@ -115,8 +115,34 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [totalTxs, setTotalTxs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  // The id of the order that qualifies for the delete button (null = none)
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+
+  // ── Float cards state ────────────────────────────────────────────────────────
+  const [floatAmount, setFloatAmount] = useState<number | null>(null);
+  const [floatUsed, setFloatUsed] = useState<number>(0);
+
+  const ownerId = profile.parent_id ?? profile.id;
+
+  // Load owner float + how much this cashier has spent from it (cashier_expense txs)
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: ownerData }, { data: expTxs }] = await Promise.all([
+        sb.from("profiles").select("cashier_float").eq("id", ownerId).single(),
+        sb.from("wallet_transactions")
+          .select("amount")
+          .eq("profile_id", profile.id)
+          .eq("type", "cashier_expense"),
+      ]);
+      const famt = Number(ownerData?.cashier_float ?? 0);
+      setFloatAmount(famt > 0 ? famt : null);
+      // Used = sum of all cashier_expense wallet transactions (float portion only — but we show total spent for simplicity)
+      const used = (expTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0);
+      setFloatUsed(used);
+    };
+    load();
+  }, [ownerId, profile.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const floatRemaining = floatAmount !== null ? Math.max(0, floatAmount - floatUsed) : null;
 
   const totalRecords = totalOrders + totalTxs;
   const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
@@ -278,12 +304,12 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     setLoadingExpenses(true);
     const { data } = await sb.from("owner_expenses")
       .select("*")
-      .eq("owner_id", profile.parent_id ?? profile.id)
+      .eq("owner_id", ownerId)
       .ilike("description", `%[Cashier: ${profile.username ?? profile.id}]%`)
       .order("created_at", { ascending: false });
     setCashierExpenses((data ?? []) as OwnerExpense[]);
     setLoadingExpenses(false);
-  }, [profile.id, profile.parent_id, profile.username]);
+  }, [ownerId, profile.id, profile.username]);
 
   useEffect(() => {
     if (cashierTab === "expenses") loadCashierExpenses();
@@ -295,7 +321,6 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
 
     // Load current owner float
-    const ownerId = profile.parent_id ?? profile.id;
     const { data: ownerProfile } = await sb.from("profiles")
       .select("cashier_float, wallet_balance")
       .eq("id", ownerId)
@@ -388,6 +413,11 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
       setConfirmingExpense(false);
       loadCashierExpenses();
       setTimeout(() => refreshProfile(), 500);
+      // Refresh float display
+      const { data: updatedOwner } = await sb.from("profiles").select("cashier_float").eq("id", ownerId).single();
+      const { data: updatedTxs } = await sb.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "cashier_expense");
+      setFloatAmount(Number(updatedOwner?.cashier_float ?? 0) > 0 ? Number(updatedOwner?.cashier_float ?? 0) : null);
+      setFloatUsed((updatedTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0));
     } finally {
       setSavingExpense(false);
     }
@@ -422,6 +452,33 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
             ${fmt(Number(profile.wallet_balance))}
           </div>
           <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
+
+          {/* Float cards — only shown when owner has set a float */}
+          {floatAmount !== null && (
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Float</div>
+                <div className="font-black text-xs" style={{ color: "#fbbf24" }}>${fmt(floatAmount)}</div>
+              </div>
+              <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Used</div>
+                <div className="font-black text-xs" style={{ color: floatUsed > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {floatUsed > 0 ? `$${fmt(floatUsed)}` : "—"}
+                </div>
+              </div>
+              <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Remaining</div>
+                <div className="font-black text-xs" style={{
+                  color: floatRemaining !== null && floatRemaining > 0 ? "#86efac" : "rgba(255,255,255,0.3)"
+                }}>
+                  {floatRemaining !== null && floatRemaining > 0 ? `$${fmt(floatRemaining)}` : "—"}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
       {/* ── Sales / Expenses Tabs ── */}
