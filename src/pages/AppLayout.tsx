@@ -308,15 +308,15 @@ export default function AppLayout() {
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Music / Bar toggle — always visible for owners with music addon */}
+          {/* Music / Machines-or-Bar toggle — always visible for owners with music addon */}
           {hasMusic && (
             <Link
-              to={isOnMusic ? "/register" : "/music"}
+              to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
-              title={isOnMusic ? "Back to Bar" : "Open Music Player"}
+              title={isOnMusic ? (isMachinesOnlyUser ? "Back to Machines" : "Back to Bar") : "Open Music Player"}
             >
-            {isOnMusic ? t("bar", "Bar") : t("music", "Music")}
+            {isOnMusic ? (isMachinesOnlyUser ? t("machines", "Machines") : t("bar", "Bar")) : t("music", "Music")}
             </Link>
           )}
 
