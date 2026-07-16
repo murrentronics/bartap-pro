@@ -652,10 +652,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDeleteMachine = async (wipeRecords: boolean) => {
     setDeletingMachine(true);
     if (wipeRecords) {
-      // Delete all entries first so wallet balances reflect the removal
+      // "Delete Everything" — explicitly wipe entries before removing the machine
       await sb.from("machine_entries").delete().eq("machine_id", machine.id);
     }
-    // Then delete the machine itself (entries cascade if any remain)
+    // Delete the machine card (entries are NOT cascaded — they survive with machine_id = null)
     const { error } = await sb.from("machines").delete().eq("id", machine.id);
     setDeletingMachine(false);
     if (error) { toast.error(error.message); return; }
