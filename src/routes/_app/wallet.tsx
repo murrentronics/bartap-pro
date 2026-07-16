@@ -119,28 +119,53 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
   // ── Float cards state ────────────────────────────────────────────────────────
   const [floatAmount, setFloatAmount] = useState<number | null>(null);
+  const [floatSetAt, setFloatSetAt] = useState<string | null>(null);
   const [floatUsed, setFloatUsed] = useState<number>(0);
 
   const ownerId = profile.parent_id ?? profile.id;
 
-  // Load owner float + how much this cashier has spent from it (cashier_expense txs)
+  // Load owner float + cashier_float_set_at + how much spent SINCE last reset
+  const loadFloat = useCallback(async () => {
+    const { data: ownerData } = await sb.from("profiles")
+      .select("cashier_float, cashier_float_set_at")
+      .eq("id", ownerId)
+      .single();
+
+    const famt = Number(ownerData?.cashier_float ?? 0);
+    const since: string | null = ownerData?.cashier_float_set_at ?? null;
+
+    setFloatAmount(famt > 0 ? famt : null);
+    setFloatSetAt(since);
+
+    // Only count expenses AFTER the last float reset
+    let query = sb.from("wallet_transactions")
+      .select("amount")
+      .eq("profile_id", profile.id)
+      .eq("type", "cashier_expense");
+    if (since) query = query.gte("created_at", since);
+
+    const { data: expTxs } = await query;
+    const used = (expTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0);
+    setFloatUsed(used);
+  }, [ownerId, profile.id]);
+
+  useEffect(() => { loadFloat(); }, [loadFloat]);
+
+  // Stable ref so realtime callbacks don't re-create the channel
+  const loadFloatRef = useRef(loadFloat);
+  useEffect(() => { loadFloatRef.current = loadFloat; }, [loadFloat]);
+
+  // Realtime — watch owner profile for float changes + own expense txs
   useEffect(() => {
-    const load = async () => {
-      const [{ data: ownerData }, { data: expTxs }] = await Promise.all([
-        sb.from("profiles").select("cashier_float").eq("id", ownerId).single(),
-        sb.from("wallet_transactions")
-          .select("amount")
-          .eq("profile_id", profile.id)
-          .eq("type", "cashier_expense"),
-      ]);
-      const famt = Number(ownerData?.cashier_float ?? 0);
-      setFloatAmount(famt > 0 ? famt : null);
-      // Used = sum of all cashier_expense wallet transactions (float portion only — but we show total spent for simplicity)
-      const used = (expTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0);
-      setFloatUsed(used);
-    };
-    load();
-  }, [ownerId, profile.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ch = supabase
+      .channel(`cashier-float-${profile.id}`)
+      // Owner updates cashier_float or cashier_float_set_at → reload everything
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` }, () => loadFloatRef.current())
+      // Cashier logs an expense → used ticks up
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadFloatRef.current())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile.id, ownerId]);
 
   const floatRemaining = floatAmount !== null ? Math.max(0, floatAmount - floatUsed) : null;
 
