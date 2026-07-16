@@ -2293,21 +2293,62 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   // ── Cashier Float ───────────────────────────────────────────────────────────
   const [cashierFloat, setCashierFloat] = useState<number>(Number(profile.cashier_float ?? 0));
+  const [floatSetAt, setFloatSetAt] = useState<string | null>((profile as { cashier_float_set_at?: string | null }).cashier_float_set_at ?? null);
   const [showSetFloat, setShowSetFloat] = useState(false);
   const [floatInput, setFloatInput] = useState("");
   const [savingFloat, setSavingFloat] = useState(false);
 
   // Keep local float in sync when profile refreshes
-  useEffect(() => { setCashierFloat(Number(profile.cashier_float ?? 0)); }, [profile.cashier_float]);
+  useEffect(() => {
+    setCashierFloat(Number(profile.cashier_float ?? 0));
+    setFloatSetAt((profile as { cashier_float_set_at?: string | null }).cashier_float_set_at ?? null);
+  }, [profile.cashier_float, (profile as { cashier_float_set_at?: string | null }).cashier_float_set_at]);
+
+  // ── Float used: sum of cashier_expense txs AFTER the last float reset ──────
+  const [floatUsed, setFloatUsed] = useState<number>(0);
+
+  const loadFloatUsed = useCallback(async () => {
+    // Get all cashier profiles under this owner
+    const { data: ownerRow } = await sb.from("profiles")
+      .select("cashier_float_set_at")
+      .eq("id", profile.id)
+      .single();
+    const since: string | null = ownerRow?.cashier_float_set_at ?? null;
+
+    const { data: cashiers } = await sb.from("profiles").select("id").eq("parent_id", profile.id);
+    if (!cashiers || cashiers.length === 0) { setFloatUsed(0); return; }
+    const cashierIds = cashiers.map((c: { id: string }) => c.id);
+
+    let query = sb.from("wallet_transactions")
+      .select("amount")
+      .in("profile_id", cashierIds)
+      .eq("type", "cashier_expense");
+    // Only count expenses recorded after the last float reset
+    if (since) query = query.gte("created_at", since);
+
+    const { data: expTxs } = await query;
+    const used = (expTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0);
+    setFloatUsed(used);
+  }, [profile.id]);
+
+  useEffect(() => { loadFloatUsed(); }, [loadFloatUsed]);
+
+  const floatRemaining = cashierFloat > 0 ? Math.max(0, cashierFloat - floatUsed) : 0;
 
   const handleSetFloat = async () => {
     const val = parseFloat(floatInput);
     if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
     setSavingFloat(true);
-    const { error } = await sb.from("profiles").update({ cashier_float: val }).eq("id", profile.id);
+    const now = new Date().toISOString();
+    const { error } = await sb.from("profiles")
+      .update({ cashier_float: val, cashier_float_set_at: now })
+      .eq("id", profile.id);
     setSavingFloat(false);
     if (error) { toast.error(error.message); return; }
+    // Reset local state immediately — used snaps to 0, remaining = new amount
     setCashierFloat(val);
+    setFloatSetAt(now);
+    setFloatUsed(0);
     setFloatInput("");
     setShowSetFloat(false);
     toast.success(val === 0 ? "Float cleared" : "Float updated");
@@ -2403,6 +2444,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const loadSummaryRef = useRef(loadSummary);
   useEffect(() => { loadSummaryRef.current = loadSummary; }, [loadSummary]);
 
+  // Stable ref for loadFloatUsed
+  const loadFloatUsedRef = useRef(loadFloatUsed);
+  useEffect(() => { loadFloatUsedRef.current = loadFloatUsed; }, [loadFloatUsed]);
+
   // Realtime — one stable channel, never torn down on data refresh
   useEffect(() => {
     const ch = supabase
@@ -2417,6 +2462,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
       // Opened/finished bottles → stock resale value changes
       .on("postgres_changes", { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile.id]);
+
+  // Realtime — watch all wallet_transactions for cashier_expense type to update float remaining
+  useEffect(() => {
+    const ch = supabase
+      .channel(`float-used-${profile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions" }, () => loadFloatUsedRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);
@@ -2554,20 +2608,31 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           </div>
 
-          {/* Cashier Float row — Set Float button (left) + Float Amount card (right) */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Cashier Float row — narrow button (left) + wider float card (right) */}
+          <div className="flex gap-2 items-stretch">
             <button
               onClick={() => { setFloatInput(cashierFloat > 0 ? String(cashierFloat) : ""); setShowSetFloat(true); }}
-              className="h-14 rounded-2xl font-black text-sm active:scale-95 transition flex items-center justify-center"
+              className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2"
               style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
-              {cashierFloat > 0 ? "Update Float" : "Set Float"}
+              {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
             </button>
-            <div className="flex flex-col items-center justify-center gap-0.5 text-center rounded-2xl px-3 py-2.5"
+            <div className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2.5"
               style={{ background: "oklch(0.18 0.02 60)", border: cashierFloat > 0 ? "1px solid oklch(0.38 0.12 60)" : "1px solid oklch(0.28 0.04 60)" }}>
-              <div className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Cashier Float</div>
-              <span className="font-black text-sm sm:text-base" style={{ color: cashierFloat > 0 ? "#fbbf24" : "rgba(255,255,255,0.25)" }}>
-                {cashierFloat > 0 ? `$${fmt(cashierFloat)}` : "—"}
-              </span>
+              <div className="text-[10px] sm:text-xs font-semibold mb-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>Cashier Float</div>
+              {cashierFloat > 0 ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Set</span>
+                    <span className="font-black text-sm sm:text-base" style={{ color: "#fbbf24" }}>${fmt(cashierFloat)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Remain</span>
+                    <span className="font-black text-sm sm:text-base" style={{ color: floatRemaining > 0 ? "#86efac" : "#fca5a5" }}>${fmt(floatRemaining)}</span>
+                  </div>
+                </>
+              ) : (
+                <span className="font-black text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
+              )}
             </div>
           </div>
         </div>
