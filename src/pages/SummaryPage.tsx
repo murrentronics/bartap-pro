@@ -2,14 +2,16 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, Download, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 import { downloadPdf } from "@/lib/download";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type OrderItem = { name: string; qty: number; price: number };
+type OrderItem = { id?: string; name: string; qty: number; price: number };
 
 type Order = {
   id: string;
@@ -24,6 +26,8 @@ type Expense = {
   description: string | null;
   expense_date: string;
 };
+
+type ProductCost = { id: string; name: string; cost_price: number };
 
 type FilterType = "day" | "week" | "month" | "year" | "period";
 
@@ -52,21 +56,104 @@ function filterLabel(filter: FilterType, from: string, to: string): string {
   return `${fmt2(from)} – ${fmt2(to)}`;
 }
 
-// Aggregate item quantities across orders
-function aggregateItems(orders: Order[]): { name: string; qty: number; revenue: number }[] {
-  const map = new Map<string, { qty: number; revenue: number }>();
+// Aggregate item quantities across orders, joining cost_price from products map
+function aggregateItems(
+  orders: Order[],
+  costMap: Map<string, number>,
+): { name: string; qty: number; revenue: number; costTotal: number }[] {
+  const map = new Map<string, { qty: number; revenue: number; costTotal: number }>();
   for (const o of orders) {
     for (const it of o.items) {
-      const existing = map.get(it.name) ?? { qty: 0, revenue: 0 };
+      const existing = map.get(it.name) ?? { qty: 0, revenue: 0, costTotal: 0 };
+      const costEach = it.id ? (costMap.get(it.id) ?? 0) : 0;
       map.set(it.name, {
-        qty: existing.qty + it.qty,
-        revenue: existing.revenue + it.qty * it.price,
+        qty:       existing.qty + it.qty,
+        revenue:   existing.revenue + it.qty * it.price,
+        costTotal: existing.costTotal + it.qty * costEach,
       });
     }
   }
   return Array.from(map.entries())
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.qty - a.qty);
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function isoToDate(iso: string): Date {
+  return new Date(iso + "T00:00:00");
+}
+function dateToIso(d: Date): string {
+  return toISO(d);
+}
+
+// ─── CalendarPopover ─────────────────────────────────────────────────────────
+function CalendarPopover({
+  value,
+  onChange,
+  minDate,
+  maxDate,
+  label,
+}: {
+  value: string;
+  onChange: (iso: string) => void;
+  minDate?: string;
+  maxDate?: string;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = isoToDate(value);
+  const fromMonth = minDate ? isoToDate(minDate) : undefined;
+  const toMonth = maxDate ? isoToDate(maxDate) : undefined;
+
+  return (
+    <div className="w-full">
+      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">
+        {label}
+      </label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary flex items-center justify-between gap-2 hover:bg-accent/40 transition-colors"
+          >
+            <span>
+              {selected.toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-auto p-0 z-50"
+          align="start"
+          sideOffset={4}
+        >
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(day) => {
+              if (day) {
+                onChange(dateToIso(day));
+                setOpen(false);
+              }
+            }}
+            defaultMonth={selected}
+            startMonth={fromMonth}
+            endMonth={toMonth}
+            disabled={[
+              ...(fromMonth ? [{ before: fromMonth }] : []),
+              ...(toMonth ? [{ after: toMonth }] : []),
+            ]}
+            captionLayout="dropdown"
+            className="rounded-xl border-0"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -85,6 +172,7 @@ export default function SummaryPage() {
 
   const [orders,   setOrders]   = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [products, setProducts] = useState<ProductCost[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloaded,  setDownloaded]  = useState(false);
@@ -181,7 +269,7 @@ export default function SummaryPage() {
     const startIso = new Date(fromDate + "T00:00:00").toISOString();
     const endIso   = new Date(toDate   + "T23:59:59").toISOString();
 
-    const [ordersRes, expensesRes] = await Promise.all([
+    const [ordersRes, expensesRes, productsRes] = await Promise.all([
       supabase
         .from("orders")
         .select("id, total, items, created_at")
@@ -196,10 +284,15 @@ export default function SummaryPage() {
         .gte("expense_date", fromDate)
         .lte("expense_date", toDate)
         .order("expense_date", { ascending: false }),
+      supabase
+        .from("products")
+        .select("id, name, cost_price")
+        .eq("owner_id", ownerId),
     ]);
 
     setOrders((ordersRes.data ?? []) as Order[]);
     setExpenses((expensesRes.data ?? []) as Expense[]);
+    setProducts((productsRes.data ?? []) as ProductCost[]);
     setLoading(false);
   }, [ownerId, fromDate, toDate]);
 
@@ -209,10 +302,19 @@ export default function SummaryPage() {
     return <div className="text-center text-muted-foreground py-20">Owners only.</div>;
   }
 
-  const totalIncome   = orders.reduce((s, o) => s + Number(o.total), 0);
-  const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-  const totalProfit   = totalIncome - totalExpenses;
-  const items         = aggregateItems(orders);
+  // Build cost map: product id → cost_price
+  const costMap = new Map<string, number>(products.map((p) => [p.id, p.cost_price]));
+
+  // Non-stock expenses only (description starts with "Non-Stock Expense")
+  const nonStockExpenses = expenses.filter((e) =>
+    (e.description ?? "").startsWith("Non-Stock Expense"),
+  );
+  const totalNonStockExpenses = nonStockExpenses.reduce((s, e) => s + Number(e.amount), 0);
+
+  const items         = aggregateItems(orders, costMap);
+  const totalIncome   = items.reduce((s, it) => s + it.revenue, 0);
+  const totalCostPrice = items.reduce((s, it) => s + it.costTotal, 0) + totalNonStockExpenses;
+  const totalProfit   = totalIncome - totalCostPrice;
 
   const FILTERS: { key: FilterType; label: string }[] = [
     { key: "day",    label: "Day"    },
@@ -253,9 +355,9 @@ export default function SummaryPage() {
 
       const colW = (RM - LM) / 3;
       const summCols = [
-        { label: "Income",  value: "$" + fmt(totalIncome),   color: [40, 140, 40]  as [number,number,number] },
-        { label: "Expense", value: "$" + fmt(totalExpenses), color: [180, 40, 40]  as [number,number,number] },
-        { label: "Profit",  value: (totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit), color: (totalProfit >= 0 ? [40,140,40] : [180,40,40]) as [number,number,number] },
+        { label: "Cost Price", value: "$" + fmt(totalCostPrice), color: [180, 40, 40]  as [number,number,number] },
+        { label: "Income",     value: "$" + fmt(totalIncome),    color: [40, 140, 40]  as [number,number,number] },
+        { label: "Profit",     value: (totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit), color: (totalProfit >= 0 ? [40,140,40] : [180,40,40]) as [number,number,number] },
       ];
       summCols.forEach((col, i) => {
         const cx = LM + i * colW + colW / 2;
@@ -271,18 +373,23 @@ export default function SummaryPage() {
       if (items.length > 0) {
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
         doc.text("ITEMS SOLD", LM, y);
-        doc.text("QTY", LM + 100, y, { align: "right" });
-        doc.text("REVENUE", RM, y, { align: "right" }); y += 3;
+        doc.text("COST", LM + 80, y, { align: "right" });
+        doc.text("INCOME", LM + 120, y, { align: "right" });
+        doc.text("PROFIT", RM, y, { align: "right" }); y += 3;
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
 
         items.forEach((it) => {
           if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
-          doc.text(it.name, LM, y);
-          doc.setTextColor(100, 100, 100);
-          doc.text(String(it.qty), LM + 100, y, { align: "right" });
-          doc.setFont("helvetica", "bold"); doc.setTextColor(40, 140, 40);
-          doc.text("$" + fmt(it.revenue), RM, y, { align: "right" });
+          const rowProfit = it.revenue - it.costTotal;
+          doc.text(it.name + " ×" + it.qty, LM, y);
+          doc.setTextColor(180, 40, 40);
+          doc.text("$" + fmt(it.costTotal), LM + 80, y, { align: "right" });
+          doc.setTextColor(40, 140, 40);
+          doc.text("$" + fmt(it.revenue), LM + 120, y, { align: "right" });
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(rowProfit >= 0 ? 40 : 180, rowProfit >= 0 ? 140 : 40, 40);
+          doc.text((rowProfit >= 0 ? "+" : "") + "$" + fmt(rowProfit), RM, y, { align: "right" });
           doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
           y += 5;
           doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 3;
@@ -292,26 +399,32 @@ export default function SummaryPage() {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
-        doc.text("TOTAL INCOME", LM, y);
+        doc.text("SUBTOTALS", LM, y);
+        doc.setTextColor(180, 40, 40);
+        doc.text("$" + fmt(items.reduce((s,i)=>s+i.costTotal,0)), LM + 80, y, { align: "right" });
         doc.setTextColor(40, 140, 40);
-        doc.text("$" + fmt(totalIncome), RM, y, { align: "right" });
+        doc.text("$" + fmt(totalIncome), LM + 120, y, { align: "right" });
+        doc.setTextColor(totalProfit >= 0 ? 40 : 180, totalProfit >= 0 ? 140 : 40, 40);
+        doc.text((totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit), RM, y, { align: "right" });
         doc.setTextColor(0, 0, 0); y += 8;
       }
 
-      // Expenses section
-      if (expenses.length > 0) {
+      // Non-stock expenses section
+      if (nonStockExpenses.length > 0) {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
-        doc.text("EXPENSES", LM, y);
+        doc.text("NON-STOCK EXPENSES", LM, y);
         doc.text("DATE", LM + 100, y, { align: "right" });
         doc.text("AMOUNT", RM, y, { align: "right" }); y += 3;
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
 
-        expenses.forEach((e) => {
+        nonStockExpenses.forEach((e) => {
           if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
           const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-          doc.text(e.description || "Expense", LM, y);
+          const lines = (e.description ?? "").split("\n").filter(Boolean);
+          const label = lines.slice(1).join(", ") || "Non-Stock Expense";
+          doc.text(label.slice(0, 50), LM, y);
           doc.setTextColor(100, 100, 100);
           doc.text(dateStr, LM + 100, y, { align: "right" });
           doc.setFont("helvetica", "bold"); doc.setTextColor(180, 40, 40);
@@ -321,13 +434,12 @@ export default function SummaryPage() {
           doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 3;
         });
 
-        // Total row
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
-        doc.text("TOTAL EXPENSES", LM, y);
+        doc.text("TOTAL NON-STOCK EXPENSES", LM, y);
         doc.setTextColor(180, 40, 40);
-        doc.text("$" + fmt(totalExpenses), RM, y, { align: "right" });
+        doc.text("$" + fmt(totalNonStockExpenses), RM, y, { align: "right" });
         doc.setTextColor(0, 0, 0); y += 8;
       }
 
@@ -384,24 +496,30 @@ export default function SummaryPage() {
         ))}
       </div>
 
-      {/* ── Day picker — calendar ── */}
+      {/* ── Day picker — calendar popover ── */}
       {filter === "day" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Day</label>
-          <input type="date" value={fromDate} max={today} min={earliestDate}
-            onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
-            className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+          <CalendarPopover
+            label="Select Day"
+            value={fromDate}
+            maxDate={today}
+            minDate={earliestDate}
+            onChange={(v) => setFromDate(v)}
+          />
           <p className="text-xs text-muted-foreground">Showing data for: <span className="font-black text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></p>
         </div>
       )}
 
-      {/* ── Week picker — pick start day, shows +6 days ── */}
+      {/* ── Week picker — calendar popover for start day, shows +6 days ── */}
       {filter === "week" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Select Week Start</label>
-          <input type="date" value={fromDate} max={today} min={earliestDate}
-            onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
-            className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+          <CalendarPopover
+            label="Select Week Start"
+            value={fromDate}
+            maxDate={today}
+            minDate={earliestDate}
+            onChange={(v) => setFromDate(v)}
+          />
           <p className="text-xs text-muted-foreground">
             Period: <span className="font-black text-foreground">
               {new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
@@ -452,22 +570,24 @@ export default function SummaryPage() {
         </div>
       )}
 
-      {/* ── Period picker — two calendars ── */}
+      {/* ── Period picker — two calendar popovers ── */}
       {filter === "period" && (
         <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">From</label>
-              <input type="date" value={fromDate} min={earliestDate} max={toDate}
-                onChange={(e) => { if (e.target.value) setFromDate(e.target.value); }}
-                className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">To</label>
-              <input type="date" value={toDate} min={fromDate} max={today}
-                onChange={(e) => { if (e.target.value) setToDate(e.target.value); }}
-                className="mt-1 w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-            </div>
+            <CalendarPopover
+              label="From"
+              value={fromDate}
+              minDate={earliestDate}
+              maxDate={toDate}
+              onChange={(v) => setFromDate(v)}
+            />
+            <CalendarPopover
+              label="To"
+              value={toDate}
+              minDate={fromDate}
+              maxDate={today}
+              onChange={(v) => setToDate(v)}
+            />
           </div>
           <p className="text-xs text-muted-foreground">Earliest record: <span className="font-black text-foreground">{new Date(earliestDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
         </div>
@@ -479,8 +599,19 @@ export default function SummaryPage() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
+          {/* ── Header stat cards ── */}
           <div className="grid grid-cols-3 gap-2">
+            {/* Cost Price */}
+            <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
+              style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                <TrendingDown className="h-3 w-3" /> Cost
+              </div>
+              <div className="font-black text-sm" style={{ color: totalCostPrice > 0 ? "#fca5a5" : "var(--muted-foreground)" }}>
+                {totalCostPrice > 0 ? `$${fmt(totalCostPrice)}` : "—"}
+              </div>
+            </div>
+
             {/* Income */}
             <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
               style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
@@ -488,18 +619,7 @@ export default function SummaryPage() {
                 <DollarSign className="h-3 w-3" /> Income
               </div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                ${fmt(totalIncome)}
-              </div>
-            </div>
-
-            {/* Expense */}
-            <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
-              style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
-              <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground">
-                <TrendingDown className="h-3 w-3" /> Expense
-              </div>
-              <div className="font-black text-sm" style={{ color: totalExpenses > 0 ? "#fca5a5" : "var(--muted-foreground)" }}>
-                {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
+                {totalIncome > 0 ? `$${fmt(totalIncome)}` : "—"}
               </div>
             </div>
 
@@ -512,16 +632,17 @@ export default function SummaryPage() {
               <div className="font-black text-sm" style={{
                 color: totalProfit > 0 ? "#86efac" : totalProfit < 0 ? "#fca5a5" : "var(--muted-foreground)"
               }}>
-                {totalIncome > 0 || totalExpenses > 0
+                {totalIncome > 0 || totalCostPrice > 0
                   ? `${totalProfit >= 0 ? "+" : ""}$${fmt(totalProfit)}`
                   : "—"}
               </div>
             </div>
           </div>
 
-          {/* Items sold */}
+          {/* ── Items sold table ── */}
           <div className="rounded-2xl border border-border overflow-hidden"
             style={{ background: "var(--gradient-card)" }}>
+            {/* Table header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-primary" />
@@ -532,90 +653,116 @@ export default function SummaryPage() {
               </span>
             </div>
 
+            {/* Column labels */}
+            {items.length > 0 && (
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2 border-b border-border/60">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Item</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Cost</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Income</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Profit</span>
+              </div>
+            )}
+
             {items.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm">
                 No sales in this period
               </div>
             ) : (
               <div className="divide-y divide-border/50">
-                {items.map((it) => (
-                  <div key={it.name} className="flex items-center justify-between px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm truncate">{it.name}</p>
-                      <p className="text-xs text-muted-foreground">{it.qty} sold</p>
+                {items.map((it) => {
+                  const rowProfit = it.revenue - it.costTotal;
+                  return (
+                    <div key={it.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm truncate">{it.name}</p>
+                        <p className="text-xs text-muted-foreground">{it.qty} sold</p>
+                      </div>
+                      <div className="text-right w-20">
+                        <p className="font-semibold text-xs" style={{ color: "#fca5a5" }}>
+                          {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
+                        </p>
+                      </div>
+                      <div className="text-right w-20">
+                        <p className="font-semibold text-xs" style={{ color: "#86efac" }}>
+                          ${fmt(it.revenue)}
+                        </p>
+                      </div>
+                      <div className="text-right w-20">
+                        <p className="font-black text-xs" style={{
+                          color: rowProfit > 0 ? "#86efac" : rowProfit < 0 ? "#fca5a5" : "var(--muted-foreground)"
+                        }}>
+                          {rowProfit >= 0 ? "+" : ""}${fmt(rowProfit)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <p className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(it.revenue)}</p>
-                    </div>
-                  </div>
-                ))}
-                {/* Total row */}
-                <div className="flex items-center justify-between px-4 py-3"
+                  );
+                })}
+
+                {/* Subtotals row */}
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                  <span className="font-black text-sm">Total</span>
-                  <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
+                  <span className="font-black text-sm">Subtotals</span>
+                  <div className="text-right w-20">
+                    <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
+                      {items.reduce((s,i)=>s+i.costTotal,0) > 0
+                        ? `$${fmt(items.reduce((s,i)=>s+i.costTotal,0))}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="text-right w-20">
+                    <span className="font-black text-sm" style={{ color: "#86efac" }}>
+                      ${fmt(totalIncome)}
+                    </span>
+                  </div>
+                  <div className="text-right w-20">
+                    <span className="font-black text-sm" style={{
+                      color: (totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "#86efac" : "#fca5a5"
+                    }}>
+                      {(totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "+" : ""}${fmt(totalIncome - items.reduce((s,i)=>s+i.costTotal,0))}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Expenses list */}
-          {expenses.length > 0 && (
+          {/* ── Non-stock expenses ── */}
+          {nonStockExpenses.length > 0 && (
             <div className="rounded-2xl border border-border overflow-hidden"
               style={{ background: "var(--gradient-card)" }}>
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <TrendingDown className="h-4 w-4 text-red-400" />
-                <span className="font-black text-sm">Expenses</span>
+                <span className="font-black text-sm">Non-Stock Expenses</span>
               </div>
               <div className="divide-y divide-border/50">
-                {expenses.map((e) => {
-                  const raw = e.description ?? "Expense";
-                  const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n");
+                {nonStockExpenses.map((e) => {
+                  const lines = (e.description ?? "").split("\n").filter(Boolean);
+                  // lines[0] = "Non-Stock Expense", rest = detail lines
+                  const detailLines = lines.slice(1).filter((l) => !l.startsWith("[Cashier:"));
                   const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                   });
-
-                  if (isBulk) {
-                    const lines = raw.split("\n").filter(Boolean);
-                    const title = lines[0];
-                    const itemLines = lines.slice(1);
-                    return (
-                      <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm">{title}</p>
-                          <div className="mt-1 space-y-0.5">
-                            {itemLines.map((line, i) => {
+                  return (
+                    <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {detailLines.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {detailLines.map((line, i) => {
                               const eqIdx = line.lastIndexOf(" = ");
                               const left  = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
                               const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
                               return (
                                 <div key={i} className="flex items-center justify-between gap-2">
-                                  <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                                  <span className="text-sm font-semibold flex-1 truncate">{left}</span>
                                   {right && <span className="text-xs font-black" style={{ color: "#fca5a5" }}>{right}</span>}
                                 </div>
                               );
                             })}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">{dateStr}</p>
-                        </div>
-                        <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
-                          ${fmt(Number(e.amount))}
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  // Single item
-                  const atIdx = raw.indexOf(" ×");
-                  const hasDetail = atIdx !== -1;
-                  const title = hasDetail ? raw.slice(0, atIdx).trim() : raw;
-                  const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null;
-                  return (
-                    <div key={e.id} className="flex items-start justify-between px-4 py-3 gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm">{title}</p>
-                        {detail && <p className="text-xs text-muted-foreground mt-0.5 break-words">{detail}</p>}
-                        <p className="text-xs text-muted-foreground mt-0.5">{dateStr}</p>
+                        ) : (
+                          <p className="font-bold text-sm">Non-Stock Expense</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">{dateStr}</p>
                       </div>
                       <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
                         ${fmt(Number(e.amount))}
@@ -623,10 +770,13 @@ export default function SummaryPage() {
                     </div>
                   );
                 })}
+                {/* Total */}
                 <div className="flex items-center justify-between px-4 py-3"
                   style={{ background: "rgba(239,68,68,0.06)" }}>
                   <span className="font-black text-sm">Total</span>
-                  <span className="font-black text-sm" style={{ color: "#fca5a5" }}>${fmt(totalExpenses)}</span>
+                  <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
+                    ${fmt(totalNonStockExpenses)}
+                  </span>
                 </div>
               </div>
             </div>
