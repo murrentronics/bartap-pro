@@ -313,7 +313,10 @@ export default function SummaryPage() {
     const d = e.description ?? "";
     return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense");
   });
-  const totalNonStockExpenses = nonStockExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  // Only positive (actual costs) count toward the cost total — reverted records are negative and display-only
+  const totalNonStockExpenses = nonStockExpenses
+    .filter((e) => Number(e.amount) > 0)
+    .reduce((s, e) => s + Number(e.amount), 0);
 
   const items         = aggregateItems(orders, costMap);
   const totalIncome   = items.reduce((s, it) => s + it.revenue, 0);
