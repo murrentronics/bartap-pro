@@ -420,22 +420,28 @@ export default function SummaryPage() {
       if (nonStockExpenses.length > 0) {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
-        doc.text("NON-STOCK EXPENSES", LM, y);
-        doc.text("DATE", LM + 100, y, { align: "right" });
+        doc.text("EXPENSES", LM, y);
         doc.text("AMOUNT", RM, y, { align: "right" }); y += 3;
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
 
         nonStockExpenses.forEach((e) => {
           if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
-          const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+          const amt = Number(e.amount);
+          const isRefund = amt < 0;
           const lines = (e.description ?? "").split("\n").filter(Boolean);
-          const label = lines.slice(1).join(", ") || "Non-Stock Expense";
-          doc.text(label.slice(0, 50), LM, y);
-          doc.setTextColor(100, 100, 100);
-          doc.text(dateStr, LM + 100, y, { align: "right" });
-          doc.setFont("helvetica", "bold"); doc.setTextColor(180, 40, 40);
-          doc.text("$" + fmt(Number(e.amount)), RM, y, { align: "right" });
+          // lines[0] = section title, lines[1+] = detail
+          const title = lines[0] ?? "Expense";
+          const detail = lines.slice(1).join(", ");
+          const label = detail || title;
+          doc.text(label.slice(0, 60), LM, y);
+          if (isRefund) {
+            doc.setFont("helvetica", "bold"); doc.setTextColor(40, 160, 80);
+            doc.text("+$" + fmt(Math.abs(amt)), RM, y, { align: "right" });
+          } else {
+            doc.setFont("helvetica", "bold"); doc.setTextColor(180, 40, 40);
+            doc.text("$" + fmt(amt), RM, y, { align: "right" });
+          }
           doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
           y += 5;
           doc.setDrawColor(230, 230, 230); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 3;
@@ -444,7 +450,7 @@ export default function SummaryPage() {
         if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
         doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
-        doc.text("TOTAL NON-STOCK EXPENSES", LM, y);
+        doc.text("TOTAL EXPENSES", LM, y);
         doc.setTextColor(180, 40, 40);
         doc.text("$" + fmt(totalNonStockExpenses), RM, y, { align: "right" });
         doc.setTextColor(0, 0, 0); y += 8;
