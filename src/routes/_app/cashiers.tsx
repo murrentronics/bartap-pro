@@ -60,37 +60,31 @@ function tzNow() {
 }
 
 // Compute next_pay_at as a proper UTC ISO string for Trinidad local time
+// includeThisWeek: for weekly/biweekly, allow the day to fall within the current week
 function computeNextPayAt(
   frequency: "daily" | "weekly" | "biweekly" | "monthly",
   payDay: number,
-  payTime: string, // "HH:MM" in Trinidad local time
+  payTime: string, // "HH:MM" 24h in Trinidad local time
+  includeThisWeek = false,
 ): string {
   const [hh, mm] = payTime.split(":").map(Number);
-  // Current Trinidad wall-clock as a UTC-equivalent Date
   const now = tzNow();
-
-  // Build candidate: same wall-clock date but at the requested HH:MM
   const c = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh, mm, 0, 0));
 
   if (frequency === "daily") {
-    // If that time already passed today (TT), push to tomorrow
     if (c <= now) c.setUTCDate(c.getUTCDate() + 1);
   } else if (frequency === "weekly" || frequency === "biweekly") {
-    // payDay = 0..6 (Sun..Sat) in Trinidad local
     const todayDow = now.getUTCDay();
     let diff = (payDay - todayDow + 7) % 7;
-    if (diff === 0) diff = 7; // always at least 1 week away
+    if (!includeThisWeek && diff === 0) diff = 7; // force next week if same day and not including this week
+    if (includeThisWeek && diff === 0 && c <= now) diff = 7; // same day but time passed — still next week
     c.setUTCDate(c.getUTCDate() + diff);
     if (frequency === "biweekly") c.setUTCDate(c.getUTCDate() + 7);
   } else {
-    // monthly: payDay = 1..28 (day of month in Trinidad local)
     c.setUTCDate(payDay);
-    // If that day already passed this month, advance to next month
     if (c <= now) c.setUTCMonth(c.getUTCMonth() + 1);
   }
 
-  // c is already expressed as UTC (Trinidad wall-clock stored as UTC values)
-  // Now shift it: Trinidad is UTC-4, so add 4 hours to get real UTC
   return new Date(c.getTime() + 4 * 60 * 60 * 1000).toISOString();
 }
 
@@ -106,6 +100,7 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
   const [formFreq,   setFormFreq]   = useState<"daily"|"weekly"|"biweekly"|"monthly">("monthly");
   const [formPayDay, setFormPayDay] = useState<number>(1);
   const [formTime,   setFormTime]   = useState("18:00");
+  const [formIncludeThisWeek, setFormIncludeThisWeek] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmPayCashier,      setConfirmPayCashier]      = useState<Cashier | null>(null);
   const [confirmScheduleCashier, setConfirmScheduleCashier] = useState<string | null>(null);
@@ -166,9 +161,9 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
     const payload = {
       cashier_id: cashierId, owner_id: ownerId, amount,
       frequency:   formMode === "schedule" ? formFreq : null,
-      pay_day:     formMode === "schedule" && formFreq !== "daily" ? formPayDay : null,
+      pay_day:     formMode === "schedule" ? formPayDay : null,
       pay_time:    formMode === "schedule" && formFreq !== "monthly" ? formTime : null,
-      next_pay_at: formMode === "schedule" ? computeNextPayAt(formFreq, formPayDay, formTime) : null,
+      next_pay_at: formMode === "schedule" ? computeNextPayAt(formFreq, formPayDay, formTime, formIncludeThisWeek) : null,
       active: true,
     };
     let error;
@@ -281,7 +276,7 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                     <>
                       <p className="text-xs text-muted-foreground truncate">
                         <span className="font-black" style={{ color: "#86efac" }}>${Number(salary.amount).toFixed(2)}</span>
-                        {salary.frequency && <> · {scheduleLabel(salary)}</>}
+                        {salary.frequency && <> · {FREQ_LABELS[salary.frequency]}</>}
                         {!salary.frequency && <span className="text-muted-foreground"> · Pay Now only</span>}
                       </p>
                       {nextPayLabel(salary) && (
@@ -345,44 +340,71 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                       </div>
                     </div>
 
-                    {formFreq !== "daily" && (
+                    {/* Day picker — shown for ALL frequencies except monthly */}
+                    {formFreq !== "monthly" && (
                       <div>
                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">
-                          {formFreq === "monthly" ? "Day of Month (1–28)" : "Day of Week"}
+                          {formFreq === "daily" ? "Starting Day" : "Day of Week"}
                         </label>
-                        {formFreq === "monthly" ? (
-                          <div className="grid grid-cols-7 gap-1">
-                            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                              <button key={d} type="button" onClick={() => setFormPayDay(d)}
-                                className="h-9 rounded-lg font-bold text-xs transition active:scale-95"
-                                style={formPayDay === d
-                                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                                  : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
-                                {d}
-                              </button>
-                            ))}
+                        <div className="grid grid-cols-7 gap-1">
+                          {DAYS_OF_WEEK.map((day, i) => (
+                            <button key={i} type="button" onClick={() => setFormPayDay(i)}
+                              className="h-9 rounded-lg font-bold text-[10px] transition active:scale-95"
+                              style={formPayDay === i
+                                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                                : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                              {day}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Include this week checkbox */}
+                        <button type="button" onClick={() => setFormIncludeThisWeek(v => !v)}
+                          className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition">
+                          <div className="h-4 w-4 rounded border border-border flex items-center justify-center shrink-0"
+                            style={formIncludeThisWeek
+                              ? { background: "var(--gradient-hero)", borderColor: "var(--primary)" }
+                              : { background: "transparent" }}>
+                            {formIncludeThisWeek && (
+                              <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
                           </div>
-                        ) : (
-                          <div className="grid grid-cols-7 gap-1">
-                            {DAYS_OF_WEEK.map((day, i) => (
-                              <button key={i} type="button" onClick={() => setFormPayDay(i)}
-                                className="h-9 rounded-lg font-bold text-[10px] transition active:scale-95"
-                                style={formPayDay === i
-                                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                                  : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
-                                {day}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                          Include this week (use selected day if it hasn't passed yet)
+                        </button>
                       </div>
                     )}
 
+                    {/* Day of Month — monthly only */}
+                    {formFreq === "monthly" && (
+                      <div>
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Day of Month (1–28)</label>
+                        <div className="grid grid-cols-7 gap-1">
+                          {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                            <button key={d} type="button" onClick={() => setFormPayDay(d)}
+                              className="h-9 rounded-lg font-bold text-xs transition active:scale-95"
+                              style={formPayDay === d
+                                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                                : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                              {d}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Time — all except monthly */}
                     {formFreq !== "monthly" && (
                       <div>
                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Pay Time</label>
                         <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)}
                           className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                        {/* 12h display hint */}
+                        {formTime && (
+                          <p className="text-xs font-black mt-1" style={{ color: "var(--primary)" }}>
+                            {new Date(`2000-01-01T${formTime}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                          </p>
+                        )}
                       </div>
                     )}
                   </>
@@ -470,9 +492,10 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {FREQ_LABELS[formFreq]}
-                          {formFreq !== "daily" && formFreq !== "monthly" && ` · ${DAYS_OF_WEEK[formPayDay]}`}
+                          {formFreq !== "monthly" && ` · ${DAYS_OF_WEEK[formPayDay]}`}
                           {formFreq === "monthly" && ` · ${formPayDay}${ordSuffix(formPayDay)} of month`}
-                          {formFreq !== "monthly" && ` at ${formTime}`}
+                          {formFreq !== "monthly" && ` at ${new Date(`2000-01-01T${formTime}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`}
+                          {formIncludeThisWeek && formFreq !== "monthly" && " (this week)"}
                         </p>
                       </div>
                       <div className="px-6 pb-6 pt-4 flex gap-3">
