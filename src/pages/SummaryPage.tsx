@@ -308,10 +308,11 @@ export default function SummaryPage() {
   // Build cost map: product id → cost_price
   const costMap = new Map<string, number>(products.map((p) => [p.id, p.cost_price]));
 
-  // Non-stock expenses only (description starts with "Non-Stock Expense")
-  const nonStockExpenses = expenses.filter((e) =>
-    (e.description ?? "").startsWith("Non-Stock Expense"),
-  );
+  // Non-stock + reverted stock expenses (shown in the Expenses section)
+  const nonStockExpenses = expenses.filter((e) => {
+    const d = e.description ?? "";
+    return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense");
+  });
   const totalNonStockExpenses = nonStockExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
   const items         = aggregateItems(orders, costMap);
