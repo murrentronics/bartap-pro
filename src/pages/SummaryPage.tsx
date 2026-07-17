@@ -745,8 +745,10 @@ export default function SummaryPage() {
                   const dateStr = new Date(e.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                   });
+                  const isRefundRecord = Number(e.amount) < 0;
                   return (
-                    <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                    <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3"
+                      style={isRefundRecord ? { background: "rgba(134,239,172,0.04)" } : {}}>
                       <div className="flex-1 min-w-0">
                         {detailLines.length > 0 ? (
                           <div className="space-y-0.5">
@@ -756,19 +758,29 @@ export default function SummaryPage() {
                               const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
                               return (
                                 <div key={i} className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-semibold flex-1 truncate">{left}</span>
-                                  {right && <span className="text-xs font-black" style={{ color: "#fca5a5" }}>{right}</span>}
+                                  <span className="text-sm font-semibold flex-1" style={{ color: isRefundRecord ? "#86efac" : "inherit" }}>{left}</span>
+                                  {right && (() => {
+                                    const n = parseFloat(right.replace(/[^0-9.-]/g, ""));
+                                    const isRefund = !isNaN(n) && n < 0;
+                                    return (
+                                      <span className="text-xs font-black" style={{ color: isRefund ? "#86efac" : "#fca5a5" }}>
+                                        {isRefund ? `+$${fmt(Math.abs(n))}` : right}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="font-bold text-sm">Non-Stock Expense</p>
+                          <p className="font-bold text-sm" style={{ color: isRefundRecord ? "#86efac" : "inherit" }}>Non-Stock Expense</p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">{dateStr}</p>
                       </div>
-                      <p className="font-black text-sm shrink-0 ml-3" style={{ color: "#fca5a5" }}>
-                        ${fmt(Number(e.amount))}
+                      <p className="font-black text-sm shrink-0 ml-3" style={{
+                        color: Number(e.amount) < 0 ? "#86efac" : "#fca5a5"
+                      }}>
+                        {Number(e.amount) < 0 ? `+$${fmt(Math.abs(Number(e.amount)))}` : `$${fmt(Number(e.amount))}`}
                       </p>
                     </div>
                   );
