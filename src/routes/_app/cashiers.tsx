@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronDown,
-  Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff, DollarSign, CheckCircle2,
+  Receipt, ArrowDownLeft, ArrowLeft, X, Download, KeyRound, Eye, EyeOff, DollarSign, CheckCircle2,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -88,6 +88,78 @@ function computeNextPayAt(
   return new Date(c.getTime() + 4 * 60 * 60 * 1000).toISOString();
 }
 
+// ─── Salary History ───────────────────────────────────────────────────────────
+function SalaryHistory({ cashier, ownerId, onClose }: {
+  cashier: Cashier;
+  ownerId: string;
+  onClose: () => void;
+}) {
+  const [payments, setPayments] = useState<{ id: string; amount: number; description: string | null; expense_date: string; created_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    supabase
+      .from("owner_expenses")
+      .select("id, amount, description, expense_date, created_at")
+      .eq("owner_id", ownerId)
+      .ilike("description", `%Cashier Salary: ${cashier.username}%`)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setPayments(data ?? []);
+        setLoading(false);
+      });
+  }, [cashier.id, ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const total = payments.reduce((s, p) => s + Number(p.amount), 0);
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col" style={{ background: "var(--background)" }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-5 pb-3 border-b border-border">
+        <button type="button" onClick={onClose}
+          className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition shrink-0">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-black text-base">{cashier.username} — Salary History</h2>
+          <p className="text-xs text-muted-foreground">{payments.length} payment{payments.length !== 1 ? "s" : ""} · Total <span className="font-black" style={{ color: "#86efac" }}>${total.toFixed(2)}</span></p>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : payments.length === 0 ? (
+          <div className="text-center text-muted-foreground text-sm py-16">No salary payments recorded yet.</div>
+        ) : (
+          payments.map((p) => {
+            const dateStr = new Date(p.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
+              weekday: "short", day: "numeric", month: "short", year: "numeric",
+            });
+            const timeStr = new Date(p.created_at).toLocaleTimeString("en-US", {
+              timeZone: "America/Port_of_Spain", hour: "numeric", minute: "2-digit", hour12: true,
+            });
+            return (
+              <div key={p.id} className="rounded-2xl border border-border px-4 py-3 flex items-center justify-between gap-3"
+                style={{ background: "var(--gradient-card)" }}>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm">{dateStr}</p>
+                  <p className="text-xs text-muted-foreground">{timeStr}</p>
+                </div>
+                <p className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
+                  ${Number(p.amount).toFixed(2)}
+                </p>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Salary Tab ───────────────────────────────────────────────────────────────
 function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string }) {
   const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
@@ -104,6 +176,7 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
   const [saving, setSaving] = useState(false);
   const [confirmPayCashier,      setConfirmPayCashier]      = useState<Cashier | null>(null);
   const [confirmScheduleCashier, setConfirmScheduleCashier] = useState<string | null>(null);
+  const [historyCashier,         setHistoryCashier]         = useState<Cashier | null>(null);
 
   const loadSalaries = async () => {
     setLoadingSalaries(true);
@@ -251,6 +324,7 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
   if (cashiers.length === 0) return <div className="text-muted-foreground py-10 text-center text-sm">No cashiers yet.</div>;
 
   return (
+  <>
     <div className="space-y-3 mt-4">
       {cashiers.map((c) => {
         const salary   = getSalary(c.id);
@@ -260,35 +334,48 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
 
         return (
           <div key={c.id} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-            {/* ── Accordion header ── */}
+            {/* ── Card header row ── */}
+            <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+              {/* Avatar */}
+              <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
+                <User className="h-4 w-4 text-primary-foreground" />
+              </div>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-sm">{c.username}</p>
+                {salary ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-black" style={{ color: "#86efac" }}>${Number(salary.amount).toFixed(2)}</span>
+                      {salary.frequency && <> · {FREQ_LABELS[salary.frequency]}</>}
+                      {!salary.frequency && <span className="text-muted-foreground"> · Pay Now only</span>}
+                    </p>
+                    {nextPayLabel(salary) && (
+                      <p className="text-[10px] text-primary font-semibold">Next: {nextPayLabel(salary)}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No salary set</p>
+                )}
+              </div>
+              {/* History button */}
+              <button
+                type="button"
+                onClick={() => setHistoryCashier(c)}
+                className="h-9 px-3 rounded-xl text-xs font-black border border-border hover:bg-muted/30 transition shrink-0"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                History
+              </button>
+            </div>
+
+            {/* ── Chevron — bottom center, opens accordion ── */}
             <button
               type="button"
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition"
+              className="w-full flex items-center justify-center py-1.5 hover:bg-muted/20 transition"
               onClick={() => openAccordion(c.id)}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
-                  <User className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <div className="text-left min-w-0">
-                  <p className="font-black text-sm">{c.username}</p>
-                  {salary ? (
-                    <>
-                      <p className="text-xs text-muted-foreground truncate">
-                        <span className="font-black" style={{ color: "#86efac" }}>${Number(salary.amount).toFixed(2)}</span>
-                        {salary.frequency && <> · {FREQ_LABELS[salary.frequency]}</>}
-                        {!salary.frequency && <span className="text-muted-foreground"> · Pay Now only</span>}
-                      </p>
-                      {nextPayLabel(salary) && (
-                        <p className="text-[10px] text-primary font-semibold">Next: {nextPayLabel(salary)}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No salary set</p>
-                  )}
-                </div>
-              </div>
-              <ChevronDown className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform ml-2 ${isOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
             {/* ── Accordion body ── */}
@@ -363,14 +450,14 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                           <div className="h-4 w-4 rounded border border-border flex items-center justify-center shrink-0"
                             style={formIncludeThisWeek
                               ? { background: "var(--gradient-hero)", borderColor: "var(--primary)" }
-                              : { background: "transparent" }}>
+                              : { background: "white" }}>
                             {formIncludeThisWeek && (
                               <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
                             )}
                           </div>
-                          Include this week (use selected day if it hasn't passed yet)
+                          Include this week
                         </button>
                       </div>
                     )}
@@ -519,6 +606,16 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
         );
       })}
     </div>
+
+    {/* ── Salary History popup ── */}
+    {historyCashier && (
+      <SalaryHistory
+        cashier={historyCashier}
+        ownerId={ownerId}
+        onClose={() => setHistoryCashier(null)}
+      />
+    )}
+  </>
   );
 }
 
