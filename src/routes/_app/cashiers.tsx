@@ -44,32 +44,53 @@ function ordSuffix(n: number) {
   return (["th","st","nd","rd"] as const)[n % 10] ?? "th";
 }
 function tzNow() {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
+  // Returns current time as a Date whose .getFullYear()/.getMonth() etc.
+  // reflect Trinidad wall-clock time (UTC-4, no DST)
+  const now = new Date();
+  // Get Trinidad components
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Port_of_Spain",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parseInt(parts.find(p => p.type === t)!.value);
+  // Build a Date in UTC that matches Trinidad's wall-clock values
+  return new Date(Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")));
 }
-// Compute next_pay_at (Trinidad wall-clock → UTC ISO)
+
+// Compute next_pay_at as a proper UTC ISO string for Trinidad local time
 function computeNextPayAt(
   frequency: "daily" | "weekly" | "biweekly" | "monthly",
   payDay: number,
-  payTime: string,
+  payTime: string, // "HH:MM" in Trinidad local time
 ): string {
   const [hh, mm] = payTime.split(":").map(Number);
+  // Current Trinidad wall-clock as a UTC-equivalent Date
   const now = tzNow();
-  const c = new Date(now);
-  c.setSeconds(0, 0);
+
+  // Build candidate: same wall-clock date but at the requested HH:MM
+  const c = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh, mm, 0, 0));
+
   if (frequency === "daily") {
-    c.setHours(hh, mm, 0, 0);
-    if (c <= now) c.setDate(c.getDate() + 1);
+    // If that time already passed today (TT), push to tomorrow
+    if (c <= now) c.setUTCDate(c.getUTCDate() + 1);
   } else if (frequency === "weekly" || frequency === "biweekly") {
-    const diff = (payDay - now.getDay() + 7) % 7 || 7;
-    c.setDate(c.getDate() + diff);
-    c.setHours(hh, mm, 0, 0);
-    if (frequency === "biweekly") c.setDate(c.getDate() + 7);
+    // payDay = 0..6 (Sun..Sat) in Trinidad local
+    const todayDow = now.getUTCDay();
+    let diff = (payDay - todayDow + 7) % 7;
+    if (diff === 0) diff = 7; // always at least 1 week away
+    c.setUTCDate(c.getUTCDate() + diff);
+    if (frequency === "biweekly") c.setUTCDate(c.getUTCDate() + 7);
   } else {
-    c.setDate(payDay);
-    c.setHours(hh, mm, 0, 0);
-    if (c <= now) c.setMonth(c.getMonth() + 1);
+    // monthly: payDay = 1..28 (day of month in Trinidad local)
+    c.setUTCDate(payDay);
+    // If that day already passed this month, advance to next month
+    if (c <= now) c.setUTCMonth(c.getUTCMonth() + 1);
   }
-  // Trinidad = UTC-4 (no DST)
+
+  // c is already expressed as UTC (Trinidad wall-clock stored as UTC values)
+  // Now shift it: Trinidad is UTC-4, so add 4 hours to get real UTC
   return new Date(c.getTime() + 4 * 60 * 60 * 1000).toISOString();
 }
 
