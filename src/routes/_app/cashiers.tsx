@@ -107,6 +107,8 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
   const [formPayDay, setFormPayDay] = useState<number>(1);
   const [formTime,   setFormTime]   = useState("18:00");
   const [saving, setSaving] = useState(false);
+  const [confirmPayCashier,      setConfirmPayCashier]      = useState<Cashier | null>(null);
+  const [confirmScheduleCashier, setConfirmScheduleCashier] = useState<string | null>(null);
 
   const loadSalaries = async () => {
     setLoadingSalaries(true);
@@ -175,6 +177,34 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success(formMode === "now" ? "Salary amount saved" : "Schedule saved");
+    setOpenId(null);
+    loadSalaries();
+  };
+
+  // Save amount (if changed) then immediately fire a payment
+  const saveAndPayNow = async (cashier: Cashier) => {
+    const amount = parseFloat(formAmount);
+    if (isNaN(amount) || amount <= 0) { toast.error("Enter a valid amount"); return; }
+    setSaving(true);
+    const ex = getSalary(cashier.id);
+    const payload = { cashier_id: cashier.id, owner_id: ownerId, amount, frequency: null, pay_day: null, pay_time: null, next_pay_at: null, active: true };
+    let saveError;
+    if (ex) ({ error: saveError } = await supabase.from("cashier_salaries").update(payload).eq("id", ex.id));
+    else    ({ error: saveError } = await supabase.from("cashier_salaries").insert(payload));
+    if (saveError) { setSaving(false); toast.error(saveError.message); return; }
+    // Now pay
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+    const { error: expError } = await supabase.from("owner_expenses").insert({
+      owner_id: ownerId, amount,
+      description: `Non-Stock Expense\nCashier Salary: ${cashier.username} = $${amount.toFixed(2)}`,
+      expense_date: today,
+    });
+    await supabase.from("cashier_salaries").update({ last_paid_at: new Date().toISOString() }).eq("cashier_id", cashier.id);
+    setSaving(false);
+    if (expError) { toast.error(expError.message); return; }
+    toast.success(`$${amount.toFixed(2)} paid to ${cashier.username}`);
+    setPaid(cashier.id);
+    setTimeout(() => setPaid(null), 4000);
     setOpenId(null);
     loadSalaries();
   };
@@ -292,7 +322,7 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                     ))}
                   </div>
                   {formMode === "now" && (
-                    <p className="text-xs text-muted-foreground mt-2 text-center">Save amount, then tap "Pay Now" anytime to record instantly.</p>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">Enter amount and tap Pay Now to record instantly.</p>
                   )}
                 </div>
 
@@ -358,32 +388,107 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                   </>
                 )}
 
-                {/* Save + Remove */}
-                <div className="flex gap-2 pt-1">
-                  {salary && (
-                    <button type="button" onClick={() => removeSalary(c.id)}
-                      className="h-11 px-4 rounded-xl font-black text-sm border border-red-500/40 text-red-400 hover:bg-red-500/10 transition">
-                      Remove
+                {/* ── Action buttons ── */}
+                {formMode === "now" ? (
+                  /* Pay Now mode: single Pay Now button + optional Remove */
+                  <div className="flex gap-2 pt-1">
+                    {salary && (
+                      <button type="button" onClick={() => removeSalary(c.id)}
+                        className="h-12 px-4 rounded-xl font-black text-sm border border-red-500/40 text-red-400 hover:bg-red-500/10 transition">
+                        Remove
+                      </button>
+                    )}
+                    <button type="button"
+                      disabled={saving || !formAmount || parseFloat(formAmount) <= 0}
+                      onClick={() => setConfirmPayCashier(c)}
+                      className="flex-1 h-12 rounded-xl font-black text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 border-2"
+                      style={{ background: "rgba(134,239,172,0.08)", borderColor: "#86efac", color: "#86efac" }}>
+                      <DollarSign className="h-4 w-4" />
+                      Pay ${parseFloat(formAmount) > 0 ? parseFloat(formAmount).toFixed(2) : "0.00"} Now
                     </button>
-                  )}
-                  <button type="button" disabled={saving} onClick={() => saveSalary(c.id)}
-                    className="flex-1 h-11 rounded-xl font-black text-sm text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                    style={{ background: "var(--gradient-hero)" }}>
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                  </button>
-                </div>
+                  </div>
+                ) : (
+                  /* Schedule mode: Save Schedule + optional Remove */
+                  <div className="flex gap-2 pt-1">
+                    {salary && (
+                      <button type="button" onClick={() => removeSalary(c.id)}
+                        className="h-12 px-4 rounded-xl font-black text-sm border border-red-500/40 text-red-400 hover:bg-red-500/10 transition">
+                        Remove
+                      </button>
+                    )}
+                    <button type="button"
+                      disabled={saving || !formAmount || parseFloat(formAmount) <= 0}
+                      onClick={() => setConfirmScheduleCashier(c.id)}
+                      className="flex-1 h-12 rounded-xl font-black text-sm text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4" /> Save Schedule</>}
+                    </button>
+                  </div>
+                )}
 
-                {/* Pay Now — only shown when Pay Now mode is selected, not when scheduling */}
-                {salary && formMode === "now" && (
-                  <button type="button" disabled={isPaying} onClick={() => paySalaryNow(c)}
-                    className="w-full h-12 rounded-xl font-black text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 border-2"
-                    style={wasPaid
-                      ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" }
-                      : { background: "rgba(134,239,172,0.08)", borderColor: "#86efac", color: "#86efac" }}>
-                    {isPaying ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : wasPaid ? <><CheckCircle2 className="h-4 w-4" /> Paid!</>
-                      : <><DollarSign className="h-4 w-4" /> Pay ${Number(salary.amount).toFixed(2)} Now</>}
-                  </button>
+                {/* ── Confirm Pay Now modal ── */}
+                {confirmPayCashier?.id === c.id && (
+                  <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm" onClick={() => setConfirmPayCashier(null)}>
+                    <div className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }} onClick={(e) => e.stopPropagation()}>
+                      <div className="px-6 pt-6 pb-2 text-center">
+                        <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(134,239,172,0.12)", border: "1px solid rgba(134,239,172,0.3)" }}>
+                          <DollarSign className="h-6 w-6" style={{ color: "#86efac" }} />
+                        </div>
+                        <h3 className="font-black text-base">Confirm Payment</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Pay <span className="font-black text-foreground">${parseFloat(formAmount).toFixed(2)}</span> to <span className="font-black text-foreground">{c.username}</span>?
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">This will be recorded as an expense immediately.</p>
+                      </div>
+                      <div className="px-6 pb-6 pt-4 flex gap-3">
+                        <button type="button" onClick={() => setConfirmPayCashier(null)}
+                          className="flex-1 h-11 rounded-xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                          Cancel
+                        </button>
+                        <button type="button" disabled={saving}
+                          onClick={() => { setConfirmPayCashier(null); saveAndPayNow(c); }}
+                          className="flex-1 h-11 rounded-xl font-black text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
+                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Pay"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Confirm Schedule modal ── */}
+                {confirmScheduleCashier === c.id && (
+                  <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm" onClick={() => setConfirmScheduleCashier(null)}>
+                    <div className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }} onClick={(e) => e.stopPropagation()}>
+                      <div className="px-6 pt-6 pb-2 text-center">
+                        <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)" }}>
+                          <CheckCircle2 className="h-6 w-6" style={{ color: "var(--primary)" }} />
+                        </div>
+                        <h3 className="font-black text-base">Confirm Schedule</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Schedule <span className="font-black text-foreground">${parseFloat(formAmount).toFixed(2)}</span> for <span className="font-black text-foreground">{c.username}</span>?
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {FREQ_LABELS[formFreq]}
+                          {formFreq !== "daily" && formFreq !== "monthly" && ` · ${DAYS_OF_WEEK[formPayDay]}`}
+                          {formFreq === "monthly" && ` · ${formPayDay}${ordSuffix(formPayDay)} of month`}
+                          {formFreq !== "monthly" && ` at ${formTime}`}
+                        </p>
+                      </div>
+                      <div className="px-6 pb-6 pt-4 flex gap-3">
+                        <button type="button" onClick={() => setConfirmScheduleCashier(null)}
+                          className="flex-1 h-11 rounded-xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                          Cancel
+                        </button>
+                        <button type="button" disabled={saving}
+                          onClick={() => { setConfirmScheduleCashier(null); saveSalary(c.id); }}
+                          className="flex-1 h-11 rounded-xl font-black text-sm text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          style={{ background: "var(--gradient-hero)" }}>
+                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
