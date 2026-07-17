@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronDown,
-  Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff,
+  Receipt, ArrowDownLeft, X, Download, KeyRound, Eye, EyeOff, DollarSign, CheckCircle2,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,6 +21,357 @@ import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 type Cashier = { id: string; username: string; wallet_balance: number };
+
+type SalaryRecord = {
+  id: string;
+  cashier_id: string;
+  amount: number;
+  frequency: "daily" | "weekly" | "biweekly" | "monthly" | null;
+  pay_day: number | null;
+  pay_time: string | null;
+  next_pay_at: string | null;
+  last_paid_at: string | null;
+  active: boolean;
+};
+
+const DAYS_OF_WEEK = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const FREQ_LABELS: Record<string, string> = {
+  daily: "Daily", weekly: "Weekly", biweekly: "Bi-Weekly", monthly: "Monthly",
+};
+
+function ordSuffix(n: number) {
+  if (n === 11 || n === 12 || n === 13) return "th";
+  return (["th","st","nd","rd"] as const)[n % 10] ?? "th";
+}
+function tzNow() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
+}
+// Compute next_pay_at (Trinidad wall-clock → UTC ISO)
+function computeNextPayAt(
+  frequency: "daily" | "weekly" | "biweekly" | "monthly",
+  payDay: number,
+  payTime: string,
+): string {
+  const [hh, mm] = payTime.split(":").map(Number);
+  const now = tzNow();
+  const c = new Date(now);
+  c.setSeconds(0, 0);
+  if (frequency === "daily") {
+    c.setHours(hh, mm, 0, 0);
+    if (c <= now) c.setDate(c.getDate() + 1);
+  } else if (frequency === "weekly" || frequency === "biweekly") {
+    const diff = (payDay - now.getDay() + 7) % 7 || 7;
+    c.setDate(c.getDate() + diff);
+    c.setHours(hh, mm, 0, 0);
+    if (frequency === "biweekly") c.setDate(c.getDate() + 7);
+  } else {
+    c.setDate(payDay);
+    c.setHours(hh, mm, 0, 0);
+    if (c <= now) c.setMonth(c.getMonth() + 1);
+  }
+  // Trinidad = UTC-4 (no DST)
+  return new Date(c.getTime() + 4 * 60 * 60 * 1000).toISOString();
+}
+
+// ─── Salary Tab ───────────────────────────────────────────────────────────────
+function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string }) {
+  const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
+  const [loadingSalaries, setLoadingSalaries] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [paid, setPaid] = useState<string | null>(null);
+  const [formAmount, setFormAmount] = useState("");
+  const [formMode,   setFormMode]   = useState<"now"|"schedule">("now");
+  const [formFreq,   setFormFreq]   = useState<"daily"|"weekly"|"biweekly"|"monthly">("monthly");
+  const [formPayDay, setFormPayDay] = useState<number>(1);
+  const [formTime,   setFormTime]   = useState("18:00");
+  const [saving, setSaving] = useState(false);
+
+  const loadSalaries = async () => {
+    setLoadingSalaries(true);
+    const { data } = await supabase.from("cashier_salaries").select("*").eq("owner_id", ownerId);
+    setSalaries((data ?? []) as SalaryRecord[]);
+    setLoadingSalaries(false);
+  };
+
+  // Auto-fire overdue scheduled payments on tab mount
+  useEffect(() => {
+    if (!ownerId) return;
+    (async () => {
+      await loadSalaries();
+      const { data: due } = await supabase
+        .from("cashier_salaries")
+        .select("*, profiles!cashier_id(username)")
+        .eq("owner_id", ownerId)
+        .eq("active", true)
+        .not("next_pay_at", "is", null)
+        .lte("next_pay_at", new Date().toISOString());
+      if (!due || due.length === 0) return;
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      for (const row of due as (SalaryRecord & { profiles: { username: string } })[]) {
+        const name = row.profiles?.username ?? row.cashier_id;
+        await supabase.from("owner_expenses").insert({
+          owner_id: ownerId, amount: row.amount,
+          description: `Non-Stock Expense\nCashier Salary: ${name} = $${Number(row.amount).toFixed(2)}`,
+          expense_date: today,
+        });
+        const nextAt = row.frequency ? computeNextPayAt(row.frequency, row.pay_day ?? 1, row.pay_time ?? "18:00") : null;
+        await supabase.from("cashier_salaries").update({ last_paid_at: new Date().toISOString(), next_pay_at: nextAt }).eq("id", row.id);
+      }
+      if (due.length > 0) { toast.success(`${due.length} scheduled salary payment${due.length > 1 ? "s" : ""} auto-processed`); loadSalaries(); }
+    })();
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const getSalary = (cashierId: string) => salaries.find((s) => s.cashier_id === cashierId) ?? null;
+
+  const openAccordion = (cashierId: string) => {
+    if (openId === cashierId) { setOpenId(null); return; }
+    setOpenId(cashierId);
+    const ex = getSalary(cashierId);
+    setFormAmount(ex ? String(ex.amount) : "");
+    setFormMode(ex?.frequency ? "schedule" : "now");
+    setFormFreq(ex?.frequency ?? "monthly");
+    setFormPayDay(ex?.pay_day ?? 1);
+    setFormTime(ex?.pay_time ?? "18:00");
+  };
+
+  const saveSalary = async (cashierId: string) => {
+    const amount = parseFloat(formAmount);
+    if (isNaN(amount) || amount <= 0) { toast.error("Enter a valid amount"); return; }
+    setSaving(true);
+    const ex = getSalary(cashierId);
+    const payload = {
+      cashier_id: cashierId, owner_id: ownerId, amount,
+      frequency:   formMode === "schedule" ? formFreq : null,
+      pay_day:     formMode === "schedule" && formFreq !== "daily" ? formPayDay : null,
+      pay_time:    formMode === "schedule" && formFreq !== "monthly" ? formTime : null,
+      next_pay_at: formMode === "schedule" ? computeNextPayAt(formFreq, formPayDay, formTime) : null,
+      active: true,
+    };
+    let error;
+    if (ex) ({ error } = await supabase.from("cashier_salaries").update(payload).eq("id", ex.id));
+    else    ({ error } = await supabase.from("cashier_salaries").insert(payload));
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(formMode === "now" ? "Salary amount saved" : "Schedule saved");
+    setOpenId(null);
+    loadSalaries();
+  };
+
+  const removeSalary = async (cashierId: string) => {
+    const ex = getSalary(cashierId);
+    if (!ex) return;
+    await supabase.from("cashier_salaries").delete().eq("id", ex.id);
+    toast.success("Salary removed");
+    loadSalaries();
+  };
+
+  const paySalaryNow = async (cashier: Cashier) => {
+    const salary = getSalary(cashier.id);
+    if (!salary) return;
+    setPaying(cashier.id);
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+    const { error } = await supabase.from("owner_expenses").insert({
+      owner_id: ownerId, amount: salary.amount,
+      description: `Non-Stock Expense\nCashier Salary: ${cashier.username} = $${Number(salary.amount).toFixed(2)}`,
+      expense_date: today,
+    });
+    if (!error) await supabase.from("cashier_salaries").update({ last_paid_at: new Date().toISOString() }).eq("id", salary.id);
+    setPaying(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`$${Number(salary.amount).toFixed(2)} paid to ${cashier.username}`);
+    setPaid(cashier.id);
+    setTimeout(() => setPaid(null), 4000);
+    loadSalaries();
+  };
+
+  const scheduleLabel = (s: SalaryRecord): string => {
+    if (!s.frequency) return "";
+    if (s.frequency === "daily") return `Daily at ${s.pay_time ?? "—"}`;
+    if (s.frequency === "monthly") { const d = s.pay_day ?? 1; return `Monthly · ${d}${ordSuffix(d)}`; }
+    const day = s.pay_day !== null ? DAYS_OF_WEEK[s.pay_day] ?? "?" : "?";
+    return `${FREQ_LABELS[s.frequency]} · ${day} at ${s.pay_time ?? "—"}`;
+  };
+
+  const nextPayLabel = (s: SalaryRecord): string | null => {
+    if (!s.next_pay_at) return null;
+    return new Date(s.next_pay_at).toLocaleString("en-GB", {
+      timeZone: "America/Port_of_Spain", weekday: "short", day: "numeric",
+      month: "short", hour: "2-digit", minute: "2-digit", hour12: true,
+    });
+  };
+
+  if (loadingSalaries) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  if (cashiers.length === 0) return <div className="text-muted-foreground py-10 text-center text-sm">No cashiers yet.</div>;
+
+  return (
+    <div className="space-y-3 mt-4">
+      {cashiers.map((c) => {
+        const salary   = getSalary(c.id);
+        const isOpen   = openId === c.id;
+        const isPaying = paying === c.id;
+        const wasPaid  = paid === c.id;
+
+        return (
+          <div key={c.id} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            {/* ── Accordion header ── */}
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition"
+              onClick={() => openAccordion(c.id)}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
+                  <User className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="font-black text-sm">{c.username}</p>
+                  {salary ? (
+                    <>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className="font-black" style={{ color: "#86efac" }}>${Number(salary.amount).toFixed(2)}</span>
+                        {salary.frequency && <> · {scheduleLabel(salary)}</>}
+                        {!salary.frequency && <span className="text-muted-foreground"> · Pay Now only</span>}
+                      </p>
+                      {nextPayLabel(salary) && (
+                        <p className="text-[10px] text-primary font-semibold">Next: {nextPayLabel(salary)}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No salary set</p>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform ml-2 ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {/* ── Accordion body ── */}
+            {isOpen && (
+              <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
+                {/* Amount */}
+                <div>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Salary Amount ($)</label>
+                  <Input type="number" min="0.01" step="0.01" placeholder="e.g. 500.00"
+                    value={formAmount} onChange={(e) => setFormAmount(e.target.value)}
+                    className="h-11 font-bold text-base" />
+                </div>
+
+                {/* Pay Now vs Schedule */}
+                <div>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Payment Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["now","schedule"] as const).map((m) => (
+                      <button key={m} type="button" onClick={() => setFormMode(m)}
+                        className="h-11 rounded-xl font-black text-sm transition active:scale-95 flex items-center justify-center gap-2"
+                        style={formMode === m
+                          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                          : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                        {m === "now" ? <><DollarSign className="h-4 w-4" /> Pay Now</> : <><CheckCircle2 className="h-4 w-4" /> Schedule</>}
+                      </button>
+                    ))}
+                  </div>
+                  {formMode === "now" && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">Save amount, then tap "Pay Now" anytime to record instantly.</p>
+                  )}
+                </div>
+
+                {/* Schedule sub-form */}
+                {formMode === "schedule" && (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Frequency</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["daily","weekly","biweekly","monthly"] as const).map((f) => (
+                          <button key={f} type="button"
+                            onClick={() => { setFormFreq(f); setFormPayDay(1); }}
+                            className="h-11 rounded-xl font-black text-sm transition active:scale-95"
+                            style={formFreq === f
+                              ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                              : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                            {FREQ_LABELS[f]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {formFreq !== "daily" && (
+                      <div>
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">
+                          {formFreq === "monthly" ? "Day of Month (1–28)" : "Day of Week"}
+                        </label>
+                        {formFreq === "monthly" ? (
+                          <div className="grid grid-cols-7 gap-1">
+                            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                              <button key={d} type="button" onClick={() => setFormPayDay(d)}
+                                className="h-9 rounded-lg font-bold text-xs transition active:scale-95"
+                                style={formPayDay === d
+                                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                                  : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                                {d}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-7 gap-1">
+                            {DAYS_OF_WEEK.map((day, i) => (
+                              <button key={i} type="button" onClick={() => setFormPayDay(i)}
+                                className="h-9 rounded-lg font-bold text-[10px] transition active:scale-95"
+                                style={formPayDay === i
+                                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                                  : { background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {formFreq !== "monthly" && (
+                      <div>
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Pay Time</label>
+                        <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)}
+                          className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Save + Remove */}
+                <div className="flex gap-2 pt-1">
+                  {salary && (
+                    <button type="button" onClick={() => removeSalary(c.id)}
+                      className="h-11 px-4 rounded-xl font-black text-sm border border-red-500/40 text-red-400 hover:bg-red-500/10 transition">
+                      Remove
+                    </button>
+                  )}
+                  <button type="button" disabled={saving} onClick={() => saveSalary(c.id)}
+                    className="flex-1 h-11 rounded-xl font-black text-sm text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </button>
+                </div>
+
+                {/* Pay Now — always available once salary is saved */}
+                {salary && (
+                  <button type="button" disabled={isPaying} onClick={() => paySalaryNow(c)}
+                    className="w-full h-12 rounded-xl font-black text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 border-2"
+                    style={wasPaid
+                      ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" }
+                      : { background: "rgba(134,239,172,0.08)", borderColor: "#86efac", color: "#86efac" }}>
+                    {isPaying ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : wasPaid ? <><CheckCircle2 className="h-4 w-4" /> Paid!</>
+                      : <><DollarSign className="h-4 w-4" /> Pay ${Number(salary.amount).toFixed(2)} Now</>}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type Order = {
   id: string;
@@ -550,9 +901,10 @@ export default function CashiersPage() {
       </div>
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-2 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="add">{t("add_cashier", "Add Cashier")}</TabsTrigger>
           <TabsTrigger value="manage">{t("cashier_name", "Manage")} ({list.length})</TabsTrigger>
+          <TabsTrigger value="salary">Salary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
@@ -655,6 +1007,10 @@ export default function CashiersPage() {
               </div>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="salary">
+          <SalaryTab cashiers={list} ownerId={effectiveOwnerId(profile.id)} />
         </TabsContent>
       </Tabs>
 

@@ -34,6 +34,172 @@ type Product = {
   stock_last_expense_id: string | null;
 };
 
+// ─── Revert Stock Modal ───────────────────────────────────────────────────────
+function RevertStockModal({
+  productName,
+  productId,
+  ownerId,
+  currentQty,
+  costPrice,
+  onClose,
+  onSaved,
+}: {
+  productName: string;
+  productId: string;
+  ownerId: string;
+  currentQty: number;
+  costPrice: number;
+  onClose: () => void;
+  onSaved: (newQty: number) => void;
+}) {
+  const [inputVal, setInputVal] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const parsed   = parseInt(inputVal, 10);
+  const removeQty = isNaN(parsed) ? 0 : Math.min(Math.max(parsed, 0), currentQty);
+  const newQty    = currentQty - removeQty;
+  const isValid   = !isNaN(parsed) && parsed > 0 && parsed <= currentQty;
+
+  const NUMPAD_KEYS = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+
+  const handleKey = (k: string) => {
+    if (k === "⌫") { setInputVal((v) => v.slice(0, -1)); return; }
+    const next = inputVal + k;
+    const n = parseInt(next, 10);
+    if (n > currentQty) return; // can't exceed current
+    setInputVal(next);
+  };
+
+  const handleConfirm = async () => {
+    if (!isValid) return;
+    setBusy(true);
+
+    const today = new Date().toISOString().split("T")[0];
+    const refundAmount = costPrice * removeQty;
+
+    // Insert a negative (refund) expense record if cost price is set
+    if (costPrice > 0) {
+      const { error: expErr } = await supabase.from("owner_expenses").insert({
+        owner_id: ownerId,
+        amount: -refundAmount,
+        description: `Reverted Stock Expense\n${productName} ×${removeQty} reverted`,
+        expense_date: today,
+      });
+      if (expErr) { toast.error(expErr.message); setBusy(false); return; }
+    }
+
+    // Update the product stock_qty only — don't touch undo fields
+    const { error } = await supabase
+      .from("products")
+      .update({ stock_qty: newQty })
+      .eq("id", productId);
+
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+
+    toast.success(`Reverted ${removeQty}× ${productName} — stock now ${newQty}`);
+    onSaved(newQty);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div>
+            <span className="text-base font-black">Revert Stock</span>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">{productName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Stats row */}
+        <div className="mx-5 mb-4 grid grid-cols-3 gap-2">
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center">
+            <div className="text-xs text-muted-foreground">Current</div>
+            <div className="text-xl font-black">{currentQty}</div>
+          </div>
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center border border-red-500/30">
+            <div className="text-xs text-muted-foreground">Remove</div>
+            <div className="text-xl font-black text-red-400">−{removeQty}</div>
+          </div>
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center">
+            <div className="text-xs text-muted-foreground">New Total</div>
+            <div className="text-xl font-black text-green-400">{newQty}</div>
+          </div>
+        </div>
+
+        {/* Display */}
+        <div className="mx-5 mb-3 h-14 rounded-2xl flex items-center justify-center border border-border bg-background/60">
+          {inputVal
+            ? <span className="text-3xl font-black text-red-400">−{inputVal}</span>
+            : <span className="text-base text-muted-foreground font-semibold">Enter qty to remove</span>
+          }
+        </div>
+
+        {/* Info line */}
+        <p className="text-center text-xs text-muted-foreground mb-3 px-5">
+          Max removable: <span className="font-black text-foreground">{currentQty}</span>
+          {costPrice > 0 && removeQty > 0 && (
+            <> · Refund: <span className="font-black" style={{ color: "#86efac" }}>+${(costPrice * removeQty).toFixed(2)}</span></>
+          )}
+        </p>
+
+        {/* Numpad */}
+        <div className="px-5 pb-2">
+          <div className="grid grid-cols-3 gap-2">
+            {NUMPAD_KEYS.map((k, i) => (
+              k === "" ? (
+                <div key={i} />
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleKey(k)}
+                  className="h-14 rounded-2xl flex items-center justify-center font-black text-xl transition active:scale-95"
+                  style={{
+                    background: k === "⌫" ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: k === "⌫" ? "#f87171" : "var(--foreground)",
+                  }}
+                >
+                  {k === "⌫" ? "⌫" : k}
+                </button>
+              )
+            ))}
+          </div>
+        </div>
+
+        {/* Confirm button */}
+        <div className="px-5 pb-6 pt-3">
+          <button
+            onClick={handleConfirm}
+            disabled={busy || !isValid}
+            className="w-full rounded-2xl font-black text-base text-white transition active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2 py-4"
+            style={{ background: isValid ? "linear-gradient(135deg,#dc2626,#b91c1c)" : "rgba(220,38,38,0.3)" }}
+          >
+            {busy
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : `Revert ${removeQty > 0 ? removeQty + "×" : ""} → ${newQty} remaining`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Stock Qty Numberpad Modal ────────────────────────────────────────────────
 // ── Stock button definitions ─────────────────────────────────────────────────
 const STOCK_BTNS = [
@@ -55,6 +221,7 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
   const [busy, setBusy] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
   const confirmDialog = useConfirm();
 
   const addAmount = STOCK_BTNS.reduce((s, b, i) => s + b.qty * counts[i], 0);
@@ -160,9 +327,20 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
             <div className="text-xs text-muted-foreground">Adding</div>
             <div className="text-xl font-black text-primary">+{addAmount}</div>
           </div>
-          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center">
+          <div className="px-3 py-2 rounded-xl bg-muted/30 text-center relative">
             <div className="text-xs text-muted-foreground">Total</div>
             <div className="text-xl font-black text-green-400">{newTotal}</div>
+            {/* Revert pencil — only active when nothing is being added */}
+            <button
+              type="button"
+              disabled={addAmount !== 0 || currentQty === 0}
+              onClick={() => setRevertOpen(true)}
+              className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full flex items-center justify-center shadow-lg transition active:scale-90 disabled:opacity-30"
+              style={{ background: addAmount === 0 && currentQty > 0 ? "var(--gradient-hero)" : "rgba(255,255,255,0.08)" }}
+              title="Revert stock quantity"
+            >
+              <Pencil className="h-3 w-3 text-black" />
+            </button>
           </div>
         </div>
 
@@ -260,6 +438,22 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
           </div>
         </div>
       </div>
+
+      {/* ── Revert Stock Modal ── */}
+      {revertOpen && (
+        <RevertStockModal
+          productName={productName}
+          productId={productId}
+          ownerId={ownerId}
+          currentQty={currentQty}
+          costPrice={costPrice}
+          onClose={() => setRevertOpen(false)}
+          onSaved={(newQty) => {
+            onSaved({ stock_qty: newQty });
+            setRevertOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

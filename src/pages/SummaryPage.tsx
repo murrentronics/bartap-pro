@@ -162,11 +162,13 @@ export default function SummaryPage() {
   const { effectiveOwnerId } = useChain();
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+  // Trinidad-aware current date parts
+  const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
   const [filter,    setFilter]   = useState<FilterType>("day");
   const [fromDate,  setFromDate] = useState(today);
   const [toDate,    setToDate]   = useState(today);
-  const [selMonth,  setSelMonth] = useState(() => new Date().getMonth());
-  const [selYear,   setSelYear]  = useState(() => new Date().getFullYear());
+  const [selMonth,  setSelMonth] = useState(() => tzNow().getMonth());
+  const [selYear,   setSelYear]  = useState(() => tzNow().getFullYear());
   const [earliestDate,   setEarliestDate]   = useState<string>("2020-01-01");
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
@@ -194,7 +196,7 @@ export default function SummaryPage() {
       const earliest = candidates.sort()[0] ?? "2020-01-01";
       setEarliestDate(earliest);
       const startYr = parseInt(earliest.slice(0, 4));
-      const endYr   = new Date().getFullYear();
+      const endYr   = tzNow().getFullYear();
       const yrs: number[] = [];
       for (let y = endYr; y >= startYr; y--) yrs.push(y);
       setAvailableYears(yrs);
@@ -202,27 +204,28 @@ export default function SummaryPage() {
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync fromDate/toDate when filter or selMonth/selYear change
-  // When switching filter tabs, always reset to today
+  // When switching filter tabs, always reset to today (Trinidad time)
   useEffect(() => {
-    const nowToday = new Date().toISOString().slice(0, 10);
-    const nowMonth = new Date().getMonth();
-    const nowYear  = new Date().getFullYear();
+    const nowTZ    = tzNow();
+    const nowToday = nowTZ.toLocaleDateString("en-CA");          // YYYY-MM-DD in TT local time
+    const nowMonth = nowTZ.getMonth();
+    const nowYear  = nowTZ.getFullYear();
 
     if (filter === "day") {
       setFromDate(nowToday);
       setToDate(nowToday);
     } else if (filter === "week") {
       setFromDate(nowToday);
-      const end = new Date();
+      const end = new Date(nowTZ);
       end.setDate(end.getDate() + 6);
-      setToDate(end.toISOString().slice(0, 10));
+      setToDate(end.toLocaleDateString("en-CA"));
     } else if (filter === "month") {
       setSelMonth(nowMonth);
       setSelYear(nowYear);
       const first = new Date(nowYear, nowMonth, 1);
       const last  = new Date(nowYear, nowMonth + 1, 0);
-      setFromDate(first.toISOString().slice(0, 10));
-      setToDate(last.toISOString().slice(0, 10));
+      setFromDate(first.toLocaleDateString("en-CA"));
+      setToDate(last.toLocaleDateString("en-CA"));
     } else if (filter === "year") {
       setSelYear(nowYear);
       setFromDate(`${nowYear}-01-01`);
@@ -238,8 +241,8 @@ export default function SummaryPage() {
     if (filter !== "month") return;
     const first = new Date(selYear, selMonth, 1);
     const last  = new Date(selYear, selMonth + 1, 0);
-    setFromDate(first.toISOString().slice(0, 10));
-    setToDate(last.toISOString().slice(0, 10));
+    setFromDate(first.toLocaleDateString("en-CA"));
+    setToDate(last.toLocaleDateString("en-CA"));
   }, [selMonth, selYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When user changes year button, update fromDate/toDate
@@ -260,7 +263,7 @@ export default function SummaryPage() {
     if (filter !== "week") return;
     const end = new Date(fromDate + "T00:00:00");
     end.setDate(end.getDate() + 6);
-    setToDate(end.toISOString().slice(0, 10));
+    setToDate(end.toLocaleDateString("en-CA"));
   }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
@@ -655,11 +658,13 @@ export default function SummaryPage() {
 
             {/* Column labels */}
             {items.length > 0 && (
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2 border-b border-border/60">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Item</span>
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Cost</span>
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Income</span>
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right w-20">Profit</span>
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/60">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Item / Qty</span>
+                <div className="flex gap-4">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Cost</span>
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Income</span>
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Profit</span>
+                </div>
               </div>
             )}
 
@@ -672,54 +677,62 @@ export default function SummaryPage() {
                 {items.map((it) => {
                   const rowProfit = it.revenue - it.costTotal;
                   return (
-                    <div key={it.name} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-sm truncate">{it.name}</p>
-                        <p className="text-xs text-muted-foreground">{it.qty} sold</p>
+                    <div key={it.name} className="px-4 py-3 space-y-1.5">
+                      {/* Line 1: name (full width) + qty sold */}
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-sm leading-tight flex-1">{it.name}</p>
+                        <p className="text-xs text-muted-foreground shrink-0">{it.qty} sold</p>
                       </div>
-                      <div className="text-right w-20">
-                        <p className="font-semibold text-xs" style={{ color: "#fca5a5" }}>
-                          {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
-                        </p>
-                      </div>
-                      <div className="text-right w-20">
-                        <p className="font-semibold text-xs" style={{ color: "#86efac" }}>
-                          ${fmt(it.revenue)}
-                        </p>
-                      </div>
-                      <div className="text-right w-20">
-                        <p className="font-black text-xs" style={{
-                          color: rowProfit > 0 ? "#86efac" : rowProfit < 0 ? "#fca5a5" : "var(--muted-foreground)"
-                        }}>
-                          {rowProfit >= 0 ? "+" : ""}${fmt(rowProfit)}
-                        </p>
+                      {/* Line 2: Cost | Income | Profit */}
+                      <div className="flex items-center justify-end gap-4">
+                        <div className="w-16 text-right">
+                          <p className="font-semibold text-xs" style={{ color: "#fca5a5" }}>
+                            {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
+                          </p>
+                        </div>
+                        <div className="w-16 text-right">
+                          <p className="font-semibold text-xs" style={{ color: "#86efac" }}>
+                            ${fmt(it.revenue)}
+                          </p>
+                        </div>
+                        <div className="w-16 text-right">
+                          <p className="font-black text-xs" style={{
+                            color: rowProfit > 0 ? "#86efac" : rowProfit < 0 ? "#fca5a5" : "var(--muted-foreground)"
+                          }}>
+                            {rowProfit >= 0 ? "+" : ""}${fmt(rowProfit)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
 
                 {/* Subtotals row */}
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3"
+                <div className="px-4 py-3 space-y-1.5"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                  <span className="font-black text-sm">Subtotals</span>
-                  <div className="text-right w-20">
-                    <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                      {items.reduce((s,i)=>s+i.costTotal,0) > 0
-                        ? `$${fmt(items.reduce((s,i)=>s+i.costTotal,0))}`
-                        : "—"}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-sm">Subtotals</span>
                   </div>
-                  <div className="text-right w-20">
-                    <span className="font-black text-sm" style={{ color: "#86efac" }}>
-                      ${fmt(totalIncome)}
-                    </span>
-                  </div>
-                  <div className="text-right w-20">
-                    <span className="font-black text-sm" style={{
-                      color: (totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "#86efac" : "#fca5a5"
-                    }}>
-                      {(totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "+" : ""}${fmt(totalIncome - items.reduce((s,i)=>s+i.costTotal,0))}
-                    </span>
+                  <div className="flex items-center justify-end gap-4">
+                    <div className="w-16 text-right">
+                      <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
+                        {items.reduce((s,i)=>s+i.costTotal,0) > 0
+                          ? `$${fmt(items.reduce((s,i)=>s+i.costTotal,0))}`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="w-16 text-right">
+                      <span className="font-black text-sm" style={{ color: "#86efac" }}>
+                        ${fmt(totalIncome)}
+                      </span>
+                    </div>
+                    <div className="w-16 text-right">
+                      <span className="font-black text-sm" style={{
+                        color: (totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "#86efac" : "#fca5a5"
+                      }}>
+                        {(totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "+" : ""}${fmt(totalIncome - items.reduce((s,i)=>s+i.costTotal,0))}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -732,7 +745,7 @@ export default function SummaryPage() {
               style={{ background: "var(--gradient-card)" }}>
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <TrendingDown className="h-4 w-4 text-red-400" />
-                <span className="font-black text-sm">Non-Stock Expenses</span>
+                <span className="font-black text-sm">Expenses</span>
               </div>
               <div className="divide-y divide-border/50">
                 {nonStockExpenses.map((e) => {
