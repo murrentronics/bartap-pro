@@ -96,6 +96,7 @@ function SalaryHistory({ cashier, ownerId, onClose }: {
 }) {
   const [payments, setPayments] = useState<{ id: string; amount: number; description: string | null; expense_date: string; created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -113,6 +114,16 @@ function SalaryHistory({ cashier, ownerId, onClose }: {
 
   const total = payments.reduce((s, p) => s + Number(p.amount), 0);
 
+  // Group by "Month Year" label
+  const months = Array.from(new Set(payments.map((p) =>
+    new Date(p.created_at).toLocaleDateString("en-GB", { timeZone: "America/Port_of_Spain", month: "long", year: "numeric" })
+  )));
+
+  const getMonthPayments = (month: string) =>
+    payments.filter((p) =>
+      new Date(p.created_at).toLocaleDateString("en-GB", { timeZone: "America/Port_of_Spain", month: "long", year: "numeric" }) === month
+    );
+
   return (
     <div className="fixed inset-0 z-[70] flex flex-col" style={{ background: "var(--background)" }}>
       {/* Header */}
@@ -123,34 +134,68 @@ function SalaryHistory({ cashier, ownerId, onClose }: {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="font-black text-base">{cashier.username} — Salary History</h2>
-          <p className="text-xs text-muted-foreground">{payments.length} payment{payments.length !== 1 ? "s" : ""} · Total <span className="font-black" style={{ color: "#86efac" }}>${total.toFixed(2)}</span></p>
+          <p className="text-xs text-muted-foreground">
+            {payments.length} payment{payments.length !== 1 ? "s" : ""} · Total{" "}
+            <span className="font-black" style={{ color: "#86efac" }}>${total.toFixed(2)}</span>
+          </p>
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      {/* Month accordion list */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : payments.length === 0 ? (
+        ) : months.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-16">No salary payments recorded yet.</div>
         ) : (
-          payments.map((p) => {
-            const dateStr = new Date(p.expense_date + "T00:00:00").toLocaleDateString("en-GB", {
-              weekday: "short", day: "numeric", month: "short", year: "numeric",
-            });
-            const timeStr = new Date(p.created_at).toLocaleTimeString("en-US", {
-              timeZone: "America/Port_of_Spain", hour: "numeric", minute: "2-digit", hour12: true,
-            });
+          months.map((month) => {
+            const monthPayments = getMonthPayments(month);
+            const monthTotal = monthPayments.reduce((s, p) => s + Number(p.amount), 0);
+            const isOpen = openMonth === month;
+
             return (
-              <div key={p.id} className="rounded-2xl border border-border px-4 py-3 flex items-center justify-between gap-3"
-                style={{ background: "var(--gradient-card)" }}>
-                <div className="min-w-0">
-                  <p className="font-bold text-sm">{dateStr}</p>
-                  <p className="text-xs text-muted-foreground">{timeStr}</p>
-                </div>
-                <p className="font-black text-sm shrink-0" style={{ color: "#86efac" }}>
-                  ${Number(p.amount).toFixed(2)}
-                </p>
+              <div key={month} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                {/* Month header */}
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                  onClick={() => setOpenMonth(isOpen ? null : month)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-black text-sm">{month}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: "rgba(134,239,172,0.12)", color: "#86efac", border: "1px solid rgba(134,239,172,0.25)" }}>
+                      {monthPayments.length} payment{monthPayments.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-sm" style={{ color: "#86efac" }}>${monthTotal.toFixed(2)}</span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                {/* Payment rows */}
+                {isOpen && (
+                  <div className="border-t border-border divide-y divide-border/50">
+                    {monthPayments.map((p) => {
+                      const dateStr = new Date(p.created_at).toLocaleDateString("en-GB", {
+                        timeZone: "America/Port_of_Spain", weekday: "short", day: "numeric", month: "short",
+                      });
+                      const timeStr = new Date(p.created_at).toLocaleTimeString("en-US", {
+                        timeZone: "America/Port_of_Spain", hour: "numeric", minute: "2-digit", hour12: true,
+                      });
+                      return (
+                        <div key={p.id} className="flex items-center justify-between px-4 py-3">
+                          <div>
+                            <p className="font-bold text-sm">{dateStr}</p>
+                            <p className="text-xs text-muted-foreground">{timeStr}</p>
+                          </div>
+                          <p className="font-black text-sm" style={{ color: "#86efac" }}>${Number(p.amount).toFixed(2)}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })
