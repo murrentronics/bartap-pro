@@ -2406,71 +2406,78 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     stockExpectedProfit: number;
     stockCost: number;
     todayIncome: number;
+    todayProfit: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    // Trinidad midnight = UTC midnight + 4 hours
+    const todayDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+    const todayStartTT = new Date(todayDateStr + "T00:00:00-04:00"); // Trinidad is UTC-4
 
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
-      // Transfer-in: cashier balances cleared to owner
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
-      // Owner's own direct orders (where owner is also cashier)
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
-      // Cashier orders — all orders under this owner where a cashier (not the owner) made the sale
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
-      // Credit payments collected directly by the owner (amount > 0 = owner took the cash, not a cashier)
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
-      // All products with stock: price × qty and cost_price × qty
-      supabase.from("products").select("price, cost_price, stock_qty").eq("owner_id", profile.id),
-      // Currently open bottles
-      sb.from("opened_bottles")
-        .select("revenue, product_id, products(price)")
-        .eq("owner_id", profile.id)
-        .eq("status", "open"),
-      // Today's orders total
-      supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayStart.toISOString()),
+      supabase.from("products").select("id, price, cost_price, stock_qty").eq("owner_id", profile.id),
+      sb.from("opened_bottles").select("revenue, product_id, products(price)").eq("owner_id", profile.id).eq("status", "open"),
+      // Today's orders total (income) — ALL orders, same as Summary page
+      supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
+      // Today's orders with items for cost calculation
+      supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
+      // Today's non-stock expenses (positive only — not reverted)
+      supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
+        .eq("expense_date", todayDateStr).gt("amount", 0),
     ]);
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
-    // Income = only money the owner has actually received in hand:
-    // - transfers_in: cashier balances cleared to owner
-    // - owner's own direct orders (owner rang the sale themselves)
-    // - credit payments collected directly by the owner
-    // Cashier orders are NOT counted here — that cash is still with the cashier until cleared
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
 
-    // Closed stock: sum of price × stock_qty (resale) and cost_price × stock_qty (cost)
     const closedStockValue = (productsRes.data ?? []).reduce(
-      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty),
-      0
+      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty), 0
     );
     const closedStockCost = (productsRes.data ?? []).reduce(
-      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.cost_price) * Number(p.stock_qty),
-      0
+      (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.cost_price) * Number(p.stock_qty), 0
     );
-    // Opened bottles: base cost (product price) minus shots revenue already collected
     const openBottles = (openBottlesRes.data ?? []) as { revenue: number; products: { price: number } | null }[];
     const openedBottlesNetValue = openBottles.reduce((s, b) => {
       const bottlePrice = b.products ? Number(b.products.price) : 0;
-      const soldRevenue = Number(b.revenue);
-      return s + bottlePrice - soldRevenue;
+      return s + bottlePrice - Number(b.revenue);
     }, 0);
-
     const stockResaleValue = closedStockValue + openedBottlesNetValue;
-    // Expected profit = what you'd make selling all stock at retail minus what it cost to buy
     const stockExpectedProfit = stockResaleValue - closedStockCost;
 
     const todayIncome = (todayOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome });
+    // Build product cost map: id → cost_price
+    const prodCostById = new Map<string, number>(
+      ((productsRes.data ?? []) as { id: string; cost_price: number }[]).map((p) => [p.id, Number(p.cost_price)])
+    );
+
+    // Today's cost = sum of (qty × cost_price) across all today's order items
+    type OrderItemRaw = { id?: string; name: string; qty: number; price: number };
+    const todayCostFromItems = (todayItemOrdersRes.data ?? []).reduce((s: number, o: { items: OrderItemRaw[] }) => {
+      const items: OrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
+      return s + items.reduce((cs, it) => cs + (prodCostById.get(it.id ?? "") ?? 0) * it.qty, 0);
+    }, 0);
+
+    // Today's non-stock expenses (positive only, same filter as Summary page)
+    const todayNonStock = (todayNonStockExpRes.data ?? [])
+      .filter((e: { description: string | null }) => (e.description ?? "").startsWith("Non-Stock Expense"))
+      .reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
+
+    // todayProfit matches Summary page Day filter: income - item costs - non-stock expenses
+    const todayProfit = todayIncome - todayCostFromItems - todayNonStock;
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -2520,6 +2527,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const todayIncome = financialSummary ? financialSummary.todayIncome : 0;
+  const todayProfit = financialSummary ? financialSummary.todayProfit : 0;
   const netProfit = totalIncome - totalExpenses;
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
   const stockExpectedProfit = financialSummary ? financialSummary.stockExpectedProfit : 0;
@@ -2604,7 +2612,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </>
           )}
 
-          {/* Stock Resale + Expected Profit — 2 cards */}
+          {/* Stock Resale + Today's Profit — 2 cards */}
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
               <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
@@ -2616,38 +2624,22 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
             <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
               <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Expected Profit
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Today's Profit
               </div>
-              {(() => {
-                // Expected Profit = Stock Profit (resale − cost) + Total Profit (income − expenses)
-                const expectedProfit = stockExpectedProfit + netProfit;
-                return (
-                  <span className="font-black text-sm sm:text-base lg:text-lg" style={{
-                    color: expectedProfit >= 0 ? "#86efac" : "#fca5a5"
-                  }}>
-                    {expectedProfit >= 0 ? "+" : ""}${fmt(expectedProfit)}
-                  </span>
-                );
-              })()}
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{
+                color: todayProfit > 0 ? "#86efac" : todayProfit < 0 ? "#fca5a5" : "rgba(255,255,255,0.3)"
+              }}>
+                {todayIncome > 0 ? `${todayProfit >= 0 ? "+" : ""}$${fmt(todayProfit)}` : "—"}
+              </span>
             </div>
           </div>
 
-          {/* Total Income + Today's Income — full bottom row */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
+          {/* Total Income — full width */}
+          <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
             </div>
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Today's Income
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: todayIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                {todayIncome > 0 ? `$${fmt(todayIncome)}` : "—"}
-              </span>
-            </div>
+            <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
           </div>
 
           {/* Cashier Float row — narrow button (left) + wider float card (right) */}
