@@ -373,8 +373,8 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
                   </button>
                 </div>
 
-                {/* Pay Now — always available once salary is saved */}
-                {salary && (
+                {/* Pay Now — only shown when Pay Now mode is selected, not when scheduling */}
+                {salary && formMode === "now" && (
                   <button type="button" disabled={isPaying} onClick={() => paySalaryNow(c)}
                     className="w-full h-12 rounded-xl font-black text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 border-2"
                     style={wasPaid
