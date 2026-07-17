@@ -2423,7 +2423,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
-      supabase.from("products").select("id, price, cost_price, stock_qty").eq("owner_id", profile.id),
+      supabase.from("products").select("id, price, cost_price, units_per_item, stock_qty").eq("owner_id", profile.id),
       sb.from("opened_bottles").select("revenue, product_id, products(price)").eq("owner_id", profile.id).eq("status", "open"),
       // Today's orders total (income) — ALL orders, same as Summary page
       supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
@@ -2457,9 +2457,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const todayIncome = (todayOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
 
-    // Build product cost map: id → cost_price
+    // Build product cost map: id → effective cost per unit (cost_price ÷ units_per_item if set)
     const prodCostById = new Map<string, number>(
-      ((productsRes.data ?? []) as { id: string; cost_price: number }[]).map((p) => [p.id, Number(p.cost_price)])
+      ((productsRes.data ?? []) as { id: string; cost_price: number; units_per_item: number }[])
+        .map((p) => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price])
     );
 
     // Today's cost = sum of (qty × cost_price) across all today's order items

@@ -20,11 +20,20 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+type BottleVariation = {
+  key: string;
+  label: string;
+  units_consumed: number; // how many bottle-units this variation uses
+  price: number;
+};
+
 type Product = {
   id: string;
   name: string;
   price: number;
   cost_price: number;
+  units_per_item: number;
+  bottle_variations: BottleVariation[] | null;
   image_url: string | null;
   category?: string;
   stock_qty: number;
@@ -641,23 +650,29 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   const [sellPrices, setSellPrices] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((p) => [p.id, String(p.price ?? "")]))
   );
+  const [unitsPerItems, setUnitsPerItems] = useState<Record<string, string>>(() =>
+    Object.fromEntries(items.map((p) => [p.id, p.units_per_item > 0 ? String(p.units_per_item) : ""]))
+  );
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   // id + field for active numpad in the table
-  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" } | null>(null);
+  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" | "units" } | null>(null);
 
   const handleNumpad = (k: string) => {
     if (!activeNumpad) return;
     const { id, field } = activeNumpad;
     const isDecimal = field === "cp" || field === "sp";
-    const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : (newQtys[id] ?? "");
+    const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : field === "units" ? (unitsPerItems[id] ?? "") : (newQtys[id] ?? "");
     const setter = field === "cp"
       ? (v: string) => setCostPrices((p) => ({ ...p, [id]: v }))
       : field === "sp"
       ? (v: string) => setSellPrices((p) => ({ ...p, [id]: v }))
+      : field === "units"
+      ? (v: string) => setUnitsPerItems((p) => ({ ...p, [id]: v }))
       : (v: string) => setNewQtys((p) => ({ ...p, [id]: v }));
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
     if (k === ".") { if (isDecimal && !current.includes(".")) setter(current + "."); return; }
+    if (!isDecimal && k === ".") return; // no decimals for qty/units
     const dotIdx = current.indexOf(".");
     if (dotIdx !== -1 && current.length - dotIdx > 2) return;
     setter(current === "0" ? k : current + k);
@@ -679,12 +694,14 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   // Items with price-only changes (no qty added)
   const priceOnlyChanges = items.filter((p) => {
     const v = parseInt(newQtys[p.id] ?? "", 10);
-    if (!isNaN(v) && v > 0) return false; // already in updates
+    if (!isNaN(v) && v > 0) return false;
     const newCp = parseFloat(costPrices[p.id] ?? "");
     const newSp = parseFloat(sellPrices[p.id] ?? "");
+    const newUnits = parseInt(unitsPerItems[p.id] ?? "", 10);
     const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
     const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
-    return cpChanged || spChanged;
+    const unitsChanged = !isNaN(newUnits) && newUnits !== Number(p.units_per_item ?? 0);
+    return cpChanged || spChanged || unitsChanged;
   });
 
   // All items with any change — shown in preview
@@ -730,14 +747,16 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     }
 
     // Update each product — stock qty + any edited prices
-    const patches: { id: string; stock_qty: number; stock_last_expense_id: string | null; cost_price?: number; price?: number }[] = [];
+    const patches: { id: string; stock_qty: number; stock_last_expense_id: string | null; cost_price?: number; price?: number; units_per_item?: number }[] = [];
     for (const p of updates) {
       const addQty = parseInt(newQtys[p.id], 10);
       const newTotal = (p.stock_qty ?? 0) + addQty;
       const newCp = parseFloat(costPrices[p.id] ?? "");
       const newSp = parseFloat(sellPrices[p.id] ?? "");
+      const newUnits = parseInt(unitsPerItems[p.id] ?? "", 10);
       const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
       const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
+      const unitsChanged = !isNaN(newUnits) && newUnits !== Number(p.units_per_item ?? 0);
       const { error } = await supabase
         .from("products")
         .update({
@@ -747,6 +766,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           stock_last_expense_id: expenseId,
           ...(cpChanged ? { cost_price: newCp } : {}),
           ...(spChanged ? { price: newSp } : {}),
+          ...(unitsChanged ? { units_per_item: newUnits } : {}),
         })
         .eq("id", p.id);
       if (error) { toast.error(`Failed to update ${p.name}: ${error.message}`); }
@@ -757,6 +777,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           stock_last_expense_id: expenseId,
           ...(cpChanged ? { cost_price: newCp } : {}),
           ...(spChanged ? { price: newSp } : {}),
+          ...(unitsChanged ? { units_per_item: newUnits } : {}),
         });
       }
     }
@@ -765,14 +786,17 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     for (const p of items.filter((p) => !updates.includes(p))) {
       const newCp = parseFloat(costPrices[p.id] ?? "");
       const newSp = parseFloat(sellPrices[p.id] ?? "");
+      const newUnits = parseInt(unitsPerItems[p.id] ?? "", 10);
       const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
       const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
-      if (!cpChanged && !spChanged) continue;
+      const unitsChanged = !isNaN(newUnits) && newUnits !== Number(p.units_per_item ?? 0);
+      if (!cpChanged && !spChanged && !unitsChanged) continue;
       const { error } = await supabase
         .from("products")
         .update({
           ...(cpChanged ? { cost_price: newCp } : {}),
           ...(spChanged ? { price: newSp } : {}),
+          ...(unitsChanged ? { units_per_item: newUnits } : {}),
         })
         .eq("id", p.id);
       if (!error) {
@@ -782,6 +806,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           stock_last_expense_id: p.stock_last_expense_id,
           ...(cpChanged ? { cost_price: newCp } : {}),
           ...(spChanged ? { price: newSp } : {}),
+          ...(unitsChanged ? { units_per_item: newUnits } : {}),
         });
       }
     }
@@ -851,13 +876,14 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
 
         {/* Scrollable table */}
         <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-          <table className="min-w-[600px] w-full border-collapse text-sm">
+          <table className="min-w-[680px] w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background border-b border-border">
               <tr>
                 <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-10 sm:w-14"></th>
                 <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[110px]">Name</th>
                 <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Cost $</th>
                 <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Sell $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[56px]">Units</th>
                 <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px] sm:w-[60px]">Qty</th>
                 <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px] sm:w-[96px]" style={{ color: "var(--primary)" }}>+ Add</th>
               </tr>
@@ -867,7 +893,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                 <>
                   {/* Category section header */}
                   <tr key={`hdr-${cat.value}`}>
-                    <td colSpan={6} className="pl-3 pt-4 pb-1">
+                    <td colSpan={7} className="pl-3 pt-4 pb-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-lg leading-none">{cat.icon}</span>
                         <span className="text-xs font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>{cat.label}</span>
@@ -879,6 +905,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                     const hasAdd = parseInt(addVal, 10) > 0;
                     const cpVal = costPrices[p.id] ?? "";
                     const spVal = sellPrices[p.id] ?? "";
+                    const unitsVal = unitsPerItems[p.id] ?? "";
+                    const isBottleOrPack = p.category === "liquor" || p.category === "cigarettes";
                     const cpIsZero = hasAdd && (parseFloat(cpVal) || 0) === 0;
                     const spIsZero = hasAdd && (parseFloat(spVal) || 0) === 0;
                     return (
@@ -919,6 +947,20 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                             {spVal || "0.00"}
                           </div>
                         </td>
+                        {/* Units per item — editable for liquor/cigarettes, dash otherwise */}
+                        <td className="px-2 py-1.5 w-[56px]">
+                          {isBottleOrPack ? (
+                            <div
+                              onClick={() => setActiveNumpad(activeNumpad?.id === p.id && activeNumpad.field === "units" ? null : { id: p.id, field: "units" })}
+                              className="h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                              style={{ borderColor: activeNumpad?.id === p.id && activeNumpad.field === "units" ? "var(--primary)" : "var(--border)", color: "var(--muted-foreground)" }}
+                            >
+                              {unitsVal || "0"}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground flex justify-end pr-2">—</span>
+                          )}
+                        </td>
                         {/* Current qty — read only */}
                         <td className="px-2 py-1.5 text-right w-[46px] sm:w-[60px]">
                           <span className={`font-black text-xs sm:text-sm ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
@@ -952,7 +994,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : "Add Qty"}
+                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : "Add Qty"}
               </span>
               <button onClick={() => setActiveNumpad(null)}
                 className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
@@ -1402,14 +1444,18 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const [name, setName] = useState(editProduct?.name ?? "");
   const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
   const [costPrice, setCostPrice] = useState(editProduct ? String(editProduct.cost_price ?? "") : "");
+  const [unitsPerItem, setUnitsPerItem] = useState(editProduct ? String(editProduct.units_per_item || "") : "");
+  const [bottleVariations, setBottleVariations] = useState<BottleVariation[]>(
+    editProduct?.bottle_variations ?? []
+  );
   const [category, setCategory] = useState<string>(editProduct?.category ?? "beers");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  // which field the numpad is for: "selling" | "cost" | null
-  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | null>(null);
+  // which field the numpad is for: "selling" | "cost" | "units" | null
+  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | "units" | null>(null);
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
@@ -1436,12 +1482,17 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
 
   const handleNumpad = (k: string) => {
-    const setter = activeNumpad === "cost" ? setCostPrice : setPrice;
-    const current = activeNumpad === "cost" ? costPrice : price;
+    const setter = activeNumpad === "cost" ? setCostPrice : activeNumpad === "units" ? setUnitsPerItem : setPrice;
+    const current = activeNumpad === "cost" ? costPrice : activeNumpad === "units" ? unitsPerItem : price;
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
-    if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
-    const dotIdx = current.indexOf(".");
-    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    if (activeNumpad !== "units") {
+      if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
+      const dotIdx = current.indexOf(".");
+      if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    } else {
+      // units = integer only
+      if (k === ".") return;
+    }
     setter(current === "0" ? k : current + k);
   };
 
@@ -1463,19 +1514,18 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     }
 
     const costVal = parseFloat(costPrice) || 0;
+    const unitsVal = parseInt(unitsPerItem, 10) || 0;
+    const variationsVal = category === "liquor" && bottleVariations.length > 0 ? bottleVariations : null;
 
     if (isEdit && editProduct) {
-      // ── UPDATE existing product ──────────────────────────────────────────
-      // Only save the product details here — no expense record is created.
-      // Expense records are only generated in the StockNumpad when new stock
-      // is actually added, so only the newly purchased qty is multiplied by
-      // the new cost price (not the existing stock already on hand).
       const { data: updated, error } = await supabase
         .from("products")
         .update({
           name: name.trim(),
           price: Number(price),
           cost_price: costVal,
+          units_per_item: unitsVal,
+          bottle_variations: variationsVal,
           image_url,
           category,
         })
@@ -1490,12 +1540,13 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     } else {
       // ── INSERT new product ───────────────────────────────────────────────
       const { data: inserted, error } = await supabase.from("products").insert({
-        owner_id: ownerId, name: name.trim(), price: Number(price), cost_price: costVal, image_url, category,
+        owner_id: ownerId, name: name.trim(), price: Number(price), cost_price: costVal,
+        units_per_item: unitsVal, bottle_variations: variationsVal, image_url, category,
       }).select("*").single();
       setBusy(false);
       if (error) { toast.error(error.message); return; }
       toast.success("Item added");
-      setName(""); setPrice(""); setCostPrice(""); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
+      setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
       onSaved(inserted);
     }
@@ -1630,6 +1681,120 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                 </div>
               </div>
             </div>
+
+            {/* Units per item — only for liquor and cigarettes */}
+            {(category === "liquor" || category === "cigarettes") && (
+              <div>
+                <Label className="text-xs">
+                  {category === "liquor" ? "🍾 Shots per Bottle (total capacity)" : "🚬 Units per Pack"}
+                </Label>
+                {category === "cigarettes" ? (
+                  /* Cigarettes: fixed 20 or 10 toggle */
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    {[20, 10].map((n) => (
+                      <button key={n} type="button"
+                        onClick={() => setUnitsPerItem(String(n))}
+                        className="h-10 rounded-lg font-black text-sm transition active:scale-95"
+                        style={unitsPerItem === String(n)
+                          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                          : { border: "1px solid var(--border)", background: "var(--muted)", color: "var(--muted-foreground)" }}>
+                        {n} per pack
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                    onClick={() => setActiveNumpad(activeNumpad === "units" ? null : "units")}
+                  >
+                    <span className={`text-base font-black ${activeNumpad === "units" ? "text-primary" : "text-muted-foreground"}`}>
+                      {unitsPerItem || "0"} shots
+                    </span>
+                  </div>
+                )}
+                {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
+                  <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                    Cost per {category === "liquor" ? "shot" : "unit"}: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Bottle variations — only for liquor */}
+            {category === "liquor" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">🥃 Bottle Variations</Label>
+                  <p className="text-[10px] text-muted-foreground">Units = how many bottle-units it uses</p>
+                </div>
+                {/* Default variations seeded if empty */}
+                {bottleVariations.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBottleVariations([
+                      { key: "half",  label: "Half Bottle", units_consumed: 0, price: 0 },
+                      { key: "nip",   label: "Nip",         units_consumed: 0, price: 0 },
+                      { key: "pq",    label: "PQ",          units_consumed: 0, price: 0 },
+                      { key: "shot",  label: "Shot",        units_consumed: 1, price: 0 },
+                    ])}
+                    className="w-full h-9 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition"
+                  >
+                    + Set up variations
+                  </button>
+                )}
+                {bottleVariations.map((v, i) => (
+                  <div key={v.key} className="rounded-xl border border-border p-2 space-y-1.5" style={{ background: "var(--gradient-card)" }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={v.label}
+                        onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                        className="flex-1 h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
+                        placeholder="Label"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setBottleVariations(bv => bv.filter((_, j) => j !== i))}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 transition"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Units used</p>
+                        <input
+                          type="number" min="1" step="1"
+                          value={v.units_consumed || ""}
+                          onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, units_consumed: parseInt(e.target.value) || 0 } : x))}
+                          className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
+                          placeholder="e.g. 1"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Price ($)</p>
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={v.price || ""}
+                          onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, price: parseFloat(e.target.value) || 0 } : x))}
+                          className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
+                          placeholder="e.g. 12.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {bottleVariations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBottleVariations(bv => [...bv, { key: `var_${Date.now()}`, label: "", units_consumed: 1, price: 0 }])}
+                    className="w-full h-8 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition"
+                  >
+                    + Add variation
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Selling Price */}
             <div>

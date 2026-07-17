@@ -27,7 +27,7 @@ type Expense = {
   expense_date: string;
 };
 
-type ProductCost = { id: string; name: string; cost_price: number };
+type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number };
 
 type FilterType = "day" | "week" | "month" | "year" | "period";
 
@@ -289,7 +289,7 @@ export default function SummaryPage() {
         .order("expense_date", { ascending: false }),
       supabase
         .from("products")
-        .select("id, name, cost_price")
+        .select("id, name, cost_price, units_per_item")
         .eq("owner_id", ownerId),
     ]);
 
@@ -305,8 +305,15 @@ export default function SummaryPage() {
     return <div className="text-center text-muted-foreground py-20">Owners only.</div>;
   }
 
-  // Build cost map: product id → cost_price
-  const costMap = new Map<string, number>(products.map((p) => [p.id, p.cost_price]));
+  // Build cost map: product id → effective cost per unit sold
+  // For liquor/packs with units_per_item set: cost_price ÷ units_per_item = cost per shot/unit
+  // For everything else: cost_price = cost per whole item
+  const costMap = new Map<string, number>(
+    products.map((p) => [
+      p.id,
+      p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price,
+    ])
+  );
 
   // Non-stock + reverted stock expenses (shown in the Expenses section)
   const nonStockExpenses = expenses.filter((e) => {

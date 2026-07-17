@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -13,12 +13,15 @@ import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
 
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number };
+type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
+type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
 type CartItem = Product & { qty: number };
 type OpenedBottle = {
   id: string; owner_id: string; product_id: string; product_name: string;
   shot_price: number; shots_sold: number; revenue: number;
   opened_at: string; finished_at: string | null; status: string;
+  variation_counts: Record<string, number>;
+  units_consumed: number;
 };
 
 export default function RegisterPage() {
@@ -283,10 +286,11 @@ export default function RegisterPage() {
   const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
   const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
   const [shotModalOpen, setShotModalOpen]       = useState(false);
-  const [shotStep, setShotStep]                 = useState<"select" | "price">("select");
+  const [shotStep, setShotStep]                 = useState<"select" | "variation">("select");
   const [showNewBottleGrid, setShowNewBottleGrid] = useState(false);
   const [shotBottleId, setShotBottleId]         = useState<string>("");
   const [shotPrice, setShotPrice]               = useState("");
+  const [selectedVariation, setSelectedVariation] = useState<BottleVariation | null>(null);
   const selectedBottleRef                       = useRef<HTMLDivElement>(null);
   const [openNewMode, setOpenNewMode]           = useState(false);   // true = picking a new bottle from products
   const [newBottleProductId, setNewBottleProductId] = useState<string>("");
@@ -312,6 +316,9 @@ export default function RegisterPage() {
   const [markEmptyPackId, setMarkEmptyPackId]     = useState<string | null>(null);
   const [cancelPackId, setCancelPackId]           = useState<string | null>(null);
   const [packQty, setPackQty]                     = useState(1);
+  const [packSellMode, setPackSellMode]           = useState<"retail" | "special">("retail");
+  const [specialQty, setSpecialQty]               = useState(2);  // how many units in the special deal
+  const [specialPrice, setSpecialPrice]           = useState(""); // total price for the special deal
 
   const cigaretteProducts = useMemo(() => {
     const openedProductIds = new Set(openedPacks.map(p => p.product_id));
@@ -346,22 +353,45 @@ export default function RegisterPage() {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, fetchOpenedPacks]);
 
-  const addPackUnit = () => {
+  const addPackUnit = async () => {
     const pack = openedPacks.find((p) => p.id === packPackId);
     const price = parseFloat(packPrice);
     if (!pack || isNaN(price) || price <= 0) { toast.error("Select a pack and set a price"); return; }
-    const label = "Retail";
-    const id = `pack-${pack.id}-${Date.now()}`;
+
+    // Find the product to get units_per_item capacity
+    const product = products.find((p) => p.id === pack.product_id);
+    const capacity = product?.units_per_item ?? 0;
+    const alreadySold = pack.units_sold;
+    const remaining = capacity > 0 ? capacity - alreadySold : Infinity;
+
+    // Don't allow selling more than remaining
+    const qtyToSell = capacity > 0 ? Math.min(packQty, remaining) : packQty;
+    if (qtyToSell <= 0) {
+      toast.error("Pack is empty — no units remaining");
+      return;
+    }
+    if (qtyToSell < packQty) {
+      toast(`Only ${qtyToSell} unit${qtyToSell !== 1 ? "s" : ""} remaining in this pack`);
+    }
+
+    const cartId = `pack-${pack.id}-${Date.now()}`;
     setCart((c) => [...c, {
-      id, name: `${label}: ${pack.product_name}`, price,
-      image_url: null, category: "cigarettes", qty: packQty,
+      id: cartId, name: `Retail: ${pack.product_name}`, price,
+      image_url: null, category: "cigarettes", qty: qtyToSell,
       _pack_id: pack.id,
     } as CartItem & { _pack_id: string }]);
+
     setPackModalOpen(false);
     setPackStep("select");
     setPackPackId("");
     setPackPrice("");
     setPackQty(1);
+
+    // Auto-close pack if now sold out
+    if (capacity > 0 && alreadySold + qtyToSell >= capacity) {
+      await handleFinishPack(pack.id);
+      toast.success(`Pack empty — auto-closed`);
+    }
   };
 
   const handleFinishPack = async (packId: string) => {
@@ -450,39 +480,85 @@ export default function RegisterPage() {
       .limit(1);
     if (data?.[0]) setShotBottleId(data[0].id);
     setShotPrice(newBottlePrice);
-    setShotStep("price");
+    setShotStep("variation");
     setOpenNewMode(false);
     setNewBottleProductId("");
     setNewBottlePrice("");
   };
 
-  /** Add a shot to the cart from an open bottle */
-  const addShot = () => {
+  /** Add a shot/variation to the cart from an open bottle */
+  const addShot = async (variation?: BottleVariation) => {
     const bottle = openedBottles.find((b) => b.id === shotBottleId);
-    const price  = parseFloat(shotPrice);
-    if (!bottle || isNaN(price) || price <= 0) {
-      toast.error("Select a bottle and set a price");
+    if (!bottle) { toast.error("Select a bottle"); return; }
+
+    const product = products.find((p) => p.id === bottle.product_id);
+    const capacity = product?.units_per_item ?? 0;
+    const vars = product?.bottle_variations ?? [];
+    const activeVar = variation ?? selectedVariation;
+
+    // Determine units this sale consumes
+    const unitsToConsume = activeVar ? activeVar.units_consumed : 1;
+    const price = activeVar ? activeVar.price : parseFloat(shotPrice);
+
+    if (isNaN(price) || price <= 0) { toast.error("Set a price"); return; }
+
+    const newUnitsConsumed = bottle.units_consumed + unitsToConsume;
+
+    // Guard: non-shot variations cannot exceed capacity
+    if (capacity > 0 && activeVar && activeVar.key !== "shot" && newUnitsConsumed > capacity) {
+      toast.error(`Not enough remaining — only ${capacity - bottle.units_consumed} units left`);
       return;
     }
-    const id = `shot-${bottle.id}-${Date.now()}`;
+
+    // Shot-only extras allowed over capacity — label as "Pouring from extras"
+    const isExtra = capacity > 0 && bottle.units_consumed >= capacity;
+    const itemName = isExtra
+      ? `Shot (extras): ${bottle.product_name}`
+      : activeVar
+      ? `${activeVar.label}: ${bottle.product_name}`
+      : `Shot: ${bottle.product_name}`;
+
+    const cartId = `shot-${bottle.id}-${Date.now()}`;
     setCart((c) => [...c, {
-      id,
-      name: `Shot: ${bottle.product_name}`,
+      id: cartId,
+      name: itemName,
       price,
       image_url: null,
       category: "liquor",
       qty: 1,
       _bottle_id: bottle.id,
-    } as CartItem & { _bottle_id: string }]);
+      _units_consumed: unitsToConsume,
+      _variation_key: activeVar?.key ?? "shot",
+    } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
+
+    // Update opened_bottle units_consumed + variation_counts locally (optimistic)
+    const newCounts = { ...bottle.variation_counts };
+    const vKey = activeVar?.key ?? "shot";
+    newCounts[vKey] = (newCounts[vKey] ?? 0) + 1;
+    setOpenedBottles((prev) => prev.map((b) =>
+      b.id === bottle.id
+        ? { ...b, units_consumed: newUnitsConsumed, variation_counts: newCounts }
+        : b
+    ));
+
+    // Persist to DB
+    supabase.from("opened_bottles").update({
+      units_consumed: newUnitsConsumed,
+      variation_counts: newCounts,
+    }).eq("id", bottle.id).then(({ error }) => {
+      if (error) console.error("Failed to update bottle tracking:", error.message);
+    });
+
     setShotModalOpen(false);
     setShotStep("select");
     setShotBottleId("");
     setShotPrice("");
+    setSelectedVariation(null);
   };
 
   // Scroll to selected bottle when entering price step
   useEffect(() => {
-    if (shotStep === "price" && selectedBottleRef.current) {
+    if (shotStep === "variation" && selectedBottleRef.current) {
       setTimeout(() => {
         selectedBottleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 100);
@@ -957,7 +1033,7 @@ export default function RegisterPage() {
                               )}
                               {/* Tap image area to sell a shot */}
                               <button
-                                onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("price"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
+                                onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
                                 className="aspect-[3/4] relative w-full active:scale-95 transition"
                                 style={{ background: "var(--gradient-card)" }}>
                                 {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
@@ -1017,7 +1093,7 @@ export default function RegisterPage() {
                             if (data?.[0]) {
                               setShotBottleId(data[0].id);
                               setShotPrice("");
-                              setShotStep("price");
+                              setShotStep("variation");
                               setShotModalOpen(false);
                               setShowNewBottleGrid(false);
                             }
@@ -1044,83 +1120,100 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Shot Step 2: Price entry — bottom-sheet modal ΓöÇΓöÇ */}
-      {shotStep === "price" && shotBottleId && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); }}>
-          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
-            style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">{t("add_shot", "🥃 Add Shot")}</span>
-              <button onClick={() => { setShotStep("select"); setShotBottleId(""); setShotPrice(""); setShotModalOpen(true); }}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
-                <X className="h-3.5 w-3.5" /> {t("change_btn", "Change")}
-              </button>
-            </div>
-
-            {/* 3-col card grid — all open bottles, selected one highlighted */}
-            <div className="px-4 pb-2">
-              <div className="grid grid-cols-3 gap-2">
-                {openedBottles.map((b) => {
-                  const bProd = products.find(p => p.id === b.product_id);
-                  const isSelected = b.id === shotBottleId;
-                  return (
-                    <div key={b.id} ref={isSelected ? selectedBottleRef : null}>
-                      <button
-                        onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); }}
-                        className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
-                        style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
-                        <div className="aspect-[3/4] relative w-full">
-                          {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                          <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
-                          {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
-                        </div>
-                        <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                          <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
-                          <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
-                        </div>
-                      </button>
+      {/* -- Shot Step 2: Variation picker -- */}
+      {shotStep === "variation" && shotBottleId && (() => {
+        const bottle = openedBottles.find((b) => b.id === shotBottleId);
+        const product = products.find((p) => p.id === bottle?.product_id);
+        const capacity = product?.units_per_item ?? 0;
+        const vars = product?.bottle_variations ?? [];
+        const consumed = bottle?.units_consumed ?? 0;
+        const remaining = capacity > 0 ? capacity - consumed : null;
+        const atCapacity = capacity > 0 && consumed >= capacity;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => { setShotStep("select"); setShotBottleId(""); setSelectedVariation(null); setShotModalOpen(true); }}>
+            <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+              style={{ background: "var(--gradient-card)" }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 pt-5 pb-2">
+                <div>
+                  <span className="font-black text-base">?? {bottle?.product_name}</span>
+                  {capacity > 0 && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="h-2 rounded-full bg-muted/40 overflow-hidden w-[100px]">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100,(consumed/capacity)*100)}%`, background: atCapacity ? "#f87171" : "var(--gradient-hero)" }} />
+                      </div>
+                      <span className="text-xs font-black" style={{ color: atCapacity ? "#f87171" : "#86efac" }}>
+                        {atCapacity ? "? Should be empty" : `${remaining} units left`}
+                      </span>
                     </div>
-                  );
-                })}
+                  )}
+                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold mt-0.5">Only extra shots allowed</p>}
+                </div>
+                <button onClick={() => { setShotStep("select"); setShotBottleId(""); setSelectedVariation(null); setShotModalOpen(true); }}
+                  className="text-xs text-muted-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
+                  <X className="h-3.5 w-3.5" /> Change
+                </button>
               </div>
-            </div>
-
-            {/* Numpad */}
-            <div className="px-4 pb-5 space-y-2 border-t border-border/40 pt-3">
-              <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-              <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
+              <div className="px-4 pb-5 pt-2 space-y-3">
+                {vars.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      {vars.map((v) => {
+                        const isShot = v.key === "shot";
+                        const wouldExceed = capacity > 0 && (consumed + v.units_consumed) > capacity;
+                        const isDisabled = !isShot && wouldExceed;
+                        const countSold = bottle?.variation_counts?.[v.key] ?? 0;
+                        const maxCan = capacity > 0 && v.units_consumed > 0 ? Math.floor((capacity - consumed) / v.units_consumed) : 999;
+                        return (
+                          <button key={v.key} type="button" disabled={isDisabled}
+                            onClick={() => addShot(v)}
+                            className="rounded-2xl p-3 flex flex-col items-center gap-1 border-2 transition active:scale-95 disabled:opacity-30"
+                            style={{ background: isShot && atCapacity ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.05)", borderColor: isDisabled ? "rgba(255,255,255,0.08)" : isShot && atCapacity ? "#fbbf24" : "var(--primary)" }}>
+                            <span className="font-black text-sm" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--foreground)" }}>
+                              {v.label}{isShot && atCapacity && <span className="text-amber-400 text-[10px] ml-1">extras</span>}
+                            </span>
+                            <span className="font-black text-lg" style={{ color: isDisabled ? "var(--muted-foreground)" : "#86efac" }}>${v.price.toFixed(2)}</span>
+                            <span className="text-[10px] text-muted-foreground">{v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}{!isDisabled && capacity > 0 ? ` � ${maxCan} left` : ""}</span>
+                            {countSold > 0 && <span className="text-[10px] font-bold" style={{ color: "var(--primary)" }}>{countSold} sold</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {capacity > 0 && !atCapacity && (
+                      <div className="rounded-xl border border-border/40 px-3 py-2 space-y-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Still available</p>
+                        {vars.filter((v) => capacity > 0 && v.units_consumed > 0 && Math.floor((capacity - consumed) / v.units_consumed) > 0).map((v) => (
+                          <p key={v.key} className="text-xs font-semibold" style={{ color: "#86efac" }}>
+                            {Math.floor((capacity - consumed) / v.units_consumed)}x {v.label}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
+                    <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                      <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {["1","2","3","4","5","6","7","8","9",".","0","\u232B"].map((k) => (
+                        <button key={k} type="button" onClick={() => { if(k==="\u232B"){setShotPrice(v=>v.slice(0,-1));return;} if(k==="."){if(!shotPrice.includes("."))setShotPrice(v=>v+".");return;} const d=shotPrice.indexOf(".");if(d!==-1&&shotPrice.length-d>2)return;setShotPrice(v=>v==="0"?k:v+k); }}
+                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k==="\u232B"?"bg-destructive/20 text-destructive":"bg-muted hover:bg-muted/70 text-foreground"}`}>{k}</button>
+                      ))}
+                    </div>
+                    <button onClick={() => addShot()} disabled={!shotPrice || parseFloat(shotPrice) <= 0}
+                      className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                      style={{ background: "var(--gradient-hero)" }}>+ Add to Order</button>
+                  </>
+                )}
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                  <button key={k} type="button"
-                    onClick={() => {
-                      if (k === "⌫") { setShotPrice(v => v.slice(0,-1)); return; }
-                      if (k === ".") { if (!shotPrice.includes(".")) setShotPrice(v => v + "."); return; }
-                      const dotIdx = shotPrice.indexOf(".");
-                      if (dotIdx !== -1 && shotPrice.length - dotIdx > 2) return;
-                      setShotPrice(v => v === "0" ? k : v + k);
-                    }}
-                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
-                  >{k}</button>
-                ))}
-              </div>
-              <button
-                onClick={addShot}
-                disabled={!shotPrice || parseFloat(shotPrice) <= 0}
-                className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                style={{ background: "var(--gradient-hero)" }}
-              >
-                + Add to Order
-              </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ΓöÇΓöÇ Mark Empty Confirm Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+        );
+      })()}
+      {/* Mark Empty Confirm Modal */}
       {markEmptyBottleId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
           <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
@@ -1375,30 +1468,45 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ΓöÇΓöÇ Pack Step 2: Price entry numpad ΓöÇΓöÇ */}
-      {packStep === "price" && packPackId && (
+      {/* ── Pack Step 2: Price + Qty entry ── */}
+      {packStep === "price" && packPackId && (() => {
+        const pack = openedPacks.find((p) => p.id === packPackId);
+        const product = products.find((p) => p.id === pack?.product_id);
+        const capacity = product?.units_per_item ?? 0;
+        const alreadySold = pack?.units_sold ?? 0;
+        const remaining = capacity > 0 ? capacity - alreadySold : null;
+        return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); }}>
           <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="font-black text-base">{t("add_to_order", "🚬 Add to Order")}</span>
+              <div>
+                <span className="font-black text-base">🚬 Add to Order</span>
+                {remaining !== null && (
+                  <p className="text-xs mt-0.5 font-semibold" style={{ color: remaining <= 3 ? "#fca5a5" : "#86efac" }}>
+                    {remaining} unit{remaining !== 1 ? "s" : ""} remaining
+                  </p>
+                )}
+              </div>
               <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
                 <X className="h-3.5 w-3.5" /> Change
               </button>
             </div>
 
-            {/* Pack grid — all open packs, selected highlighted with orange border + checkmark */}
+            {/* Pack grid */}
             <div className="px-4 pb-2">
               <div className="grid grid-cols-3 gap-2">
                 {openedPacks.map((pk) => {
                   const pkProd = products.find(p => p.id === pk.product_id);
+                  const pkCap = pkProd?.units_per_item ?? 0;
+                  const pkRemaining = pkCap > 0 ? pkCap - pk.units_sold : null;
                   const isSelected = pk.id === packPackId;
                   return (
                     <button key={pk.id}
-                      onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); }}
+                      onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackQty(1); }}
                       className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
                       style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
                       <div className="aspect-[3/4] relative w-full">
@@ -1410,7 +1518,9 @@ export default function RegisterPage() {
                       </div>
                       <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                         <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
-                        <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(pk.revenue).toFixed(2)} made</div>
+                        <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>
+                          {pkRemaining !== null ? `${pkRemaining} left` : `$${Number(pk.revenue).toFixed(2)}`}
+                        </div>
                       </div>
                     </button>
                   );
@@ -1418,52 +1528,138 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="px-4 pb-5 space-y-2 border-t border-border/40 pt-3">
-              {/* Retail Price */}
-              <label className="text-xs font-semibold text-muted-foreground block">Retail Price ($)</label>
-              <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
-              </div>
+            <div className="px-4 pb-5 space-y-3 border-t border-border/40 pt-3">
 
-              {/* Qty stepper — below price, full-height minus/plus buttons */}
-              <label className="text-xs font-semibold text-muted-foreground block">Qty</label>
-              <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
-                <button type="button"
-                  onClick={() => setPackQty(q => Math.max(1, q - 1))}
-                  className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0"
-                  style={{ background: "var(--muted)" }}>−</button>
-                <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
-                <button type="button"
-                  onClick={() => setPackQty(q => q + 1)}
-                  className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0"
-                  style={{ background: "var(--muted)" }}>+</button>
-              </div>
-
-              {/* Numpad */}
-              <div className="grid grid-cols-3 gap-1.5">
-                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                  <button key={k} type="button"
-                    onClick={() => {
-                      if (k === "⌫") { setPackPrice(v => v.slice(0,-1)); return; }
-                      if (k === ".") { if (!packPrice.includes(".")) setPackPrice(v => v + "."); return; }
-                      const dotIdx = packPrice.indexOf(".");
-                      if (dotIdx !== -1 && packPrice.length - dotIdx > 2) return;
-                      setPackPrice(v => v === "0" ? k : v + k);
-                    }}
-                    className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
-                  >{k}</button>
+              {/* Retail / Special toggle */}
+              <div className="grid grid-cols-2 gap-2">
+                {(["retail", "special"] as const).map((m) => (
+                  <button key={m} type="button"
+                    onClick={() => { setPackSellMode(m); setPackPrice(""); setSpecialPrice(""); setPackQty(1); setSpecialQty(2); }}
+                    className="h-10 rounded-xl font-black text-sm transition active:scale-95"
+                    style={packSellMode === m
+                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                      : { border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", color: "var(--muted-foreground)" }}>
+                    {m === "retail" ? "Retail (each)" : "🎁 Special Offer"}
+                  </button>
                 ))}
               </div>
-              <button onClick={addPackUnit}
-                disabled={!packPrice || parseFloat(packPrice) <= 0}
-                className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                style={{ background: "var(--gradient-hero)" }}>
-                + Add to Order
-              </button>
+
+              {packSellMode === "retail" ? (
+                <>
+                  <label className="text-xs font-semibold text-muted-foreground block">Price per unit ($)</label>
+                  <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                    <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
+                  </div>
+                  <label className="text-xs font-semibold text-muted-foreground block">
+                    Qty {remaining !== null && <span style={{ color: remaining <= 3 ? "#fca5a5" : "var(--muted-foreground)" }}>(max {remaining})</span>}
+                  </label>
+                  <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
+                    <button type="button" onClick={() => setPackQty(q => Math.max(1, q - 1))}
+                      className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0">−</button>
+                    <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
+                    <button type="button"
+                      onClick={() => setPackQty(q => remaining !== null ? Math.min(q + 1, remaining) : q + 1)}
+                      disabled={remaining !== null && packQty >= remaining}
+                      className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0 disabled:opacity-40">+</button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                      <button key={k} type="button"
+                        onClick={() => {
+                          if (k === "⌫") { setPackPrice(v => v.slice(0,-1)); return; }
+                          if (k === ".") { if (!packPrice.includes(".")) setPackPrice(v => v + "."); return; }
+                          const d = packPrice.indexOf(".");
+                          if (d !== -1 && packPrice.length - d > 2) return;
+                          setPackPrice(v => v === "0" ? k : v + k);
+                        }}
+                        className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                      >{k}</button>
+                    ))}
+                  </div>
+                  <button onClick={addPackUnit}
+                    disabled={!packPrice || parseFloat(packPrice) <= 0 || (remaining !== null && packQty > remaining)}
+                    className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    + Add {packQty > 1 ? `${packQty}x ` : ""}to Order {packPrice ? `· $${(parseFloat(packPrice) * packQty).toFixed(2)}` : ""}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Special offer: N units for $X */}
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">How many units in deal?</label>
+                    <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
+                      <button type="button" onClick={() => setSpecialQty(q => Math.max(2, q - 1))}
+                        className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0">−</button>
+                      <div className="flex-1 flex items-center justify-center font-black text-xl">{specialQty}</div>
+                      <button type="button"
+                        onClick={() => setSpecialQty(q => remaining !== null ? Math.min(q + 1, remaining) : q + 1)}
+                        disabled={remaining !== null && specialQty >= remaining}
+                        className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0 disabled:opacity-40">+</button>
+                    </div>
+                    {remaining !== null && specialQty > remaining && (
+                      <p className="text-xs text-red-400 mt-1">Only {remaining} unit{remaining !== 1 ? "s" : ""} remaining — reduce deal qty</p>
+                    )}
+                  </div>
+                  <label className="text-xs font-semibold text-muted-foreground block">Total deal price ($)</label>
+                  <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                    <span className={`text-2xl font-black ${specialPrice ? "text-foreground" : "text-muted-foreground"}`}>
+                      ${specialPrice || "0.00"}
+                      {specialPrice && specialQty > 0 && (
+                        <span className="text-sm font-semibold text-muted-foreground ml-2">
+                          (${(parseFloat(specialPrice) / specialQty).toFixed(2)} each)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                      <button key={k} type="button"
+                        onClick={() => {
+                          if (k === "⌫") { setSpecialPrice(v => v.slice(0,-1)); return; }
+                          if (k === ".") { if (!specialPrice.includes(".")) setSpecialPrice(v => v + "."); return; }
+                          const d = specialPrice.indexOf(".");
+                          if (d !== -1 && specialPrice.length - d > 2) return;
+                          setSpecialPrice(v => v === "0" ? k : v + k);
+                        }}
+                        className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                      >{k}</button>
+                    ))}
+                  </div>
+                  <button
+                    disabled={!specialPrice || parseFloat(specialPrice) <= 0 || (remaining !== null && specialQty > remaining)}
+                    onClick={() => {
+                      const pack = openedPacks.find((p) => p.id === packPackId);
+                      if (!pack || !specialPrice || parseFloat(specialPrice) <= 0) return;
+                      const cartId = `pack-${pack.id}-${Date.now()}`;
+                      setCart((c) => [...c, {
+                        id: cartId,
+                        name: `Special ${specialQty}x: ${pack.product_name}`,
+                        price: parseFloat(specialPrice),
+                        image_url: null, category: "cigarettes", qty: 1,
+                        _pack_id: pack.id,
+                        _pack_units: specialQty,
+                      } as CartItem & { _pack_id: string; _pack_units: number }]);
+                      setPackModalOpen(false); setPackStep("select"); setPackPackId("");
+                      setSpecialPrice(""); setPackQty(1); setSpecialQty(2); setPackSellMode("retail");
+                      // Auto-close if now sold out
+                      const product = products.find((p) => p.id === pack.product_id);
+                      const cap = product?.units_per_item ?? 0;
+                      if (cap > 0 && (pack.units_sold + specialQty) >= cap) {
+                        handleFinishPack(pack.id);
+                      }
+                    }}
+                    className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    🎁 Add {specialQty}x for ${specialPrice || "0.00"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ΓöÇΓöÇ Mark Pack Empty Confirm ΓöÇΓöÇ */}
       {markEmptyPackId && (
@@ -2246,3 +2442,4 @@ function CreditAlphaKeyboard({ value, onChange, onDone }: {
     </div>
   );
 }
+
