@@ -837,16 +837,20 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                     <div className="border-t border-border divide-y divide-border/50">
                       {mExpenses.map((e) => {
                         const raw = (e.description ?? "").replace(/\[Cashier:[^\]]+\]\s*$/, "").trim();
-                        const isBulk = raw.startsWith("Bulk Expense") || raw.startsWith("Non-Stock Expense");
+                        const isReverted = raw.startsWith("Reverted Stock Expense");
+                        const isBulk = raw.startsWith("Bulk Expense") || raw.startsWith("Non-Stock Expense") || isReverted;
                         if (isBulk) {
                           const lines = raw.split("\n").filter(Boolean);
                           const title = lines[0];
                           const itemLines = lines.slice(1);
+                          const amt = Number(e.amount);
+                          const isRefund = amt < 0;
                           return (
-                            <div key={e.id} className="px-4 py-3">
+                            <div key={e.id} className="px-4 py-3"
+                              style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-black text-sm">{title}</div>
+                                  <div className="font-black text-sm" style={isRefund ? { color: "#86efac" } : {}}>{title}</div>
                                   <div className="mt-1 space-y-0.5">
                                     {itemLines.map((line, li) => {
                                       const eqIdx = line.lastIndexOf(" = ");
@@ -856,7 +860,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                                       return (
                                         <div key={li} className="flex items-center justify-between gap-2">
                                           <span className="text-xs text-muted-foreground flex-1">{left}</span>
-                                          {right && <span className="text-xs font-black text-pink-400 shrink-0">{right}</span>}
+                                          {right && <span className="text-xs font-black shrink-0" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>{right}</span>}
                                         </div>
                                       );
                                     })}
@@ -865,20 +869,27 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                                     {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
                                   </div>
                                 </div>
-                                <div className="shrink-0 font-black text-sm text-pink-400">-${fmt(Number(e.amount))}</div>
+                                <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
+                                  {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
+                                </div>
                               </div>
                             </div>
                           );
                         }
+                        const amt = Number(e.amount);
+                        const isRefund = amt < 0;
                         return (
-                          <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                          <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3"
+                            style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-bold break-words">{raw || "Expense"}</div>
+                              <div className="text-sm font-bold break-words" style={isRefund ? { color: "#86efac" } : {}}>{raw || "Expense"}</div>
                               <div className="text-xs text-muted-foreground mt-0.5">
                                 {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
                               </div>
                             </div>
-                            <div className="shrink-0 font-black text-sm text-pink-400">-${fmt(Number(e.amount))}</div>
+                            <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
+                              {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
+                            </div>
                           </div>
                         );
                       })}
@@ -1729,30 +1740,32 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
                   <div className="border-t border-border divide-y divide-border/50">
                     {mExpenses.map((e) => {
                       const raw = e.description ?? "Stock expense";
-                      const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n") || raw.startsWith("Non-Stock Expense\n");
+                      const isReverted = raw.startsWith("Reverted Stock Expense");
+                      const isBulk = raw.startsWith("Bulk Stock Update\n") || raw.startsWith("Bulk Expense\n") || raw.startsWith("Non-Stock Expense\n") || isReverted;
 
                       if (isBulk) {
-                        // Split into title + item lines
                         const lines = raw.split("\n").filter(Boolean);
-                        const title = lines[0]; // e.g. "Non-Stock Expense" or "Bulk Stock Update"
+                        const title = lines[0];
                         const itemLines = lines.slice(1);
+                        const amt = Number(e.amount);
+                        const isRefund = amt < 0;
                         return (
-                          <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                          <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3"
+                            style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
                             <div className="flex-1 min-w-0">
-                              <div className="font-black text-sm sm:text-base lg:text-lg">{title}</div>
+                              <div className="font-black text-sm sm:text-base lg:text-lg"
+                                style={isRefund ? { color: "#86efac" } : {}}>{title}</div>
                               <div className="mt-1 space-y-0.5">
                                 {itemLines.map((line, i) => {
-                                  // "Name = $amount" format for non-stock, "Name ×qty @ $cp = $total" for stock
                                   const eqIdx = line.lastIndexOf(" = ");
                                   const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
                                   const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
-                                  // Strip [Cashier: ...] tag if present
                                   const cleanLeft = left.replace(/\s*\[Cashier:[^\]]+\]/, "").trim();
-                                  if (cleanLeft.startsWith("[Cashier:")) return null; // skip the cashier-badge-only line
+                                  if (cleanLeft.startsWith("[Cashier:")) return null;
                                   return (
                                     <div key={i} className="flex items-center justify-between gap-2">
                                       <span className="text-xs text-muted-foreground flex-1">{cleanLeft}</span>
-                                      {right && <span className="text-xs font-black text-red-400 shrink-0">{right}</span>}
+                                      {right && <span className="text-xs font-black shrink-0" style={{ color: isRefund ? "#86efac" : "#f87171" }}>{right}</span>}
                                     </div>
                                   );
                                 })}
@@ -1764,8 +1777,8 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
                                 })}
                               </div>
                             </div>
-                            <span className="font-black text-sm text-red-400 shrink-0">
-                              -${fmt(Number(e.amount))}
+                            <span className="font-black text-sm shrink-0" style={{ color: isRefund ? "#86efac" : "#f87171" }}>
+                              {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
                             </span>
                           </div>
                         );
@@ -1776,11 +1789,15 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
                       const hasDetail = atIdx !== -1;
                       const title = hasDetail ? raw.slice(0, atIdx).trim() : raw;
                       const detail = hasDetail ? raw.slice(atIdx + 1).trim() : null;
+                      const amt = Number(e.amount);
+                      const isRefund = amt < 0;
 
                       return (
-                        <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                        <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3"
+                          style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
                           <div className="flex-1 min-w-0">
-                            <div className="font-black text-sm sm:text-base lg:text-lg">{title}</div>
+                            <div className="font-black text-sm sm:text-base lg:text-lg"
+                              style={isRefund ? { color: "#86efac" } : {}}>{title}</div>
                             {detail && (
                               <div className="text-xs text-muted-foreground mt-0.5 break-words whitespace-normal">
                                 {detail}
@@ -1793,8 +1810,8 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
                               })}
                             </div>
                           </div>
-                          <span className="font-black text-sm text-red-400 shrink-0">
-                            -${fmt(Number(e.amount))}
+                          <span className="font-black text-sm shrink-0" style={{ color: isRefund ? "#86efac" : "#f87171" }}>
+                            {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
                           </span>
                         </div>
                       );
