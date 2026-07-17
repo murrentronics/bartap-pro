@@ -656,17 +656,7 @@ export default function SummaryPage() {
               </span>
             </div>
 
-            {/* Column labels */}
-            {items.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/60">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Item / Qty</span>
-                <div className="flex gap-4">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Cost</span>
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Income</span>
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest w-16 text-right">Profit</span>
-                </div>
-              </div>
-            )}
+            {/* Column labels — hidden, labels are in subtotals row */}
 
             {items.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-sm">
@@ -683,20 +673,20 @@ export default function SummaryPage() {
                         <p className="font-bold text-sm leading-tight flex-1">{it.name}</p>
                         <p className="text-xs text-muted-foreground shrink-0">{it.qty} sold</p>
                       </div>
-                      {/* Line 2: Cost | Income | Profit */}
-                      <div className="flex items-center justify-end gap-4">
-                        <div className="w-16 text-right">
-                          <p className="font-semibold text-xs" style={{ color: "#fca5a5" }}>
+                      {/* Line 2: Cost | Income | Profit — equal 3-column grid */}
+                      <div className="grid grid-cols-3 gap-2 w-full">
+                        <div className="text-right">
+                          <p className="font-semibold text-sm" style={{ color: "#fca5a5" }}>
                             {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
                           </p>
                         </div>
-                        <div className="w-16 text-right">
-                          <p className="font-semibold text-xs" style={{ color: "#86efac" }}>
+                        <div className="text-right">
+                          <p className="font-semibold text-sm" style={{ color: "#86efac" }}>
                             ${fmt(it.revenue)}
                           </p>
                         </div>
-                        <div className="w-16 text-right">
-                          <p className="font-black text-xs" style={{
+                        <div className="text-right">
+                          <p className="font-black text-sm" style={{
                             color: rowProfit > 0 ? "#86efac" : rowProfit < 0 ? "#fca5a5" : "var(--muted-foreground)"
                           }}>
                             {rowProfit >= 0 ? "+" : ""}${fmt(rowProfit)}
@@ -708,25 +698,25 @@ export default function SummaryPage() {
                 })}
 
                 {/* Subtotals row */}
-                <div className="px-4 py-3 space-y-1.5"
+                <div className="px-4 py-3"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-black text-sm">Subtotals</span>
-                  </div>
-                  <div className="flex items-center justify-end gap-4">
-                    <div className="w-16 text-right">
+                  <div className="grid grid-cols-3 gap-2 w-full">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Cost</p>
                       <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
                         {items.reduce((s,i)=>s+i.costTotal,0) > 0
                           ? `$${fmt(items.reduce((s,i)=>s+i.costTotal,0))}`
                           : "—"}
                       </span>
                     </div>
-                    <div className="w-16 text-right">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Income</p>
                       <span className="font-black text-sm" style={{ color: "#86efac" }}>
                         ${fmt(totalIncome)}
                       </span>
                     </div>
-                    <div className="w-16 text-right">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Profit</p>
                       <span className="font-black text-sm" style={{
                         color: (totalIncome - items.reduce((s,i)=>s+i.costTotal,0)) >= 0 ? "#86efac" : "#fca5a5"
                       }}>
