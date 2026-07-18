@@ -509,24 +509,22 @@ export default function RegisterPage() {
   const bufferUnitsConsumed = shotBuffer.reduce((s, b) => s + b.variation.units_consumed * b.qty, 0);
   const bufferTotal = shotBuffer.reduce((s, b) => s + b.variation.price * b.qty, 0);
 
-  const commitShotBuffer = async () => {
+  const commitShotBuffer = () => {
     const bottle = openedBottles.find((b) => b.id === shotBottleId);
     if (!bottle || shotBuffer.length === 0) return;
     const product = products.find((p) => p.id === bottle.product_id);
     const capacity = product?.units_per_item ?? 0;
     const newUnitsConsumed = bottle.units_consumed + bufferUnitsConsumed;
-
-    // Add each variation as a separate cart item
-    const newCounts = { ...bottle.variation_counts };
     const isAtCapacity = capacity > 0 && bottle.units_consumed >= capacity;
 
+    const newCounts = { ...bottle.variation_counts };
     for (const { variation, qty } of shotBuffer) {
       const isExtra = isAtCapacity;
       const itemName = isExtra
         ? `Shot (extras): ${bottle.product_name}`
         : `${variation.label}: ${bottle.product_name}`;
       setCart((c) => [...c, {
-        id: `shot-${bottle.id}-${variation.key}-${Date.now()}`,
+        id: `shot-${bottle.id}-${variation.key}-${Date.now()}-${Math.random()}`,
         name: itemName,
         price: variation.price,
         image_url: null,
@@ -539,18 +537,11 @@ export default function RegisterPage() {
       newCounts[variation.key] = (newCounts[variation.key] ?? 0) + qty;
     }
 
-    // Update local state
+    // Update local state only — DB write happens at order confirm
     setOpenedBottles((prev) => prev.map((b) =>
       b.id === bottle.id ? { ...b, units_consumed: newUnitsConsumed, variation_counts: newCounts } : b
     ));
 
-    // Persist to DB only on confirm
-    await supabase.from("opened_bottles").update({
-      units_consumed: newUnitsConsumed,
-      variation_counts: newCounts,
-    }).eq("id", bottle.id);
-
-    // Close and reset
     setShotModalOpen(false);
     setShotStep("select");
     setShotBottleId("");
@@ -1840,6 +1831,17 @@ function CashOverlay({
 
     // 3. Record shots against their opened bottles
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
+    // Group by bottle_id to update units_consumed + variation_counts once per bottle
+    const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+    for (const shot of shotItems) {
+      const bid = (shot as any)._bottle_id as string;
+      const vKey = (shot as any)._variation_key as string ?? "shot";
+      const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+      const existing = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
+      existing.units_consumed += unitsUsed;
+      existing.variation_counts[vKey] = (existing.variation_counts[vKey] ?? 0) + shot.qty;
+      bottleUpdates.set(bid, existing);
+    }
     for (const shot of shotItems) {
       const { error: shotErr } = await supabase.rpc("record_shot", {
         p_bottle_id: (shot as any)._bottle_id,
@@ -1847,6 +1849,19 @@ function CashOverlay({
         p_revenue:   shot.qty * Number(shot.price),
       });
       if (shotErr) console.warn("record_shot failed:", shotErr.message);
+    }
+    // Write variation tracking to DB
+    for (const [bottleId, update] of bottleUpdates) {
+      const bottle = openedBottles.find((b) => b.id === bottleId);
+      if (!bottle) continue;
+      const mergedCounts: Record<string, number> = { ...bottle.variation_counts };
+      for (const [k, v] of Object.entries(update.variation_counts)) {
+        mergedCounts[k] = (mergedCounts[k] ?? 0) + v;
+      }
+      await supabase.from("opened_bottles").update({
+        units_consumed: (bottle.units_consumed) + update.units_consumed,
+        variation_counts: mergedCounts,
+      }).eq("id", bottleId);
     }
 
     // 4. Record pack units against their opened packs (cigarettes / papers)
@@ -2108,6 +2123,17 @@ function CreditSaleOverlay({
   // of how the customer pays.
   const recordShotPackForCredit = async () => {
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
+    // Group by bottle for variation tracking
+    const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+    for (const shot of shotItems) {
+      const bid = (shot as any)._bottle_id as string;
+      const vKey = (shot as any)._variation_key as string ?? "shot";
+      const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+      const existing = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
+      existing.units_consumed += unitsUsed;
+      existing.variation_counts[vKey] = (existing.variation_counts[vKey] ?? 0) + shot.qty;
+      bottleUpdates.set(bid, existing);
+    }
     for (const shot of shotItems) {
       const { error } = await supabase.rpc("record_shot", {
         p_bottle_id: (shot as any)._bottle_id,
@@ -2115,6 +2141,18 @@ function CreditSaleOverlay({
         p_revenue:   shot.qty * Number(shot.price),
       });
       if (error) console.warn("record_shot (credit) failed:", error.message);
+    }
+    for (const [bottleId, update] of bottleUpdates) {
+      const bottle = openedBottles.find((b) => b.id === bottleId);
+      if (!bottle) continue;
+      const mergedCounts: Record<string, number> = { ...bottle.variation_counts };
+      for (const [k, v] of Object.entries(update.variation_counts)) {
+        mergedCounts[k] = (mergedCounts[k] ?? 0) + v;
+      }
+      await supabase.from("opened_bottles").update({
+        units_consumed: bottle.units_consumed + update.units_consumed,
+        variation_counts: mergedCounts,
+      }).eq("id", bottleId);
     }
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
