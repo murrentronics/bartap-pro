@@ -349,6 +349,10 @@ export default function RegisterPage() {
       await handleCancelPack(packId);
     }
     setPacksPendingClose([]);
+    for (const bottleId of bottlesPendingCancel) {
+      await handleCancelBottle(bottleId);
+    }
+    setBottlesPendingCancel([]);
   };
 
   const cigaretteProducts = useMemo(() => {
@@ -497,6 +501,8 @@ export default function RegisterPage() {
     setNewBottlePrice("");
   };
 
+  // Bottles opened mid-order that need reverting if order is cancelled
+  const [bottlesPendingCancel, setBottlesPendingCancel] = useState<string[]>([]);
   const [shotBuffer, setShotBuffer] = useState<Array<{ variation: BottleVariation; qty: number }>>([]);
 
   /** Add a shot/variation to the cart from an open bottle */
@@ -963,8 +969,28 @@ export default function RegisterPage() {
           onClearCart={() => { setCart([]); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
-          onSuccess={(paidAmt, changeAmt) => {
+          onSuccess={async (paidAmt, changeAmt) => {
+            // Write bottle variation tracking (needs openedBottles state — not available in CashOverlay)
+            const shotItems = cart.filter((c) => (c as any)._bottle_id);
+            const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+            for (const shot of shotItems) {
+              const bid = (shot as any)._bottle_id as string;
+              const vKey = (shot as any)._variation_key as string ?? "shot";
+              const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+              const ex = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
+              ex.units_consumed += unitsUsed;
+              ex.variation_counts[vKey] = (ex.variation_counts[vKey] ?? 0) + shot.qty;
+              bottleUpdates.set(bid, ex);
+            }
+            for (const [bottleId, update] of bottleUpdates) {
+              const bottle = openedBottles.find((b) => b.id === bottleId);
+              if (!bottle) continue;
+              const merged: Record<string, number> = { ...bottle.variation_counts };
+              for (const [k, v] of Object.entries(update.variation_counts)) merged[k] = (merged[k] ?? 0) + v;
+              await supabase.from("opened_bottles").update({ units_consumed: bottle.units_consumed + update.units_consumed, variation_counts: merged }).eq("id", bottleId);
+            }
             closeFullPacksAfterOrder(cart);
+            setBottlesPendingCancel([]);
             setCart([]);
             setCashOpen(false);
             refreshProfile();
@@ -984,8 +1010,28 @@ export default function RegisterPage() {
           onClearCart={() => { setCart([]); revertPendingPacks(); }}
           onClose={() => { setCreditOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
-          onSuccess={() => {
+          onSuccess={async () => {
+            // Bottle variation tracking (needs openedBottles — not in CreditSaleOverlay scope)
+            const shotItems = cart.filter((c) => (c as any)._bottle_id);
+            const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+            for (const shot of shotItems) {
+              const bid = (shot as any)._bottle_id as string;
+              const vKey = (shot as any)._variation_key as string ?? "shot";
+              const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+              const ex = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
+              ex.units_consumed += unitsUsed;
+              ex.variation_counts[vKey] = (ex.variation_counts[vKey] ?? 0) + shot.qty;
+              bottleUpdates.set(bid, ex);
+            }
+            for (const [bottleId, update] of bottleUpdates) {
+              const bottle = openedBottles.find((b) => b.id === bottleId);
+              if (!bottle) continue;
+              const merged: Record<string, number> = { ...bottle.variation_counts };
+              for (const [k, v] of Object.entries(update.variation_counts)) merged[k] = (merged[k] ?? 0) + v;
+              await supabase.from("opened_bottles").update({ units_consumed: bottle.units_consumed + update.units_consumed, variation_counts: merged }).eq("id", bottleId);
+            }
             closeFullPacksAfterOrder(cart);
+            setBottlesPendingCancel([]);
             setCart([]);
             setCreditOpen(false);
             refreshProfile();
@@ -1150,8 +1196,42 @@ export default function RegisterPage() {
             <div className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl overflow-y-auto max-h-[85dvh]"
               style={{ background: "var(--gradient-card)" }}
               onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
-              <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+              {/* ── Opened bottles grid — tap to switch active bottle ── */}
+              <div className="px-4 pb-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {openedBottles.map((b) => {
+                    const bProd = products.find(p => p.id === b.product_id);
+                    const bCap = bProd?.units_per_item ?? 0;
+                    const bCartUnits = cart.filter((c) => (c as any)._bottle_id === b.id).reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
+                    const bConsumed = b.units_consumed + bCartUnits;
+                    const bAtCap = bCap > 0 && bConsumed >= bCap;
+                    const isSelected = b.id === shotBottleId;
+                    return (
+                      <div key={b.id} ref={isSelected ? selectedBottleRef : null}>
+                        <button type="button"
+                          onClick={() => { setShotBottleId(b.id); setShotBuffer([]); }}
+                          className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
+                          style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
+                          <div className="aspect-[3/4] relative w-full">
+                            {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
+                            {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
+                            {bAtCap && !isSelected && <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(239,68,68,0.5)" }}><span className="text-[9px] font-black text-white uppercase">Empty</span></div>}
+                          </div>
+                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
+                            <div className="font-black text-xs mt-0.5" style={{ color: bAtCap ? "#fca5a5" : "#86efac" }}>
+                              {bCap > 0 ? `${Math.max(0, bCap - bConsumed)} left` : `$${Number(b.revenue).toFixed(2)}`}
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Header — bottle name + capacity bar + cancel */}
+              <div className="flex items-center gap-3 px-4 pt-3 pb-2">
                 <div className="min-w-0 flex-1">
                   <span className="font-black text-base">🥃 {bottle?.product_name}</span>
                   {capacity > 0 && (
@@ -1214,7 +1294,7 @@ export default function RegisterPage() {
                               </span>
                               <span className="text-[10px] text-muted-foreground">
                                 {v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}
-                                {!isDisabled && capacity > 0 && maxCan > 0 ? ` · ${maxCan} avail` : ""}
+                                {!isDisabled && capacity > 0 && maxCan > 0 ? ` - ${maxCan} avail` : ""}
                               </span>
                               {countSold > 0 && (
                                 <span className="text-[10px]" style={{ color: "var(--primary)" }}>{countSold} sold</span>
@@ -1248,6 +1328,34 @@ export default function RegisterPage() {
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* Open New Bottle — shown when bottle is at/near capacity */}
+                    {capacity > 0 && vars.some((v) => v.key !== "shot" && (effectiveConsumed + v.units_consumed) > capacity) && (
+                      <button type="button" disabled={bottleBusy}
+                        onClick={async () => {
+                          if (!product || !bottle) return;
+                          setBottleBusy(true);
+                          const { error } = await supabase.rpc("open_bottle", {
+                            p_owner_id: ownerIdRef.current, p_product_id: product.id, p_shot_price: 0,
+                          });
+                          setBottleBusy(false);
+                          if (error) { toast.error(error.message); return; }
+                          await fetchOpenedBottles();
+                          await fetchProducts();
+                          const { data } = await supabase.from("opened_bottles").select("id")
+                            .eq("owner_id", ownerIdRef.current!).eq("product_id", product.id)
+                            .eq("status", "open").order("opened_at", { ascending: false }).limit(1);
+                          if (data?.[0]) {
+                            setBottlesPendingCancel((prev) => [...prev, data[0].id]);
+                            setShotBottleId(data[0].id);
+                            setShotBuffer([]);
+                          }
+                        }}
+                        className="w-full h-10 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
+                        style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
+                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "🍾 Open New Bottle"}
+                      </button>
                     )}
                   </>
                 ) : (
@@ -1290,7 +1398,7 @@ export default function RegisterPage() {
                     className="w-full h-12 rounded-xl font-black text-base text-primary-foreground active:scale-[0.98] transition flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-hero)" }}>
                     + Add to Order
-                    {bufferTotal > 0 && <span className="font-semibold text-sm opacity-80">· ${bufferTotal.toFixed(2)}</span>}
+                    {bufferTotal > 0 && <span className="font-semibold text-sm opacity-80">— ${bufferTotal.toFixed(2)}</span>}
                   </button>
                 </div>
               )}
@@ -1682,7 +1790,7 @@ export default function RegisterPage() {
                     style={specialInCart
                       ? { background: "rgba(134,239,172,0.12)", borderColor: "#86efac", color: "#86efac" }
                       : { background: "rgba(251,191,36,0.08)", borderColor: "#fbbf24", color: "#fbbf24" }}>
-                    {specialInCart ? `✓ ${special.label} added` : `🎁 ${special.label} · $${special.price.toFixed(2)}`}
+                    {specialInCart ? `\u2713 ${special.label} added` : `\uD83C\uDF81 ${special.label} - $${special.price.toFixed(2)}`}
                   </button>
                 );
               })()}
@@ -1698,7 +1806,7 @@ export default function RegisterPage() {
                     className="w-full h-12 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-hero)" }}>
                     + Add {packQty > 1 ? `${packQty}x ` : ""}to Order
-                    {unitPrice > 0 && <span className="opacity-80 text-sm">· ${(unitPrice * packQty).toFixed(2)}</span>}
+                    {unitPrice > 0 && <span className="opacity-80 text-sm">- ${(unitPrice * packQty).toFixed(2)}</span>}
                   </button>
                 );
               })()}
@@ -1842,17 +1950,6 @@ function CashOverlay({
 
     // 3. Record shots against their opened bottles
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
-    // Group by bottle_id to update units_consumed + variation_counts once per bottle
-    const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
-    for (const shot of shotItems) {
-      const bid = (shot as any)._bottle_id as string;
-      const vKey = (shot as any)._variation_key as string ?? "shot";
-      const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
-      const existing = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
-      existing.units_consumed += unitsUsed;
-      existing.variation_counts[vKey] = (existing.variation_counts[vKey] ?? 0) + shot.qty;
-      bottleUpdates.set(bid, existing);
-    }
     for (const shot of shotItems) {
       const { error: shotErr } = await supabase.rpc("record_shot", {
         p_bottle_id: (shot as any)._bottle_id,
@@ -1861,26 +1958,13 @@ function CashOverlay({
       });
       if (shotErr) console.warn("record_shot failed:", shotErr.message);
     }
-    // Write variation tracking to DB
-    for (const [bottleId, update] of bottleUpdates) {
-      const bottle = openedBottles.find((b) => b.id === bottleId);
-      if (!bottle) continue;
-      const mergedCounts: Record<string, number> = { ...bottle.variation_counts };
-      for (const [k, v] of Object.entries(update.variation_counts)) {
-        mergedCounts[k] = (mergedCounts[k] ?? 0) + v;
-      }
-      await supabase.from("opened_bottles").update({
-        units_consumed: (bottle.units_consumed) + update.units_consumed,
-        variation_counts: mergedCounts,
-      }).eq("id", bottleId);
-    }
     // 4. Record pack units against their opened packs (cigarettes / papers)
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
       const { error: packErr } = await supabase.rpc("record_pack_unit", {
         p_pack_id: (unit as any)._pack_id,
-        p_qty:     unit.qty,
-        p_revenue: unit.qty * Number(unit.price),
+        p_qty:     (unit as any)._pack_units ?? unit.qty,
+        p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
       });
       if (packErr) console.warn("record_pack_unit failed:", packErr.message);
     }
@@ -2133,17 +2217,6 @@ function CreditSaleOverlay({
   // of how the customer pays.
   const recordShotPackForCredit = async () => {
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
-    // Group by bottle for variation tracking
-    const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
-    for (const shot of shotItems) {
-      const bid = (shot as any)._bottle_id as string;
-      const vKey = (shot as any)._variation_key as string ?? "shot";
-      const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
-      const existing = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
-      existing.units_consumed += unitsUsed;
-      existing.variation_counts[vKey] = (existing.variation_counts[vKey] ?? 0) + shot.qty;
-      bottleUpdates.set(bid, existing);
-    }
     for (const shot of shotItems) {
       const { error } = await supabase.rpc("record_shot", {
         p_bottle_id: (shot as any)._bottle_id,
@@ -2152,24 +2225,12 @@ function CreditSaleOverlay({
       });
       if (error) console.warn("record_shot (credit) failed:", error.message);
     }
-    for (const [bottleId, update] of bottleUpdates) {
-      const bottle = openedBottles.find((b) => b.id === bottleId);
-      if (!bottle) continue;
-      const mergedCounts: Record<string, number> = { ...bottle.variation_counts };
-      for (const [k, v] of Object.entries(update.variation_counts)) {
-        mergedCounts[k] = (mergedCounts[k] ?? 0) + v;
-      }
-      await supabase.from("opened_bottles").update({
-        units_consumed: bottle.units_consumed + update.units_consumed,
-        variation_counts: mergedCounts,
-      }).eq("id", bottleId);
-    }
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
       const { error } = await supabase.rpc("record_pack_unit", {
         p_pack_id: (unit as any)._pack_id,
-        p_qty:     unit.qty,
-        p_revenue: unit.qty * Number(unit.price),
+        p_qty:     (unit as any)._pack_units ?? unit.qty,
+        p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
       });
       if (error) console.warn("record_pack_unit (credit) failed:", error.message);
     }
