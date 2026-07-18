@@ -1467,13 +1467,39 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  // which field the numpad is for: "selling" | "cost" | "units" | "shotprice" | null
-  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | "units" | "shotprice" | null>(null);
+  // which field the numpad is for: "selling" | "cost" | "units" | "shotprice" | "var_{i}_shots" | "var_{i}_price" | null
+  const [activeNumpad, setActiveNumpad] = useState<string | null>(null);
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
+  // Scroll the numpad into view when it opens
+  const numpadRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeNumpad && numpadRef.current) {
+      setTimeout(() => numpadRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  }, [activeNumpad]);
+
+  // Inline numpad rendered directly under its field
+  const InlineNumpad = ({ forField }: { forField: string }) => {
+    if (activeNumpad !== forField) return null;
+    return (
+      <div ref={numpadRef} className="grid grid-cols-3 gap-1.5 mt-2">
+        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => handleNumpad(k)}
+            className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
+              k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
+            }`}
+          >{k}</button>
+        ))}
+      </div>
+    );
+  };
 
   const onPick = (f: File | undefined | null) => {
     if (!f) return;
@@ -1495,6 +1521,37 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
 
   const handleNumpad = (k: string) => {
+    // Handle variation fields: "var_{i}_shots" or "var_{i}_price"
+    if (activeNumpad?.startsWith("var_")) {
+      const parts = activeNumpad.split("_"); // ["var", i, "shots"|"price"]
+      const idx = parseInt(parts[1]);
+      const field = parts[2] as "shots" | "price";
+      const isInt = field === "shots";
+      setBottleVariations(bv => bv.map((x, j) => {
+        if (j !== idx) return x;
+        const cur = isInt ? String(x.units_consumed || "") : String(x.price || "");
+        let next: string;
+        if (k === "⌫") {
+          next = cur.slice(0, -1);
+        } else if (!isInt && k === ".") {
+          next = cur.includes(".") ? cur : cur + ".";
+        } else {
+          // Block extra decimal places
+          if (!isInt) {
+            const dotIdx = cur.indexOf(".");
+            if (dotIdx !== -1 && cur.length - dotIdx > 2) return x;
+          } else if (k === ".") {
+            return x; // no decimals for shot count
+          }
+          next = cur === "0" ? k : cur + k;
+        }
+        return isInt
+          ? { ...x, units_consumed: parseInt(next) || 0 }
+          : { ...x, price: parseFloat(next) || 0 };
+      }));
+      return;
+    }
+
     const setter = activeNumpad === "cost" ? setCostPrice
       : activeNumpad === "units" ? setUnitsPerItem
       : activeNumpad === "shotprice" ? setShotPricePerUnit
@@ -1682,31 +1739,46 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Heineken 330ml" className="h-9" />
             </div>
 
-            {/* Category + Cost Price side by side */}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Label className="text-xs">Category</Label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <Label className="text-xs">Cost Price</Label>
-                <div
-                  className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                  onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
-                >
-                  <span className={`text-base font-black ${activeNumpad === "cost" ? "text-primary" : "text-muted-foreground"}`}>
-                    ${costPrice || "0.00"}
-                  </span>
+            {/* Category + Cost Price + Bottle Price */}
+            <div className="space-y-0">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label className="text-xs">Category</Label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs">Cost Price</Label>
+                  <div
+                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                    onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
+                  >
+                    <span className={`text-base font-black ${activeNumpad === "cost" ? "text-primary" : "text-muted-foreground"}`}>
+                      ${costPrice || "0.00"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs">Bottle Price</Label>
+                  <div
+                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                    onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}
+                  >
+                    <span className={`text-base font-black ${activeNumpad === "selling" ? "text-primary" : "text-muted-foreground"}`}>
+                      ${price || "0.00"}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <InlineNumpad forField="cost" />
+              <InlineNumpad forField="selling" />
             </div>
 
             {/* Shots per Bottle + Shot Price — side by side, liquor only */}
@@ -1736,6 +1808,8 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                     </div>
                   </div>
                 </div>
+                <InlineNumpad forField="units" />
+                <InlineNumpad forField="shotprice" />
                 {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
                   <p className="text-xs" style={{ color: "var(--primary)" }}>
                     Cost per shot: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
@@ -1831,19 +1905,27 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-0.5">Shots used</p>
-                        <input type="number" min="1" step="1"
-                          value={v.units_consumed || ""}
-                          onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, units_consumed: parseInt(e.target.value) || 0 } : x))}
-                          className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
-                          placeholder="e.g. 8" />
+                        <div
+                          className="h-8 rounded-lg border border-border bg-muted/30 flex items-center px-2 cursor-pointer active:bg-muted/50 transition"
+                          onClick={() => setActiveNumpad(activeNumpad === `var_${i}_shots` ? null : `var_${i}_shots`)}
+                        >
+                          <span className={`text-xs font-black ${activeNumpad === `var_${i}_shots` ? "text-primary" : "text-muted-foreground"}`}>
+                            {v.units_consumed || "0"}
+                          </span>
+                        </div>
+                        <InlineNumpad forField={`var_${i}_shots`} />
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-0.5">Price ($)</p>
-                        <input type="number" min="0" step="0.01"
-                          value={v.price || ""}
-                          onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, price: parseFloat(e.target.value) || 0 } : x))}
-                          className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
-                          placeholder="e.g. 100.00" />
+                        <div
+                          className="h-8 rounded-lg border border-border bg-muted/30 flex items-center px-2 cursor-pointer active:bg-muted/50 transition"
+                          onClick={() => setActiveNumpad(activeNumpad === `var_${i}_price` ? null : `var_${i}_price`)}
+                        >
+                          <span className={`text-xs font-black ${activeNumpad === `var_${i}_price` ? "text-primary" : "text-muted-foreground"}`}>
+                            ${v.price ? v.price.toFixed(2) : "0.00"}
+                          </span>
+                        </div>
+                        <InlineNumpad forField={`var_${i}_price`} />
                       </div>
                     </div>
                     {v.units_consumed > 0 && parseInt(unitsPerItem) > 0 && (
@@ -1862,35 +1944,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                 )}
               </div>
             )}
-
-            {/* Selling Price */}
-            <div>
-              <Label className="text-xs">Selling Price</Label>
-              <div
-                className="h-10 rounded-lg border border-border bg-muted/30 flex items-center px-3 mb-2 cursor-pointer active:bg-muted/50 transition"
-                onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}
-              >
-                <span className={`text-lg font-black ${activeNumpad === "selling" ? "text-primary" : "text-muted-foreground"}`}>
-                  ${price || "0.00"}
-                </span>
-              </div>
-              {activeNumpad !== null && (
-                <div className="space-y-1">
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => handleNumpad(k)}
-                        className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
-                          k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"
-                        }`}
-                      >{k}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>

@@ -406,7 +406,9 @@ export default function RegisterPage() {
       image_url: null, category: "cigarettes", qty: qtyToSell,
       _pack_id: pack.id,
     } as CartItem & { _pack_id: string }]);
-    setPackModalOpen(false); setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackSellMode("retail");
+    // Keep modal open so cashier can continue tapping — reset qty only
+    setPackQty(1);
+    setPackSellMode("retail");
   };
 
   const handleFinishPack = async (packId: string) => {
@@ -432,14 +434,18 @@ export default function RegisterPage() {
 
   const liquorProducts = useMemo(
     () => {
-      const openedProductIds = new Set(openedBottles.map(b => b.product_id));
+      // Count how many bottles of each product are already open
+      const openedBottleCounts = new Map<string, number>();
+      for (const b of openedBottles) {
+        openedBottleCounts.set(b.product_id, (openedBottleCounts.get(b.product_id) ?? 0) + 1);
+      }
       return products.filter((p) => {
         if ((p.category || "beers") !== "liquor") return false;
-        if (openedProductIds.has(p.id)) return false;
-        // Subtract how many are already in the cart so we don't show
-        // a bottle that's already been added as a whole-bottle sale
+        // Subtract how many are already in the cart as whole-bottle sales
         const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
-        return (p.stock_qty ?? 0) - inCart > 0;
+        // Subtract open bottles from available stock so we don't open more than we have
+        const openedCount = openedBottleCounts.get(p.id) ?? 0;
+        return (p.stock_qty ?? 0) - inCart - openedCount > 0;
       });
     },
     [products, openedBottles, cart]
@@ -1087,14 +1093,29 @@ export default function RegisterPage() {
                                   ✗ Cancel
                                 </button>
                               )}
-                              {/* Tap image area to sell a shot */}
-                              <button
-                                onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
-                                className="aspect-[3/4] relative w-full active:scale-95 transition"
-                                style={{ background: "var(--gradient-card)" }}>
-                                {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                                <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                              </button>
+                              {/* Tap image area to sell a shot — blocked if owner hasn't set up shot prices */}
+                              {(() => {
+                                const hasShots = (prod?.bottle_variations ?? []).length > 0;
+                                return hasShots ? (
+                                  <button
+                                    onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
+                                    className="aspect-[3/4] relative w-full active:scale-95 transition"
+                                    style={{ background: "var(--gradient-card)" }}>
+                                    {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
+                                  </button>
+                                ) : (
+                                  <div
+                                    className="aspect-[3/4] relative w-full flex items-center justify-center"
+                                    style={{ background: "var(--gradient-card)" }}>
+                                    {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 px-2 text-center">
+                                      <span className="text-lg">🔒</span>
+                                      <span className="text-[9px] font-black text-white/80 leading-tight">No shots set up by owner</span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                               <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                                 <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
                                 <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
@@ -1147,10 +1168,10 @@ export default function RegisterPage() {
                               .order("opened_at", { ascending: false }).limit(1);
                             setBottleBusy(false);
                             if (data?.[0]) {
-                              setShotBottleId(data[0].id);
-                              setShotPrice("");
-                              setShotStep("variation");
-                              setShotModalOpen(false);
+                              // Track for revert if order is cancelled
+                              setBottlesPendingCancel((prev) => [...prev, data[0].id]);
+                              // Go back to select step so cashier taps the newly opened bottle
+                              // — do NOT replace the previously selected bottle
                               setShowNewBottleGrid(false);
                             }
                           }}
@@ -1347,9 +1368,18 @@ export default function RegisterPage() {
                             .eq("owner_id", ownerIdRef.current!).eq("product_id", product.id)
                             .eq("status", "open").order("opened_at", { ascending: false }).limit(1);
                           if (data?.[0]) {
+                            // Track new bottle for revert if order is cancelled
                             setBottlesPendingCancel((prev) => [...prev, data[0].id]);
-                            setShotBottleId(data[0].id);
-                            setShotBuffer([]);
+                            // Commit any buffered shots from the current bottle first
+                            if (shotBuffer.length > 0) {
+                              await commitShotBuffer();
+                            } else {
+                              // No buffer — go to select step so cashier taps the new bottle
+                              setShotStep("select");
+                              setShotModalOpen(true);
+                              setShowNewBottleGrid(false);
+                            }
+                            // Do NOT auto-select the new bottle — cashier must tap it explicitly
                           }
                         }}
                         className="w-full h-10 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
@@ -1359,42 +1389,21 @@ export default function RegisterPage() {
                     )}
                   </>
                 ) : (
-                  <>
-                    <label className="text-xs font-semibold text-muted-foreground block">Shot Price ($)</label>
-                    <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                      <span className={`text-2xl font-black ${shotPrice ? "text-foreground" : "text-muted-foreground"}`}>${shotPrice || "0.00"}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {["1","2","3","4","5","6","7","8","9",".","0","\u232B"].map((k) => (
-                        <button key={k} type="button"
-                          onClick={() => { if(k==="\u232B"){setShotPrice(v=>v.slice(0,-1));return;} if(k==="."){if(!shotPrice.includes("."))setShotPrice(v=>v+".");return;} const d=shotPrice.indexOf(".");if(d!==-1&&shotPrice.length-d>2)return;setShotPrice(v=>v==="0"?k:v+k); }}
-                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k==="\u232B"?"bg-destructive/20 text-destructive":"bg-muted hover:bg-muted/70 text-foreground"}`}>{k}
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <div className="rounded-2xl border border-border/40 px-4 py-6 flex flex-col items-center gap-2 text-center"
+                    style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <span className="text-3xl">🔒</span>
+                    <p className="font-black text-sm text-foreground">Shots not set up</p>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      The owner hasn't configured shot prices for this product. Ask the owner to add shot pricing in Product Settings.
+                    </p>
+                  </div>
                 )}
               </div>
 
-              {(shotBuffer.length > 0 || (vars.length === 0 && shotPrice && parseFloat(shotPrice) > 0)) && (
+              {shotBuffer.length > 0 && (
                 <div className="px-4 pb-5 pt-1">
                   <button type="button"
-                    onClick={async () => {
-                      if (vars.length > 0) {
-                        await commitShotBuffer();
-                      } else {
-                        const b = openedBottles.find((x) => x.id === shotBottleId);
-                        if (!b || !shotPrice) return;
-                        const isExtra = capacity > 0 && b.units_consumed >= capacity;
-                        setCart((c) => [...c, {
-                          id: `shot-${b.id}-${Date.now()}`,
-                          name: isExtra ? `Shot (extras): ${b.product_name}` : `Shot: ${b.product_name}`,
-                          price: parseFloat(shotPrice), image_url: null, category: "liquor", qty: 1,
-                          _bottle_id: b.id, _units_consumed: 1, _variation_key: "shot",
-                        } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
-                        cancelShotBuffer();
-                      }
-                    }}
+                    onClick={async () => { await commitShotBuffer(); }}
                     className="w-full h-12 rounded-xl font-black text-base text-primary-foreground active:scale-[0.98] transition flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-hero)" }}>
                     + Add to Order
@@ -1758,44 +1767,28 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Action area — special card (if set) + Add to Order */}
+            {/* Action area — Add to Order + Open New Pack when full */}
             <div className="px-4 pb-4 pt-1 space-y-2">
-              {/* Special offer card — only shown if owner configured one */}
-              {packPackId && (() => {
-                const pack = openedPacks.find((p) => p.id === packPackId);
-                const prod = products.find((p) => p.id === pack?.product_id);
-                const special = prod?.bottle_variations?.find((v) => v.key === "special");
-                if (!special) return null;
-                const cartSpecialQty = cart
-                  .filter((c) => (c as any)._pack_id === packPackId && (c as any)._pack_units > 1)
-                  .reduce((s, c) => s + ((c as any)._pack_units ?? 0), 0);
-                const pkCap = prod?.units_per_item ?? 0;
-                const alreadySold = pack?.units_sold ?? 0;
-                const cartRetailQty = cart.filter((c) => (c as any)._pack_id === packPackId).reduce((s, c) => s + c.qty, 0);
-                const effectiveUsed = alreadySold + cartRetailQty + cartSpecialQty;
-                const canAddSpecial = pkCap === 0 || (effectiveUsed + special.units_consumed) <= pkCap;
-                const specialInCart = cart.some((c) => (c as any)._pack_id === packPackId && (c as any)._pack_units > 1);
+              {/* Running cart summary for this pack session */}
+              {(() => {
+                const sessionItems = cart.filter((c) => (c as any)._pack_id);
+                if (sessionItems.length === 0) return null;
+                const sessionTotal = sessionItems.reduce((s, c) => s + c.price * c.qty, 0);
+                const sessionQty = sessionItems.reduce((s, c) => s + c.qty, 0);
                 return (
-                  <button type="button" disabled={!canAddSpecial || specialInCart}
-                    onClick={() => {
-                      if (!pack || !special) return;
-                      setCart((c) => [...c, {
-                        id: `pack-${pack.id}-special-${Date.now()}`,
-                        name: `${special.label}: ${pack.product_name}`,
-                        price: special.price, image_url: null, category: "cigarettes", qty: 1,
-                        _pack_id: pack.id, _pack_units: special.units_consumed,
-                      } as CartItem & { _pack_id: string; _pack_units: number }]);
-                    }}
-                    className="w-full h-11 rounded-xl font-black text-sm flex items-center justify-center gap-2 border-2 transition active:scale-95 disabled:opacity-30"
-                    style={specialInCart
-                      ? { background: "rgba(134,239,172,0.12)", borderColor: "#86efac", color: "#86efac" }
-                      : { background: "rgba(251,191,36,0.08)", borderColor: "#fbbf24", color: "#fbbf24" }}>
-                    {specialInCart ? `\u2713 ${special.label} added` : `\uD83C\uDF81 ${special.label} - $${special.price.toFixed(2)}`}
-                  </button>
+                  <div className="rounded-xl px-3 py-2 flex items-center justify-between"
+                    style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", border: "1px solid rgba(var(--primary-rgb,251 146 60)/0.25)" }}>
+                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
+                      {sessionQty} unit{sessionQty !== 1 ? "s" : ""} added
+                    </span>
+                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
+                      ${sessionTotal.toFixed(2)}
+                    </span>
+                  </div>
                 );
               })()}
 
-              {/* Add to Order */}
+              {/* Add to Order — only shown when a pack is selected and qty > 0 */}
               {packPackId && packQty > 0 && (() => {
                 const pack = openedPacks.find((p) => p.id === packPackId);
                 const prod = products.find((p) => p.id === pack?.product_id);
@@ -1806,12 +1799,12 @@ export default function RegisterPage() {
                     className="w-full h-12 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
                     style={{ background: "var(--gradient-hero)" }}>
                     + Add {packQty > 1 ? `${packQty}x ` : ""}to Order
-                    {unitPrice > 0 && <span className="opacity-80 text-sm">- ${(unitPrice * packQty).toFixed(2)}</span>}
+                    {unitPrice > 0 && <span className="opacity-80 text-sm">— ${(unitPrice * packQty).toFixed(2)}</span>}
                   </button>
                 );
               })()}
 
-              {/* Open new pack — shown when current pack is maxed out in cart */}
+              {/* Open New Pack — shown when current pack is tapped out in cart */}
               {packPackId && (() => {
                 const pack = openedPacks.find((p) => p.id === packPackId);
                 const prod = products.find((p) => p.id === pack?.product_id);
@@ -1821,18 +1814,18 @@ export default function RegisterPage() {
                 const isFull = pkCap > 0 && (alreadySold + cartQty) >= pkCap;
                 if (!isFull) return null;
                 return (
-                  <button type="button" disabled={bottleBusy}
+                  <button type="button" disabled={packBusy}
                     onClick={async () => {
                       if (!pack || !prod) return;
-                      setBottleBusy(true);
+                      setPackBusy(true);
                       const { error } = await supabase.rpc("open_pack", {
                         p_owner_id: ownerIdRef.current, p_product_id: prod.id,
                         p_pack_type: pack.pack_type, p_unit_price: prod.price,
                       });
-                      setBottleBusy(false);
+                      setPackBusy(false);
                       if (error) { toast.error(error.message); return; }
                       await fetchOpenedPacks();
-                      // Track this newly opened pack so we can revert if order cancelled
+                      await fetchProducts();
                       const { data: newPack } = await supabase.from("opened_packs")
                         .select("id").eq("owner_id", ownerIdRef.current!)
                         .eq("product_id", prod.id).eq("status", "open")
@@ -1845,10 +1838,18 @@ export default function RegisterPage() {
                     }}
                     className="w-full h-11 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
                     style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                    {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "📦 Open New Pack"}
+                    {packBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "📦 Open New Pack"}
                   </button>
                 );
               })()}
+
+              {/* Done — always visible so cashier can close when finished */}
+              <button
+                onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(false); setPackSellMode("retail"); }}
+                className="w-full h-10 rounded-xl font-black text-sm transition active:scale-[0.98]"
+                style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
+                Done
+              </button>
             </div>
           </div>
         </div>
