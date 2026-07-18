@@ -486,74 +486,87 @@ export default function RegisterPage() {
     setNewBottlePrice("");
   };
 
-  /** Add a shot/variation to the cart from an open bottle */
-  const addShot = async (variation?: BottleVariation) => {
-    const bottle = openedBottles.find((b) => b.id === shotBottleId);
-    if (!bottle) { toast.error("Select a bottle"); return; }
+  const [shotBuffer, setShotBuffer] = useState<Array<{ variation: BottleVariation; qty: number }>>([]);
 
+  /** Add a shot/variation to the cart from an open bottle */
+  const addShotToBuffer = (variation: BottleVariation) => {
+    setShotBuffer((buf) => {
+      const existing = buf.find((b) => b.variation.key === variation.key);
+      if (existing) return buf.map((b) => b.variation.key === variation.key ? { ...b, qty: b.qty + 1 } : b);
+      return [...buf, { variation, qty: 1 }];
+    });
+  };
+
+  const removeShotFromBuffer = (varKey: string) => {
+    setShotBuffer((buf) => {
+      const existing = buf.find((b) => b.variation.key === varKey);
+      if (!existing) return buf;
+      if (existing.qty <= 1) return buf.filter((b) => b.variation.key !== varKey);
+      return buf.map((b) => b.variation.key === varKey ? { ...b, qty: b.qty - 1 } : b);
+    });
+  };
+
+  const bufferUnitsConsumed = shotBuffer.reduce((s, b) => s + b.variation.units_consumed * b.qty, 0);
+  const bufferTotal = shotBuffer.reduce((s, b) => s + b.variation.price * b.qty, 0);
+
+  const commitShotBuffer = async () => {
+    const bottle = openedBottles.find((b) => b.id === shotBottleId);
+    if (!bottle || shotBuffer.length === 0) return;
     const product = products.find((p) => p.id === bottle.product_id);
     const capacity = product?.units_per_item ?? 0;
-    const vars = product?.bottle_variations ?? [];
-    const activeVar = variation ?? selectedVariation;
+    const newUnitsConsumed = bottle.units_consumed + bufferUnitsConsumed;
 
-    // Determine units this sale consumes
-    const unitsToConsume = activeVar ? activeVar.units_consumed : 1;
-    const price = activeVar ? activeVar.price : parseFloat(shotPrice);
+    // Add each variation as a separate cart item
+    const newCounts = { ...bottle.variation_counts };
+    const isAtCapacity = capacity > 0 && bottle.units_consumed >= capacity;
 
-    if (isNaN(price) || price <= 0) { toast.error("Set a price"); return; }
-
-    const newUnitsConsumed = bottle.units_consumed + unitsToConsume;
-
-    // Guard: non-shot variations cannot exceed capacity
-    if (capacity > 0 && activeVar && activeVar.key !== "shot" && newUnitsConsumed > capacity) {
-      toast.error(`Not enough remaining — only ${capacity - bottle.units_consumed} units left`);
-      return;
+    for (const { variation, qty } of shotBuffer) {
+      const isExtra = isAtCapacity;
+      const itemName = isExtra
+        ? `Shot (extras): ${bottle.product_name}`
+        : `${variation.label}: ${bottle.product_name}`;
+      setCart((c) => [...c, {
+        id: `shot-${bottle.id}-${variation.key}-${Date.now()}`,
+        name: itemName,
+        price: variation.price,
+        image_url: null,
+        category: "liquor",
+        qty,
+        _bottle_id: bottle.id,
+        _units_consumed: variation.units_consumed * qty,
+        _variation_key: variation.key,
+      } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
+      newCounts[variation.key] = (newCounts[variation.key] ?? 0) + qty;
     }
 
-    // Shot-only extras allowed over capacity — label as "Pouring from extras"
-    const isExtra = capacity > 0 && bottle.units_consumed >= capacity;
-    const itemName = isExtra
-      ? `Shot (extras): ${bottle.product_name}`
-      : activeVar
-      ? `${activeVar.label}: ${bottle.product_name}`
-      : `Shot: ${bottle.product_name}`;
-
-    const cartId = `shot-${bottle.id}-${Date.now()}`;
-    setCart((c) => [...c, {
-      id: cartId,
-      name: itemName,
-      price,
-      image_url: null,
-      category: "liquor",
-      qty: 1,
-      _bottle_id: bottle.id,
-      _units_consumed: unitsToConsume,
-      _variation_key: activeVar?.key ?? "shot",
-    } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
-
-    // Update opened_bottle units_consumed + variation_counts locally (optimistic)
-    const newCounts = { ...bottle.variation_counts };
-    const vKey = activeVar?.key ?? "shot";
-    newCounts[vKey] = (newCounts[vKey] ?? 0) + 1;
+    // Update local state
     setOpenedBottles((prev) => prev.map((b) =>
-      b.id === bottle.id
-        ? { ...b, units_consumed: newUnitsConsumed, variation_counts: newCounts }
-        : b
+      b.id === bottle.id ? { ...b, units_consumed: newUnitsConsumed, variation_counts: newCounts } : b
     ));
 
-    // Persist to DB
-    supabase.from("opened_bottles").update({
+    // Persist to DB only on confirm
+    await supabase.from("opened_bottles").update({
       units_consumed: newUnitsConsumed,
       variation_counts: newCounts,
-    }).eq("id", bottle.id).then(({ error }) => {
-      if (error) console.error("Failed to update bottle tracking:", error.message);
-    });
+    }).eq("id", bottle.id);
 
+    // Close and reset
     setShotModalOpen(false);
     setShotStep("select");
     setShotBottleId("");
     setShotPrice("");
     setSelectedVariation(null);
+    setShotBuffer([]);
+  };
+
+  const cancelShotBuffer = () => {
+    // Just close — no DB write, no cart changes
+    setShotModalOpen(false);
+    setShotStep("select");
+    setShotBottleId("");
+    setShotPrice("");
+    setSelectedVariation(null);
+    setShotBuffer([]);
   };
 
   // Scroll to selected bottle when entering price step
@@ -1120,74 +1133,119 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* -- Shot Step 2: Variation picker -- */}
+      {/* ── Shot Step 2: Variation picker (buffer — modal stays open) ── */}
       {shotStep === "variation" && shotBottleId && (() => {
         const bottle = openedBottles.find((b) => b.id === shotBottleId);
         const product = products.find((p) => p.id === bottle?.product_id);
         const capacity = product?.units_per_item ?? 0;
         const vars = product?.bottle_variations ?? [];
         const consumed = bottle?.units_consumed ?? 0;
-        const remaining = capacity > 0 ? capacity - consumed : null;
-        const atCapacity = capacity > 0 && consumed >= capacity;
+        const effectiveConsumed = consumed + bufferUnitsConsumed;
+        const remaining = capacity > 0 ? capacity - effectiveConsumed : null;
+        const atCapacity = capacity > 0 && effectiveConsumed >= capacity;
         return (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-            onClick={() => { setShotStep("select"); setShotBottleId(""); setSelectedVariation(null); setShotModalOpen(true); }}>
-            <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm"
+            onClick={cancelShotBuffer}>
+            <div className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl overflow-y-auto max-h-[85dvh]"
               style={{ background: "var(--gradient-card)" }}
               onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-5 pt-5 pb-2">
-                <div>
-                  <span className="font-black text-base">?? {bottle?.product_name}</span>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+                <div className="min-w-0 flex-1">
+                  <span className="font-black text-base">🥃 {bottle?.product_name}</span>
                   {capacity > 0 && (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="h-2 rounded-full bg-muted/40 overflow-hidden w-[100px]">
-                        <div className="h-full rounded-full" style={{ width: `${Math.min(100,(consumed/capacity)*100)}%`, background: atCapacity ? "#f87171" : "var(--gradient-hero)" }} />
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="h-2 flex-1 rounded-full bg-muted/40 overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (effectiveConsumed / capacity) * 100)}%`, background: atCapacity ? "#f87171" : "var(--gradient-hero)" }} />
                       </div>
-                      <span className="text-xs font-black" style={{ color: atCapacity ? "#f87171" : "#86efac" }}>
-                        {atCapacity ? "? Should be empty" : `${remaining} units left`}
+                      <span className="text-xs font-black shrink-0" style={{ color: atCapacity ? "#f87171" : "#86efac" }}>
+                        {atCapacity ? "⚠ Should be empty" : `${remaining} left`}
                       </span>
                     </div>
                   )}
-                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold mt-0.5">Only extra shots allowed</p>}
+                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold">Only extra shots allowed</p>}
                 </div>
-                <button onClick={() => { setShotStep("select"); setShotBottleId(""); setSelectedVariation(null); setShotModalOpen(true); }}
-                  className="text-xs text-muted-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
-                  <X className="h-3.5 w-3.5" /> Change
+                <button type="button" onClick={cancelShotBuffer}
+                  className="shrink-0 h-8 px-3 rounded-lg bg-muted text-xs font-bold text-muted-foreground flex items-center gap-1">
+                  <X className="h-3.5 w-3.5" /> Cancel
                 </button>
               </div>
-              <div className="px-4 pb-5 pt-2 space-y-3">
+
+              <div className="px-4 pb-2 space-y-2">
                 {vars.length > 0 ? (
                   <>
                     <div className="grid grid-cols-2 gap-2">
                       {vars.map((v) => {
                         const isShot = v.key === "shot";
-                        const wouldExceed = capacity > 0 && (consumed + v.units_consumed) > capacity;
+                        const bufEntry = shotBuffer.find((b) => b.variation.key === v.key);
+                        const bufQty = bufEntry?.qty ?? 0;
+                        const wouldExceed = capacity > 0 && (effectiveConsumed + v.units_consumed) > capacity;
                         const isDisabled = !isShot && wouldExceed;
+                        const maxCan = capacity > 0 && v.units_consumed > 0
+                          ? Math.floor((capacity - effectiveConsumed) / v.units_consumed)
+                          : 999;
                         const countSold = bottle?.variation_counts?.[v.key] ?? 0;
-                        const maxCan = capacity > 0 && v.units_consumed > 0 ? Math.floor((capacity - consumed) / v.units_consumed) : 999;
+                        const isSelected = bufQty > 0;
                         return (
-                          <button key={v.key} type="button" disabled={isDisabled}
-                            onClick={() => addShot(v)}
-                            className="rounded-2xl p-3 flex flex-col items-center gap-1 border-2 transition active:scale-95 disabled:opacity-30"
-                            style={{ background: isShot && atCapacity ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.05)", borderColor: isDisabled ? "rgba(255,255,255,0.08)" : isShot && atCapacity ? "#fbbf24" : "var(--primary)" }}>
-                            <span className="font-black text-sm" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--foreground)" }}>
-                              {v.label}{isShot && atCapacity && <span className="text-amber-400 text-[10px] ml-1">extras</span>}
-                            </span>
-                            <span className="font-black text-lg" style={{ color: isDisabled ? "var(--muted-foreground)" : "#86efac" }}>${v.price.toFixed(2)}</span>
-                            <span className="text-[10px] text-muted-foreground">{v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}{!isDisabled && capacity > 0 ? ` � ${maxCan} left` : ""}</span>
-                            {countSold > 0 && <span className="text-[10px] font-bold" style={{ color: "var(--primary)" }}>{countSold} sold</span>}
-                          </button>
+                          <div key={v.key} className="rounded-2xl border-2 overflow-hidden transition"
+                            style={{
+                              borderColor: isDisabled
+                                ? "rgba(255,255,255,0.06)"
+                                : isSelected ? "var(--primary)"
+                                : isShot && atCapacity ? "#fbbf24"
+                                : "rgba(255,255,255,0.12)",
+                              background: isSelected
+                                ? "rgba(var(--primary-rgb,251 146 60)/0.10)"
+                                : isShot && atCapacity ? "rgba(251,191,36,0.08)"
+                                : "rgba(255,255,255,0.04)",
+                              opacity: isDisabled ? 0.35 : 1,
+                            }}>
+                            <button type="button" disabled={isDisabled}
+                              onClick={() => addShotToBuffer(v)}
+                              className="w-full p-3 flex flex-col items-center gap-0.5 active:bg-white/5 transition">
+                              <span className="font-black text-sm">
+                                {v.label}
+                                {isShot && atCapacity && <span className="text-amber-400 text-[10px] ml-1">extras</span>}
+                              </span>
+                              <span className="font-black text-lg" style={{ color: isDisabled ? "var(--muted-foreground)" : "#86efac" }}>
+                                ${v.price.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}
+                                {!isDisabled && capacity > 0 && maxCan > 0 ? ` · ${maxCan} avail` : ""}
+                              </span>
+                              {countSold > 0 && (
+                                <span className="text-[10px]" style={{ color: "var(--primary)" }}>{countSold} sold</span>
+                              )}
+                            </button>
+                            {isSelected && (
+                              <div className="flex items-center justify-between px-3 pb-2 gap-2">
+                                <button type="button" onClick={() => removeShotFromBuffer(v.key)}
+                                  className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition"
+                                  style={{ background: "#ef4444" }}>−</button>
+                                <span className="font-black text-base" style={{ color: "var(--primary)" }}>{bufQty}</span>
+                                <button type="button"
+                                  disabled={isDisabled || (capacity > 0 && maxCan <= 0)}
+                                  onClick={() => addShotToBuffer(v)}
+                                  className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition disabled:opacity-30"
+                                  style={{ background: "var(--gradient-hero)" }}>+</button>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
-                    {capacity > 0 && !atCapacity && (
-                      <div className="rounded-xl border border-border/40 px-3 py-2 space-y-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Still available</p>
-                        {vars.filter((v) => capacity > 0 && v.units_consumed > 0 && Math.floor((capacity - consumed) / v.units_consumed) > 0).map((v) => (
-                          <p key={v.key} className="text-xs font-semibold" style={{ color: "#86efac" }}>
-                            {Math.floor((capacity - consumed) / v.units_consumed)}x {v.label}
-                          </p>
-                        ))}
+                    {capacity > 0 && !atCapacity && shotBuffer.length > 0 && (
+                      <div className="rounded-xl border border-border/40 px-3 py-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Remaining after order</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {vars.filter((v) => v.units_consumed > 0 && Math.floor((capacity - effectiveConsumed) / v.units_consumed) > 0).map((v) => (
+                            <span key={v.key} className="text-xs font-semibold" style={{ color: "#86efac" }}>
+                              {Math.floor((capacity - effectiveConsumed) / v.units_consumed)}x {v.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>
@@ -1199,16 +1257,42 @@ export default function RegisterPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       {["1","2","3","4","5","6","7","8","9",".","0","\u232B"].map((k) => (
-                        <button key={k} type="button" onClick={() => { if(k==="\u232B"){setShotPrice(v=>v.slice(0,-1));return;} if(k==="."){if(!shotPrice.includes("."))setShotPrice(v=>v+".");return;} const d=shotPrice.indexOf(".");if(d!==-1&&shotPrice.length-d>2)return;setShotPrice(v=>v==="0"?k:v+k); }}
-                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k==="\u232B"?"bg-destructive/20 text-destructive":"bg-muted hover:bg-muted/70 text-foreground"}`}>{k}</button>
+                        <button key={k} type="button"
+                          onClick={() => { if(k==="\u232B"){setShotPrice(v=>v.slice(0,-1));return;} if(k==="."){if(!shotPrice.includes("."))setShotPrice(v=>v+".");return;} const d=shotPrice.indexOf(".");if(d!==-1&&shotPrice.length-d>2)return;setShotPrice(v=>v==="0"?k:v+k); }}
+                          className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k==="\u232B"?"bg-destructive/20 text-destructive":"bg-muted hover:bg-muted/70 text-foreground"}`}>{k}
+                        </button>
                       ))}
                     </div>
-                    <button onClick={() => addShot()} disabled={!shotPrice || parseFloat(shotPrice) <= 0}
-                      className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                      style={{ background: "var(--gradient-hero)" }}>+ Add to Order</button>
                   </>
                 )}
               </div>
+
+              {(shotBuffer.length > 0 || (vars.length === 0 && shotPrice && parseFloat(shotPrice) > 0)) && (
+                <div className="px-4 pb-5 pt-1">
+                  <button type="button"
+                    onClick={async () => {
+                      if (vars.length > 0) {
+                        await commitShotBuffer();
+                      } else {
+                        const b = openedBottles.find((x) => x.id === shotBottleId);
+                        if (!b || !shotPrice) return;
+                        const isExtra = capacity > 0 && b.units_consumed >= capacity;
+                        setCart((c) => [...c, {
+                          id: `shot-${b.id}-${Date.now()}`,
+                          name: isExtra ? `Shot (extras): ${b.product_name}` : `Shot: ${b.product_name}`,
+                          price: parseFloat(shotPrice), image_url: null, category: "liquor", qty: 1,
+                          _bottle_id: b.id, _units_consumed: 1, _variation_key: "shot",
+                        } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
+                        cancelShotBuffer();
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl font-black text-base text-primary-foreground active:scale-[0.98] transition flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    + Add to Order
+                    {bufferTotal > 0 && <span className="font-semibold text-sm opacity-80">· ${bufferTotal.toFixed(2)}</span>}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );
