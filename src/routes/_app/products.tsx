@@ -1445,17 +1445,30 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
   const [costPrice, setCostPrice] = useState(editProduct ? String(editProduct.cost_price ?? "") : "");
   const [unitsPerItem, setUnitsPerItem] = useState(editProduct ? String(editProduct.units_per_item || "") : "");
+  const [shotPricePerUnit, setShotPricePerUnit] = useState(() => {
+    const shotVar = editProduct?.bottle_variations?.find((v) => v.key === "shot");
+    return shotVar ? String(shotVar.price) : "";
+  });
   const [bottleVariations, setBottleVariations] = useState<BottleVariation[]>(
-    editProduct?.bottle_variations ?? []
+    (editProduct?.bottle_variations ?? []).filter((v) => v.key !== "shot")
   );
+  // Cigarette special offer
+  const [cigSpecialQty,   setCigSpecialQty]   = useState(() => {
+    const sv = editProduct?.bottle_variations?.find((v) => v.key === "special");
+    return sv ? String(sv.units_consumed) : "";
+  });
+  const [cigSpecialPrice, setCigSpecialPrice] = useState(() => {
+    const sv = editProduct?.bottle_variations?.find((v) => v.key === "special");
+    return sv ? String(sv.price) : "";
+  });
   const [category, setCategory] = useState<string>(editProduct?.category ?? "beers");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  // which field the numpad is for: "selling" | "cost" | "units" | null
-  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | "units" | null>(null);
+  // which field the numpad is for: "selling" | "cost" | "units" | "shotprice" | null
+  const [activeNumpad, setActiveNumpad] = useState<"selling" | "cost" | "units" | "shotprice" | null>(null);
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
@@ -1482,15 +1495,20 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const clearImage = () => { setFile(null); setTemplateUrl(null); setPreview(null); };
 
   const handleNumpad = (k: string) => {
-    const setter = activeNumpad === "cost" ? setCostPrice : activeNumpad === "units" ? setUnitsPerItem : setPrice;
-    const current = activeNumpad === "cost" ? costPrice : activeNumpad === "units" ? unitsPerItem : price;
+    const setter = activeNumpad === "cost" ? setCostPrice
+      : activeNumpad === "units" ? setUnitsPerItem
+      : activeNumpad === "shotprice" ? setShotPricePerUnit
+      : setPrice;
+    const current = activeNumpad === "cost" ? costPrice
+      : activeNumpad === "units" ? unitsPerItem
+      : activeNumpad === "shotprice" ? shotPricePerUnit
+      : price;
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
     if (activeNumpad !== "units") {
       if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
       const dotIdx = current.indexOf(".");
       if (dotIdx !== -1 && current.length - dotIdx > 2) return;
     } else {
-      // units = integer only
       if (k === ".") return;
     }
     setter(current === "0" ? k : current + k);
@@ -1515,7 +1533,16 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
 
     const costVal = parseFloat(costPrice) || 0;
     const unitsVal = parseInt(unitsPerItem, 10) || 0;
-    const variationsVal = category === "liquor" && bottleVariations.length > 0 ? bottleVariations : null;
+    const variationsVal = category === "liquor" ? [
+      ...(unitsVal > 0 && parseFloat(shotPricePerUnit) > 0
+        ? [{ key: "shot", label: "Shot", units_consumed: 1, price: parseFloat(shotPricePerUnit) }]
+        : []),
+      ...bottleVariations.filter((v) => v.key !== "shot" && v.label && v.units_consumed > 0),
+    ] : category === "cigarettes" ? [
+      ...(parseInt(cigSpecialQty) > 0 && parseFloat(cigSpecialPrice) > 0
+        ? [{ key: "special", label: `${cigSpecialQty} for $${parseFloat(cigSpecialPrice).toFixed(2)}`, units_consumed: parseInt(cigSpecialQty), price: parseFloat(cigSpecialPrice) }]
+        : []),
+    ] : null;
 
     if (isEdit && editProduct) {
       const { data: updated, error } = await supabase
@@ -1546,7 +1573,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       setBusy(false);
       if (error) { toast.error(error.message); return; }
       toast.success("Item added");
-      setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
+      setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setShotPricePerUnit(""); setCigSpecialQty(""); setCigSpecialPrice(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
       onSaved(inserted);
     }
@@ -1682,14 +1709,46 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               </div>
             </div>
 
-            {/* Units per item — only for liquor and cigarettes */}
-            {(category === "liquor" || category === "cigarettes") && (
-              <div>
-                <Label className="text-xs">
-                  {category === "liquor" ? "🍾 Shots per Bottle (total capacity)" : "🚬 Units per Pack"}
-                </Label>
-                {category === "cigarettes" ? (
-                  /* Cigarettes: fixed 20 or 10 toggle */
+            {/* Shots per Bottle + Shot Price — side by side, liquor only */}
+            {category === "liquor" && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">🍾 Shots per Bottle</Label>
+                    <div
+                      className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                      onClick={() => setActiveNumpad(activeNumpad === "units" ? null : "units")}
+                    >
+                      <span className={`text-base font-black ${activeNumpad === "units" ? "text-primary" : "text-muted-foreground"}`}>
+                        {unitsPerItem || "0"} shots
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Shot Price ($)</Label>
+                    <div
+                      className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                      onClick={() => setActiveNumpad(activeNumpad === "shotprice" ? null : "shotprice")}
+                    >
+                      <span className={`text-base font-black ${activeNumpad === "shotprice" ? "text-primary" : "text-muted-foreground"}`}>
+                        ${shotPricePerUnit || "0.00"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
+                  <p className="text-xs" style={{ color: "var(--primary)" }}>
+                    Cost per shot: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Units per pack — cigarettes only */}
+            {category === "cigarettes" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">🚬 Units per Pack</Label>
                   <div className="mt-1 grid grid-cols-2 gap-2">
                     {[20, 10].map((n) => (
                       <button key={n} type="button"
@@ -1702,94 +1761,102 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                       </button>
                     ))}
                   </div>
-                ) : (
-                  <div
-                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                    onClick={() => setActiveNumpad(activeNumpad === "units" ? null : "units")}
-                  >
-                    <span className={`text-base font-black ${activeNumpad === "units" ? "text-primary" : "text-muted-foreground"}`}>
-                      {unitsPerItem || "0"} shots
-                    </span>
+                  {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
+                    <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                      Cost per unit: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                {/* Special offer */}
+                <div className="rounded-xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
+                  <Label className="text-xs">🎁 Special Offer (optional)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-0.5">Qty in deal</p>
+                      <input type="number" min="2" step="1"
+                        value={cigSpecialQty}
+                        onChange={(e) => setCigSpecialQty(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm font-bold outline-none"
+                        placeholder="e.g. 3" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-0.5">Deal price ($)</p>
+                      <input type="number" min="0.01" step="0.01"
+                        value={cigSpecialPrice}
+                        onChange={(e) => setCigSpecialPrice(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm font-bold outline-none"
+                        placeholder="e.g. 5.00" />
+                    </div>
                   </div>
-                )}
-                {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
-                  <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
-                    Cost per {category === "liquor" ? "shot" : "unit"}: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
-                  </p>
-                )}
+                  {cigSpecialQty && cigSpecialPrice && parseInt(cigSpecialQty) > 0 && parseFloat(cigSpecialPrice) > 0 && (
+                    <p className="text-xs" style={{ color: "#86efac" }}>
+                      {cigSpecialQty} for ${parseFloat(cigSpecialPrice).toFixed(2)} · ${(parseFloat(cigSpecialPrice) / parseInt(cigSpecialQty)).toFixed(2)} each
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Bottle variations — only for liquor */}
+            {/* Bottle variations (Half, Nip, PQ etc) — liquor only, no Shot row */}
             {category === "liquor" && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">🥃 Bottle Variations</Label>
-                  <p className="text-[10px] text-muted-foreground">Units = how many bottle-units it uses</p>
+                  <p className="text-[10px] text-muted-foreground">Shots used from bottle</p>
                 </div>
-                {/* Default variations seeded if empty */}
                 {bottleVariations.length === 0 && (
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={() => setBottleVariations([
-                      { key: "half",  label: "Half Bottle", units_consumed: 0, price: 0 },
-                      { key: "nip",   label: "Nip",         units_consumed: 0, price: 0 },
-                      { key: "pq",    label: "PQ",          units_consumed: 0, price: 0 },
-                      { key: "shot",  label: "Shot",        units_consumed: 1, price: 0 },
+                      { key: "half", label: "Half Bottle", units_consumed: 0, price: 0 },
+                      { key: "nip",  label: "Nip",         units_consumed: 0, price: 0 },
+                      { key: "pq",   label: "PQ",          units_consumed: 0, price: 0 },
                     ])}
-                    className="w-full h-9 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition"
-                  >
+                    className="w-full h-9 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition">
                     + Set up variations
                   </button>
                 )}
-                {bottleVariations.map((v, i) => (
+                {bottleVariations.filter((v) => v.key !== "shot").map((v, i) => (
                   <div key={v.key} className="rounded-xl border border-border p-2 space-y-1.5" style={{ background: "var(--gradient-card)" }}>
                     <div className="flex items-center justify-between gap-2">
-                      <input
-                        type="text"
-                        value={v.label}
+                      <input type="text" value={v.label}
                         onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
                         className="flex-1 h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
-                        placeholder="Label"
-                      />
-                      <button
-                        type="button"
+                        placeholder="e.g. Half Bottle" />
+                      <button type="button"
                         onClick={() => setBottleVariations(bv => bv.filter((_, j) => j !== i))}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 transition"
-                      >
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 transition">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <p className="text-[10px] text-muted-foreground mb-0.5">Units used</p>
-                        <input
-                          type="number" min="1" step="1"
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Shots used</p>
+                        <input type="number" min="1" step="1"
                           value={v.units_consumed || ""}
                           onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, units_consumed: parseInt(e.target.value) || 0 } : x))}
                           className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
-                          placeholder="e.g. 1"
-                        />
+                          placeholder="e.g. 8" />
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-0.5">Price ($)</p>
-                        <input
-                          type="number" min="0" step="0.01"
+                        <input type="number" min="0" step="0.01"
                           value={v.price || ""}
                           onChange={(e) => setBottleVariations(bv => bv.map((x, j) => j === i ? { ...x, price: parseFloat(e.target.value) || 0 } : x))}
                           className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none"
-                          placeholder="e.g. 12.00"
-                        />
+                          placeholder="e.g. 100.00" />
                       </div>
                     </div>
+                    {v.units_consumed > 0 && parseInt(unitsPerItem) > 0 && (
+                      <p className="text-[10px]" style={{ color: "var(--primary)" }}>
+                        = {Math.floor(parseInt(unitsPerItem) / v.units_consumed)} per bottle
+                      </p>
+                    )}
                   </div>
                 ))}
                 {bottleVariations.length > 0 && (
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={() => setBottleVariations(bv => [...bv, { key: `var_${Date.now()}`, label: "", units_consumed: 1, price: 0 }])}
-                    className="w-full h-8 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition"
-                  >
+                    className="w-full h-8 rounded-lg border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/20 transition">
                     + Add variation
                   </button>
                 )}

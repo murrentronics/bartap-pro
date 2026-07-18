@@ -317,8 +317,39 @@ export default function RegisterPage() {
   const [cancelPackId, setCancelPackId]           = useState<string | null>(null);
   const [packQty, setPackQty]                     = useState(1);
   const [packSellMode, setPackSellMode]           = useState<"retail" | "special">("retail");
-  const [specialQty, setSpecialQty]               = useState(2);  // how many units in the special deal
-  const [specialPrice, setSpecialPrice]           = useState(""); // total price for the special deal
+  const [specialQty, setSpecialQty]               = useState(2);
+  const [specialPrice, setSpecialPrice]           = useState("");
+  // Packs opened mid-order that need reverting if order is cancelled
+  const [packsPendingClose, setPacksPendingClose] = useState<string[]>([]);
+
+  // Called after successful order — close packs that hit capacity
+  const closeFullPacksAfterOrder = async (completedCart: CartItem[]) => {
+    const packQtys = new Map<string, number>();
+    for (const item of completedCart) {
+      const pid = (item as any)._pack_id as string | undefined;
+      if (!pid) continue;
+      const units = (item as any)._pack_units ?? item.qty;
+      packQtys.set(pid, (packQtys.get(pid) ?? 0) + units);
+    }
+    for (const [packId, soldQty] of packQtys) {
+      const pack = openedPacks.find((p) => p.id === packId);
+      if (!pack) continue;
+      const prod = products.find((p) => p.id === pack.product_id);
+      const cap = prod?.units_per_item ?? 0;
+      if (cap > 0 && (pack.units_sold + soldQty) >= cap) {
+        await handleFinishPack(packId);
+      }
+    }
+    setPacksPendingClose([]);
+  };
+
+  // Called when order is cancelled/cleared — revert any packs opened mid-order
+  const revertPendingPacks = async () => {
+    for (const packId of packsPendingClose) {
+      await handleCancelPack(packId);
+    }
+    setPacksPendingClose([]);
+  };
 
   const cigaretteProducts = useMemo(() => {
     const openedProductIds = new Set(openedPacks.map(p => p.product_id));
@@ -355,43 +386,23 @@ export default function RegisterPage() {
 
   const addPackUnit = async () => {
     const pack = openedPacks.find((p) => p.id === packPackId);
-    const price = parseFloat(packPrice);
-    if (!pack || isNaN(price) || price <= 0) { toast.error("Select a pack and set a price"); return; }
-
-    // Find the product to get units_per_item capacity
+    if (!pack) { toast.error("Select a pack"); return; }
     const product = products.find((p) => p.id === pack.product_id);
+    const unitPrice = product?.price ?? 0;
+    if (unitPrice <= 0) { toast.error("No price set for this item — edit the product first"); return; }
     const capacity = product?.units_per_item ?? 0;
     const alreadySold = pack.units_sold;
-    const remaining = capacity > 0 ? capacity - alreadySold : Infinity;
-
-    // Don't allow selling more than remaining
+    const cartQtyForPack = cart.filter((c) => (c as any)._pack_id === pack.id).reduce((s, c) => s + c.qty, 0);
+    const remaining = capacity > 0 ? capacity - alreadySold - cartQtyForPack : Infinity;
     const qtyToSell = capacity > 0 ? Math.min(packQty, remaining) : packQty;
-    if (qtyToSell <= 0) {
-      toast.error("Pack is empty — no units remaining");
-      return;
-    }
-    if (qtyToSell < packQty) {
-      toast(`Only ${qtyToSell} unit${qtyToSell !== 1 ? "s" : ""} remaining in this pack`);
-    }
-
+    if (qtyToSell <= 0) { toast.error("Pack is empty — open a new pack"); return; }
     const cartId = `pack-${pack.id}-${Date.now()}`;
     setCart((c) => [...c, {
-      id: cartId, name: `Retail: ${pack.product_name}`, price,
+      id: cartId, name: `Retail: ${pack.product_name}`, price: unitPrice,
       image_url: null, category: "cigarettes", qty: qtyToSell,
       _pack_id: pack.id,
     } as CartItem & { _pack_id: string }]);
-
-    setPackModalOpen(false);
-    setPackStep("select");
-    setPackPackId("");
-    setPackPrice("");
-    setPackQty(1);
-
-    // Auto-close pack if now sold out
-    if (capacity > 0 && alreadySold + qtyToSell >= capacity) {
-      await handleFinishPack(pack.id);
-      toast.success(`Pack empty — auto-closed`);
-    }
+    setPackModalOpen(false); setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackSellMode("retail");
   };
 
   const handleFinishPack = async (packId: string) => {
@@ -514,10 +525,8 @@ export default function RegisterPage() {
     if (!bottle || shotBuffer.length === 0) return;
     const product = products.find((p) => p.id === bottle.product_id);
     const capacity = product?.units_per_item ?? 0;
-    const newUnitsConsumed = bottle.units_consumed + bufferUnitsConsumed;
     const isAtCapacity = capacity > 0 && bottle.units_consumed >= capacity;
 
-    const newCounts = { ...bottle.variation_counts };
     for (const { variation, qty } of shotBuffer) {
       const isExtra = isAtCapacity;
       const itemName = isExtra
@@ -534,14 +543,9 @@ export default function RegisterPage() {
         _units_consumed: variation.units_consumed * qty,
         _variation_key: variation.key,
       } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
-      newCounts[variation.key] = (newCounts[variation.key] ?? 0) + qty;
     }
 
-    // Update local state only — DB write happens at order confirm
-    setOpenedBottles((prev) => prev.map((b) =>
-      b.id === bottle.id ? { ...b, units_consumed: newUnitsConsumed, variation_counts: newCounts } : b
-    ));
-
+    // NO local openedBottles state update here — that only happens at order confirm
     setShotModalOpen(false);
     setShotStep("select");
     setShotBottleId("");
@@ -956,10 +960,11 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onClearCart={() => setCart([])}
-          onClose={() => setCashOpen(false)}
+          onClearCart={() => { setCart([]); revertPendingPacks(); }}
+          onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
           onSuccess={(paidAmt, changeAmt) => {
+            closeFullPacksAfterOrder(cart);
             setCart([]);
             setCashOpen(false);
             refreshProfile();
@@ -976,10 +981,11 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onClearCart={() => setCart([])}
-          onClose={() => setCreditOpen(false)}
+          onClearCart={() => { setCart([]); revertPendingPacks(); }}
+          onClose={() => { setCreditOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
           onSuccess={() => {
+            closeFullPacksAfterOrder(cart);
             setCart([]);
             setCreditOpen(false);
             refreshProfile();
@@ -1131,7 +1137,11 @@ export default function RegisterPage() {
         const capacity = product?.units_per_item ?? 0;
         const vars = product?.bottle_variations ?? [];
         const consumed = bottle?.units_consumed ?? 0;
-        const effectiveConsumed = consumed + bufferUnitsConsumed;
+        // Units already committed to cart (from previous Add to Order taps this session)
+        const cartUnitsForBottle = cart
+          .filter((c) => (c as any)._bottle_id === shotBottleId)
+          .reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
+        const effectiveConsumed = consumed + cartUnitsForBottle + bufferUnitsConsumed;
         const remaining = capacity > 0 ? capacity - effectiveConsumed : null;
         const atCapacity = capacity > 0 && effectiveConsumed >= capacity;
         return (
@@ -1571,165 +1581,166 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Pack grid */}
+            {/* Pack card grid — tap to add, shows qty banner, price from product.price */}
             <div className="px-4 pb-2">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {openedPacks.map((pk) => {
                   const pkProd = products.find(p => p.id === pk.product_id);
                   const pkCap = pkProd?.units_per_item ?? 0;
                   const pkRemaining = pkCap > 0 ? pkCap - pk.units_sold : null;
+                  const unitPrice = pkProd?.price ?? 0;
+                  // Cart qty already added for this pack
+                  const cartQtyForPack = cart
+                    .filter((c) => (c as any)._pack_id === pk.id)
+                    .reduce((s, c) => s + c.qty, 0);
+                  const effectiveRemaining = pkRemaining !== null ? pkRemaining - cartQtyForPack : null;
                   const isSelected = pk.id === packPackId;
+                  const isOutOfStock = effectiveRemaining !== null && effectiveRemaining <= 0;
                   return (
-                    <button key={pk.id}
-                      onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackQty(1); }}
-                      className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
-                      style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
-                      <div className="aspect-[3/4] relative w-full">
-                        {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                        <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                          style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
-                        {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black"
-                          style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
-                      </div>
-                      <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                        <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
-                        <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>
-                          {pkRemaining !== null ? `${pkRemaining} left` : `$${Number(pk.revenue).toFixed(2)}`}
+                    <div key={pk.id} className="rounded-2xl border-2 overflow-hidden transition"
+                      style={{
+                        borderColor: isSelected ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                        background: isSelected ? "rgba(var(--primary-rgb,251 146 60)/0.08)" : "var(--gradient-card)",
+                        opacity: isOutOfStock ? 0.4 : 1,
+                      }}>
+                      {/* Card image area — tap to select + add 1 */}
+                      <button type="button" disabled={isOutOfStock}
+                        onClick={() => {
+                          setPackPackId(pk.id);
+                          setPackQty((q) => {
+                            const next = isSelected ? q + 1 : 1;
+                            return effectiveRemaining !== null ? Math.min(next, effectiveRemaining) : next;
+                          });
+                          if (!isSelected) setPackQty(1);
+                        }}
+                        className="w-full relative active:bg-white/5 transition">
+                        <div className="aspect-[3/4] relative w-full">
+                          {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                          <div className="absolute inset-0 flex items-center justify-center text-4xl"
+                            style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
+                          {effectiveRemaining !== null && (
+                            <div className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 bg-black/70">
+                              <span className="text-[10px] font-black text-white">{effectiveRemaining} left</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </button>
+                        <div className="px-2 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+                          <div className="font-bold text-[11px] truncate" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
+                          <div className="font-black text-xs" style={{ color: "#86efac" }}>${unitPrice.toFixed(2)} each</div>
+                        </div>
+                      </button>
+                      {/* Qty banner — shown only when selected */}
+                      {isSelected && (
+                        <div className="flex items-center justify-between px-2 py-1.5 gap-2 border-t border-border/40">
+                          <button type="button"
+                            onClick={() => { if (packQty <= 1) { setPackPackId(""); setPackQty(1); } else setPackQty(q => q - 1); }}
+                            className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition"
+                            style={{ background: "#ef4444" }}>−</button>
+                          <span className="font-black text-base" style={{ color: "var(--primary)" }}>{packQty}</span>
+                          <button type="button"
+                            disabled={effectiveRemaining !== null && packQty >= effectiveRemaining}
+                            onClick={() => setPackQty(q => effectiveRemaining !== null ? Math.min(q + 1, effectiveRemaining) : q + 1)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition disabled:opacity-30"
+                            style={{ background: "var(--gradient-hero)" }}>+</button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="px-4 pb-5 space-y-3 border-t border-border/40 pt-3">
-
-              {/* Retail / Special toggle */}
-              <div className="grid grid-cols-2 gap-2">
-                {(["retail", "special"] as const).map((m) => (
-                  <button key={m} type="button"
-                    onClick={() => { setPackSellMode(m); setPackPrice(""); setSpecialPrice(""); setPackQty(1); setSpecialQty(2); }}
-                    className="h-10 rounded-xl font-black text-sm transition active:scale-95"
-                    style={packSellMode === m
-                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                      : { border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", color: "var(--muted-foreground)" }}>
-                    {m === "retail" ? "Retail (each)" : "🎁 Special Offer"}
-                  </button>
-                ))}
-              </div>
-
-              {packSellMode === "retail" ? (
-                <>
-                  <label className="text-xs font-semibold text-muted-foreground block">Price per unit ($)</label>
-                  <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                    <span className={`text-2xl font-black ${packPrice ? "text-foreground" : "text-muted-foreground"}`}>${packPrice || "0.00"}</span>
-                  </div>
-                  <label className="text-xs font-semibold text-muted-foreground block">
-                    Qty {remaining !== null && <span style={{ color: remaining <= 3 ? "#fca5a5" : "var(--muted-foreground)" }}>(max {remaining})</span>}
-                  </label>
-                  <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
-                    <button type="button" onClick={() => setPackQty(q => Math.max(1, q - 1))}
-                      className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0">−</button>
-                    <div className="flex-1 flex items-center justify-center font-black text-xl">{packQty}</div>
-                    <button type="button"
-                      onClick={() => setPackQty(q => remaining !== null ? Math.min(q + 1, remaining) : q + 1)}
-                      disabled={remaining !== null && packQty >= remaining}
-                      className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0 disabled:opacity-40">+</button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                      <button key={k} type="button"
-                        onClick={() => {
-                          if (k === "⌫") { setPackPrice(v => v.slice(0,-1)); return; }
-                          if (k === ".") { if (!packPrice.includes(".")) setPackPrice(v => v + "."); return; }
-                          const d = packPrice.indexOf(".");
-                          if (d !== -1 && packPrice.length - d > 2) return;
-                          setPackPrice(v => v === "0" ? k : v + k);
-                        }}
-                        className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
-                      >{k}</button>
-                    ))}
-                  </div>
-                  <button onClick={addPackUnit}
-                    disabled={!packPrice || parseFloat(packPrice) <= 0 || (remaining !== null && packQty > remaining)}
-                    className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                    style={{ background: "var(--gradient-hero)" }}>
-                    + Add {packQty > 1 ? `${packQty}x ` : ""}to Order {packPrice ? `· $${(parseFloat(packPrice) * packQty).toFixed(2)}` : ""}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Special offer: N units for $X */}
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">How many units in deal?</label>
-                    <div className="flex rounded-xl overflow-hidden border border-border" style={{ background: "var(--muted)", height: 48 }}>
-                      <button type="button" onClick={() => setSpecialQty(q => Math.max(2, q - 1))}
-                        className="w-14 flex items-center justify-center font-black text-2xl border-r border-border active:bg-muted/60 transition shrink-0">−</button>
-                      <div className="flex-1 flex items-center justify-center font-black text-xl">{specialQty}</div>
-                      <button type="button"
-                        onClick={() => setSpecialQty(q => remaining !== null ? Math.min(q + 1, remaining) : q + 1)}
-                        disabled={remaining !== null && specialQty >= remaining}
-                        className="w-14 flex items-center justify-center font-black text-2xl border-l border-border active:bg-muted/60 transition shrink-0 disabled:opacity-40">+</button>
-                    </div>
-                    {remaining !== null && specialQty > remaining && (
-                      <p className="text-xs text-red-400 mt-1">Only {remaining} unit{remaining !== 1 ? "s" : ""} remaining — reduce deal qty</p>
-                    )}
-                  </div>
-                  <label className="text-xs font-semibold text-muted-foreground block">Total deal price ($)</label>
-                  <div className="h-12 rounded-xl border border-border flex items-center justify-center" style={{ background: "var(--muted)" }}>
-                    <span className={`text-2xl font-black ${specialPrice ? "text-foreground" : "text-muted-foreground"}`}>
-                      ${specialPrice || "0.00"}
-                      {specialPrice && specialQty > 0 && (
-                        <span className="text-sm font-semibold text-muted-foreground ml-2">
-                          (${(parseFloat(specialPrice) / specialQty).toFixed(2)} each)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                      <button key={k} type="button"
-                        onClick={() => {
-                          if (k === "⌫") { setSpecialPrice(v => v.slice(0,-1)); return; }
-                          if (k === ".") { if (!specialPrice.includes(".")) setSpecialPrice(v => v + "."); return; }
-                          const d = specialPrice.indexOf(".");
-                          if (d !== -1 && specialPrice.length - d > 2) return;
-                          setSpecialPrice(v => v === "0" ? k : v + k);
-                        }}
-                        className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
-                      >{k}</button>
-                    ))}
-                  </div>
-                  <button
-                    disabled={!specialPrice || parseFloat(specialPrice) <= 0 || (remaining !== null && specialQty > remaining)}
+            {/* Action area — special card (if set) + Add to Order */}
+            <div className="px-4 pb-4 pt-1 space-y-2">
+              {/* Special offer card — only shown if owner configured one */}
+              {packPackId && (() => {
+                const pack = openedPacks.find((p) => p.id === packPackId);
+                const prod = products.find((p) => p.id === pack?.product_id);
+                const special = prod?.bottle_variations?.find((v) => v.key === "special");
+                if (!special) return null;
+                const cartSpecialQty = cart
+                  .filter((c) => (c as any)._pack_id === packPackId && (c as any)._pack_units > 1)
+                  .reduce((s, c) => s + ((c as any)._pack_units ?? 0), 0);
+                const pkCap = prod?.units_per_item ?? 0;
+                const alreadySold = pack?.units_sold ?? 0;
+                const cartRetailQty = cart.filter((c) => (c as any)._pack_id === packPackId).reduce((s, c) => s + c.qty, 0);
+                const effectiveUsed = alreadySold + cartRetailQty + cartSpecialQty;
+                const canAddSpecial = pkCap === 0 || (effectiveUsed + special.units_consumed) <= pkCap;
+                const specialInCart = cart.some((c) => (c as any)._pack_id === packPackId && (c as any)._pack_units > 1);
+                return (
+                  <button type="button" disabled={!canAddSpecial || specialInCart}
                     onClick={() => {
-                      const pack = openedPacks.find((p) => p.id === packPackId);
-                      if (!pack || !specialPrice || parseFloat(specialPrice) <= 0) return;
-                      const cartId = `pack-${pack.id}-${Date.now()}`;
+                      if (!pack || !special) return;
                       setCart((c) => [...c, {
-                        id: cartId,
-                        name: `Special ${specialQty}x: ${pack.product_name}`,
-                        price: parseFloat(specialPrice),
-                        image_url: null, category: "cigarettes", qty: 1,
-                        _pack_id: pack.id,
-                        _pack_units: specialQty,
+                        id: `pack-${pack.id}-special-${Date.now()}`,
+                        name: `${special.label}: ${pack.product_name}`,
+                        price: special.price, image_url: null, category: "cigarettes", qty: 1,
+                        _pack_id: pack.id, _pack_units: special.units_consumed,
                       } as CartItem & { _pack_id: string; _pack_units: number }]);
-                      setPackModalOpen(false); setPackStep("select"); setPackPackId("");
-                      setSpecialPrice(""); setPackQty(1); setSpecialQty(2); setPackSellMode("retail");
-                      // Auto-close if now sold out
-                      const product = products.find((p) => p.id === pack.product_id);
-                      const cap = product?.units_per_item ?? 0;
-                      if (cap > 0 && (pack.units_sold + specialQty) >= cap) {
-                        handleFinishPack(pack.id);
+                    }}
+                    className="w-full h-11 rounded-xl font-black text-sm flex items-center justify-center gap-2 border-2 transition active:scale-95 disabled:opacity-30"
+                    style={specialInCart
+                      ? { background: "rgba(134,239,172,0.12)", borderColor: "#86efac", color: "#86efac" }
+                      : { background: "rgba(251,191,36,0.08)", borderColor: "#fbbf24", color: "#fbbf24" }}>
+                    {specialInCart ? `✓ ${special.label} added` : `🎁 ${special.label} · $${special.price.toFixed(2)}`}
+                  </button>
+                );
+              })()}
+
+              {/* Add to Order */}
+              {packPackId && packQty > 0 && (() => {
+                const pack = openedPacks.find((p) => p.id === packPackId);
+                const prod = products.find((p) => p.id === pack?.product_id);
+                const unitPrice = prod?.price ?? 0;
+                return (
+                  <button onClick={() => addPackUnit()}
+                    disabled={!packPackId || unitPrice <= 0}
+                    className="w-full h-12 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-hero)" }}>
+                    + Add {packQty > 1 ? `${packQty}x ` : ""}to Order
+                    {unitPrice > 0 && <span className="opacity-80 text-sm">· ${(unitPrice * packQty).toFixed(2)}</span>}
+                  </button>
+                );
+              })()}
+
+              {/* Open new pack — shown when current pack is maxed out in cart */}
+              {packPackId && (() => {
+                const pack = openedPacks.find((p) => p.id === packPackId);
+                const prod = products.find((p) => p.id === pack?.product_id);
+                const pkCap = prod?.units_per_item ?? 0;
+                const cartQty = cart.filter((c) => (c as any)._pack_id === packPackId).reduce((s, c) => s + c.qty, 0);
+                const alreadySold = pack?.units_sold ?? 0;
+                const isFull = pkCap > 0 && (alreadySold + cartQty) >= pkCap;
+                if (!isFull) return null;
+                return (
+                  <button type="button" disabled={bottleBusy}
+                    onClick={async () => {
+                      if (!pack || !prod) return;
+                      setBottleBusy(true);
+                      const { error } = await supabase.rpc("open_pack", {
+                        p_owner_id: ownerIdRef.current, p_product_id: prod.id,
+                        p_pack_type: pack.pack_type, p_unit_price: prod.price,
+                      });
+                      setBottleBusy(false);
+                      if (error) { toast.error(error.message); return; }
+                      await fetchOpenedPacks();
+                      // Track this newly opened pack so we can revert if order cancelled
+                      const { data: newPack } = await supabase.from("opened_packs")
+                        .select("id").eq("owner_id", ownerIdRef.current!)
+                        .eq("product_id", prod.id).eq("status", "open")
+                        .order("opened_at", { ascending: false }).limit(1);
+                      if (newPack?.[0]) {
+                        setPacksPendingClose((prev) => [...prev, newPack[0].id]);
+                        setPackPackId(newPack[0].id);
+                        setPackQty(1);
                       }
                     }}
-                    className="w-full h-11 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition"
-                    style={{ background: "var(--gradient-hero)" }}>
-                    🎁 Add {specialQty}x for ${specialPrice || "0.00"}
+                    className="w-full h-11 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
+                    style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
+                    {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "📦 Open New Pack"}
                   </button>
-                </>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1863,7 +1874,6 @@ function CashOverlay({
         variation_counts: mergedCounts,
       }).eq("id", bottleId);
     }
-
     // 4. Record pack units against their opened packs (cigarettes / papers)
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
