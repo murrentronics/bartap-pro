@@ -707,9 +707,21 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
           </div>
+          {/* Session stats — reset to 0 on every float update */}
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_float", "Session Float")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-            <SmallStat label={t("session_payout", "Payout")}
+            <SmallStat label={t("session_payout", "Session Payout")}
+              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+              color="#fca5a5" />
+            <SmallStat label={t("session_income", "Session Income")}
+              value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
+              color="#86efac" />
+            <SmallStat label={t("session_profit", "Session Profit")}
+              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+              color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+          </div>
+          <div className="relative grid grid-cols-3 gap-2">
+            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+            <SmallStat label={t("session_payout_this", "This Machine")}
               value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
               color="#fca5a5" />
             <SmallStat label={t("remaining", "Remaining")}
@@ -1029,6 +1041,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
         .reduce((s, e) => s + Number(e.amount), 0)
     : 0;
+  const sessionIncome = floatSession
+    ? entries
+        .filter(e => e.type === "income" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .reduce((s, e) => s + Number(e.amount), 0)
+    : 0;
+  const sessionProfit = sessionIncome - sessionPayouts;
 
   const [orderedMachines, setOrderedMachines] = useState<Machine[]>(() =>
     [...initialMachines].sort((a, b) =>
@@ -1151,12 +1169,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        {/* Session stats — reset on every float update */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("all_time_payout", "All Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
-          <StatCard label={t("all_time_income", "All Income")}  value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
-          <StatCard label={t("all_time_profit", "All Profit")}
-            value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
-            color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
+          <StatCard label={t("session_payout", "Session Payout")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" icon={TrendingDown} />
+          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" icon={TrendingUp} />
+          <StatCard label={t("session_profit", "Session Profit")}
+            value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+            color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
         </div>
         {/* Float row */}
         <div className="relative grid grid-cols-3 gap-2">
@@ -1221,8 +1240,15 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           const mPayout = entries.filter(e => e.machine_id === m.id && e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
           const mIncome = entries.filter(e => e.machine_id === m.id && e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
           const mProfit = mIncome - mPayout;
+          // Session profit — since last float update, resets to 0 on every float update
+          const mSessionPayout = floatSession
+            ? entries.filter(e => e.machine_id === m.id && e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at)).reduce((s, e) => s + Number(e.amount), 0)
+            : 0;
+          const mSessionIncome = floatSession
+            ? entries.filter(e => e.machine_id === m.id && e.type === "income" && new Date(e.created_at) >= new Date(floatSession.set_at)).reduce((s, e) => s + Number(e.amount), 0)
+            : 0;
+          const mSessionProfit = mSessionIncome - mSessionPayout;
           const isDragging = draggingId === m.id;
-
           return (
             <div key={m.id} className="relative"
               draggable={editMode}
@@ -1261,9 +1287,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                 </div>
                 <div className="w-full px-2 pb-1.5 flex justify-center">
                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                    mProfit >= 0 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                    mSessionProfit >= 0 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
                   }`}>
-                    {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
+                    {mSessionProfit >= 0 ? "+" : ""}${fmtWhole(mSessionProfit)}
                   </span>
                 </div>
                 <div className="w-full h-1.5 shrink-0"
