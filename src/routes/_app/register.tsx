@@ -28,6 +28,9 @@ export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
+
+  const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
+
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
   // Initialize cart from localStorage on mount
@@ -49,8 +52,6 @@ export default function RegisterPage() {
       localStorage.setItem(`bartap-cart-${ownerId}`, JSON.stringify(cart));
     }
   }, [cart, ownerId]);
-
-  const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
   // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);
