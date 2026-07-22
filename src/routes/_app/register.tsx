@@ -1368,18 +1368,37 @@ export default function RegisterPage() {
                             .eq("owner_id", ownerIdRef.current!).eq("product_id", product.id)
                             .eq("status", "open").order("opened_at", { ascending: false }).limit(1);
                           if (data?.[0]) {
+                            const newBottleId = data[0].id;
                             // Track new bottle for revert if order is cancelled
-                            setBottlesPendingCancel((prev) => [...prev, data[0].id]);
-                            // Commit any buffered shots from the current bottle first
+                            setBottlesPendingCancel((prev) => [...prev, newBottleId]);
+                            // Commit any buffered shots from the current bottle directly into cart
+                            // WITHOUT closing the modal, then switch to the new bottle
                             if (shotBuffer.length > 0) {
-                              await commitShotBuffer();
-                            } else {
-                              // No buffer — go to select step so cashier taps the new bottle
-                              setShotStep("select");
-                              setShotModalOpen(true);
-                              setShowNewBottleGrid(false);
+                              const currentBottle = openedBottles.find((b) => b.id === shotBottleId);
+                              const currentProduct = products.find((p) => p.id === currentBottle?.product_id);
+                              const currentCapacity = currentProduct?.units_per_item ?? 0;
+                              const isAtCap = currentCapacity > 0 && (currentBottle?.units_consumed ?? 0) >= currentCapacity;
+                              for (const { variation, qty } of shotBuffer) {
+                                const isExtra = isAtCap;
+                                const itemName = isExtra
+                                  ? `Shot (extras): ${currentBottle?.product_name}`
+                                  : `${variation.label}: ${currentBottle?.product_name}`;
+                                setCart((c) => [...c, {
+                                  id: `shot-${shotBottleId}-${variation.key}-${Date.now()}-${Math.random()}`,
+                                  name: itemName,
+                                  price: variation.price,
+                                  image_url: null,
+                                  category: "liquor",
+                                  qty,
+                                  _bottle_id: shotBottleId,
+                                  _units_consumed: variation.units_consumed * qty,
+                                  _variation_key: variation.key,
+                                } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
+                              }
                             }
-                            // Do NOT auto-select the new bottle — cashier must tap it explicitly
+                            // Switch to the new bottle and clear buffer — modal stays open
+                            setShotBottleId(newBottleId);
+                            setShotBuffer([]);
                           }
                         }}
                         className="w-full h-10 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
