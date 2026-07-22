@@ -1461,6 +1461,11 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     const sv = editProduct?.bottle_variations?.find((v) => v.key === "special");
     return sv ? String(sv.price) : "";
   });
+  // Cigarette retail sale price (per cigarette sold individually)
+  const [cigRetailPrice, setCigRetailPrice] = useState(() => {
+    const rv = editProduct?.bottle_variations?.find((v) => v.key === "retail");
+    return rv ? String(rv.price) : "";
+  });
   const [category, setCategory] = useState<string>(editProduct?.category ?? "beers");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
@@ -1555,10 +1560,12 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     const setter = activeNumpad === "cost" ? setCostPrice
       : activeNumpad === "units" ? setUnitsPerItem
       : activeNumpad === "shotprice" ? setShotPricePerUnit
+      : activeNumpad === "cigretail" ? setCigRetailPrice
       : setPrice;
     const current = activeNumpad === "cost" ? costPrice
       : activeNumpad === "units" ? unitsPerItem
       : activeNumpad === "shotprice" ? shotPricePerUnit
+      : activeNumpad === "cigretail" ? cigRetailPrice
       : price;
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
     if (activeNumpad !== "units") {
@@ -1596,6 +1603,9 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
         : []),
       ...bottleVariations.filter((v) => v.key !== "shot" && v.label && v.units_consumed > 0),
     ] : category === "cigarettes" ? [
+      ...(parseFloat(cigRetailPrice) > 0
+        ? [{ key: "retail", label: "Retail", units_consumed: 1, price: parseFloat(cigRetailPrice) }]
+        : []),
       ...(parseInt(cigSpecialQty) > 0 && parseFloat(cigSpecialPrice) > 0
         ? [{ key: "special", label: `${cigSpecialQty} for $${parseFloat(cigSpecialPrice).toFixed(2)}`, units_consumed: parseInt(cigSpecialQty), price: parseFloat(cigSpecialPrice) }]
         : []),
@@ -1630,7 +1640,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       setBusy(false);
       if (error) { toast.error(error.message); return; }
       toast.success("Item added");
-      setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setShotPricePerUnit(""); setCigSpecialQty(""); setCigSpecialPrice(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
+      setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setShotPricePerUnit(""); setCigSpecialQty(""); setCigSpecialPrice(""); setCigRetailPrice(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
       onSaved(inserted);
     }
@@ -1766,7 +1776,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   </div>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">Bottle Price</Label>
+                  <Label className="text-xs">{category === "cigarettes" ? "Pack Sale Price" : "Bottle Price"}</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}
@@ -1838,6 +1848,24 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
                     <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
                       Cost per unit: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                {/* Retail Sale Price per cigarette */}
+                <div>
+                  <Label className="text-xs">Retail Sale Price (per cigarette)</Label>
+                  <div
+                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                    onClick={() => setActiveNumpad(activeNumpad === "cigretail" ? null : "cigretail")}
+                  >
+                    <span className={`text-base font-black ${activeNumpad === "cigretail" ? "text-primary" : "text-muted-foreground"}`}>
+                      ${cigRetailPrice || "0.00"}
+                    </span>
+                  </div>
+                  <InlineNumpad forField="cigretail" />
+                  {cigRetailPrice && parseFloat(cigRetailPrice) > 0 && unitsPerItem && parseInt(unitsPerItem) > 0 && (
+                    <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                      Full pack retail value: ${(parseFloat(cigRetailPrice) * parseInt(unitsPerItem)).toFixed(2)}
                     </p>
                   )}
                 </div>

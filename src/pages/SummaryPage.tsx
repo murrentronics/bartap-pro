@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, Download, CalendarIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Loader2, Download, CalendarIcon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -29,7 +29,14 @@ type Expense = {
 
 type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number };
 
-type FilterType = "day" | "week" | "month" | "year" | "period";
+type FilterType = "session" | "day" | "week" | "month" | "year" | "period";
+
+type BarSession = {
+  id: string;
+  session_start: string;  // ISO timestamp
+  session_end: string | null;  // null = currently open
+  label: string;          // derived display label
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
@@ -46,6 +53,7 @@ function addDays(date: string, days: number): string {
 
 function filterLabel(filter: FilterType, from: string, to: string): string {
   const fmt2 = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (filter === "session") return `Session: ${fmt2(from.slice(0, 10))}`;
   if (filter === "day")    return fmt2(from);
   if (filter === "week")   return `${fmt2(from)} – ${fmt2(to)}`;
   if (filter === "month") {
@@ -164,13 +172,21 @@ export default function SummaryPage() {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
   // Trinidad-aware current date parts
   const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
-  const [filter,    setFilter]   = useState<FilterType>("day");
+  const [filter,    setFilter]   = useState<FilterType>("session");
   const [fromDate,  setFromDate] = useState(today);
   const [toDate,    setToDate]   = useState(today);
+  // Exact ISO timestamps used when filter === "session"
+  const [sessionStart, setSessionStart] = useState<string | null>(null);
+  const [sessionEnd,   setSessionEnd]   = useState<string | null>(null);
   const [selMonth,  setSelMonth] = useState(() => tzNow().getMonth());
   const [selYear,   setSelYear]  = useState(() => tzNow().getFullYear());
   const [earliestDate,   setEarliestDate]   = useState<string>("2020-01-01");
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
+
+  // ── Bar sessions ────────────────────────────────────────────────────────────
+  const [barSessions, setBarSessions] = useState<BarSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [loadingSessions, setLoadingSessions] = useState(true);
 
   const [orders,   setOrders]   = useState<Order[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -180,6 +196,73 @@ export default function SummaryPage() {
   const [downloaded,  setDownloaded]  = useState(false);
 
   const ownerId = profile ? effectiveOwnerId(profile.id) : "";
+
+  // Helper: format a timestamp to "22 Jul · 10:30 PM"
+  const fmtTs = (iso: string) => {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "America/Port_of_Spain" });
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
+    return `${date} · ${time}`;
+  };
+
+  // Task 5 — Load bar sessions from bar_sessions table + active session from profile
+  const loadBarSessions = useCallback(async () => {
+    if (!ownerId) return;
+    setLoadingSessions(true);
+
+    // Load closed sessions from history table (cast to any — new table not in generated types)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: closed } = await (supabase as any)
+      .from("bar_sessions")
+      .select("id, session_start, session_end")
+      .eq("owner_id", ownerId)
+      .order("session_start", { ascending: false })
+      .limit(60);
+
+    // Load active session from profile
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: ownerRow } = await (supabase as any)
+      .from("profiles")
+      .select("bar_session_start, bar_closed_at")
+      .eq("id", ownerId)
+      .single();
+
+    const sessions: BarSession[] = [];
+
+    // Active open session — bar_session_start exists but bar_closed_at is null
+    if (ownerRow?.bar_session_start && !ownerRow?.bar_closed_at) {
+      sessions.push({
+        id: "active",
+        session_start: ownerRow.bar_session_start,
+        session_end: null,
+        label: `🟢 Open · ${fmtTs(ownerRow.bar_session_start)}`,
+      });
+    }
+
+    // Closed historical sessions
+    for (const s of ((closed ?? []) as { id: string; session_start: string; session_end: string | null }[])) {
+      sessions.push({
+        id: s.id,
+        session_start: s.session_start,
+        session_end: s.session_end,
+        label: `${fmtTs(s.session_start)} → ${s.session_end ? fmtTs(s.session_end) : "open"}`,
+      });
+    }
+
+    setBarSessions(sessions);
+
+    // Auto-select the most recent session
+    if (sessions.length > 0) {
+      const first = sessions[0];
+      setSelectedSessionId(first.id);
+      setSessionStart(first.session_start);
+      setSessionEnd(first.session_end);
+    }
+
+    setLoadingSessions(false);
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadBarSessions(); }, [loadBarSessions]);
 
   // Fetch earliest record once to bound pickers + build year list
   useEffect(() => {
@@ -204,14 +287,15 @@ export default function SummaryPage() {
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync fromDate/toDate when filter or selMonth/selYear change
-  // When switching filter tabs, always reset to today (Trinidad time)
   useEffect(() => {
     const nowTZ    = tzNow();
-    const nowToday = nowTZ.toLocaleDateString("en-CA");          // YYYY-MM-DD in TT local time
+    const nowToday = nowTZ.toLocaleDateString("en-CA");
     const nowMonth = nowTZ.getMonth();
     const nowYear  = nowTZ.getFullYear();
 
-    if (filter === "day") {
+    if (filter === "session") {
+      // handled by session selector — no date range needed
+    } else if (filter === "day") {
       setFromDate(nowToday);
       setToDate(nowToday);
     } else if (filter === "week") {
@@ -234,9 +318,8 @@ export default function SummaryPage() {
       setFromDate(nowToday);
       setToDate(nowToday);
     }
-  }, [filter]); // only fire when filter tab changes
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When user changes the month/year dropdowns, update fromDate/toDate
   useEffect(() => {
     if (filter !== "month") return;
     const first = new Date(selYear, selMonth, 1);
@@ -245,20 +328,17 @@ export default function SummaryPage() {
     setToDate(last.toLocaleDateString("en-CA"));
   }, [selMonth, selYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When user changes year button, update fromDate/toDate
   useEffect(() => {
     if (filter !== "year") return;
     setFromDate(`${selYear}-01-01`);
     setToDate(`${selYear}-12-31`);
   }, [selYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When user picks a day, keep toDate = fromDate
   useEffect(() => {
     if (filter !== "day") return;
     setToDate(fromDate);
   }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When user picks a week start, recalc toDate
   useEffect(() => {
     if (filter !== "week") return;
     const end = new Date(fromDate + "T00:00:00");
@@ -266,11 +346,29 @@ export default function SummaryPage() {
     setToDate(end.toLocaleDateString("en-CA"));
   }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Task 7 — load() uses exact session timestamps when filter === "session"
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
-    const startIso = new Date(fromDate + "T00:00:00").toISOString();
-    const endIso   = new Date(toDate   + "T23:59:59").toISOString();
+
+    let startIso: string;
+    let endIso: string;
+    let expFrom: string;
+    let expTo: string;
+
+    if (filter === "session") {
+      // Use exact session timestamps — this is the key fix for bars open past midnight
+      if (!sessionStart) { setLoading(false); return; }
+      startIso = sessionStart;
+      endIso   = sessionEnd ?? new Date().toISOString();
+      expFrom  = sessionStart.slice(0, 10);
+      expTo    = endIso.slice(0, 10);
+    } else {
+      startIso = new Date(fromDate + "T00:00:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59").toISOString();
+      expFrom  = fromDate;
+      expTo    = toDate;
+    }
 
     const [ordersRes, expensesRes, productsRes] = await Promise.all([
       supabase
@@ -284,8 +382,8 @@ export default function SummaryPage() {
         .from("owner_expenses")
         .select("id, amount, description, expense_date")
         .eq("owner_id", ownerId)
-        .gte("expense_date", fromDate)
-        .lte("expense_date", toDate)
+        .gte("expense_date", expFrom)
+        .lte("expense_date", expTo)
         .order("expense_date", { ascending: false }),
       supabase
         .from("products")
@@ -297,7 +395,7 @@ export default function SummaryPage() {
     setExpenses((expensesRes.data ?? []) as Expense[]);
     setProducts((productsRes.data ?? []) as ProductCost[]);
     setLoading(false);
-  }, [ownerId, fromDate, toDate]);
+  }, [ownerId, filter, fromDate, toDate, sessionStart, sessionEnd]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -331,6 +429,7 @@ export default function SummaryPage() {
   const totalProfit   = totalIncome - totalCostPrice;
 
   const FILTERS: { key: FilterType; label: string }[] = [
+    { key: "session", label: "Session" },
     { key: "day",    label: "Day"    },
     { key: "week",   label: "Week"   },
     { key: "month",  label: "Month"  },
@@ -500,13 +599,13 @@ export default function SummaryPage() {
         </Button>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1.5">
+      {/* Filter tabs — scrollable row */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
         {FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className="flex-1 h-9 rounded-xl text-xs font-black transition active:scale-[0.97]"
+            className="shrink-0 h-9 px-3 rounded-xl text-xs font-black transition active:scale-[0.97]"
             style={filter === f.key
               ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
               : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
@@ -515,6 +614,77 @@ export default function SummaryPage() {
           </button>
         ))}
       </div>
+
+      {/* Task 6 — Session picker: dropdown of bar sessions with date + time */}
+      {filter === "session" && (
+        <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4" style={{ color: "var(--primary)" }} />
+            <span className="text-xs font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>Bar Session</span>
+          </div>
+          {loadingSessions ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : barSessions.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-3">
+              No sessions recorded yet. Close the bar after clearing cashier balance to start tracking sessions.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {barSessions.map((s) => {
+                const isSelected = s.id === selectedSessionId;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSessionId(s.id);
+                      setSessionStart(s.session_start);
+                      setSessionEnd(s.session_end);
+                    }}
+                    className="w-full rounded-xl px-4 py-3 text-left transition active:scale-[0.98]"
+                    style={{
+                      background: isSelected ? "rgba(var(--primary-rgb,251 146 60)/0.15)" : "rgba(255,255,255,0.04)",
+                      border: `${isSelected ? 2 : 1}px solid ${isSelected ? "var(--primary)" : "var(--border)"}`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black" style={{ color: s.session_end ? "var(--muted-foreground)" : "#86efac" }}>
+                            {s.session_end ? "Closed" : "🟢 Open"}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>
+                          Start: {new Date(s.session_start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
+                          {" "}
+                          <span style={{ color: "var(--primary)" }}>
+                            {new Date(s.session_start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                          </span>
+                        </p>
+                        {s.session_end && (
+                          <p className="text-xs font-bold text-muted-foreground">
+                            End: {new Date(s.session_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
+                            {" "}
+                            <span style={{ color: "var(--primary)" }}>
+                              {new Date(s.session_end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ background: "var(--gradient-hero)" }}>
+                          <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Day picker — calendar popover ── */}
       {filter === "day" && (

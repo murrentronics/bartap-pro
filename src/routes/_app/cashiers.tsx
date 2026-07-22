@@ -1062,6 +1062,7 @@ export default function CashiersPage() {
   const [statementCashier, setStatementCashier] = useState<Cashier | null>(null);
   const [resetPwCashier, setResetPwCashier] = useState<Cashier | null>(null);
   const [newPw, setNewPw] = useState("");
+  const [clearModalCashier, setClearModalCashier] = useState<Cashier | null>(null);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showCreatePw, setShowCreatePw] = useState(false);
   const [resettingPw, setResettingPw] = useState(false);
@@ -1153,6 +1154,8 @@ export default function CashiersPage() {
     } else {
       load();
       refreshProfile();
+      // Ask owner whether to keep bar open or close it for the night
+      setClearModalCashier(c);
     }
   };
 
@@ -1182,6 +1185,48 @@ export default function CashiersPage() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to delete cashier");
     }
+  };
+
+  const handleKeepBarOpen = () => {
+    toast.success("Bar stays open — session continues");
+    setClearModalCashier(null);
+  };
+
+  const handleCloseBar = async () => {
+    // Write bar_closed_at timestamp to owner profile
+    const now = new Date().toISOString();
+    const ownerId = effectiveOwnerId(profile.id);
+
+    // First read the current session start so we can record the full period
+    const { data: ownerRow } = await supabase.from("profiles")
+      .select("bar_session_start")
+      .eq("id", ownerId)
+      .single();
+
+    const sessionStart: string | null = ownerRow?.bar_session_start ?? null;
+
+    // Record this session in bar_sessions history table
+    if (sessionStart) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("bar_sessions").insert({
+        owner_id: ownerId,
+        session_start: sessionStart,
+        session_end: now,
+      });
+    }
+
+    // Mark the profile as closed (cast to any — new column not in generated types)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles")
+      .update({ bar_closed_at: now })
+      .eq("id", ownerId);
+
+    if (error) {
+      toast.error("Failed to close bar: " + error.message);
+    } else {
+      toast.success("Bar closed — session ended at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+    }
+    setClearModalCashier(null);
   };
 
   return (
@@ -1352,6 +1397,45 @@ export default function CashiersPage() {
                   {resettingPw ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save", "Save")}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Keep Bar Open / Close Bar Modal ── */}
+      {clearModalCashier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}>
+                <CheckCircle2 className="h-6 w-6" style={{ color: "var(--primary)" }} />
+              </div>
+              <h3 className="font-black text-base">{t("clear_complete", "Balance Cleared")}</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                ${Number(clearModalCashier.wallet_balance).toFixed(2)} transferred from {clearModalCashier.username}
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-4 space-y-3">
+              <p className="text-sm text-center" style={{ color: "var(--primary)" }}>Is the bar staying open?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-14 font-black text-sm"
+                  onClick={handleKeepBarOpen}
+                >
+                  Keep Bar Open
+                </Button>
+                <Button
+                  className="h-14 font-black text-sm"
+                  onClick={handleCloseBar}
+                  style={{ background: "#dc2626", color: "#fff" }}
+                >
+                  Close Bar
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center leading-snug">
+                <span className="font-bold">Keep Bar Open</span> continues the session. <span className="font-bold">Close Bar</span> marks the end of the day for Summary reports.
+              </p>
             </div>
           </div>
         </div>

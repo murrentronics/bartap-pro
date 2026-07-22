@@ -1262,6 +1262,8 @@ function NumPad({
   onCancel,
   label,
   confirmLabel,
+  sessionType,
+  onSessionChange,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -1269,6 +1271,8 @@ function NumPad({
   onCancel: () => void;
   label?: string;
   confirmLabel?: string;
+  sessionType?: "same" | "new";
+  onSessionChange?: (mode: "same" | "new") => void;
 }) {
   const press = (key: string) => {
     if (key === "⌫") {
@@ -1296,6 +1300,39 @@ function NumPad({
         {/* Label */}
         {label && (
           <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>{label}</p>
+        )}
+
+        {/* Session selector — only shown when onSessionChange is provided */}
+        {onSessionChange && sessionType && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onSessionChange("same")}
+              className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+              style={sessionType === "same"
+                ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+              Same Session
+            </button>
+            <button
+              type="button"
+              onClick={() => onSessionChange("new")}
+              className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+              style={sessionType === "new"
+                ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+              New Session
+            </button>
+          </div>
+        )}
+
+        {/* Session hint */}
+        {onSessionChange && sessionType && (
+          <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
+            {sessionType === "same"
+              ? "Adds to current float — used amount unchanged"
+              : "Starts fresh — used amount resets to $0"}
+          </p>
         )}
 
         {/* Display */}
@@ -2377,24 +2414,46 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const floatRemaining = cashierFloat > 0 ? Math.max(0, cashierFloat - floatUsed) : 0;
 
+  // Session mode for float update — set before opening numpad
+  const [floatSessionMode, setFloatSessionMode] = useState<"same" | "new">("new");
+
   const handleSetFloat = async () => {
     const val = parseFloat(floatInput);
     if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
     setSavingFloat(true);
     const now = new Date().toISOString();
-    const { error } = await sb.from("profiles")
-      .update({ cashier_float: val, cashier_float_set_at: now })
-      .eq("id", profile.id);
-    setSavingFloat(false);
-    if (error) { toast.error(error.message); return; }
-    // Reset local state immediately — used snaps to 0, remaining = new amount
-    setCashierFloat(val);
-    setFloatSetAt(now);
-    setFloatUsed(0);
-    setFloatInput("");
-    setShowSetFloat(false);
-    toast.success(val === 0 ? "Float cleared" : "Float updated");
-    setTimeout(() => refreshProfile(), 300);
+
+    if (floatSessionMode === "same") {
+      // Same Session — add the entered amount to the current float total
+      // Does NOT reset float_set_at so the used calculation window stays the same
+      const newTotal = cashierFloat + val;
+      const { error } = await sb.from("profiles")
+        .update({ cashier_float: newTotal })
+        .eq("id", profile.id);
+      setSavingFloat(false);
+      if (error) { toast.error(error.message); return; }
+      setCashierFloat(newTotal);
+      setFloatInput("");
+      setShowSetFloat(false);
+      toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newTotal.toFixed(2)}`);
+      setTimeout(() => refreshProfile(), 300);
+    } else {
+      // New Session — set the float to the new amount, reset used to $0,
+      // and mark bar_session_start so Summary knows when this night began
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (sb as any).from("profiles")
+        .update({ cashier_float: val, cashier_float_set_at: now, bar_session_start: now, bar_closed_at: null })
+        .eq("id", profile.id);
+      setSavingFloat(false);
+      if (error) { toast.error(error.message); return; }
+      setCashierFloat(val);
+      setFloatSetAt(now);
+      setFloatUsed(0);
+      setFloatInput("");
+      setShowSetFloat(false);
+      toast.success(val === 0 ? "Float cleared" : "New session started — float set to $" + val.toFixed(2));
+      setTimeout(() => refreshProfile(), 300);
+    }
   };
 
   // Financial summary state (loaded for hero display)
@@ -2717,9 +2776,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           label={cashierFloat > 0 ? "Update Cashier Float" : "Set Cashier Float"}
           value={floatInput}
           onChange={setFloatInput}
-          onCancel={() => { setShowSetFloat(false); setFloatInput(""); }}
+          onCancel={() => { setShowSetFloat(false); setFloatInput(""); setFloatSessionMode("new"); }}
           onDone={handleSetFloat}
           confirmLabel={savingFloat ? "Saving…" : cashierFloat > 0 ? "Update Float" : "Set Float"}
+          sessionType={cashierFloat > 0 ? floatSessionMode : undefined}
+          onSessionChange={cashierFloat > 0 ? setFloatSessionMode : undefined}
         />
       )}
     </div>

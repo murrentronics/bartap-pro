@@ -30,10 +30,25 @@ export default function RegisterPage() {
   const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Initialize cart from localStorage on mount
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`bartap-cart-${ownerId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
+
+  // Persist cart to localStorage whenever it changes
+  useEffect(() => {
+    if (ownerId) {
+      localStorage.setItem(`bartap-cart-${ownerId}`, JSON.stringify(cart));
+    }
+  }, [cart, ownerId]);
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
@@ -360,6 +375,9 @@ export default function RegisterPage() {
     return products.filter((p) => {
       if ((p.category || "beers") !== "cigarettes") return false;
       if (openedProductIds.has(p.id)) return false;
+      // Require retail pricing to be set up (non-zero retail price variation)
+      const hasValidRetailPrice = (p.bottle_variations ?? []).some((v) => v.key === "retail" && v.price > 0);
+      if (!hasValidRetailPrice) return false;
       const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
       return (p.stock_qty ?? 0) - inCart > 0;
     });
@@ -441,6 +459,9 @@ export default function RegisterPage() {
       }
       return products.filter((p) => {
         if ((p.category || "beers") !== "liquor") return false;
+        // Require shot pricing to be set up (non-zero shot price variation)
+        const hasValidShotPrice = (p.bottle_variations ?? []).some((v) => v.key === "shot" && v.price > 0);
+        if (!hasValidShotPrice) return false;
         // Subtract how many are already in the cart as whole-bottle sales
         const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
         // Subtract open bottles from available stock so we don't open more than we have
@@ -972,7 +993,7 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onClearCart={() => { setCart([]); revertPendingPacks(); }}
+          onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
           onSuccess={async (paidAmt, changeAmt) => {
@@ -998,6 +1019,7 @@ export default function RegisterPage() {
             closeFullPacksAfterOrder(cart);
             setBottlesPendingCancel([]);
             setCart([]);
+            localStorage.removeItem(`bartap-cart-${ownerId}`);
             setCashOpen(false);
             refreshProfile();
             fetchOpenedBottles();
@@ -1013,7 +1035,7 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onClearCart={() => { setCart([]); revertPendingPacks(); }}
+          onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCreditOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
           onSuccess={async () => {
@@ -1039,6 +1061,7 @@ export default function RegisterPage() {
             closeFullPacksAfterOrder(cart);
             setBottlesPendingCancel([]);
             setCart([]);
+            localStorage.removeItem(`bartap-cart-${ownerId}`);
             setCreditOpen(false);
             refreshProfile();
             fetchOpenedBottles();
