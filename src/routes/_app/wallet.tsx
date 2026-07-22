@@ -2762,7 +2762,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           ownerId={profile.id}
           ownerWalletBalance={profile.wallet_balance}
           totalIncome={totalIncome}
-          onDataChange={loadSummary}
+          onDataChange={() => { loadSummary(); loadFloatUsed(); refreshProfile(); }}
         />
       )}
 
