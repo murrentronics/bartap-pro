@@ -7,8 +7,8 @@ android {
         applicationId "com.bartendaz.pro"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 587
-        versionName "2.0.186"
+        versionCode 588
+        versionName "2.0.187"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

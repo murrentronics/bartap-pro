@@ -1798,14 +1798,14 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Pack card grid — tap to add, shows qty banner, price from product.price */}
+            {/* Pack card grid — tap to add, shows qty banner, price from retail variation */}
             <div className="px-4 pb-2">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {openedPacks.map((pk) => {
                   const pkProd = products.find(p => p.id === pk.product_id);
                   const pkCap = pkProd?.units_per_item ?? 0;
                   const pkRemaining = pkCap > 0 ? pkCap - pk.units_sold : null;
-                  const unitPrice = pkProd?.price ?? 0;
+                  const unitPrice = (pkProd?.bottle_variations ?? []).find((v: any) => v.key === "retail")?.price ?? pkProd?.price ?? 0;
                   // Cart qty already added for this pack
                   const cartQtyForPack = cart
                     .filter((c) => (c as any)._pack_id === pk.id)
@@ -1892,7 +1892,7 @@ export default function RegisterPage() {
               {packPackId && packQty > 0 && (() => {
                 const pack = openedPacks.find((p) => p.id === packPackId);
                 const prod = products.find((p) => p.id === pack?.product_id);
-                const unitPrice = prod?.price ?? 0;
+                const unitPrice = (prod?.bottle_variations ?? []).find((v: any) => v.key === "retail")?.price ?? prod?.price ?? 0;
                 return (
                   <button onClick={() => addPackUnit()}
                     disabled={!packPackId || unitPrice <= 0}
