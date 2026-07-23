@@ -773,7 +773,7 @@ export default function RegisterPage() {
             {category === "cigarettes" && !barEditMode && (
               <div className="mb-3">
                 <button
-                  onClick={() => { setPackModalOpen(true); }}
+                  onClick={() => { setPackModalOpen(true); setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setShowNewPackGrid(false); }}
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
                 >
