@@ -31,6 +31,37 @@ export default function RegisterPage() {
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
+  // ── Bar session state — blocks sales when bar is closed ────────────────────
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  const barIsOpen = !!barSessionStart && !barClosedAt;
+
+  useEffect(() => {
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("profiles")
+      .select("bar_session_start, bar_closed_at")
+      .eq("id", ownerId)
+      .single()
+      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAt(data?.bar_closed_at ?? null);
+      });
+
+    // Realtime: watch for bar open/close changes on the owner profile
+    const ch = supabase
+      .channel(`bar-session-register-${ownerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+        (payload) => {
+          const rec = payload.new as Record<string, unknown>;
+          if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
+          if ("bar_closed_at"     in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
   // Initialize cart from localStorage on mount
@@ -411,8 +442,10 @@ export default function RegisterPage() {
     const pack = openedPacks.find((p) => p.id === packPackId);
     if (!pack) { toast.error("Select a pack"); return; }
     const product = products.find((p) => p.id === pack.product_id);
-    const unitPrice = product?.price ?? 0;
-    if (unitPrice <= 0) { toast.error("No price set for this item — edit the product first"); return; }
+    // Use the retail variation price (set by owner in Items page) not the pack sale price
+    const retailVariation = (product?.bottle_variations ?? []).find((v) => v.key === "retail");
+    const unitPrice = retailVariation?.price ?? product?.price ?? 0;
+    if (unitPrice <= 0) { toast.error("No retail price set for this item — edit the product first"); return; }
     const capacity = product?.units_per_item ?? 0;
     const alreadySold = pack.units_sold;
     const cartQtyForPack = cart.filter((c) => (c as any)._pack_id === pack.id).reduce((s, c) => s + c.qty, 0);
@@ -635,6 +668,30 @@ export default function RegisterPage() {
 
   return (
     <>
+      {/* ── Bar Closed overlay — blocks all selling ── */}
+      {!barIsOpen && (
+        <div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-8 pb-4">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="font-black text-xl mb-2">Bar is Closed</h2>
+              <p className="text-sm text-muted-foreground leading-snug">
+                {barSessionStart
+                  ? "The bar session has ended. The owner needs to set a new float to open a new session before sales can be made."
+                  : "No session has been started yet. The owner needs to set the cashier float to open the bar."}
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-2">
+              <div className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                Ask the owner to go to <span className="font-black text-foreground">Wallet → Update Float → New Session</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
         {/* Category tabs — icons + label, 6 across */}
@@ -1863,7 +1920,8 @@ export default function RegisterPage() {
                       setPackBusy(true);
                       const { error } = await supabase.rpc("open_pack", {
                         p_owner_id: ownerIdRef.current, p_product_id: prod.id,
-                        p_pack_type: pack.pack_type, p_unit_price: prod.price,
+                        p_pack_type: pack.pack_type,
+                        p_unit_price: (prod.bottle_variations ?? []).find((v: BottleVariation) => v.key === "retail")?.price ?? prod.price,
                       });
                       setPackBusy(false);
                       if (error) { toast.error(error.message); return; }

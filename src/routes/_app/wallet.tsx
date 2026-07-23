@@ -1381,7 +1381,7 @@ function NumPad({
 }
 
 // ─── Financials Tab ───────────────────────────────────────────────────────────
-function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange }: { ownerId: string; ownerWalletBalance: number; totalIncome: number; onDataChange?: () => void }) {
+function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange, barSessionStart, barClosedAt }: { ownerId: string; ownerWalletBalance: number; totalIncome: number; onDataChange?: () => void; barSessionStart?: string | null; barClosedAt?: string | null }) {
   const [expenses, setExpenses] = useState<OwnerExpense[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState<Record<string, number>>({});
   const [loadingData, setLoadingData] = useState(true);
@@ -1393,39 +1393,88 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
   const [expenseLines, setExpenseLines] = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
   const [savingExpense, setSavingExpense] = useState(false);
   const [confirmingExpense, setConfirmingExpense] = useState(false);
+  // Session picker — shown after confirm when bar is closed
+  const [pickingSession, setPickingSession] = useState(false);
+  const [pendingExpenseTotal, setPendingExpenseTotal] = useState(0);
+  const [pendingExpenseDesc, setPendingExpenseDesc] = useState("");
+  const [pendingExpenseDate, setPendingExpenseDate] = useState("");
+
+  const barIsOpen = !!barSessionStart && !barClosedAt;
+
+  // Sessions from bar_sessions table for the picker
+  const [availableSessions, setAvailableSessions] = useState<{ id: string; session_start: string; session_end: string | null }[]>([]);
+  useEffect(() => {
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("bar_sessions").select("id, session_start, session_end")
+      .eq("owner_id", ownerId).order("session_start", { ascending: false }).limit(10)
+      .then(({ data }: { data: { id: string; session_start: string; session_end: string | null }[] | null }) => {
+        setAvailableSessions(data ?? []);
+      });
+  }, [ownerId]);
+
+  const fmtSessionTs = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "America/Port_of_Spain" })
+      + " · " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
+  };
 
   const addExpenseLine = () => setExpenseLines(l => [...l, { description: "", amount: "" }]);
   const removeExpenseLine = (i: number) => setExpenseLines(l => l.filter((_, idx) => idx !== i));
   const updateLine = (i: number, field: "description" | "amount", val: string) =>
     setExpenseLines(l => l.map((line, idx) => idx === i ? { ...line, [field]: val } : line));
 
-  const handleSaveExpense = async () => {
+  const handleSaveExpense = async (overrideCreatedAt?: string) => {
     const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
     if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
     setSavingExpense(true);
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
     try {
       const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-      // Always use Non-Stock Expense title + description lines
       const description = "Non-Stock Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
-      const { error } = await (sb as any).from("owner_expenses").insert({
+      const insertData: Record<string, unknown> = {
         owner_id: ownerId,
         amount: total,
         description,
         expense_date: today,
-      });
+      };
+      // If a session override timestamp is provided, use it so the expense lands in that session
+      if (overrideCreatedAt) insertData.created_at = overrideCreatedAt;
+      const { error } = await (sb as any).from("owner_expenses").insert(insertData);
       if (error) { toast.error(error.message); return; }
-      // Deduct from owner wallet balance
       const newBal = Number(ownerWalletBalance) - total;
       await (sb as any).from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
       toast.success("Expense saved");
       setExpenseLines([{ description: "", amount: "" }]);
       setShowAddExpense(false);
       setConfirmingExpense(false);
+      setPickingSession(false);
+      setPendingExpenseTotal(0);
+      setPendingExpenseDesc("");
+      setPendingExpenseDate("");
       loadData();
       onDataChange?.();
     } finally {
       setSavingExpense(false);
+    }
+  };
+
+  // Called from the first "Save Expense" button — intercepts if bar is closed to ask which session
+  const handleExpenseSubmit = () => {
+    const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
+    if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
+
+    if (!barIsOpen) {
+      // Bar is closed — need to pick which session this expense belongs to
+      const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+      const desc = "Non-Stock Expense\n" + valid.map(l => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
+      setPendingExpenseTotal(total);
+      setPendingExpenseDesc(desc);
+      setPendingExpenseDate(new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }));
+      setConfirmingExpense(false);
+      setPickingSession(true);
+    } else {
+      setConfirmingExpense(true);
     }
   };
 
@@ -1693,15 +1742,54 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange 
               </div>
               {!confirmingExpense ? (
                 <button
-                  onClick={() => {
-                    const valid = expenseLines.filter(l => l.description.trim() && parseFloat(l.amount) > 0);
-                    if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
-                    setConfirmingExpense(true);
-                  }}
+                  onClick={handleExpenseSubmit}
                   className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95"
                   style={{ background: "var(--gradient-hero)" }}>
                   Save Expense
                 </button>
+              ) : pickingSession ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-black text-center" style={{ color: "var(--primary)" }}>Bar is closed — which session is this expense for?</p>
+                  <p className="text-xs text-center text-muted-foreground">${pendingExpenseTotal.toFixed(2)} expense</p>
+                  {/* Previous session — most recent closed session */}
+                  {availableSessions.length > 0 ? (
+                    <div className="space-y-2">
+                      {availableSessions.slice(0, 3).map((s) => (
+                        <button key={s.id} type="button"
+                          disabled={savingExpense}
+                          onClick={() => {
+                            // Use a timestamp just before session_end so it lands inside that session
+                            const ts = s.session_end
+                              ? new Date(new Date(s.session_end).getTime() - 1000).toISOString()
+                              : new Date().toISOString();
+                            handleSaveExpense(ts);
+                          }}
+                          className="w-full rounded-xl px-3 py-2.5 text-left transition active:scale-[0.98] disabled:opacity-50"
+                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                          <p className="text-xs font-black text-foreground">
+                            {s.session_end ? "Closed session" : "🟢 Current session"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {fmtSessionTs(s.session_start)}
+                            {s.session_end && ` → ${fmtSessionTs(s.session_end)}`}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <button type="button" disabled={savingExpense}
+                      onClick={() => handleSaveExpense()}
+                      className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center justify-center transition active:scale-95"
+                      style={{ background: "var(--gradient-hero)" }}>
+                      {savingExpense ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save to Previous Session"}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setPickingSession(false)}
+                    className="w-full h-9 rounded-xl font-black text-sm border border-border transition active:scale-95"
+                    style={{ background: "var(--gradient-card)" }}>
+                    ← Go Back
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs font-black text-center text-muted-foreground">Confirm save this expense?</p>
@@ -2763,6 +2851,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           ownerWalletBalance={profile.wallet_balance}
           totalIncome={totalIncome}
           onDataChange={() => { loadSummary(); loadFloatUsed(); refreshProfile(); }}
+          barSessionStart={(profile as any).bar_session_start ?? null}
+          barClosedAt={(profile as any).bar_closed_at ?? null}
         />
       )}
 
