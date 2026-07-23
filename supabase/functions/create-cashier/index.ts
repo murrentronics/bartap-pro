@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { username, password, bar_owner_id } = await req.json();
+    const { username, password, bar_owner_id, role } = await req.json();
 
     if (!username || !password) {
       return new Response(
@@ -60,6 +60,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Only allow valid login roles via this function (manager or cashier)
+    const effectiveRole = role === "manager" ? "manager" : "cashier";
 
     // Determine the effective parent_id:
     // - Chain owners pass bar_owner_id (the active bar sub-account's id)
@@ -91,7 +94,7 @@ serve(async (req) => {
       );
     }
 
-    // Create the cashier user in auth.users
+    // Create the cashier/manager user in auth.users
     // The trigger will automatically create the profile
     const { data: authData, error: createError } = await supabaseClient.auth.admin.createUser({
       email: `${username}@bartendaz.cashier`,
@@ -99,7 +102,7 @@ serve(async (req) => {
       email_confirm: true,
       user_metadata: {
         username: username,
-        role: "cashier",
+        role: effectiveRole,
         parent_id: parentId,
       },
     });
@@ -135,10 +138,10 @@ serve(async (req) => {
       );
     }
 
-    // Force-set parent_id — don't rely solely on the trigger
+    // Force-set parent_id and role — don't rely solely on the trigger
     await supabaseClient
       .from("profiles")
-      .update({ parent_id: parentId })
+      .update({ parent_id: parentId, role: effectiveRole })
       .eq("id", authData.user.id);
 
     return new Response(

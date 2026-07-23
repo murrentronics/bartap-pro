@@ -1055,8 +1055,15 @@ export default function CashiersPage() {
   const { t } = useTranslation();
   const [list, setList] = useState<Cashier[]>([]);
   const [tab, setTab] = useState("add");
+  // ── Role picker state ──────────────────────────────────────────────────────
+  const [rolePickerOpen, setRolePickerOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"cashier" | "manager" | "custom" | null>(null);
+  // cashier / manager fields
   const [u, setU] = useState("");
   const [p, setP] = useState("");
+  // custom worker fields
+  const [customName, setCustomName]   = useState("");
+  const [customTitle, setCustomTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [statementCashier, setStatementCashier] = useState<Cashier | null>(null);
@@ -1076,9 +1083,9 @@ export default function CashiersPage() {
     const ownerIdForQuery = effectiveOwnerId(profile.id);
     const { data } = await supabase
       .from("profiles")
-      .select("id,username,wallet_balance")
+      .select("id,username,wallet_balance,role,job_title")
       .eq("parent_id", ownerIdForQuery)
-      .eq("role", "cashier")
+      .in("role", ["cashier", "manager", "custom"])
       .order("created_at", { ascending: false });
     setList(((data ?? []) as Cashier[]).sort((a, b) => a.username.localeCompare(b.username)));
   };
@@ -1109,39 +1116,51 @@ export default function CashiersPage() {
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.access_token) { toast.error("Not authenticated"); return; }
-    
-    // Validate username format - no spaces, single word
-    if (/\s/.test(u)) {
-      const errorMsg = "Username cannot contain spaces. Use a single word (e.g., cashier1, john_doe)";
-      setUsernameError(errorMsg);
-      toast.error(errorMsg);
-      return;
-    }
-    
-    // Validate username format - only lowercase letters, numbers, underscore
-    if (!/^[a-z0-9_]+$/.test(u)) {
-      const errorMsg = "Username must contain only lowercase letters, numbers, and underscores";
-      setUsernameError(errorMsg);
-      toast.error(errorMsg);
-      return;
-    }
-    
+    if (/\s/.test(u)) { const m = "Username cannot contain spaces"; setUsernameError(m); toast.error(m); return; }
+    if (!/^[a-z0-9_]+$/.test(u)) { const m = "Lowercase letters, numbers and underscores only"; setUsernameError(m); toast.error(m); return; }
     setUsernameError(null);
     setBusy(true);
     try {
-      // Chain owners: pass the active bar's id so the cashier belongs to that bar, not the master.
-      // Use activeBarId alone — isChainOwner is async and may still be false on first render.
-      // activeBarId is only ever non-null for chain owners so this is safe.
       await create({
         username: u,
         password: p,
+        role: selectedRole === "manager" ? "manager" : "cashier",
         ...(activeBarId ? { barOwnerId: activeBarId } : {}),
       });
-      setU(""); setP("");
+      setU(""); setP(""); setSelectedRole(null);
       setTab("manage");
       load();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create cashier");
+      toast.error(err instanceof Error ? err.message : "Failed to create account");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCreateCustom = async () => {
+    if (!customName.trim()) { toast.error("Enter a name for this worker"); return; }
+    if (!customTitle.trim()) { toast.error("Enter a job title"); return; }
+    setBusy(true);
+    try {
+      const ownerIdForQuery = effectiveOwnerId(profile!.id);
+      // Custom workers have no auth user — insert directly into profiles
+      const { error } = await (supabase as any).from("profiles").insert({
+        username: customName.trim().toLowerCase().replace(/\s+/g, "_"),
+        full_name: customName.trim(),
+        job_title: customTitle.trim(),
+        role: "custom",
+        parent_id: ownerIdForQuery,
+        has_login: false,
+        wallet_balance: 0,
+        status: "approved",
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success(`${customName.trim()} added as ${customTitle.trim()}`);
+      setCustomName(""); setCustomTitle(""); setSelectedRole(null);
+      setTab("manage");
+      load();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create worker");
     } finally {
       setBusy(false);
     }
@@ -1238,81 +1257,162 @@ export default function CashiersPage() {
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="add">{t("add_cashier", "Add Cashier")}</TabsTrigger>
+          <TabsTrigger value="add">Create</TabsTrigger>
           <TabsTrigger value="manage">{t("cashier_name", "Manage")} ({list.length})</TabsTrigger>
           <TabsTrigger value="salary">Salary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
-          <form
-            onSubmit={onCreate}
-            className="mt-6 rounded-2xl p-4 space-y-4 border border-border"
-            style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
-          >
-            <div>
-              <Label>{t("username", "Username")}</Label>
-              <Input 
-                value={u} 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setU(val);
-                  // Real-time validation
-                  if (val.length > 0) {
-                    if (/\s/.test(val)) {
-                      setUsernameError("No spaces allowed");
-                    } else if (!/^[a-z0-9_]+$/.test(val)) {
-                      setUsernameError("Only lowercase letters, numbers, and underscores");
-                    } else {
-                      setUsernameError(null);
-                    }
-                  } else {
-                    setUsernameError(null);
-                  }
-                }} 
-                placeholder="cashier1" 
-                required 
-                minLength={3} 
-                autoComplete="off"
-                className={usernameError ? "border-red-500 focus-visible:ring-red-500" : ""}
-              />
-              {usernameError ? (
-                <p className="text-xs text-red-500 mt-1 font-medium">{usernameError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-1">Single word only. Use lowercase letters, numbers, or underscores (no spaces).</p>
-              )}
-            </div>
-            <div>
-              <Label>{t("cashier_password", "Password")}</Label>
-              <div className="relative mt-1">
-                <Input type={showCreatePw ? "text" : "password"} value={p} onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" className="pr-10" />
-                <button type="button" onClick={() => setShowCreatePw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
-                  {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {/* ── Step 1: Role picker ── */}
+          {!selectedRole && (
+            <div className="mt-6 space-y-3">
+              <p className="text-sm text-muted-foreground text-center">Select the type of staff member to create</p>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Cashier */}
+                <button type="button" onClick={() => setSelectedRole("cashier")}
+                  className="rounded-2xl border-2 p-4 flex flex-col items-center gap-2 transition active:scale-95"
+                  style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
+                    style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)" }}>💰</div>
+                  <span className="font-black text-sm">Cashier</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Full bar access, login required</span>
+                </button>
+                {/* Manager */}
+                <button type="button" onClick={() => setSelectedRole("manager")}
+                  className="rounded-2xl border-2 p-4 flex flex-col items-center gap-2 transition active:scale-95"
+                  style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
+                    style={{ background: "rgba(134,239,172,0.15)" }}>👔</div>
+                  <span className="font-black text-sm">Manager</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Items, Wallet & Machines only</span>
+                </button>
+                {/* Custom */}
+                <button type="button" onClick={() => setSelectedRole("custom")}
+                  className="rounded-2xl border-2 p-4 flex flex-col items-center gap-2 transition active:scale-95"
+                  style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
+                  <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
+                    style={{ background: "rgba(167,139,250,0.15)" }}>🏷️</div>
+                  <span className="font-black text-sm">Custom</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">No login, salary tracking only</span>
                 </button>
               </div>
             </div>
-            <Button type="submit" disabled={busy || !!usernameError} className="w-full h-12 font-black" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-              {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : <><UserPlus className="h-4 w-4 mr-2" /> Create Cashier</>}
-            </Button>
-          </form>
+          )}
+
+          {/* ── Step 2a: Cashier / Manager form ── */}
+          {(selectedRole === "cashier" || selectedRole === "manager") && (
+            <form onSubmit={onCreate}
+              className="mt-6 rounded-2xl p-4 space-y-4 border border-border"
+              style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
+              <div className="flex items-center justify-between">
+                <span className="font-black text-sm">
+                  {selectedRole === "manager" ? "👔 New Manager" : "💰 New Cashier"}
+                </span>
+                <button type="button" onClick={() => { setSelectedRole(null); setU(""); setP(""); setUsernameError(null); }}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground transition">← Back</button>
+              </div>
+              <div>
+                <Label>{t("username", "Username")}</Label>
+                <Input value={u}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setU(val);
+                    if (val.length > 0) {
+                      if (/\s/.test(val)) setUsernameError("No spaces allowed");
+                      else if (!/^[a-z0-9_]+$/.test(val)) setUsernameError("Only lowercase letters, numbers, and underscores");
+                      else setUsernameError(null);
+                    } else setUsernameError(null);
+                  }}
+                  placeholder={selectedRole === "manager" ? "manager1" : "cashier1"}
+                  required minLength={3} autoComplete="off"
+                  className={usernameError ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {usernameError
+                  ? <p className="text-xs text-red-500 mt-1 font-medium">{usernameError}</p>
+                  : <p className="text-xs text-muted-foreground mt-1">Single word only. Lowercase letters, numbers or underscores.</p>}
+              </div>
+              <div>
+                <Label>{t("cashier_password", "Password")}</Label>
+                <div className="relative mt-1">
+                  <Input type={showCreatePw ? "text" : "password"} value={p}
+                    onChange={(e) => setP(e.target.value)} required minLength={6} autoComplete="new-password" className="pr-10" />
+                  <button type="button" onClick={() => setShowCreatePw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                    {showCreatePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={busy || !!usernameError} className="w-full h-12 font-black"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : <><UserPlus className="h-4 w-4 mr-2" /> Create {selectedRole === "manager" ? "Manager" : "Cashier"}</>}
+              </Button>
+            </form>
+          )}
+
+          {/* ── Step 2b: Custom worker form (no login) ── */}
+          {selectedRole === "custom" && (
+            <div className="mt-6 rounded-2xl p-4 space-y-4 border border-border"
+              style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
+              <div className="flex items-center justify-between">
+                <span className="font-black text-sm">🏷️ New Custom Worker</span>
+                <button type="button" onClick={() => { setSelectedRole(null); setCustomName(""); setCustomTitle(""); }}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground transition">← Back</button>
+              </div>
+              <div className="rounded-xl px-3 py-2 text-xs text-muted-foreground"
+                style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+                Custom workers have no login access. They're used for salary tracking only.
+              </div>
+              <div>
+                <Label>Full Name</Label>
+                <Input value={customName} onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="e.g. John Smith" autoComplete="off" />
+              </div>
+              <div>
+                <Label>Job Title</Label>
+                <Input value={customTitle} onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="e.g. Bouncer, DJ, Waitress" autoComplete="off" />
+              </div>
+              <Button onClick={onCreateCustom} disabled={busy || !customName.trim() || !customTitle.trim()}
+                className="w-full h-12 font-black"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : <><UserPlus className="h-4 w-4 mr-2" /> Add Worker</>}
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="manage">
           <div className="mt-6 space-y-2">
-            {list.length === 0 && <div className="text-muted-foreground py-8 text-center">No cashiers yet.</div>}
-            {list.map((c) => (
+            {list.length === 0 && <div className="text-muted-foreground py-8 text-center">No staff yet.</div>}
+            {list.map((c) => {
+              const isCustom = (c as any).role === "custom";
+              const isManager = (c as any).role === "manager";
+              const roleBadge = isCustom
+                ? { label: (c as any).job_title ?? "Custom", color: "rgba(167,139,250,0.2)", border: "rgba(167,139,250,0.4)", text: "#c4b5fd" }
+                : isManager
+                ? { label: "Manager", color: "rgba(134,239,172,0.15)", border: "rgba(134,239,172,0.4)", text: "#86efac" }
+                : { label: "Cashier", color: "rgba(var(--primary-rgb,251 146 60)/0.15)", border: "rgba(var(--primary-rgb,251 146 60)/0.4)", text: "var(--primary)" };
+              return (
               <div key={c.id} className="rounded-2xl p-3 border border-border" style={{ background: "var(--gradient-card)" }}>
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
                     <User className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold">{c.username}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Balance: <span className="text-primary font-black">${Number(c.wallet_balance).toFixed(2)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold truncate">{c.username}</span>
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: roleBadge.color, border: `1px solid ${roleBadge.border}`, color: roleBadge.text }}>
+                        {roleBadge.label}
+                      </span>
                     </div>
+                    {!isCustom && (
+                      <div className="text-sm text-muted-foreground">
+                        Balance: <span className="text-primary font-black">${Number(c.wallet_balance).toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
-                  {/* Delete button — top right */}
+                  {/* Delete button */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button size="sm" variant="destructive" className="h-9 w-9 p-0 shrink-0"><Trash2 className="h-4 w-4" /></Button>
@@ -1320,7 +1420,11 @@ export default function CashiersPage() {
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete {c.username}?</AlertDialogTitle>
-                        <AlertDialogDescription>Any wallet balance will be transferred to your account first, then the account is removed permanently.</AlertDialogDescription>
+                        <AlertDialogDescription>
+                          {isCustom
+                            ? "This custom worker record will be permanently removed."
+                            : "Any wallet balance will be transferred to your account first, then the account is removed permanently."}
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter className="flex-row gap-3 mt-2">
                         <AlertDialogCancel className="flex-1 h-14 text-base font-black m-0">Cancel</AlertDialogCancel>
@@ -1329,19 +1433,23 @@ export default function CashiersPage() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => setStatementCashier(c)}>
-                    <FileText className="h-5 w-5 mr-1.5" /> Statement
-                  </Button>
-                  <Button size="sm" variant="secondary" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
-                    <Eraser className="h-5 w-5 mr-1.5" /> Clear
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
-                    <KeyRound className="h-5 w-5 mr-1.5" /> Password
-                  </Button>
-                </div>
+                {/* Action buttons — custom workers only get Delete (no clear/password) */}
+                {!isCustom && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <Button size="sm" variant="outline" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => setStatementCashier(c)}>
+                      <FileText className="h-5 w-5 mr-1.5" /> Statement
+                    </Button>
+                    <Button size="sm" variant="secondary" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => onClear(c)} disabled={Number(c.wallet_balance) === 0}>
+                      <Eraser className="h-5 w-5 mr-1.5" /> Clear
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 min-w-[90px] h-12 text-sm font-black" onClick={() => { setResetPwCashier(c); setNewPw(""); setShowNewPw(false); }}>
+                      <KeyRound className="h-5 w-5 mr-1.5" /> Password
+                    </Button>
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </TabsContent>
 

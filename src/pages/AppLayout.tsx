@@ -193,9 +193,10 @@ export default function AppLayout() {
   const isOwner    = profile.role === "owner";
   const isAdmin    = profile.role === "admin";
   const isCashier  = profile.role === "cashier";
-  const isPending  = !isAdmin && !isCashier && profile.status === "pending";
-  const isSuspended = !isAdmin && !isCashier && profile.status === "suspended";
-  const hasMusic   = isOwner || isCashier;
+  const isManager  = (profile.role as string) === "manager";
+  const isPending  = !isAdmin && !isCashier && !isManager && profile.status === "pending";
+  const isSuspended = !isAdmin && !isCashier && !isManager && profile.status === "suspended";
+  const hasMusic   = isOwner || isCashier || isManager;
   const isOnMusic  = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {
@@ -286,6 +287,12 @@ export default function AppLayout() {
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"),   icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
+    : isManager ? [
+        // Manager: Items, Wallet, Machines (if enabled), Logout only
+        ...(ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }] : []),
+        { to: "/wallet", label: t("wallet", "Wallet"), icon: Wallet },
+        ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
+      ]
     : [
         ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
         ...(ownerHasBar ? [{ to: "/credit",   label: t("credit", "Credit"), icon: Receipt }] : []),
@@ -342,7 +349,7 @@ export default function AppLayout() {
       </header>
 
       {/* ── CASHIER MENU — at root level, always above page content ── */}
-      {menuOpen && isCashier && (
+      {menuOpen && (isCashier || isManager) && (
         <>
           <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
             style={{ top: "calc(56px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}

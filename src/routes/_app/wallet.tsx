@@ -1801,7 +1801,7 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange,
                       ← Go Back
                     </button>
                     <button
-                      onClick={handleSaveExpense}
+                      onClick={() => handleSaveExpense()}
                       disabled={savingExpense}
                       className="h-10 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-50 flex items-center justify-center gap-2 transition active:scale-95"
                       style={{ background: "var(--gradient-hero)" }}>
