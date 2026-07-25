@@ -2549,6 +2549,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     initialExpense: number;
     monthlyExpenses: number;
     totalIncome: number;
+    sessionIncome: number;
     stockResaleValue: number;
     stockExpectedProfit: number;
     stockCost: number;
@@ -2563,7 +2564,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     const todayDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
     const todayStartTT = new Date(todayDateStr + "T00:00:00-04:00"); // Trinidad is UTC-4
 
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes] = await Promise.all([
+    // Bar session start — used for session income calculation
+    const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
+
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionTransfersRes, sessionCreditRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
@@ -2579,6 +2583,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       // Today's non-stock expenses (positive only — not reverted)
       supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
         .eq("expense_date", todayDateStr).gt("amount", 0),
+      // Session income: all orders since bar_session_start
+      barSessionStart
+        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", barSessionStart)
+        : Promise.resolve({ data: [] }),
+      // Session transfers in since bar_session_start
+      barSessionStart
+        ? supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in").gte("created_at", barSessionStart)
+        : Promise.resolve({ data: [] }),
+      // Session credit payments since bar_session_start
+      barSessionStart
+        ? supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0).gte("created_at", barSessionStart)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
@@ -2625,7 +2641,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // todayProfit matches Summary page Day filter: income - item costs - non-stock expenses
     const todayProfit = todayIncome - todayCostFromItems - todayNonStock;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit });
+    // Session income: orders + transfers_in + credit payments since bar_session_start
+    const sessionOrdersIncome    = (sessionOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    const sessionTransfersIncome = (sessionTransfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+    const sessionCreditIncome    = (sessionCreditRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
+    const sessionIncome = barSessionStart ? sessionOrdersIncome + sessionTransfersIncome + sessionCreditIncome : 0;
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -2674,6 +2696,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
+  const sessionIncome = financialSummary ? financialSummary.sessionIncome : 0;
+  const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
+  const barIsOpenWallet = !!barSessionStart && !((profile as any).bar_closed_at);
   const todayIncome = financialSummary ? financialSummary.todayIncome : 0;
   const todayProfit = financialSummary ? financialSummary.todayProfit : 0;
   const netProfit = totalIncome - totalExpenses;
@@ -2782,12 +2807,25 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </div>
           </div>
 
-          {/* Total Income — full width */}
-          <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
+          {/* Total Income + Session Income — 2 cards */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
+              </div>
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
             </div>
-            <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
+            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Session Income
+              </div>
+              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: barIsOpenWallet ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+              </span>
+              {barIsOpenWallet && (
+                <span className="text-[9px] text-green-400/60 font-semibold">Live session</span>
+              )}
+            </div>
           </div>
 
           {/* Cashier Float row — narrow button (left) + wider float card (right) */}

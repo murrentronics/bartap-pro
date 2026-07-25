@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
-  Plus, Loader2, ChevronLeft, Trash2, Download, X,
+  Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil,
   TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_app/machines")({
   component: MachinesPage,
 });
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type Machine = { id: string; owner_id: string; name: string; created_at: string; sort_order: number };
 type MachineEntry = {
   id: string; machine_id: string; owner_id: string;
@@ -42,11 +42,11 @@ type FloatSession = {
   amount: number; set_at: string; created_at: string;
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-// Whole-number formatter for hero stat cards — no cents
+// Whole-number formatter for hero stat cards â€” no cents
 function fmtWhole(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
@@ -62,7 +62,7 @@ function fmtDate(d: string) {
   });
 }
 
-// ── Stat Card ──────────────────────────────────────────────────────────────────
+// â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, color, icon: Icon }: {
   label: string; value: string; color: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -78,7 +78,7 @@ function StatCard({ label, value, color, icon: Icon }: {
   );
 }
 
-// ── Small Stat ─────────────────────────────────────────────────────────────────
+// â”€â”€ Small Stat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SmallStat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="rounded-xl px-3 py-2 flex flex-col gap-0.5 text-center"
@@ -89,7 +89,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
   );
 }
 
-// ── History Month Accordion ────────────────────────────────────────────────────
+// â”€â”€ History Month Accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier, ownerId }: {
   entries: MachineEntry[];
   loading: boolean;
@@ -109,7 +109,28 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
   const [downloadedAll, setDownloadedAll] = useState(false);
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
 
-  // ── Bar session state ───────────────────────────────────────────────────────
+  // â”€â”€ Edit income state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [editEntry, setEditEntry] = useState<MachineEntry | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleSaveEdit = async () => {
+    if (!editEntry) return;
+    const val = parseFloat(editAmount);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSavingEdit(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("machine_entries")
+      .update({ amount: val })
+      .eq("id", editEntry.id);
+    setSavingEdit(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Income updated");
+    setEditEntry(null);
+    setEditAmount("");
+  };
+
+  // â”€â”€ Bar session state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
   const barIsOpen = !!barSessionStart && !barClosedAt;
@@ -117,7 +138,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
   const fmtSessionTs = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "America/Port_of_Spain" })
-      + " · " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
+      + " Â· " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
   };
 
   useEffect(() => {
@@ -133,11 +154,26 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
       });
   }, [ownerId]);
 
+  // Realtime â€” keep bar open/closed in sync
+  useEffect(() => {
+    if (!ownerId) return;
+    const ch = supabase
+      .channel(`bar-session-history-${ownerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+        (payload) => {
+          const rec = payload.new as Record<string, unknown>;
+          if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
+          if ("bar_closed_at"     in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
   // Sort all entries newest first
   const allSorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
   // Only show delete on the newest payout entry if:
   //   1. It was made more than 2 seconds after the last delete (prevents button jumping)
-  //   2. It was made AFTER the last float update — once the owner updates the float,
+  //   2. It was made AFTER the last float update â€” once the owner updates the float,
   //      all prior entries are locked and the delete button must not appear on them.
   //      It only re-appears when a new payout is recorded in the new float session.
   const newestPayoutEntry = allSorted.find(e => e.type === "payout") ?? null;
@@ -149,7 +185,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
       if (entryTime < lastDeletedAt - 2000) return null;
     }
     // Guard: entry must be from the current float session (after floatSession.set_at).
-    // If it predates the last float update, the session is closed — hide the button.
+    // If it predates the last float update, the session is closed â€” hide the button.
     if (floatSession) {
       const entryTime = new Date(newestPayoutEntry.created_at).getTime();
       const floatTime = new Date(floatSession.set_at).getTime();
@@ -190,8 +226,9 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
   }
 
   return (
+    <>
     <div className="space-y-3">
-      {/* Top bar — record count + Download All */}
+      {/* Top bar â€” record count + Download All */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{entries.length} records</span>
         <Button size="sm" variant="outline" className="h-9 gap-1.5 font-bold"
@@ -242,7 +279,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                       : <Download className="h-3 w-3" />}
                     {downloadedMonth === mk ? "Done" : "PDF"}
                   </button>
-                  <span className={`transition-transform text-muted-foreground text-sm ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                  <span className={`transition-transform text-muted-foreground text-sm ${isOpen ? "rotate-180" : ""}`}>â–¾</span>
                 </div>
               </button>
 
@@ -286,7 +323,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                             </div>
                           )}
                         </div>
-                        {/* Proof photo — landscape, right side */}
+                        {/* Proof photo â€” landscape, right side */}
                         {isPayout && hasProof && (
                           <button
                             onClick={() => onLightbox(e.proof_image_url!)}
@@ -306,6 +343,18 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                             <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
                           </div>
                         )}
+                        {/* Edit income â€” owner/manager only, bar open, entry in current session */}
+                        {!isPayout && !isCashier && barIsOpen && barSessionStart &&
+                          new Date(e.created_at) >= new Date(barSessionStart) && (
+                          <button
+                            onClick={() => { setEditEntry(e); setEditAmount(String(Number(e.amount))); }}
+                            className="h-8 w-8 rounded-full flex items-center justify-center active:scale-95 transition shrink-0"
+                            style={{ background: "rgba(251,146,60,0.20)", border: "1px solid rgba(251,146,60,0.4)" }}
+                            title="Edit income"
+                          >
+                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -316,6 +365,54 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
         })}
       </div>
     </div>
+
+    {/* â”€â”€ Edit Income Modal â”€â”€ */}
+    {editEntry && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm px-6">
+        <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+          style={{ background: "var(--gradient-card)" }}>
+          <div className="px-5 pt-5 pb-3">
+            <p className="font-black text-base">Edit Income</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {new Date(editEntry.created_at).toLocaleString("en-GB", {
+                day: "numeric", month: "short", year: "numeric",
+                hour: "2-digit", minute: "2-digit", hour12: true,
+              })}
+            </p>
+          </div>
+          <div className="px-5 pb-2">
+            <label className="text-xs font-black text-muted-foreground uppercase tracking-wide">Amount ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              className="mt-1 w-full h-11 rounded-xl border border-border bg-muted px-3 text-lg font-black outline-none focus:ring-1 focus:ring-primary"
+              autoFocus
+            />
+          </div>
+          <div className="grid grid-cols-2 border-t border-border mt-4">
+            <button
+              onClick={() => { setEditEntry(null); setEditAmount(""); }}
+              disabled={savingEdit}
+              className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={savingEdit}
+              className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40 flex items-center justify-center gap-2"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -346,10 +443,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [showDeleteMachine, setShowDeleteMachine] = useState(false);
   const [deletingMachine, setDeletingMachine] = useState(false);
   const confirm = useConfirm();
-  // Session anchor — ISO timestamp of the last income entry (machine cleared).
+  // Session anchor â€” ISO timestamp of the last income entry (machine cleared).
   const [sessionAnchor, setSessionAnchor] = useState<string | null>(null);
 
-  // Proof photo — in-app camera using getUserMedia so music keeps playing
+  // Proof photo â€” in-app camera using getUserMedia so music keeps playing
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [camOpen, setCamOpen] = useState(false);
@@ -393,7 +490,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       closeCam();
     }, "image/jpeg", 0.85);
   };
-  // Lightbox — in-app full-screen image viewer
+  // Lightbox â€” in-app full-screen image viewer
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Stop camera stream when component unmounts
@@ -419,7 +516,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   useEffect(() => { load(); }, [load]);
 
-  // Realtime — entries for this machine + float sessions so the second row stays live
+  // Realtime â€” entries for this machine + float sessions so the second row stays live
   useEffect(() => {
     const ch = supabase.channel(`machine-detail-${machine.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries",
@@ -428,12 +525,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     return () => { supabase.removeChannel(ch); };
   }, [machine.id, load]);
 
-  // ── All-time totals ────────────────────────────────────────────────────────
+  // â”€â”€ All-time totals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
 
-  // ── Session totals — payouts/income since the last machine clear (income entry).
+  // â”€â”€ Session totals â€” payouts/income since the last machine clear (income entry).
   // If there's never been a clear, counts everything (anchor = null = all time).
   const sessionPayouts = entries
     .filter(e => e.type === "payout" && (!sessionAnchor || new Date(e.created_at) > new Date(sessionAnchor)))
@@ -443,7 +540,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     .reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
 
-  // ── Float session payout — payouts for THIS machine since float was last set.
+  // â”€â”€ Float session payout â€” payouts for THIS machine since float was last set.
   // Resets to $0 each time the float is updated. Feeds into the main page remaining calc.
   const floatSessionPayout = floatSession
     ? entries
@@ -518,7 +615,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
     toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
 
-    // Fire local payout alert only on the owner's device — not cashier devices
+    // Fire local payout alert only on the owner's device â€” not cashier devices
     if (tab === "payout" && profile.role === "owner") {
       const alerts = loadAlertSettings(ownerId);
       await checkAndFirePayoutAlert(val, machine.name, alerts, (to) => navigate({ to }), ownerId);
@@ -677,10 +774,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDeleteMachine = async (wipeRecords: boolean) => {
     setDeletingMachine(true);
     if (wipeRecords) {
-      // "Delete Everything" — explicitly wipe entries before removing the machine
+      // "Delete Everything" â€” explicitly wipe entries before removing the machine
       await sb.from("machine_entries").delete().eq("machine_id", machine.id);
     }
-    // Delete the machine card (entries are NOT cascaded — they survive with machine_id = null)
+    // Delete the machine card (entries are NOT cascaded â€” they survive with machine_id = null)
     const { error } = await sb.from("machines").delete().eq("id", machine.id);
     setDeletingMachine(false);
     if (error) { toast.error(error.message); return; }
@@ -732,25 +829,25 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
           </div>
-          {/* Session stats — reset to 0 on every float update */}
+          {/* Session stats â€” reset to 0 on every float update */}
           <div className="relative grid grid-cols-3 gap-2">
             <SmallStat label={t("session_payout", "Session Payout")}
-              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "â€”"}
               color="#fca5a5" />
             <SmallStat label={t("session_income", "Session Income")}
-              value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
+              value={floatSession ? "$" + fmtWhole(sessionIncome) : "â€”"}
               color="#86efac" />
             <SmallStat label={t("session_profit", "Session Profit")}
-              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "â€”"}
               color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "â€”"} color="#fbbf24" />
             <SmallStat label={t("session_payout_this", "This Machine")}
-              value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
+              value={floatSessionPayout === null ? "â€”" : "$" + fmtWhole(floatSessionPayout)}
               color="#fca5a5" />
             <SmallStat label={t("remaining", "Remaining")}
-              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              value={remainingFloat === null ? "â€”" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
               color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
         </section>
@@ -775,7 +872,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <h2 className="font-black text-sm">
               {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record amount cleared from machine")}
             </h2>
-            {/* Amount display + Numpad — hidden when camera is open */}
+            {/* Amount display + Numpad â€” hidden when camera is open */}
             {!camOpen && (
               <>
             <div className="rounded-2xl px-5 py-4 text-center"
@@ -818,13 +915,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 onClick={() => setAmount(prev => prev.slice(0, -1))}
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
-                ⌫
+                âŒ«
               </button>
             </div>
               </>
             )}
 
-            {/* Proof photo — payout only, camera view */}
+            {/* Proof photo â€” payout only, camera view */}
             {tab === "payout" && (
               <div>
                 <canvas ref={canvasRef} className="hidden" />
@@ -841,7 +938,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                       <button type="button" onClick={snapPhoto}
                         className="flex-1 h-10 rounded-xl font-black text-sm text-white active:scale-95 transition"
                         style={{ background: "var(--gradient-hero)" }}>
-                        📸 Snap
+                        ðŸ“¸ Snap
                       </button>
                     </div>
                   </div>
@@ -863,10 +960,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               </div>
             )}
 
-            {/* Proof photo + Save — side by side on payout tab */}
+            {/* Proof photo + Save â€” side by side on payout tab */}
             {tab === "payout" ? (
               <div className="flex gap-2">
-                {/* Take Proof Photo button — left */}
+                {/* Take Proof Photo button â€” left */}
                 {!camOpen && !proofPreview && (
                   <button type="button" onClick={openCam}
                     className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-dashed"
@@ -880,10 +977,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 font-black text-sm active:scale-95 transition border-2 border-green-500/40"
                     style={{ background: "oklch(0.18 0.04 145 / 0.3)", color: "#4ade80" }}>
                     <Camera className="h-4 w-4" />
-                    ✓ Photo
+                    âœ“ Photo
                   </button>
                 )}
-                {/* Save Payout button — right */}
+                {/* Save Payout button â€” right */}
                 {(() => {
                   const enteredVal = Math.round((parseFloat(amount) || 0) * 100) / 100;
                   const noFloat = remainingFloat === null;
@@ -923,11 +1020,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             onDelete={handleDelete}
             onLightbox={(url) => setLightboxUrl(url)}
             isCashier={isCashier}
+            ownerId={ownerId}
           />
         )}
       </div>
 
-      {/* Delete machine confirm modal — two options: keep or wipe records */}
+      {/* Delete machine confirm modal â€” two options: keep or wipe records */}
       {showDeleteMachine && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-red-500/40 shadow-2xl overflow-hidden"
@@ -949,7 +1047,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   className="w-full flex items-start gap-3 rounded-2xl border border-border p-3 text-left hover:bg-muted/30 transition active:scale-[0.98] disabled:opacity-50"
                   style={{ background: "var(--gradient-card)" }}>
                   <div className="h-8 w-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-sm">📁</span>
+                    <span className="text-sm">ðŸ“</span>
                   </div>
                   <div>
                     <div className="font-black text-sm">Remove Card Only</div>
@@ -980,7 +1078,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         </div>
       )}
 
-      {/* ── Lightbox ── */}
+      {/* â”€â”€ Lightbox â”€â”€ */}
       {lightboxUrl && (
         <div
           className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-sm"
@@ -1006,7 +1104,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   );
 }
 
-// ── Create Tab ─────────────────────────────────────────────────────────────────
+// â”€â”€ Create Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Machine) => void }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
@@ -1044,7 +1142,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
   );
 }
 
-// ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
+// â”€â”€ Screens Tab (machine grid + hero) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, onSetFloat, onDeleteMachine }: {
   machines: Machine[]; entries: MachineEntry[];
   ownerId: string;
@@ -1096,7 +1194,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   // Reset edit state on mount (covers tab switches where ScreensTab remounts)
   // Also force-restore touch-action on the document in case a previous drag
-  // session on another page left it locked — this is the self-healing mechanism.
+  // session on another page left it locked â€” this is the self-healing mechanism.
   useEffect(() => {
     document.body.style.touchAction = "";
     document.documentElement.style.touchAction = "";
@@ -1107,7 +1205,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync when machines change — never during drag/edit
+  // Sync when machines change â€” never during drag/edit
   useEffect(() => {
     if (editModeRef.current) return;
     const sorted = [...initialMachines].sort((a, b) =>
@@ -1117,7 +1215,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     setOrderedMachines(sorted);
   }, [initialMachines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save only called from handleDone — not on every drop
+  // Save only called from handleDone â€” not on every drop
   const saveOrder = async (newOrder: Machine[]) => {
     setSavingOrder(true);
     await Promise.all(
@@ -1161,7 +1259,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const handleDrop = () => {
     draggingRef.current = null;
     setDraggingId(null);
-    // No save here — save happens on Done
+    // No save here â€” save happens on Done
   };
 
   const startLongPress = () => {
@@ -1194,12 +1292,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        {/* Session stats — reset on every float update */}
+        {/* Session stats â€” reset on every float update */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_payout", "Session Payout")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" icon={TrendingDown} />
-          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" icon={TrendingUp} />
+          <StatCard label={t("session_payout", "Session Payout")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "â€”"} color="#fca5a5" icon={TrendingDown} />
+          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "â€”"} color="#86efac" icon={TrendingUp} />
           <StatCard label={t("session_profit", "Session Profit")}
-            value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+            value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "â€”"}
             color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
         </div>
         {/* Float row */}
@@ -1208,14 +1306,14 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("float_set", "Float Set")}</div>
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
-              {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
+              {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "â€”"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
             style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Payout")}</div>
             <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
-              {floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+              {floatSession ? "$" + fmtWhole(sessionPayouts) : "â€”"}
             </div>
           </div>
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
@@ -1223,11 +1321,11 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("remaining", "Remaining")}</div>
             <div className="font-black text-xs"
               style={{ color: remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5" }}>
-              {remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              {remainingFloat === null ? "â€”" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
             </div>
           </div>
         </div>
-        {/* Set/Update Float button — same size as one float card */}
+        {/* Set/Update Float button â€” same size as one float card */}
         {!isCashier && (
           <div className="grid grid-cols-3">
             <button onClick={onSetFloat}
@@ -1265,7 +1363,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           const mPayout = entries.filter(e => e.machine_id === m.id && e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
           const mIncome = entries.filter(e => e.machine_id === m.id && e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
           const mProfit = mIncome - mPayout;
-          // Session profit — since last float update, resets to 0 on every float update
+          // Session profit â€” since last float update, resets to 0 on every float update
           const mSessionPayout = floatSession
             ? entries.filter(e => e.machine_id === m.id && e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at)).reduce((s, e) => s + Number(e.amount), 0)
             : 0;
@@ -1331,12 +1429,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                     <span className="text-[8px] font-black text-white/80 uppercase tracking-widest text-center px-1 line-clamp-1">
                       {m.name}
                     </span>
-                    <span className="text-[8px] font-black text-white/60 mt-0.5">← drag →</span>
+                    <span className="text-[8px] font-black text-white/60 mt-0.5">â† drag â†’</span>
                   </div>
                 )}
               </button>
 
-              {/* Delete button — top right, edit mode only */}
+              {/* Delete button â€” top right, edit mode only */}
               {editMode && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onDeleteMachine(m.id); }}
@@ -1353,8 +1451,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   );
 }
 
-// ── All History Tab ────────────────────────────────────────────────────────────
-function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machines: Machine[] }) {
+// â”€â”€ All History Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; machines: Machine[]; ownerId: string }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadedAll, setDownloadedAll] = useState(false);
@@ -1362,7 +1460,29 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  // ── Summary filter ──────────────────────────────────────────────────────────
+  // ── Bar session state (for Session filter) ─────────────────────────────────
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  useEffect(() => {
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from('profiles').select('bar_session_start, bar_closed_at')
+      .eq('id', ownerId).single()
+      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAt(data?.bar_closed_at ?? null);
+      });
+    const ch = supabase.channel('bar-allhistory-' + ownerId)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'id=eq.' + ownerId },
+        (payload: any) => {
+          const r = payload.new as Record<string, unknown>;
+          if ('bar_session_start' in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
+          if ('bar_closed_at' in r) setBarClosedAt((r.bar_closed_at as string | null) ?? null);
+        }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
+  // â”€â”€ Summary filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   type SummaryFilter = "all" | "session" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
   const [showSummaryPicker, setShowSummaryPicker] = useState(false);
@@ -1502,7 +1622,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0);
       doc.text(dateStr, LM, y);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-      doc.text(m?.name ?? "—", LM + 55, y);
+      doc.text(m?.name ?? "â€”", LM + 55, y);
       doc.setFontSize(9);
       doc.setTextColor(isPayout ? 180 : 40, isPayout ? 40 : 140, 40);
       doc.text(e.type.toUpperCase(), LM + 110, y);
@@ -1529,7 +1649,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     try {
       const doc = await buildPdf(sorted, "Full History", "All Records");
       await savePdfNative("machines-all-history.pdf", doc);
-      toast.success("PDF ready — check your Documents folder");
+      toast.success("PDF ready â€” check your Documents folder");
       setDownloadedAll(true);
       setTimeout(() => setDownloadedAll(false), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
@@ -1542,7 +1662,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     try {
       const doc = await buildPdf(byMonth[mk], monthLabel(mk), monthLabel(mk));
       await savePdfNative(`machines-${monthLabel(mk).replace(/\s+/g, "-")}.pdf`, doc);
-      toast.success("PDF ready — check your Documents folder");
+      toast.success("PDF ready â€” check your Documents folder");
       setDownloadedMonth(mk);
       setTimeout(() => setDownloadedMonth(null), 5000);
     } catch (err: any) { toast.error("PDF failed: " + err?.message); }
@@ -1555,12 +1675,12 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
   return (
     <div className="space-y-3">
-      {/* Header — totals + Download All */}
+      {/* Header â€” totals + Download All */}
       <div className="rounded-2xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{filteredEntries.length} records</span>
           <div className="flex items-center gap-2">
-            {/* Summary filter button — same style as Set Alerts */}
+            {/* Summary filter button â€” same style as Set Alerts */}
             <button
               onClick={() => setShowSummaryPicker(v => !v)}
               className="flex items-center gap-1.5 h-9 px-3 rounded-xl font-bold text-xs transition active:scale-95"
@@ -1573,7 +1693,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
               {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
               {summaryFilter !== "all" && (
                 <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
-                  style={{ background: "var(--gradient-hero)" }}>✓</span>
+                  style={{ background: "var(--gradient-hero)" }}>âœ“</span>
               )}
             </button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
@@ -1589,7 +1709,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
           </div>
         </div>
 
-        {/* ── Summary picker row — visible when showSummaryPicker ── */}
+        {/* â”€â”€ Summary picker row â€” visible when showSummaryPicker â”€â”€ */}
         {showSummaryPicker && (
           <div className="space-y-2 pt-1 border-t border-border/40">
             {/* Filter tabs */}
@@ -1633,7 +1753,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center">
                   {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                  {" → "}
+                  {" â†’ "}
                   {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })()}
                 </p>
               </div>
@@ -1655,7 +1775,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                 </select>
               </div>
             )}
-            {/* Year picker — dropdown of years with actual records */}
+            {/* Year picker â€” dropdown of years with actual records */}
             {summaryFilter === "year" && (
               <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
                 className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
@@ -1684,7 +1804,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
           </div>
         </div>
 
-        {/* Machine performance breakdown — always shown when summary picker is open */}
+        {/* Machine performance breakdown â€” always shown when summary picker is open */}
         {showSummaryPicker && (() => {
           // Tally income and payout per machine for filtered entries
           const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
@@ -1789,7 +1909,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                       : <Download className="h-3 w-3" />}
                     {downloadedMonth === mk ? "Done" : "PDF"}
                   </button>
-                  <span className={`text-muted-foreground text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                  <span className={`text-muted-foreground text-sm transition-transform ${isOpen ? "rotate-180" : ""}`}>â–¾</span>
                 </div>
               </button>
 
@@ -1854,7 +1974,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                             </div>
                           )}
                         </div>
-                        {/* Proof photo — landscape, right side */}
+                        {/* Proof photo â€” landscape, right side */}
                         {isPayout && hasProof && (
                           <button
                             onClick={() => setLightboxUrl(e.proof_image_url!)}
@@ -1898,7 +2018,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Returns true if this owner has premium access (premium plan OR special-access account) */
 function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
@@ -1952,7 +2072,7 @@ export default function MachinesPage() {
     }
   }, [machines]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Payout alert settings — scoped per bar so each bar can have its own threshold
+  // Payout alert settings â€” scoped per bar so each bar can have its own threshold
   const [showAlertsModal, setShowAlertsModal] = useState(false);
   const [alertSettings, setAlertSettings] = useState<AlertSettings>(() => loadAlertSettings(ownerId));
 
@@ -1973,11 +2093,11 @@ export default function MachinesPage() {
     setAlertSettings(next);
     // Sync to Supabase keyed by barId so edge function reads correct settings
     await syncAlertSettingsToServer(ownerId, next);
-    toast.success(next.enabled ? `Alert set — $${next.threshold.toLocaleString()} TT threshold` : "Alerts disabled");
+    toast.success(next.enabled ? `Alert set â€” $${next.threshold.toLocaleString()} TT threshold` : "Alerts disabled");
     setShowAlertsModal(false);
   };
 
-  // Premium gate — check owner's plan (cashiers inherit from owner)
+  // Premium gate â€” check owner's plan (cashiers inherit from owner)
   const [ownerPlanType, setOwnerPlanType] = useState<string | null>(null);
   const [ownerMachinesAddon, setOwnerMachinesAddon] = useState(false);
   const [isBarAccount, setIsBarAccount] = useState(false);
@@ -2012,7 +2132,7 @@ export default function MachinesPage() {
 
   const isPremium = ownerPlanType === "premium";
 
-  // Float — one session covers ALL machines for this owner
+  // Float â€” one session covers ALL machines for this owner
   const [floatSession, setFloatSession] = useState<FloatSession | null>(null);
   const [showSetFloat, setShowSetFloat] = useState(false);
   const [floatAmount, setFloatAmount] = useState("");
@@ -2107,10 +2227,10 @@ export default function MachinesPage() {
     );
   }
 
-  // Premium gate — basic plan users without machines add-on see an upgrade wall
+  // Premium gate â€” basic plan users without machines add-on see an upgrade wall
   // Chain bar sub-accounts without machines see a simple "Enable" button instead
   if (!isPremium && !ownerMachinesAddon) {
-    // ── Chain bar: one-tap enable (no billing needed, already on chain plan) ──
+    // â”€â”€ Chain bar: one-tap enable (no billing needed, already on chain plan) â”€â”€
     if (isChainOwner && isBarAccount) {
       return (
         <div className="py-6 space-y-6 max-w-lg mx-auto">
@@ -2128,7 +2248,7 @@ export default function MachinesPage() {
                 This bar was created without machines. Enable it to start tracking payouts, income and profit.
               </p>
               <p className="text-xs font-black text-amber-400/80 mt-1">
-                ⚠ This cannot be undone — the bar will become Bar + Machines permanently.
+                âš  This cannot be undone â€” the bar will become Bar + Machines permanently.
               </p>
             </div>
           </div>
@@ -2171,12 +2291,12 @@ export default function MachinesPage() {
       );
     }
 
-    // ── Regular basic plan: show billing upgrade wall ──
+    // â”€â”€ Regular basic plan: show billing upgrade wall â”€â”€
     return (
       <div className="py-3 space-y-4">
         <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
 
-        {/* ── Hero card ─────────────────────────────────────────────────── */}
+        {/* â”€â”€ Hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="rounded-3xl border border-amber-500/30 overflow-hidden"
           style={{ background: "linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)" }}>
           <div className="px-6 pt-8 pb-6 text-center space-y-3">
@@ -2186,7 +2306,7 @@ export default function MachinesPage() {
             </div>
             <span className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider"
               style={{ background: "rgba(251,146,60,0.18)", color: "rgba(251,146,60,0.9)", border: "1px solid rgba(251,146,60,0.35)" }}>
-              Basic Plan — Active
+              Basic Plan â€” Active
             </span>
             <div>
               <h2 className="text-xl font-black text-white">Machines Tracker</h2>
@@ -2197,14 +2317,14 @@ export default function MachinesPage() {
           </div>
         </div>
 
-        {/* ── Upgrade section ───────────────────────────────────────────── */}
+        {/* â”€â”€ Upgrade section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="mt-6 space-y-3">
           <p className="text-xs font-black uppercase tracking-widest px-1"
             style={{ color: "rgba(251,146,60,0.7)" }}>
             Upgrade
           </p>
 
-          {/* Option 1 — Machines Add-on */}
+          {/* Option 1 â€” Machines Add-on */}
           <div>
             <p className="text-sm font-black text-white mb-2 px-1">Machines Add-on</p>
             <a href="/billing?upgrade=machines_addon"
@@ -2216,11 +2336,11 @@ export default function MachinesPage() {
               }}>
               <p className="text-2xl font-black" style={{ color: "var(--primary)" }}>$600 TT/yr</p>
               <p className="text-xs text-white/60">Add Machines Tracker to your existing Basic plan. You'll have two separate subscriptions.</p>
-              <p className="text-xs font-black mt-1" style={{ color: "var(--primary)" }}>Tap to go to Billing →</p>
+              <p className="text-xs font-black mt-1" style={{ color: "var(--primary)" }}>Tap to go to Billing â†’</p>
             </a>
           </div>
 
-          {/* Option 2 — Upgrade to Premium */}
+          {/* Option 2 â€” Upgrade to Premium */}
           <div>
             <p className="text-sm font-black text-white mb-2 px-1">Upgrade to Premium</p>
             <a href="/billing?upgrade=premium"
@@ -2232,7 +2352,7 @@ export default function MachinesPage() {
               }}>
               <p className="text-2xl font-black text-amber-400">$1,300 TT/yr</p>
               <p className="text-xs text-white/60">Replace your Basic plan with one Premium subscription covering everything.</p>
-              <p className="text-xs font-black text-amber-400 mt-1">Tap to go to Billing →</p>
+              <p className="text-xs font-black text-amber-400 mt-1">Tap to go to Billing â†’</p>
             </a>
           </div>
         </div>
@@ -2268,7 +2388,7 @@ export default function MachinesPage() {
         document.body
       )}
 
-      {/* List view — always mounted, hidden behind MachineDetail when a machine is selected */}
+      {/* List view â€” always mounted, hidden behind MachineDetail when a machine is selected */}
       <div className="py-3 space-y-4" style={selected ? { visibility: "hidden", pointerEvents: "none" } : {}}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black">{t("machines_title", "Machines")}</h1>
@@ -2287,7 +2407,7 @@ export default function MachinesPage() {
             {alertSettings.enabled && (
               <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
                 style={{ background: "var(--gradient-hero)" }}>
-                ✓
+                âœ“
               </span>
             )}
           </button>
@@ -2323,7 +2443,7 @@ export default function MachinesPage() {
               }}
             />
           )}
-          {tab === "payouts" && <AllHistoryTab entries={entries} machines={machines} />}
+          {tab === "payouts" && <AllHistoryTab entries={entries} machines={machines} ownerId={ownerId} />}
           {tab === "create" && (
             <CreateTab ownerId={ownerId} onCreated={(m) => {
               setMachines(p => [...p, m].sort((a, b) => a.name.localeCompare(b.name)));
@@ -2353,7 +2473,7 @@ export default function MachinesPage() {
                   className="w-full flex items-start gap-3 rounded-2xl border border-border p-3 text-left hover:bg-muted/30 transition active:scale-[0.98] disabled:opacity-50"
                   style={{ background: "var(--gradient-card)" }}>
                   <div className="h-8 w-8 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-sm">📁</span>
+                    <span className="text-sm">ðŸ“</span>
                   </div>
                   <div>
                     <div className="font-black text-sm">Remove Card Only</div>
@@ -2388,7 +2508,7 @@ export default function MachinesPage() {
           <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
             style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}>
             <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
-              Set Cashier Float — All Machines
+              Set Cashier Float â€” All Machines
             </p>
             <div className="rounded-2xl px-5 py-4 text-right"
               style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
@@ -2424,7 +2544,7 @@ export default function MachinesPage() {
               <button type="button"
                 onClick={() => setFloatAmount(prev => prev.slice(0, -1))}
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+                style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>âŒ«</button>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowSetFloat(false)}
@@ -2435,7 +2555,7 @@ export default function MachinesPage() {
               <button onClick={handleSetFloat} disabled={savingFloat || !floatAmount}
                 className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
                 style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
-                {savingFloat ? "Saving…" : "Confirm Float"}
+                {savingFloat ? "Savingâ€¦" : "Confirm Float"}
               </button>
             </div>
           </div>
@@ -2454,7 +2574,7 @@ export default function MachinesPage() {
   );
 }
 
-// ── Set Alerts Modal ───────────────────────────────────────────────────────────
+// â”€â”€ Set Alerts Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SetAlertsModal({
   settings,
   onSave,
@@ -2514,7 +2634,7 @@ function SetAlertsModal({
             </button>
           </div>
 
-          {/* Threshold options — only visible when enabled */}
+          {/* Threshold options â€” only visible when enabled */}
           {enabled && (
             <div className="space-y-2">
               <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
@@ -2555,7 +2675,7 @@ function SetAlertsModal({
             className="w-full h-12 rounded-2xl font-black text-base text-black active:scale-[0.98] transition"
             style={{ background: "var(--gradient-hero)" }}
           >
-            {enabled ? `Save — Alert at $${threshold.toLocaleString()} TT` : "Save — Alerts Off"}
+            {enabled ? `Save â€” Alert at $${threshold.toLocaleString()} TT` : "Save â€” Alerts Off"}
           </button>
         </div>
       </div>
