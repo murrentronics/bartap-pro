@@ -43,7 +43,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
 
 
-  Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil,
+  Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil, Receipt,
 
 
   TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3,
@@ -193,13 +193,10 @@ function fmtDate(d: string) {
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 
 
-function StatCard({ label, value, color, icon: Icon }: {
+function StatCard({ label, value, color }: {
 
 
   label: string; value: string; color: string;
-
-
-  icon: React.ComponentType<{ className?: string }>;
 
 
 }) {
@@ -214,13 +211,7 @@ function StatCard({ label, value, color, icon: Icon }: {
       style={{ background: "oklch(0.18 0.02 60)" }}>
 
 
-      <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-white/50">
-
-
-        <Icon className="h-3 w-3" /> {label}
-
-
-      </div>
+      <div className="text-[8px] sm:text-[9px] font-semibold text-white/50 leading-tight">{label}</div>
 
 
       <div className="font-black text-sm leading-tight" style={{ color }}>{value}</div>
@@ -253,7 +244,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
       style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-      <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{label}</div>
+      <div className="text-[7px] sm:text-[9px] font-semibold text-white/40 leading-tight">{label}</div>
 
 
       <div className="font-black text-xs" style={{ color }}>{value}</div>
@@ -943,7 +934,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                             <div className="text-[10px] text-white/30 mt-0.5">
 
 
-                              {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
+                              {isPayout ? "Expense by" : "Cleared by"}: {e.cashier_name}
 
 
                             </div>
@@ -1666,7 +1657,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (tab === "payout" && remainingFloat === null) {
 
 
-      toast.error("Set a float before recording a payout");
+      toast.error("Set a float before recording an expense");
 
 
       return;
@@ -1684,7 +1675,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (tab === "payout" && remainingFloat !== null && Math.round(val * 100) / 100 > Math.round(remainingFloat * 100) / 100) {
 
 
-      toast.error(`Payout $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
+      toast.error(`Expense $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
 
 
       return;
@@ -1705,10 +1696,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       const ok = await confirm({
 
 
-        title: "Save Payout?",
+        title: "Save Expense?",
 
 
-        description: `Confirm saving a payout of $${val.toFixed(2)} for ${machine.name}.`,
+        description: `Confirm saving an expense of $${val.toFixed(2)} for ${machine.name}.`,
 
 
       });
@@ -1843,7 +1834,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-    toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
+    toast.success(tab === "payout" ? "Expense recorded" : "Amount recorded");
 
 
 
@@ -1981,7 +1972,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       const cols = [
 
 
-        { label: "Total Payout", value: "-$" + fmt(totalPayout), r: 180, g: 40,  b: 40 },
+        { label: "Total Expense", value: "-$" + fmt(totalPayout), r: 180, g: 40,  b: 40 },
 
 
         { label: "Total Income", value: "+$" + fmt(totalIncome), r: 40,  g: 140, b: 40 },
@@ -2473,10 +2464,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-3 gap-2">
 
 
-            <StatCard label={t("all_time_payout", "Total Payout")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" icon={TrendingDown} />
+            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
 
 
-            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" icon={TrendingUp} />
+            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
 
 
             <StatCard label={t("all_time_profit", "Total Profit")}
@@ -2485,7 +2476,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
 
 
-              color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
+              color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
           </div>
@@ -2497,7 +2488,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-3 gap-2">
 
 
-            <SmallStat label={t("session_payout", "Session Payout")}
+            <SmallStat label={t("session_payout", "Session Expense")}
 
 
               value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
@@ -2584,7 +2575,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
 
 
-              {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : t("history", "History")}
+              {tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : t("history", "History")}
 
 
             </button>
@@ -2614,7 +2605,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <h2 className="font-black text-sm">
 
 
-              {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record amount cleared from machine")}
+              {tab === "payout" ? t("save_payout", "Record Expense") : t("save_income", "Record amount cleared from machine")}
 
 
             </h2>
@@ -2944,7 +2935,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 )}
 
 
-                {/* Save Payout button — right */}
+                {/* Save Expense button — right */}
 
 
                 {(() => {
@@ -2977,7 +2968,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                       title={noFloat ? "Set a float first" : overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : undefined}>
 
 
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Payout"}
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Expense"}
 
 
                     </Button>
@@ -3433,7 +3424,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onDeleteMachine }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -3461,6 +3452,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
   onSetFloat: () => void;
+
+
+  onAddExpense: (machineId: string) => void;
 
 
   onDeleteMachine: (id: string) => void;
@@ -3907,10 +3901,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="relative grid grid-cols-3 gap-2">
 
 
-          <StatCard label={t("session_payout", "Session Payout")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" icon={TrendingDown} />
+          <StatCard label={t("session_payout", "Session Expense")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
 
 
-          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" icon={TrendingUp} />
+          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
 
 
           <StatCard label={t("session_profit", "Session Profit")}
@@ -3919,7 +3913,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
 
 
-            color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} icon={DollarSign} />
+            color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
         </div>
@@ -3958,7 +3952,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Payout")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Expense")}</div>
 
 
             <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
@@ -4000,13 +3994,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
 
 
-        {/* Set/Update Float button — same size as one float card */}
+        {/* Float + Expense buttons */}
 
 
-        {!isCashier && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: !isCashier ? "1fr 1fr" : "1fr" }}>
 
 
-          <div className="grid grid-cols-3">
+          {!isCashier && (
 
 
             <button onClick={onSetFloat}
@@ -4024,10 +4018,40 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             </button>
 
 
-          </div>
+          )}
 
 
-        )}
+          {/* Expense button — available to all users including cashier */}
+
+
+          {orderedMachines.length > 0 && (
+
+
+            <button
+
+
+              onClick={() => onAddExpense(orderedMachines[0].id)}
+
+
+              className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
+
+
+              style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.35)" }}>
+
+
+              <Receipt className="h-4 w-4" />
+
+
+              Add Expense
+
+
+            </button>
+
+
+          )}
+
+
+        </div>
 
 
       </section>
@@ -4813,7 +4837,7 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
     const cols = [
 
 
-      { label: "Total Payout", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
+      { label: "Total Expense", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
 
 
       { label: "Total Income", value: "+$" + fmt(mIncome), r: 40,  g: 140, b: 40 },
@@ -5413,7 +5437,7 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Payout</div>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Expense</div>
 
 
             <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalPayout)}</div>
@@ -5920,7 +5944,7 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
                             <div className="text-[10px] text-white/30 mt-0.5">
 
 
-                              {isPayout ? "Paid by" : "Cleared by"}: {e.cashier_name}
+                              {isPayout ? "Expense by" : "Cleared by"}: {e.cashier_name}
 
 
                             </div>
@@ -6451,6 +6475,21 @@ export default function MachinesPage() {
   const [showSetFloat, setShowSetFloat] = useState(false);
 
 
+  const [showAddMachineExpense, setShowAddMachineExpense] = useState(false);
+
+
+  const [expenseMachineId, setExpenseMachineId] = useState<string | null>(null);
+
+
+  const [expenseAmount, setExpenseAmount] = useState("");
+
+
+  const [expenseNote, setExpenseNote] = useState("");
+
+
+  const [savingExpense, setSavingExpense] = useState(false);
+
+
   const [floatAmount, setFloatAmount] = useState("");
 
 
@@ -6578,6 +6617,78 @@ export default function MachinesPage() {
 
 
     loadFloat();
+
+
+  };
+
+
+  const handleSaveMachineExpense = async () => {
+
+
+    const val = parseFloat(expenseAmount);
+
+
+    if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
+
+
+    if (!expenseMachineId) { toast.error("No machine selected"); return; }
+
+
+    setSavingExpense(true);
+
+
+    const now = new Date();
+
+
+    const { error } = await sb.from("machine_entries").insert({
+
+
+      machine_id: expenseMachineId,
+
+
+      owner_id: ownerId,
+
+
+      type: "payout",
+
+
+      amount: val,
+
+
+      note: expenseNote.trim() || null,
+
+
+      entry_date: now.toISOString().slice(0, 10),
+
+
+      created_at: now.toISOString(),
+
+
+      cashier_id: profile.id,
+
+
+      cashier_name: profile.username ?? null,
+
+
+      proof_image_url: null,
+
+
+    });
+
+
+    setSavingExpense(false);
+
+
+    if (error) { toast.error(error.message); return; }
+
+
+    toast.success("Expense recorded");
+
+
+    setShowAddMachineExpense(false);
+
+
+    load();
 
 
   };
@@ -7357,6 +7468,9 @@ export default function MachinesPage() {
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
 
 
+              onAddExpense={(machineId) => { setExpenseMachineId(machineId); setShowAddMachineExpense(true); setExpenseAmount(""); setExpenseNote(""); }}
+
+
               onDeleteMachine={(id) => {
 
 
@@ -7712,6 +7826,270 @@ export default function MachinesPage() {
 
 
                 {savingFloat ? "Savingâ€¦" : "Confirm Float"}
+
+
+              </button>
+
+
+            </div>
+
+
+          </div>
+
+
+        </div>
+
+
+      )}
+
+
+      {/* Add Machine Expense modal */}
+
+
+      {showAddMachineExpense && (
+
+
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
+
+
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+
+
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}>
+
+
+            <div className="flex items-center justify-between">
+
+
+              <p className="text-sm font-black" style={{ color: "#f87171" }}>Add Machine Expense</p>
+
+
+              <button onClick={() => setShowAddMachineExpense(false)}
+
+
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-white/10 active:opacity-70">
+
+
+                <X className="h-4 w-4 text-white" />
+
+
+              </button>
+
+
+            </div>
+
+
+            {/* Machine picker */}
+
+
+            {machines.length > 1 && (
+
+
+              <div className="flex gap-1.5 flex-wrap">
+
+
+                {machines.map(m => (
+
+
+                  <button key={m.id} onClick={() => setExpenseMachineId(m.id)}
+
+
+                    className="px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition"
+
+
+                    style={expenseMachineId === m.id
+
+
+                      ? { background: "rgba(239,68,68,0.3)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.6)" }
+
+
+                      : { background: "oklch(0.20 0.04 60)", color: "rgba(255,255,255,0.5)", border: "1.5px solid oklch(0.28 0.06 60)" }}>
+
+
+                    {m.name}
+
+
+                  </button>
+
+
+                ))}
+
+
+              </div>
+
+
+            )}
+
+
+            {/* Amount */}
+
+
+            <div className="rounded-2xl px-5 py-4 text-right"
+
+
+              style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+
+
+              <span className="font-black text-4xl" style={{ color: "#f87171" }}>
+
+
+                ${expenseAmount === "" ? "0" : expenseAmount}
+
+
+              </span>
+
+
+            </div>
+
+
+            {/* Numpad */}
+
+
+            <div className="grid grid-cols-3 gap-2">
+
+
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+
+
+                <button key={k} type="button"
+
+
+                  onClick={() => {
+
+
+                    const parts = expenseAmount.split(".");
+
+
+                    if (parts[1] !== undefined && parts[1].length >= 2) return;
+
+
+                    setExpenseAmount(prev => prev + k);
+
+
+                  }}
+
+
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+
+
+                  style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+
+
+                  {k}
+
+
+                </button>
+
+
+              ))}
+
+
+              <button type="button"
+
+
+                onClick={() => { if (!expenseAmount.includes(".")) setExpenseAmount(prev => prev + "."); }}
+
+
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+
+
+                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+
+
+              <button type="button"
+
+
+                onClick={() => {
+
+
+                  const parts = expenseAmount.split(".");
+
+
+                  if (parts[1] !== undefined && parts[1].length >= 2) return;
+
+
+                  setExpenseAmount(prev => prev + "0");
+
+
+                }}
+
+
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+
+
+                style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+
+
+              <button type="button"
+
+
+                onClick={() => setExpenseAmount(prev => prev.slice(0, -1))}
+
+
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+
+
+                style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+
+
+            </div>
+
+
+            {/* Note */}
+
+
+            <input
+
+
+              type="text"
+
+
+              placeholder="Note (optional)"
+
+
+              value={expenseNote}
+
+
+              onChange={e => setExpenseNote(e.target.value)}
+
+
+              className="w-full h-11 rounded-xl px-4 text-sm font-semibold outline-none focus:ring-1 focus:ring-red-500/50"
+
+
+              style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)", color: "#fff" }}
+
+
+            />
+
+
+            <div className="flex gap-2">
+
+
+              <button onClick={() => setShowAddMachineExpense(false)}
+
+
+                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition border"
+
+
+                style={{ background: "transparent", color: "#fff", borderColor: "oklch(0.35 0.06 60)" }}>
+
+
+                Cancel
+
+
+              </button>
+
+
+              <button onClick={handleSaveMachineExpense} disabled={savingExpense || !expenseAmount || !expenseMachineId}
+
+
+                className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
+
+
+                style={{ background: "rgba(239,68,68,0.5)", color: "#fff", border: "1px solid rgba(239,68,68,0.7)" }}>
+
+
+                {savingExpense ? "Saving…" : "Save Expense"}
 
 
               </button>

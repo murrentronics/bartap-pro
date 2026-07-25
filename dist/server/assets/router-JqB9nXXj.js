@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-D63KsCdB.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-CCNk5nlc.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BH2QMAYl.js");
+          const { PushNotifications } = await import("./index-B_U0uEo1.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27100,7 +27100,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-BJTd9Zb2.css";
+const appCss = "/assets/styles-BurRS3ZM.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-tr_tEkxf.js");
+const $$splitComponentImporter$3 = () => import("./login-BPpKinMn.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-DJob8Ijv.js");
+const $$splitComponentImporter$2 = () => import("./_app-CcqRz9G3.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -30821,7 +30821,7 @@ const createLucideIcon = (iconName, iconNode) => {
   Component.displayName = toPascalCase(iconName);
   return Component;
 };
-const __iconNode$j = [
+const __iconNode$h = [
   ["path", { d: "M10.268 21a2 2 0 0 0 3.464 0", key: "vwvbt9" }],
   [
     "path",
@@ -30831,8 +30831,8 @@ const __iconNode$j = [
     }
   ]
 ];
-const Bell = createLucideIcon("bell", __iconNode$j);
-const __iconNode$i = [
+const Bell = createLucideIcon("bell", __iconNode$h);
+const __iconNode$g = [
   [
     "path",
     {
@@ -30842,40 +30842,35 @@ const __iconNode$i = [
   ],
   ["circle", { cx: "12", cy: "13", r: "3", key: "1vg3eu" }]
 ];
-const Camera = createLucideIcon("camera", __iconNode$i);
-const __iconNode$h = [
+const Camera = createLucideIcon("camera", __iconNode$g);
+const __iconNode$f = [
   ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "c24i48" }],
   ["path", { d: "M18 17V9", key: "2bz60n" }],
   ["path", { d: "M13 17V5", key: "1frdt8" }],
   ["path", { d: "M8 17v-3", key: "17ska0" }]
 ];
-const ChartColumn = createLucideIcon("chart-column", __iconNode$h);
-const __iconNode$g = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$g);
-const __iconNode$f = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$f);
-const __iconNode$e = [
+const ChartColumn = createLucideIcon("chart-column", __iconNode$f);
+const __iconNode$e = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$e);
+const __iconNode$d = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$d);
+const __iconNode$c = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$e);
-const __iconNode$d = [
+const CircleCheck = createLucideIcon("circle-check", __iconNode$c);
+const __iconNode$b = [
   ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
   ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Copy = createLucideIcon("copy", __iconNode$d);
-const __iconNode$c = [
-  ["line", { x1: "12", x2: "12", y1: "2", y2: "22", key: "7eqyqh" }],
-  ["path", { d: "M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6", key: "1b0p4s" }]
-];
-const DollarSign = createLucideIcon("dollar-sign", __iconNode$c);
-const __iconNode$b = [
+const Copy = createLucideIcon("copy", __iconNode$b);
+const __iconNode$a = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Download = createLucideIcon("download", __iconNode$b);
-const __iconNode$a = [
+const Download = createLucideIcon("download", __iconNode$a);
+const __iconNode$9 = [
   ["line", { x1: "6", x2: "10", y1: "11", y2: "11", key: "1gktln" }],
   ["line", { x1: "8", x2: "8", y1: "9", y2: "13", key: "qnk9ow" }],
   ["line", { x1: "15", x2: "15.01", y1: "12", y2: "12", key: "krot7o" }],
@@ -30888,16 +30883,16 @@ const __iconNode$a = [
     }
   ]
 ];
-const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$a);
-const __iconNode$9 = [
+const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$9);
+const __iconNode$8 = [
   ["path", { d: "M15 6a9 9 0 0 0-9 9V3", key: "1cii5b" }],
   ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
   ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }]
 ];
-const GitBranch = createLucideIcon("git-branch", __iconNode$9);
-const __iconNode$8 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("loader-circle", __iconNode$8);
-const __iconNode$7 = [
+const GitBranch = createLucideIcon("git-branch", __iconNode$8);
+const __iconNode$7 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("loader-circle", __iconNode$7);
+const __iconNode$6 = [
   [
     "path",
     {
@@ -30907,30 +30902,29 @@ const __iconNode$7 = [
   ],
   ["path", { d: "m15 5 4 4", key: "1mk7zo" }]
 ];
-const Pencil = createLucideIcon("pencil", __iconNode$7);
-const __iconNode$6 = [
+const Pencil = createLucideIcon("pencil", __iconNode$6);
+const __iconNode$5 = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "M12 5v14", key: "s699le" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$6);
-const __iconNode$5 = [
+const Plus = createLucideIcon("plus", __iconNode$5);
+const __iconNode$4 = [
+  [
+    "path",
+    { d: "M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z", key: "q3az6g" }
+  ],
+  ["path", { d: "M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8", key: "1h4pet" }],
+  ["path", { d: "M12 17.5v-11", key: "1jc1ny" }]
+];
+const Receipt = createLucideIcon("receipt", __iconNode$4);
+const __iconNode$3 = [
   ["path", { d: "M10 11v6", key: "nco0om" }],
   ["path", { d: "M14 11v6", key: "outv1u" }],
   ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
   ["path", { d: "M3 6h18", key: "d0wm0j" }],
   ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
 ];
-const Trash2 = createLucideIcon("trash-2", __iconNode$5);
-const __iconNode$4 = [
-  ["path", { d: "M16 17h6v-6", key: "t6n2it" }],
-  ["path", { d: "m22 17-8.5-8.5-5 5L2 7", key: "x473p" }]
-];
-const TrendingDown = createLucideIcon("trending-down", __iconNode$4);
-const __iconNode$3 = [
-  ["path", { d: "M16 7h6v6", key: "box55l" }],
-  ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
-];
-const TrendingUp = createLucideIcon("trending-up", __iconNode$3);
+const Trash2 = createLucideIcon("trash-2", __iconNode$3);
 const __iconNode$2 = [
   [
     "path",
@@ -31172,7 +31166,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-Wd4PmbvH.js");
+const $$splitComponentImporter$1 = () => import("./manager-CcD4ZgyV.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43066,8 +43060,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-xLbRzoDk.js");
-    const { Share } = await import("./index-D8D5jLhz.js");
+    const { Filesystem, Directory } = await import("./index-BDvNKKFe.js");
+    const { Share } = await import("./index-D8DHIoOc.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43186,7 +43180,7 @@ function addFootersToAllPages(doc) {
 const CONTENT_BOTTOM = PAGE_H - 15;
 const STORAGE_KEY = "machine_alert_settings";
 const storageKey = (barId) => `machine_alert_settings_${barId}`;
-const THRESHOLD_OPTIONS = [500, 1e3, 1500, 2e3, 3e3, 5e3, 1e4];
+const THRESHOLD_OPTIONS = [300, 500, 1e3];
 function loadAlertSettings(barId) {
   try {
     if (barId) {
@@ -43225,7 +43219,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-stWghn5R.js");
+      const { LocalNotifications } = await import("./index-CLHwW1rt.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43244,7 +43238,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-stWghn5R.js");
+    const { LocalNotifications } = await import("./index-CLHwW1rt.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43279,7 +43273,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-stWghn5R.js");
+      const { LocalNotifications } = await import("./index-CLHwW1rt.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43326,18 +43320,14 @@ function fmtWhole(n) {
 function todayTT() {
   return (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
 }
-function StatCard({ label, value, color, icon: Icon2 }) {
+function StatCard({ label, value, color }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       className: "rounded-2xl p-3 flex flex-col gap-1 text-center",
       style: { background: "oklch(0.18 0.02 60)" },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-1 text-[10px] font-semibold text-white/50", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { className: "h-3 w-3" }),
-          " ",
-          label
-        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[8px] sm:text-[9px] font-semibold text-white/50 leading-tight", children: label }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm leading-tight", style: { color }, children: value })
       ]
     }
@@ -43350,7 +43340,7 @@ function SmallStat({ label, value, color }) {
       className: "rounded-xl px-3 py-2 flex flex-col gap-0.5 text-center",
       style: { background: "oklch(0.22 0.02 60)" },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider", children: label }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[7px] sm:text-[9px] font-semibold text-white/40 leading-tight", children: label }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-xs", style: { color }, children: value })
       ]
     }
@@ -43549,7 +43539,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                     !isPayout && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-semibold text-green-400/70 mt-0.5", children: "Machine cleared by owner" }),
                     e.note && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground mt-0.5", children: e.note }),
                     e.cashier_name && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[10px] text-white/30 mt-0.5", children: [
-                      isPayout ? "Paid by" : "Cleared by",
+                      isPayout ? "Expense by" : "Cleared by",
                       ": ",
                       e.cashier_name
                     ] }),
@@ -43769,17 +43759,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       return;
     }
     if (tab === "payout" && remainingFloat === null) {
-      toast.error("Set a float before recording a payout");
+      toast.error("Set a float before recording an expense");
       return;
     }
     if (tab === "payout" && remainingFloat !== null && Math.round(val * 100) / 100 > Math.round(remainingFloat * 100) / 100) {
-      toast.error(`Payout $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
+      toast.error(`Expense $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
       return;
     }
     if (tab === "payout") {
       const ok = await confirm2({
-        title: "Save Payout?",
-        description: `Confirm saving a payout of $${val.toFixed(2)} for ${machine.name}.`
+        title: "Save Expense?",
+        description: `Confirm saving an expense of $${val.toFixed(2)} for ${machine.name}.`
       });
       if (!ok) return;
     }
@@ -43819,7 +43809,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     }
     setProofFile(null);
     setProofPreview(null);
-    toast.success(tab === "payout" ? "Payout recorded" : "Amount recorded");
+    toast.success(tab === "payout" ? "Expense recorded" : "Amount recorded");
     if (tab === "payout" && profile.role === "owner") {
       const alerts = loadAlertSettings(ownerId);
       await checkAndFirePayoutAlert(val, machine.name, alerts, (to) => navigate({ to }), ownerId);
@@ -43845,7 +43835,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKA27bnw.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BEoT_nfv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -43863,7 +43853,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       doc.setLineWidth(0.4);
       doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
       const cols = [
-        { label: "Total Payout", value: "-$" + fmt(totalPayout), r: 180, g: 40, b: 40 },
+        { label: "Total Expense", value: "-$" + fmt(totalPayout), r: 180, g: 40, b: 40 },
         { label: "Total Income", value: "+$" + fmt(totalIncome), r: 40, g: 140, b: 40 },
         {
           label: "Total Profit",
@@ -43950,7 +43940,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKA27bnw.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BEoT_nfv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44117,15 +44107,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-base text-primary-foreground leading-tight truncate", children: machine.name })
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_payout", "Total Payout"), value: "$" + fmtWhole(totalPayout), color: "#fca5a5", icon: TrendingDown }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_income", "Total Income"), value: "$" + fmtWhole(totalIncome), color: "#86efac", icon: TrendingUp }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_payout", "Total Expense"), value: "$" + fmtWhole(totalPayout), color: "#fca5a5" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_income", "Total Income"), value: "$" + fmtWhole(totalIncome), color: "#86efac" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     StatCard,
                     {
                       label: t("all_time_profit", "Total Profit"),
                       value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit),
-                      color: totalProfit >= 0 ? "#86efac" : "#fca5a5",
-                      icon: DollarSign
+                      color: totalProfit >= 0 ? "#86efac" : "#fca5a5"
                     }
                   )
                 ] }),
@@ -44133,7 +44122,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
-                      label: t("session_payout", "Session Payout"),
+                      label: t("session_payout", "Session Expense"),
                       value: floatSession ? "$" + fmtWhole(sessionPayouts) : "—",
                       color: "#fca5a5"
                     }
@@ -44183,7 +44172,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               onClick: () => setTab(tabKey),
               className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`,
               style: tab === tabKey ? { background: "var(--gradient-hero)" } : {},
-              children: tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : t("history", "History")
+              children: tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : t("history", "History")
             },
             tabKey
           )) }),
@@ -44193,7 +44182,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               className: "rounded-2xl border border-border p-4 space-y-3",
               style: { background: "var(--gradient-card)" },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-sm", children: tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record amount cleared from machine") }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-sm", children: tab === "payout" ? t("save_payout", "Record Expense") : t("save_income", "Record amount cleared from machine") }),
                 !camOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "div",
@@ -44371,7 +44360,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                         className: "flex-1 h-14 font-black text-base rounded-2xl",
                         style: { background: blocked ? "oklch(0.30 0.04 60)" : "var(--gradient-hero)", color: "var(--primary-foreground)" },
                         title: noFloat ? "Set a float first" : overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : void 0,
-                        children: busy ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Payout"
+                        children: busy ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Expense"
                       }
                     );
                   })()
@@ -44556,7 +44545,7 @@ function CreateTab({ ownerId, onCreated }) {
     }
   );
 }
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onDeleteMachine }) {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine }) {
   const { t } = useTranslation();
   entries.filter((e) => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   entries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
@@ -44679,15 +44668,14 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "Session Payout"), value: floatSession ? "$" + fmtWhole(sessionPayouts) : "—", color: "#fca5a5", icon: TrendingDown }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "Session Income"), value: floatSession ? "$" + fmtWhole(sessionIncome) : "—", color: "#86efac", icon: TrendingUp }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "Session Expense"), value: floatSession ? "$" + fmtWhole(sessionPayouts) : "—", color: "#fca5a5" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "Session Income"), value: floatSession ? "$" + fmtWhole(sessionIncome) : "—", color: "#86efac" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               StatCard,
               {
                 label: t("session_profit", "Session Profit"),
                 value: floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—",
-                color: !floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5",
-                icon: DollarSign
+                color: !floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"
               }
             )
           ] }),
@@ -44709,7 +44697,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                 className: "rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center",
                 style: { background: "oklch(0.22 0.02 60)" },
                 children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider", children: t("session_payout", "Session Payout") }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider", children: t("session_payout", "Session Expense") }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-xs", style: { color: "#fca5a5" }, children: floatSession ? "$" + fmtWhole(sessionPayouts) : "—" })
                 ]
               }
@@ -44733,15 +44721,29 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               }
             )
           ] }),
-          !isCashier && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              onClick: onSetFloat,
-              className: "h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center",
-              style: { background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" },
-              children: floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")
-            }
-          ) })
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid gap-2", style: { gridTemplateColumns: !isCashier ? "1fr 1fr" : "1fr" }, children: [
+            !isCashier && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: onSetFloat,
+                className: "h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center",
+                style: { background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" },
+                children: floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")
+              }
+            ),
+            orderedMachines.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                onClick: () => onAddExpense(orderedMachines[0].id),
+                className: "h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2",
+                style: { background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.35)" },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Receipt, { className: "h-4 w-4" }),
+                  "Add Expense"
+                ]
+              }
+            )
+          ] })
         ]
       }
     ),
@@ -44982,7 +44984,7 @@ function AllHistoryTab({ entries, machines, ownerId }) {
   const totalIncome = filteredEntries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-BKA27bnw.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-BEoT_nfv.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -45003,7 +45005,7 @@ function AllHistoryTab({ entries, machines, ownerId }) {
     doc.setLineWidth(0.4);
     doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
     const cols = [
-      { label: "Total Payout", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
+      { label: "Total Expense", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
       { label: "Total Income", value: "+$" + fmt(mIncome), r: 40, g: 140, b: 40 },
       {
         label: "Net Profit",
@@ -45258,7 +45260,7 @@ function AllHistoryTab({ entries, machines, ownerId }) {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl px-2 py-2 text-center", style: { background: "oklch(0.22 0.02 60)" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider", children: "Payout" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider", children: "Expense" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "font-black text-xs sm:text-sm lg:text-base text-red-400", children: [
             "$",
             fmtWhole(totalPayout)
@@ -45437,7 +45439,7 @@ function AllHistoryTab({ entries, machines, ownerId }) {
                     m && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-semibold mt-0.5", style: { color: "var(--primary)" }, children: m.name }),
                     e.note && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground mt-0.5", children: e.note }),
                     e.cashier_name && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[10px] text-white/30 mt-0.5", children: [
-                      isPayout ? "Paid by" : "Cleared by",
+                      isPayout ? "Expense by" : "Cleared by",
                       ": ",
                       e.cashier_name
                     ] }),
@@ -45587,6 +45589,11 @@ function MachinesPage() {
   const isPremium = ownerPlanType === "premium";
   const [floatSession, setFloatSession] = reactExports.useState(null);
   const [showSetFloat, setShowSetFloat] = reactExports.useState(false);
+  const [showAddMachineExpense, setShowAddMachineExpense] = reactExports.useState(false);
+  const [expenseMachineId, setExpenseMachineId] = reactExports.useState(null);
+  const [expenseAmount, setExpenseAmount] = reactExports.useState("");
+  const [expenseNote, setExpenseNote] = reactExports.useState("");
+  const [savingExpense, setSavingExpense] = reactExports.useState(false);
   const [floatAmount, setFloatAmount] = reactExports.useState("");
   const [savingFloat, setSavingFloat] = reactExports.useState(false);
   const [deleteTarget, setDeleteTarget] = reactExports.useState(null);
@@ -45633,6 +45640,39 @@ function MachinesPage() {
     setFloatAmount("");
     setShowSetFloat(false);
     loadFloat();
+  };
+  const handleSaveMachineExpense = async () => {
+    const val = parseFloat(expenseAmount);
+    if (isNaN(val) || val <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if (!expenseMachineId) {
+      toast.error("No machine selected");
+      return;
+    }
+    setSavingExpense(true);
+    const now = /* @__PURE__ */ new Date();
+    const { error } = await sb.from("machine_entries").insert({
+      machine_id: expenseMachineId,
+      owner_id: ownerId,
+      type: "payout",
+      amount: val,
+      note: expenseNote.trim() || null,
+      entry_date: now.toISOString().slice(0, 10),
+      created_at: now.toISOString(),
+      cashier_id: profile.id,
+      cashier_name: profile.username ?? null,
+      proof_image_url: null
+    });
+    setSavingExpense(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Expense recorded");
+    setShowAddMachineExpense(false);
+    load();
   };
   const load = reactExports.useCallback(async () => {
     if (!ownerId) return;
@@ -45918,6 +45958,12 @@ function MachinesPage() {
               setFloatAmount("");
               setShowSetFloat(true);
             },
+            onAddExpense: (machineId) => {
+              setExpenseMachineId(machineId);
+              setShowAddMachineExpense(true);
+              setExpenseAmount("");
+              setExpenseNote("");
+            },
             onDeleteMachine: (id) => {
               const m = machines.find((x) => x.id === id);
               if (m) setDeleteTarget(m);
@@ -46082,6 +46128,132 @@ function MachinesPage() {
                   className: "flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50",
                   style: { background: "oklch(0.60 0.18 65)", color: "#000" },
                   children: savingFloat ? "Savingâ€¦" : "Confirm Float"
+                }
+              )
+            ] })
+          ]
+        }
+      ) }),
+      showAddMachineExpense && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3",
+          style: { background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-black", style: { color: "#f87171" }, children: "Add Machine Expense" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => setShowAddMachineExpense(false),
+                  className: "h-8 w-8 rounded-full flex items-center justify-center bg-white/10 active:opacity-70",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4 text-white" })
+                }
+              )
+            ] }),
+            machines.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1.5 flex-wrap", children: machines.map((m) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => setExpenseMachineId(m.id),
+                className: "px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition",
+                style: expenseMachineId === m.id ? { background: "rgba(239,68,68,0.3)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.6)" } : { background: "oklch(0.20 0.04 60)", color: "rgba(255,255,255,0.5)", border: "1.5px solid oklch(0.28 0.06 60)" },
+                children: m.name
+              },
+              m.id
+            )) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "rounded-2xl px-5 py-4 text-right",
+                style: { background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" },
+                children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-4xl", style: { color: "#f87171" }, children: [
+                  "$",
+                  expenseAmount === "" ? "0" : expenseAmount
+                ] })
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+              ["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    const parts = expenseAmount.split(".");
+                    if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                    setExpenseAmount((prev) => prev + k);
+                  },
+                  className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                  style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                  children: k
+                },
+                k
+              )),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    if (!expenseAmount.includes(".")) setExpenseAmount((prev) => prev + ".");
+                  },
+                  className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                  style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                  children: "."
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    const parts = expenseAmount.split(".");
+                    if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                    setExpenseAmount((prev) => prev + "0");
+                  },
+                  className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                  style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                  children: "0"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setExpenseAmount((prev) => prev.slice(0, -1)),
+                  className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                  style: { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" },
+                  children: "⌫"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                placeholder: "Note (optional)",
+                value: expenseNote,
+                onChange: (e) => setExpenseNote(e.target.value),
+                className: "w-full h-11 rounded-xl px-4 text-sm font-semibold outline-none focus:ring-1 focus:ring-red-500/50",
+                style: { background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)", color: "#fff" }
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => setShowAddMachineExpense(false),
+                  className: "flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition border",
+                  style: { background: "transparent", color: "#fff", borderColor: "oklch(0.35 0.06 60)" },
+                  children: "Cancel"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleSaveMachineExpense,
+                  disabled: savingExpense || !expenseAmount || !expenseMachineId,
+                  className: "flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50",
+                  style: { background: "rgba(239,68,68,0.5)", color: "#fff", border: "1px solid rgba(239,68,68,0.7)" },
+                  children: savingExpense ? "Saving…" : "Save Expense"
                 }
               )
             ] })
@@ -46879,7 +47051,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit--Duogv2d.js");
+const $$splitComponentImporter = () => import("./credit-Dpf_Mwu4.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });
@@ -47169,13 +47341,12 @@ const router = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
 export {
   Button as B,
   Capacitor as C,
-  DollarSign as D,
   Gamepad2 as G,
   Input as I,
   Label as L,
   Pencil as P,
-  RM as R,
-  TrendingDown as T,
+  Receipt as R,
+  Trash2 as T,
   Wine as W,
   X,
   cn as a,
@@ -47191,9 +47362,9 @@ export {
   Link as k,
   ChevronRight as l,
   CircleCheck as m,
-  Trash2 as n,
-  drawHeader as o,
-  LM as p,
+  drawHeader as n,
+  LM as o,
+  RM as p,
   CONTENT_BOTTOM as q,
   addFootersToAllPages as r,
   supabase as s,

@@ -1,9 +1,9 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-D63KsCdB.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, n as Trash2, D as DollarSign, t as toast, o as drawHeader, p as LM, R as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-DvLizL_W.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-CCNk5nlc.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-JqB9nXXj.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
-const __iconNode$2 = [
+const __iconNode$3 = [
   ["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1", key: "tgr4d6" }],
   [
     "path",
@@ -17,7 +17,12 @@ const __iconNode$2 = [
   ["path", { d: "M8 11h.01", key: "1dfujw" }],
   ["path", { d: "M8 16h.01", key: "18s6g9" }]
 ];
-const ClipboardList = createLucideIcon("clipboard-list", __iconNode$2);
+const ClipboardList = createLucideIcon("clipboard-list", __iconNode$3);
+const __iconNode$2 = [
+  ["line", { x1: "12", x2: "12", y1: "2", y2: "22", key: "7eqyqh" }],
+  ["path", { d: "M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6", key: "1b0p4s" }]
+];
+const DollarSign = createLucideIcon("dollar-sign", __iconNode$2);
 const __iconNode$1 = [
   [
     "path",
@@ -51,7 +56,7 @@ async function printBill(account, ownerName) {
   }
   const {
     jsPDF
-  } = await import("./jspdf.es.min-BKA27bnw.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-BEoT_nfv.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"

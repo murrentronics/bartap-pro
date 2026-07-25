@@ -1,8 +1,13 @@
-import { W as jsxRuntimeExports, r as reactExports } from "./server-D63KsCdB.js";
-import { b as useAuth, h as useChain, s as supabase, j as ChartColumn, X, i as LoaderCircle, T as TrendingDown, t as toast } from "./router-DvLizL_W.js";
+import { W as jsxRuntimeExports, r as reactExports } from "./server-CCNk5nlc.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, j as ChartColumn, X, i as LoaderCircle, t as toast } from "./router-JqB9nXXj.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
+const __iconNode = [
+  ["path", { d: "M16 17h6v-6", key: "t6n2it" }],
+  ["path", { d: "m22 17-8.5-8.5-5 5L2 7", key: "x473p" }]
+];
+const TrendingDown = createLucideIcon("trending-down", __iconNode);
 function fmt(n) {
   return n.toLocaleString("en-US", {
     minimumFractionDigits: 2,

@@ -1,5 +1,5 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-D63KsCdB.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, j as ChartColumn, G as Gamepad2, k as Link, B as Button, t as toast } from "./router-DvLizL_W.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-CCNk5nlc.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, j as ChartColumn, R as Receipt, G as Gamepad2, k as Link, B as Button, t as toast } from "./router-JqB9nXXj.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -10,18 +10,18 @@ function useLocation(opts) {
     return location;
   }
 }
-const __iconNode$7 = [
+const __iconNode$6 = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M4.929 4.929 19.07 19.071", key: "196cmz" }]
 ];
-const Ban = createLucideIcon("ban", __iconNode$7);
-const __iconNode$6 = [
+const Ban = createLucideIcon("ban", __iconNode$6);
+const __iconNode$5 = [
   ["path", { d: "M4 5h16", key: "1tepv9" }],
   ["path", { d: "M4 12h16", key: "1lakjw" }],
   ["path", { d: "M4 19h16", key: "1djgab" }]
 ];
-const Menu = createLucideIcon("menu", __iconNode$6);
-const __iconNode$5 = [
+const Menu = createLucideIcon("menu", __iconNode$5);
+const __iconNode$4 = [
   [
     "path",
     {
@@ -33,16 +33,7 @@ const __iconNode$5 = [
   ["polyline", { points: "3.29 7 12 12 20.71 7", key: "ousv84" }],
   ["path", { d: "m7.5 4.27 9 5.15", key: "1c824w" }]
 ];
-const Package = createLucideIcon("package", __iconNode$5);
-const __iconNode$4 = [
-  [
-    "path",
-    { d: "M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z", key: "q3az6g" }
-  ],
-  ["path", { d: "M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8", key: "1h4pet" }],
-  ["path", { d: "M12 17.5v-11", key: "1jc1ny" }]
-];
-const Receipt = createLucideIcon("receipt", __iconNode$4);
+const Package = createLucideIcon("package", __iconNode$4);
 const __iconNode$3 = [
   [
     "path",
