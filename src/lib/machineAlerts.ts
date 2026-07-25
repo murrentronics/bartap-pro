@@ -26,7 +26,7 @@ export type AlertSettings = {
   threshold: number; // TT dollars
 };
 
-export const THRESHOLD_OPTIONS = [500, 1000, 1500, 2000, 3000, 5000, 10000];
+export const THRESHOLD_OPTIONS = [300, 500, 1000];
 
 /** Load alert settings for a specific bar.
  *  Falls back to bar-1 (legacy key) settings so new bars inherit bar 1's config. */
