@@ -13,8 +13,8 @@ import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppSwitchBarRouteImport } from './routes/_app/switch-bar'
-import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppManagerRouteImport } from './routes/_app/manager'
+import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
 import { Route as AppCreateBarRouteImport } from './routes/_app/create-bar'
@@ -33,14 +33,14 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppManagerRoute = AppManagerRouteImport.update({
-  id: '/manager',
-  path: '/manager',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppSwitchBarRoute = AppSwitchBarRouteImport.update({
   id: '/switch-bar',
   path: '/switch-bar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManagerRoute = AppManagerRouteImport.update({
+  id: '/manager',
+  path: '/manager',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMachinesRoute = AppMachinesRouteImport.update({
@@ -170,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSwitchBarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/manager': {
+      id: '/_app/manager'
+      path: '/manager'
+      fullPath: '/manager'
+      preLoaderRoute: typeof AppManagerRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/machines': {
       id: '/_app/machines'
       path: '/machines'
@@ -196,13 +203,6 @@ declare module '@tanstack/react-router' {
       path: '/create-bar'
       fullPath: '/create-bar'
       preLoaderRoute: typeof AppCreateBarRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/manager': {
-      id: '/_app/manager'
-      path: '/manager'
-      fullPath: '/manager'
-      preLoaderRoute: typeof AppManagerRouteImport
       parentRoute: typeof AppRoute
     }
   }

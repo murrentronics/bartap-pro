@@ -283,7 +283,7 @@ export default function AppLayout() {
     : isMachinesOnlyUser ? [
         // Machines-only plan: Machines first, then Cashiers, Billing, Profile only
         { to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 },
-        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"),   icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
@@ -299,7 +299,7 @@ export default function AppLayout() {
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
         ...(isOwner && ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
         ...(isOwner && ownerHasBar ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Cashiers"), icon: Users }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
         ...(isOwner ? [{ to: "/summary",  label: "Summary",              icon: BarChart3 }] : []),
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),

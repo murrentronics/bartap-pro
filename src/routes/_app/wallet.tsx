@@ -354,16 +354,16 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     const currentFloat = Number(ownerProfile?.cashier_float ?? 0);
     const cashierWallet = Number(profile.wallet_balance);
 
-    // Float covers first — wallet only kicks in when float hits 0
-    const floatCovers = Math.min(currentFloat, total);         // how much float pays
-    const walletCovers = total - floatCovers;                  // remainder from cashier wallet
+    // Wallet covers first — float only kicks in when wallet hits 0
+    const walletCovers = Math.min(cashierWallet, total);       // how much wallet pays
+    const floatCovers = total - walletCovers;                  // remainder from float
 
-    if (walletCovers > cashierWallet) {
-      const shortfall = walletCovers - cashierWallet;
+    if (floatCovers > currentFloat) {
+      const shortfall = floatCovers - currentFloat;
       toast.error(
-        currentFloat > 0
-          ? `Insufficient funds. Float covers $${fmt(floatCovers)}, wallet covers $${fmt(cashierWallet)} — short $${fmt(shortfall)}`
-          : `Insufficient wallet balance. Wallet: $${fmt(cashierWallet)} · Expense: $${fmt(total)}`
+        cashierWallet > 0
+          ? `Insufficient funds. Wallet covers $${fmt(walletCovers)}, float covers $${fmt(currentFloat)} — short $${fmt(shortfall)}`
+          : `Insufficient funds. Float: $${fmt(currentFloat)} · Expense: $${fmt(total)}`
       );
       return;
     }
@@ -392,16 +392,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
         ? `Expense: ${valid[0].description.trim()}`
         : `Bulk Expense (${valid.length} items)`;
 
-      // Deduct from float first
-      if (floatCovers > 0) {
-        const newFloat = currentFloat - floatCovers;
-        const { error: floatErr } = await sb.from("profiles")
-          .update({ cashier_float: newFloat })
-          .eq("id", ownerId);
-        if (floatErr) { toast.error(floatErr.message); return; }
-      }
-
-      // Deduct remainder from cashier wallet
+      // Deduct from wallet first
       if (walletCovers > 0) {
         const { error: txError } = await sb.from("wallet_transactions").insert({
           profile_id: profile.id,
@@ -415,23 +406,33 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           .update({ wallet_balance: cashierWallet - walletCovers })
           .eq("id", profile.id);
         if (balError) { toast.error(balError.message); return; }
-      } else {
-        // Float covered 100% — still record the wallet_transaction as $0 expense for history
-        const { error: txError } = await sb.from("wallet_transactions").insert({
-          profile_id: profile.id,
-          amount: total,
-          type: "cashier_expense",
-          note: expenseNote + " [from float]",
-        });
-        if (txError) { toast.error(txError.message); return; }
+      }
+
+      // Deduct remainder from float
+      if (floatCovers > 0) {
+        const newFloat = currentFloat - floatCovers;
+        const { error: floatErr } = await sb.from("profiles")
+          .update({ cashier_float: newFloat })
+          .eq("id", ownerId);
+        if (floatErr) { toast.error(floatErr.message); return; }
+        if (walletCovers === 0) {
+          // Wallet was $0 — record the transaction as from float for history
+          const { error: txError } = await sb.from("wallet_transactions").insert({
+            profile_id: profile.id,
+            amount: total,
+            type: "cashier_expense",
+            note: expenseNote + " [from float]",
+          });
+          if (txError) { toast.error(txError.message); return; }
+        }
       }
 
       toast.success(
-        floatCovers > 0 && walletCovers === 0
-          ? `Expense saved — deducted $${fmt(total)} from float`
-          : floatCovers > 0
-          ? `Expense saved — $${fmt(floatCovers)} from float, $${fmt(walletCovers)} from wallet`
-          : "Expense saved"
+        walletCovers > 0 && floatCovers === 0
+          ? `Expense saved — deducted $${fmt(total)} from wallet`
+          : walletCovers > 0
+          ? `Expense saved — $${fmt(walletCovers)} from wallet, $${fmt(floatCovers)} from float`
+          : `Expense saved — deducted $${fmt(total)} from float`
       );
       setExpenseLines([{ description: "", amount: "" }]);
       setShowAddExpense(false);

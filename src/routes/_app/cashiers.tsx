@@ -1205,7 +1205,6 @@ export default function CashiersPage() {
   };
 
   const onClear = async (c: Cashier) => {
-  const onClear = async (c: Cashier) => {
     const { error } = await supabase.rpc("transfer_cashier_to_owner", { _cashier_id: c.id });
     if (error) { toast.error(error.message); } else { load(); refreshProfile(); toast.success(`Balance cleared from ${c.username}`); }
   };
@@ -1234,7 +1233,7 @@ export default function CashiersPage() {
     const now = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null })
+      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: 0 })
       .eq("id", ownerIdForBar);
     setBarToggleBusy(false);
     if (error) { toast.error("Failed to open bar: " + error.message); return; }
@@ -1541,5 +1540,4 @@ export default function CashiersPage() {
       </div>
     </div>
   );
-}
 }
