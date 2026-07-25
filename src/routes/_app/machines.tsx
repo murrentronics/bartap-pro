@@ -1816,9 +1816,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (tab === "income") {
 
 
-      setSessionAnchor(now.toISOString());
-
-
     }
 
 
@@ -3430,7 +3427,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -3464,6 +3461,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
   onDeleteMachine: (id: string) => void;
+
+
+  barSessionStart: string | null;
 
 
 }) {
@@ -3502,34 +3502,34 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
 
-  const sessionPayouts = floatSession
+  const sessionPayouts = barSessionStart
 
 
     ? entries
 
 
-        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
 
 
-    : 0;
+    : entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
 
 
-  const sessionIncome = floatSession
+  const sessionIncome = barSessionStart
 
 
     ? entries
 
 
-        .filter(e => e.type === "income" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
 
 
-    : 0;
+    : entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
   const sessionProfit = sessionIncome - sessionPayouts;
@@ -3901,25 +3901,45 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
 
-        {/* Session stats — reset on every float update */}
+
+
+        {/* Lifetime totals — all machines combined */}
 
 
         <div className="relative grid grid-cols-3 gap-2">
 
 
-          <StatCard label={t("session_payout", "Session Expense")} value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
 
 
-          <StatCard label={t("session_income", "Session Income")} value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+
+
+          <StatCard label={t("all_time_profit", "Total Profit")}
+            value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
+            color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
+
+
+        </div>
+        {/* Session stats — resets only when bar is opened */}
+
+
+        <div className="relative grid grid-cols-3 gap-2">
+
+
+          <StatCard label={t("session_payout", "Session Expense")} value={barSessionStart ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+
+
+          <StatCard label={t("session_income", "Session Income")} value={barSessionStart ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
 
 
           <StatCard label={t("session_profit", "Session Profit")}
 
 
-            value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+            value={barSessionStart ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
 
 
-            color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+            color={!barSessionStart ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
         </div>
@@ -5316,11 +5336,27 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   }, [ownerId]);
 
   // ── Filter state ─────────────────────────────────────────────────────────────
-  type SummaryFilter = "all" | "session" | "day" | "week" | "month" | "year";
+  type SummaryFilter = "all" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
   const today = todayTT();
   const [pickerDate, setPickerDate] = useState(today);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+
+  // ── Bar sessions list ────────────────────────────────────────────────────────
+  type BarSession = { id: string; opened_at: string; closed_at: string | null };
+  const [barSessions, setBarSessions] = useState<BarSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    (supabase as any).from("bar_sessions")
+      .select("id, opened_at, closed_at")
+      .eq("owner_id", ownerId)
+      .order("opened_at", { ascending: false })
+      .then(({ data }: { data: BarSession[] | null }) => {
+        setBarSessions(data ?? []);
+      });
+  }, [ownerId]);
 
   const availableYears = Array.from(
     new Set(entries.map(e => parseInt(e.created_at.slice(0, 4))))
@@ -5330,18 +5366,20 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
   const handleFilterChange = (f: SummaryFilter) => {
     setSummaryFilter(f);
+    setSelectedSessionId(null);
     setPickerDate(today);
     setPickerMonth(new Date().getMonth());
     setPickerYear(availableYears[0] ?? new Date().getFullYear());
   };
 
   const getFilterRange = (): { start: string; end: string; startIso?: string; endIso?: string } | null => {
-    if (summaryFilter === "all") return null;
-    if (summaryFilter === "session") {
-      if (!barSessionStart) return null;
-      const end = barClosedAt ?? new Date().toISOString();
-      return { start: barSessionStart.slice(0, 10), end: end.slice(0, 10), startIso: barSessionStart, endIso: end };
+    if (selectedSessionId) {
+      const s = barSessions.find(b => b.id === selectedSessionId);
+      if (!s) return null;
+      const end = s.closed_at ?? new Date().toISOString();
+      return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
+    if (summaryFilter === "all") return null;
     if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
     if (summaryFilter === "week") {
       const end = new Date(pickerDate + "T12:00:00");
@@ -5362,18 +5400,22 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
   const filteredEntries = filterRange
     ? sorted.filter(e => {
-        const d = e.created_at.slice(0, 10);
-        if (summaryFilter === "session" && filterRange.startIso && filterRange.endIso) {
+        if (filterRange.startIso && filterRange.endIso) {
           return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
         }
+        const d = e.created_at.slice(0, 10);
         return d >= filterRange.start && d <= filterRange.end;
       })
     : sorted;
 
   const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalSessionExpense = filteredEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+  const totalExpense = totalMachinePayout + totalSessionExpense;
   const totalIncome = filteredEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-  const totalProfit = totalIncome - totalMachinePayout - totalSessionExpense;
+  const totalProfit = totalIncome - totalExpense;
+
+  // Expense entries list (manual session-level expenses)
+  const expenseEntries = filteredEntries.filter(e => e.type === "expense");
 
   if (sorted.length === 0) {
     return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
@@ -5397,18 +5439,62 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     <div className="space-y-3">
       <div className="rounded-2xl border border-border p-3 space-y-3" style={{ background: "var(--gradient-card)" }}>
 
-        {/* Period filter tabs — always visible */}
+        {/* Period filter tabs */}
         <div className="flex gap-1">
-          {(["all", "session", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
+          {(["all", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
             <button key={f} onClick={() => handleFilterChange(f)}
               className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
-              style={summaryFilter === f
+              style={summaryFilter === f && !selectedSessionId
                 ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                 : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
-              {f === "all" ? "All" : f === "session" ? "Session" : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
+
+        {/* Sessions list */}
+        {barSessions.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">Sessions</p>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {barSessions.map(s => {
+                const isActive = !s.closed_at;
+                const isSelected = selectedSessionId === s.id;
+                const openedFmt = new Date(s.opened_at).toLocaleString("en-GB", {
+                  day: "numeric", month: "short", year: "numeric",
+                  hour: "2-digit", minute: "2-digit", hour12: true,
+                });
+                const closedFmt = s.closed_at
+                  ? new Date(s.closed_at).toLocaleString("en-GB", {
+                      day: "numeric", month: "short",
+                      hour: "2-digit", minute: "2-digit", hour12: true,
+                    })
+                  : null;
+                return (
+                  <button key={s.id}
+                    onClick={() => {
+                      if (isSelected) { setSelectedSessionId(null); }
+                      else { setSelectedSessionId(s.id); setSummaryFilter("all"); }
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]"
+                    style={isSelected
+                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                      : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${isActive ? "bg-green-500/30 text-green-400" : "bg-white/10 text-white/40"}`}>
+                        {isActive ? "LIVE" : "CLOSED"}
+                      </span>
+                      <span className="text-[10px] font-bold truncate">{openedFmt}</span>
+                    </div>
+                    {closedFmt && (
+                      <span className="text-[9px] text-white/40 shrink-0 ml-2">→ {closedFmt}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
@@ -5468,11 +5554,11 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           </select>
         )}
 
-        {/* 4 stat cards: Machine Payout | Income | Profit | Session Expense */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* 3 stat cards: Total Expense | Income | Net Profit */}
+        <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Machine Payout</div>
-            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalMachinePayout)}</div>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Total Expense</div>
+            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalExpense)}</div>
           </div>
           <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
             <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Income</div>
@@ -5483,10 +5569,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
             <div className="font-black text-xs sm:text-sm" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
               {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
             </div>
-          </div>
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Expense</div>
-            <div className="font-black text-xs sm:text-sm text-amber-400">${fmtWhole(totalSessionExpense)}</div>
           </div>
         </div>
 
@@ -5536,6 +5618,50 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   );
                 })}
               </div>
+            </div>
+            {/* Expense list — manual expenses added from the machines side */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[9px] sm:text-xs font-black text-amber-400/70 uppercase tracking-wider">Expense</p>
+                {expenseEntries.length > 0 && (
+                  <span className="text-xs font-black text-amber-400">${fmtWhole(totalSessionExpense)}</span>
+                )}
+              </div>
+              {expenseEntries.length === 0 ? (
+                <p className="text-[10px] text-white/30 text-center py-1">No expenses recorded</p>
+              ) : (
+                <div className="space-y-1">
+                  {expenseEntries.map((e, i) => (
+                    <div key={e.id} className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                      <span className="text-xs text-white/60 truncate flex-1">
+                        {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                      <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Show expense section even when no machine stats exist */}
+        {statList.length === 0 && expenseEntries.length > 0 && (
+          <div className="pt-1 border-t border-border/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[9px] sm:text-xs font-black text-amber-400/70 uppercase tracking-wider">Expense</p>
+              <span className="text-xs font-black text-amber-400">${fmtWhole(totalSessionExpense)}</span>
+            </div>
+            <div className="space-y-1">
+              {expenseEntries.map((e, i) => (
+                <div key={e.id} className="flex items-center gap-2">
+                  <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                  <span className="text-xs text-white/60 truncate flex-1">
+                    {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </span>
+                  <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -6888,6 +7014,9 @@ export default function MachinesPage() {
 
 
               remainingFloat={remainingFloat} isCashier={!isOwner}
+
+
+              barSessionStart={barSessionStart}
 
 
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}

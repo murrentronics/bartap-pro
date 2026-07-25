@@ -1,5 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-tGmdnvoG.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, j as ChartColumn, R as Receipt, G as Gamepad2, k as Link, B as Button, t as toast } from "./router-B5BIB3V9.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-ql_THtAa.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-ChpB8xKS.js";
+import { C as ChartColumn } from "./chart-column-Dp54bipr.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -252,7 +253,7 @@ function AppLayout() {
     icon: Wine
   }, {
     to: "/credit",
-    label: "Credit",
+    label: "Customers",
     icon: Receipt
   }, {
     to: "/machines",

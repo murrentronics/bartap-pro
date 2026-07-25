@@ -115,9 +115,13 @@ export default function RegisterPage() {
       return [];
     }
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
+  // Place Order flow
+  const [placeOrderOpen, setPlaceOrderOpen] = useState(false);   // payment method modal
+  const [cashTypeOpen, setCashTypeOpen] = useState(false);        // Customer or Guest modal
+  const [cashCustomerOpen, setCashCustomerOpen] = useState(false); // cash customer picker
 
   // Persist cart to localStorage whenever it changes
   useEffect(() => {
@@ -1098,7 +1102,7 @@ export default function RegisterPage() {
         )}
       </div>
 
-      {/* Sticky CASH + CREDIT buttons — fixed at bottom */}
+      {/* Sticky Place Order button — fixed at bottom */}
       {cartCount > 0 && (
         <div
           className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none"
@@ -1115,28 +1119,128 @@ export default function RegisterPage() {
                 </span>
               </div>
             )}
-            {/* CASH button */}
+            {/* Place Order button */}
             <button
-              onClick={() => setCashOpen(true)}
+              onClick={() => setPlaceOrderOpen(true)}
               className="w-full h-14 rounded-2xl flex items-center justify-between px-5 font-black text-lg text-primary-foreground shadow-2xl active:scale-[0.98] transition"
               style={{ background: "var(--gradient-hero)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span className="flex items-center gap-2">{t("cash", "CASH")}</span>
+              <span>Place Order</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
-            </button>
-            {/* CREDIT button */}
-            <button
-              onClick={() => setCreditOpen(true)}
-              className="w-full h-14 rounded-2xl flex items-center justify-between px-5 font-black text-lg shadow-2xl active:scale-[0.98] transition"
-              style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
-            >
-              <span className="flex items-center justify-center h-8 w-8 rounded-full text-sm font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)", border: "1.5px solid var(--primary)" }}>{cartCount}</span>
-              <span className="flex items-center gap-2">{t("credit", "CREDIT")}</span>
-              <span className="text-base font-bold">${total.toFixed(2)}</span>
             </button>
           </div>
         </div>
+      )}
+
+      {/* Payment method modal — Cash or Credit */}
+      {placeOrderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <h2 className="font-black text-xl mb-1">Payment Method</h2>
+              <p className="text-sm text-muted-foreground">How is this order being paid?</p>
+            </div>
+            <div className="px-6 pb-8 pt-4 space-y-3">
+              <button
+                onClick={() => { setPlaceOrderOpen(false); setCashTypeOpen(true); }}
+                className="w-full h-14 rounded-2xl font-black text-lg text-primary-foreground active:scale-[0.98] transition"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                💵 Cash
+              </button>
+              <button
+                onClick={() => { setPlaceOrderOpen(false); setCreditOpen(true); }}
+                className="w-full h-14 rounded-2xl font-black text-lg active:scale-[0.98] transition"
+                style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
+              >
+                🧾 Credit
+              </button>
+              <button
+                onClick={() => setPlaceOrderOpen(false)}
+                className="w-full h-11 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash type modal — Customer or Guest */}
+      {cashTypeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <h2 className="font-black text-xl mb-1">Customer Type</h2>
+              <p className="text-sm text-muted-foreground">Is this a registered customer or a guest?</p>
+            </div>
+            <div className="px-6 pb-8 pt-4 space-y-3">
+              <button
+                onClick={() => { setCashTypeOpen(false); setCashCustomerOpen(true); }}
+                className="w-full h-14 rounded-2xl font-black text-lg text-primary-foreground active:scale-[0.98] transition"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                👤 Customer
+              </button>
+              <button
+                onClick={() => { setCashTypeOpen(false); setCashOpen(true); }}
+                className="w-full h-14 rounded-2xl font-black text-lg active:scale-[0.98] transition border border-border hover:bg-muted/30"
+              >
+                🎲 Guest
+              </button>
+              <button
+                onClick={() => setCashTypeOpen(false)}
+                className="w-full h-11 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Customer picker — selects/creates account, then does a normal cash order */}
+      {cashCustomerOpen && (
+        <CashCustomerOverlay
+          total={total}
+          cart={cart}
+          onDec={dec}
+          onAdd={addToCart}
+          onRemove={removeItem}
+          onDiscount={(id, newPrice) => setCart(c => c.map(i => i.id === id ? { ...i, price: newPrice } : i))}
+          onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
+          onClose={() => { setCashCustomerOpen(false); revertPendingPacks(); }}
+          ownerId={ownerId}
+          onSuccess={async (paidAmt, changeAmt) => {
+            const shotItems = cart.filter((c) => (c as any)._bottle_id);
+            const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+            for (const shot of shotItems) {
+              const bid = (shot as any)._bottle_id as string;
+              const vKey = (shot as any)._variation_key as string ?? "shot";
+              const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+              const ex = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
+              ex.units_consumed += unitsUsed;
+              ex.variation_counts[vKey] = (ex.variation_counts[vKey] ?? 0) + shot.qty;
+              bottleUpdates.set(bid, ex);
+            }
+            for (const [bottleId, update] of bottleUpdates) {
+              const bottle = openedBottles.find((b) => b.id === bottleId);
+              if (!bottle) continue;
+              const merged: Record<string, number> = { ...bottle.variation_counts };
+              for (const [k, v] of Object.entries(update.variation_counts)) merged[k] = (merged[k] ?? 0) + v;
+              await supabase.from("opened_bottles").update({ units_consumed: bottle.units_consumed + update.units_consumed, variation_counts: merged }).eq("id", bottleId);
+            }
+            closeFullPacksAfterOrder(cart);
+            setBottlesPendingCancel([]);
+            setCart([]);
+            localStorage.removeItem(`bartap-cart-${ownerId}`);
+            setCashCustomerOpen(false);
+            refreshProfile();
+            fetchOpenedBottles();
+            fetchOpenedPacks();
+          }}
+        />
       )}
 
       {cashOpen && (
@@ -2451,6 +2555,288 @@ type CreditAccount = {
   id: string; full_name: string; contact_number: string | null;
   balance_owed: number; status: string;
 };
+
+// ── Cash Customer Overlay ─────────────────────────────────────────────────────
+// Lets cashier pick or create a customer for a cash sale.
+// Records a credit_charge + immediate credit_payment so the transaction history
+// shows the purchase while balance stays at $0 (cleared).
+function CashCustomerOverlay({
+  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
+}: {
+  total: number;
+  cart: CartItem[];
+  onDec: (id: string) => void;
+  onAdd: (p: CartItem) => void;
+  onRemove: (id: string) => void;
+  onDiscount: (id: string, newPrice: number) => void;
+  onClearCart: () => void;
+  onClose: () => void;
+  onSuccess: (paid: number, change: number) => void;
+  ownerId: string;
+}) {
+  const { profile } = useAuth();
+  const [step, setStep] = useState<"pick" | "confirm" | "create" | "pay">("pick");
+  const [accounts, setAccounts] = useState<CreditAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [confirmPick, setConfirmPick] = useState<CreditAccount | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [paid, setPaid] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState<CreditAccount | null>(null);
+
+  // Create account form
+  const [newName, setNewName] = useState("");
+  const [newContact, setNewContact] = useState("");
+  const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
+  const [newIdNumber, setNewIdNumber] = useState("");
+  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(null);
+  const toggleNew = (f: "name" | "idNumber" | "contact") => setNewActiveField((cur) => cur === f ? null : f);
+
+  const change = Math.max(0, (Number(paid) || 0) - total);
+  const enough = (Number(paid) || 0) >= total;
+
+  useEffect(() => {
+    loadAccounts();
+  }, []);
+
+  const loadAccounts = async () => {
+    if (!ownerId) return;
+    setLoadingAccounts(true);
+    const { data } = await supabase
+      .from("credit_accounts")
+      .select("id, full_name, contact_number, balance_owed, status")
+      .eq("owner_id", ownerId)
+      .order("full_name");
+    setAccounts((data ?? []) as CreditAccount[]);
+    setLoadingAccounts(false);
+  };
+
+  const recordShotPack = async () => {
+    const shotItems = cart.filter((c) => (c as any)._bottle_id);
+    for (const shot of shotItems) {
+      await supabase.rpc("record_shot", { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) });
+    }
+    const packItems = cart.filter((c) => (c as any)._pack_id);
+    for (const unit of packItems) {
+      await supabase.rpc("record_pack_unit", { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) });
+    }
+  };
+
+  const submitCashOrder = async (account: CreditAccount) => {
+    if (!profile || !enough) return;
+    setBusy(true);
+    const paidNum = Number(paid);
+    const changeNum = change;
+
+    // 1. Normal cash order (triggers cashier wallet update)
+    const { error: orderErr } = await supabase.from("orders").insert({
+      owner_id: ownerId,
+      cashier_id: profile.id,
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      total,
+      paid: paidNum,
+      change_given: changeNum,
+    });
+    if (orderErr) { setBusy(false); toast.error(orderErr.message); return; }
+
+    // 2. Stock decrement
+    const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
+    await supabase.rpc("decrement_stock_item", { p_items: stockItems });
+
+    // 3. Record shot/pack units
+    await recordShotPack();
+
+    // 4. Record charge + immediate payment on the credit account
+    //    This saves the purchase history without leaving a balance.
+    const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
+    await supabase.rpc("record_credit_charge", {
+      p_credit_account_id: account.id,
+      p_cashier_id: profile.id,
+      p_amount: total,
+      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
+      p_note: "[CASH] " + itemsDesc,
+    });
+    await supabase.rpc("record_credit_payment", {
+      p_credit_account_id: account.id,
+      p_cashier_id: profile.id,
+      p_amount: total,
+    });
+
+    setBusy(false);
+    onSuccess(paidNum, changeNum);
+  };
+
+  const createAndPay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !profile) return;
+    setBusy(true);
+    const { data: acc, error: createErr } = await supabase
+      .from("credit_accounts")
+      .insert({
+        owner_id: ownerId,
+        full_name: newName.trim(),
+        contact_number: newContact.trim() ? "868-" + newContact.trim() : null,
+        id_number: newIdNumber.trim() ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}` : null,
+        status: "closed",
+      })
+      .select()
+      .single();
+    if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
+    setBusy(false);
+    setSelectedAccount(acc as CreditAccount);
+    setStep("pay");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden border border-border shadow-2xl" style={{ background: "var(--gradient-card)" }}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+          <h2 className="text-xl font-black">Cash — Customer</h2>
+          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"><X className="h-4 w-4" /></button>
+        </div>
+
+        {/* Step: pick customer */}
+        {step === "pick" && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
+              <p className="text-sm text-muted-foreground">Select the customer's account</p>
+              {loadingAccounts ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+              ) : accounts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No customers yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {accounts.map((a) => (
+                    <button key={a.id} onClick={() => setConfirmPick(a)} disabled={busy}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left disabled:opacity-50"
+                      style={{ background: "var(--gradient-card)" }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-sm">{a.full_name}</p>
+                        {a.contact_number && <p className="text-xs text-muted-foreground">{a.contact_number}</p>}
+                      </div>
+                      {Number(a.balance_owed) > 0 && (
+                        <span className="text-xs font-black text-red-400 shrink-0 ml-2">owes ${Number(a.balance_owed).toFixed(2)}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>Cancel</Button>
+              <Button className="h-12 px-5 font-black text-sm" onClick={() => setStep("create")} style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>+ New Customer</Button>
+            </div>
+          </>
+        )}
+
+        {/* Confirm customer pick → go to pay step */}
+        {confirmPick && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl" style={{ background: "var(--gradient-card)" }}>
+              <h3 className="font-black text-2xl">Confirm Customer?</h3>
+              <p className="font-black text-3xl">{confirmPick.full_name}</p>
+              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" className="flex-1 h-16 font-black text-base" onClick={() => setConfirmPick(null)}>Cancel</Button>
+                <Button className="flex-1 h-16 font-black text-base" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  onClick={() => { setSelectedAccount(confirmPick); setConfirmPick(null); setStep("pay"); }}>
+                  Yes, Select
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step: create new customer */}
+        {step === "create" && (
+          <>
+            <form onSubmit={createAndPay} className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+              <p className="text-sm text-muted-foreground">Create a new customer account</p>
+              <div>
+                <Label>Full Name *</Label>
+                <button type="button" onClick={() => toggleNew("name")} className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                  <span className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}>{newName || "e.g. John Smith"}</span>
+                </button>
+                {newActiveField === "name" && <CreditAlphaKeyboard value={newName} onChange={setNewName} onDone={() => setNewActiveField(null)} />}
+              </div>
+              <div>
+                <Label htmlFor="cash-new-idtype">ID Type</Label>
+                <select id="cash-new-idtype" value={newIdType} onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
+                  <option value="drivers_permit">Driver's Permit</option>
+                  <option value="national_id">National ID</option>
+                </select>
+              </div>
+              <div>
+                <Label>ID Number</Label>
+                <button type="button" onClick={() => toggleNew("idNumber")} className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
+                  <span className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}>{newIdNumber || "e.g. 00000000"}</span>
+                </button>
+                {newActiveField === "idNumber" && <CreditNumPad value={newIdNumber} onChange={setNewIdNumber} maxLen={20} onDone={() => setNewActiveField(null)} />}
+              </div>
+              <div>
+                <Label>Contact Number</Label>
+                <div className="flex items-center mt-1">
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                  <button type="button" onClick={() => toggleNew("contact")} className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
+                    <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>{newContact || "XXX-XXXX"}</span>
+                  </button>
+                </div>
+                {newActiveField === "contact" && <CreditContactPad value={newContact} onChange={setNewContact} onDone={() => setNewActiveField(null)} />}
+              </div>
+              <Button type="submit" disabled={busy || !newName.trim()} className="w-full h-12 font-black text-base" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create & Continue"}
+              </Button>
+            </form>
+            <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Customers</Button>
+            </div>
+          </>
+        )}
+
+        {/* Step: numpad payment for selected customer */}
+        {step === "pay" && selectedAccount && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
+              <div className="rounded-xl px-4 py-2 text-center" style={{ background: "var(--gradient-hero)" }}>
+                <div className="text-xs font-semibold text-primary-foreground/70">Customer</div>
+                <div className="font-black text-lg text-primary-foreground">{selectedAccount.full_name}</div>
+              </div>
+              <div className="rounded-xl border border-green-500/30 px-4 py-3 text-center" style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}>
+                <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">Amount Received</div>
+                <div className="text-3xl font-black text-green-100">${paid || "0.00"}</div>
+              </div>
+              <div className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}>
+                <div className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}>{enough ? "Change to Give" : "Short by"}</div>
+                <div className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}>
+                  ${Number(paid) === 0 ? "0.00" : (enough ? change : total - Number(paid)).toFixed(2)}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                  <button key={k} type="button" onClick={() => {
+                    if (k === "⌫") setPaid((v) => v.slice(0, -1));
+                    else if (k === ".") { if (!paid.includes(".")) setPaid((v) => v + "."); }
+                    else { const dotIdx = paid.indexOf("."); if (dotIdx !== -1 && paid.length - dotIdx > 2) return; setPaid((v) => (v === "0" ? k : v + k)); }
+                  }}
+                  className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`}>
+                    {k}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
+              <Button variant="outline" className="flex-1 h-12" onClick={() => { setStep("pick"); setSelectedAccount(null); setPaid(""); }}>← Back</Button>
+              <Button className="flex-1 h-12 font-black text-base" disabled={!enough || busy} onClick={() => submitCashOrder(selectedAccount)}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Sale"}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function CreditSaleOverlay({
   total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,

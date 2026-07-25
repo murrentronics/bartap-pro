@@ -139,9 +139,15 @@ serve(async (req) => {
     }
 
     // Force-set parent_id and role — don't rely solely on the trigger
+    // Note: app_role enum only allows 'cashier'/'owner'/'admin', so 'manager' is stored
+    // as job_title while keeping role='cashier' for auth purposes
     await supabaseClient
       .from("profiles")
-      .update({ parent_id: parentId, role: effectiveRole })
+      .update({
+        parent_id: parentId,
+        role: "cashier",
+        ...(effectiveRole === "manager" ? { job_title: "manager" } : {}),
+      })
       .eq("id", authData.user.id);
 
     return new Response(

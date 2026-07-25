@@ -97,6 +97,11 @@ function AppLayout() {
     const { error } = await (supabase as any).from("profiles")
       .update({ bar_session_start: now, bar_closed_at: null })
       .eq("id", ownerId);
+    if (!error) {
+      // Record new session row so summary can show history
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, opened_at: now });
+    }
     setBarToggleBusy(false);
     if (error) { toast.error("Failed to open bar"); return; }
     setBarSessionStart(now);
@@ -112,8 +117,12 @@ function AppLayout() {
     const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId!).single();
     const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
     if (sessionStart) {
+      // Close the most recent open session row
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, session_start: sessionStart, session_end: now });
+      await (supabase as any).from("bar_sessions")
+        .update({ closed_at: now })
+        .eq("owner_id", ownerId)
+        .is("closed_at", null);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
@@ -165,7 +174,7 @@ function AppLayout() {
       ]
     : [
         { to: "/register", label: "Cashier",  icon: Wine },
-        { to: "/credit",   label: "Credit",   icon: Receipt },
+        { to: "/credit",   label: "Customers", icon: Receipt },
         { to: "/machines", label: "Machines", icon: Gamepad2 },
         ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: "Staff",    icon: Users    }] : []),

@@ -263,7 +263,7 @@ function CreditPage() {
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
 
-  const [tab, setTab] = useState<"opened" | "closed" | "create">("opened");
+  const [tab, setTab] = useState<"credit" | "cleared" | "create">("credit");
   const [opened, setOpened] = useState<CreditAccount[]>([]);
   const [closed, setClosed] = useState<CreditAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,8 +283,8 @@ function CreditPage() {
       .eq("owner_id", id)
       .order("updated_at", { ascending: false });
     const all = (data ?? []) as CreditAccount[];
-    setOpened(all.filter((a) => a.status === "open").sort((a, b) => a.full_name.localeCompare(b.full_name)));
-    setClosed(all.filter((a) => a.status === "closed").sort((a, b) => a.full_name.localeCompare(b.full_name)));
+    setOpened(all.filter((a) => Number(a.balance_owed) > 0).sort((a, b) => a.full_name.localeCompare(b.full_name)));
+    setClosed(all.filter((a) => Number(a.balance_owed) <= 0).sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setLoading(false);
   }, []);
 
@@ -306,7 +306,7 @@ function CreditPage() {
 
   const handleCreated = (account: CreditAccount) => {
     setClosed((prev) => [account, ...prev]);
-    setTab("closed");
+    setTab("cleared");
   };
 
   const handlePaymentDone = () => {
@@ -316,11 +316,11 @@ function CreditPage() {
 
   return (
     <div className="py-3 space-y-4">
-      <h1 className="text-2xl font-black">Credit</h1>
+      <h1 className="text-2xl font-black">Customers</h1>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
-        {(["opened", "closed", "create"] as const).map((t) => (
+        {(["credit", "cleared", "create"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -331,13 +331,13 @@ function CreditPage() {
             }`}
             style={tab === t ? { background: "var(--gradient-hero)" } : {}}
           >
-            {t === "opened" ? `Opened${opened.length ? ` (${opened.length})` : ""}` : t === "closed" ? "Closed" : "Create"}
+            {t === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : t === "cleared" ? "Cleared" : "Create"}
           </button>
         ))}
       </div>
 
       {/* Tab content */}
-      {tab === "opened" && (
+      {tab === "credit" && (
         <OpenedTab
           accounts={opened}
           loading={loading}
@@ -346,8 +346,8 @@ function CreditPage() {
           onEdit={setEditAccount}
         />
       )}
-      {tab === "closed" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} />
+      {tab === "cleared" && (
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -456,22 +456,43 @@ function OpenedTab({
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void }) {
+function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
+  // Track which accounts have cash purchase records (charge txs with "[CASH]" note)
+  const [cashAccounts, setCashAccounts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!ownerId || accounts.length === 0) return;
+    supabase
+      .from("credit_transactions")
+      .select("credit_account_id, note")
+      .eq("owner_id", ownerId)
+      .eq("type", "charge")
+      .then(({ data }) => {
+        const ids = new Set<string>(
+          (data ?? [])
+            .filter((tx: { credit_account_id: string; note: string | null }) => tx.note?.startsWith("[CASH]"))
+            .map((tx: { credit_account_id: string }) => tx.credit_account_id)
+        );
+        setCashAccounts(ids);
+      });
+  }, [ownerId, accounts]);
 
   if (loading) return <Spinner />;
   if (accounts.length === 0)
     return (
       <div className="text-center py-16 text-muted-foreground">
         <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-semibold">No closed accounts yet</p>
+        <p className="font-semibold">No cleared customers yet</p>
       </div>
     );
 
   return (
     <div className="space-y-2">
-      {accounts.map((a) => (
+      {accounts.map((a) => {
+        const hasCashPurchase = cashAccounts.has(a.id);
+        return (
         <div
           key={a.id}
           className="rounded-2xl border border-border overflow-hidden"
@@ -495,23 +516,25 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
             </button>
           </div>
 
-          {/* Footer row — settled badge + Bill + Edit stacked */}
+          {/* Footer row — cleared badge + conditional Bill + Edit */}
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">SETTLED</span>
+            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">Cleared</span>
             <div className="flex flex-col items-end gap-1.5">
-              <button
-                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
-                disabled={printing === a.id}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-                style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
-              >
-                {printing === a.id
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : printed === a.id
-                  ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  : <FileDown className="h-3 w-3" />}
-                {printed === a.id ? "Done" : "Bill"}
-              </button>
+              {hasCashPurchase && (
+                <button
+                  onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
+                  disabled={printing === a.id}
+                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
+                  style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                >
+                  {printing === a.id
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : printed === a.id
+                    ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    : <FileDown className="h-3 w-3" />}
+                  {printed === a.id ? "Done" : "Bill"}
+                </button>
+              )}
               <button
                 onClick={() => onEdit(a)}
                 className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
@@ -523,7 +546,8 @@ function ClosedTab({ accounts, loading, ownerName, onEdit }: { accounts: CreditA
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
