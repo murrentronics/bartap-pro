@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-CCNk5nlc.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-JqB9nXXj.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-NQJBMXGO.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-x910fWzH.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -56,7 +56,7 @@ async function printBill(account, ownerName) {
   }
   const {
     jsPDF
-  } = await import("./jspdf.es.min-BEoT_nfv.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-Bs0Z7jJS.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"

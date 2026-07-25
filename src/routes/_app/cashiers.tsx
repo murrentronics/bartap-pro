@@ -1235,8 +1235,15 @@ export default function CashiersPage() {
     const { error } = await (supabase as any).from("profiles")
       .update({ bar_session_start: now, bar_closed_at: null, cashier_float: 0 })
       .eq("id", ownerIdForBar);
+    if (error) { setBarToggleBusy(false); toast.error("Failed to open bar: " + error.message); return; }
+    // Reset machine float session to 0 so all machine float cards show zero
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("machine_float_sessions").insert({
+      owner_id: ownerIdForBar,
+      amount: 0,
+      set_at: now,
+    });
     setBarToggleBusy(false);
-    if (error) { toast.error("Failed to open bar: " + error.message); return; }
     setBarSessionStart(now); setBarClosedAt(null);
     toast.success("🟢 Bar opened at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
   };

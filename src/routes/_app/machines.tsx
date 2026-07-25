@@ -4036,7 +4036,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
 
 
-              style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.35)" }}>
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
 
 
               <Receipt className="h-4 w-4" />
