@@ -1,5 +1,5 @@
-import { v as registerPlugin } from "./router-ChpB8xKS.js";
-import "./server-ql_THtAa.js";
+import { v as registerPlugin } from "./router-Nt7e068I.js";
+import "./server-DAWm70PB.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -67,7 +67,7 @@ var Encoding;
   Encoding2["UTF16"] = "utf16";
 })(Encoding || (Encoding = {}));
 const Filesystem = registerPlugin("Filesystem", {
-  web: () => import("./web-Dmt9_erj.js").then((m) => new m.FilesystemWeb())
+  web: () => import("./web-DpFgpwfn.js").then((m) => new m.FilesystemWeb())
 });
 f();
 export {

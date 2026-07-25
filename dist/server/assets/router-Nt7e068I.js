@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-ql_THtAa.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-DAWm70PB.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-8VYgG0HT.js");
+          const { PushNotifications } = await import("./index-BAosoIx4.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27100,7 +27100,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-CWw3oFSJ.css";
+const appCss = "/assets/styles-DCqrzPgm.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-CtgzjOl1.js");
+const $$splitComponentImporter$3 = () => import("./login-Hb8Txhnl.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-BxrtKBbB.js");
+const $$splitComponentImporter$2 = () => import("./_app-oErJtry4.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -31159,7 +31159,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-G4ByVp_V.js");
+const $$splitComponentImporter$1 = () => import("./manager-CqMEaocx.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43053,8 +43053,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-5JMe7Odd.js");
-    const { Share } = await import("./index-BZJ2IiaX.js");
+    const { Filesystem, Directory } = await import("./index-CSAuFViV.js");
+    const { Share } = await import("./index-qFUlIzX2.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43212,7 +43212,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-DLRIQeiK.js");
+      const { LocalNotifications } = await import("./index-zevULiHE.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43231,7 +43231,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-DLRIQeiK.js");
+    const { LocalNotifications } = await import("./index-zevULiHE.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43266,7 +43266,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-DLRIQeiK.js");
+      const { LocalNotifications } = await import("./index-zevULiHE.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43365,9 +43365,9 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
     setEditEntry(null);
     setEditAmount("");
   };
-  const [barSessionStart2, setBarSessionStart] = reactExports.useState(null);
+  const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
   const [barClosedAt, setBarClosedAt] = reactExports.useState(null);
-  const barIsOpen = !!barSessionStart2 && !barClosedAt;
+  const barIsOpen = !!barSessionStart && !barClosedAt;
   reactExports.useEffect(() => {
     if (!ownerId) return;
     supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single().then(({ data }) => {
@@ -43560,7 +43560,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                     }
                   ),
                   isNewest && deletingId === e.id && isPayout && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 text-white animate-spin" }) }),
-                  !isPayout && !isCashier && barIsOpen && barSessionStart2 && new Date(e.created_at) >= new Date(barSessionStart2) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  !isPayout && !isCashier && barIsOpen && barSessionStart && new Date(e.created_at) >= new Date(barSessionStart) && /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
                       onClick: () => {
@@ -43826,7 +43826,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DTf4BRgK.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-CebOCAay.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -43931,7 +43931,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DTf4BRgK.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-CebOCAay.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44537,7 +44537,7 @@ function CreateTab({ ownerId, onCreated }) {
     }
   );
 }
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart: barSessionStart2 }) {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart }) {
   const { t } = useTranslation();
   const totalPayout = entries.filter((e) => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
@@ -44545,8 +44545,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const todayStr = todayTT();
   entries.filter((e) => e.type === "payout" && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
   entries.filter((e) => e.type === "income" && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
-  const sessionPayouts = barSessionStart2 ? entries.filter((e) => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart2)).reduce((s, e) => s + Number(e.amount), 0) : entries.filter((e) => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
-  const sessionIncome = barSessionStart2 ? entries.filter((e) => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart2)).reduce((s, e) => s + Number(e.amount), 0) : entries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const sessionPayouts = barSessionStart ? entries.filter((e) => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0) : entries.filter((e) => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+  const sessionIncome = barSessionStart ? entries.filter((e) => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0) : entries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
   const [orderedMachines, setOrderedMachines] = reactExports.useState(
     () => [...initialMachines].sort(
@@ -44673,14 +44673,14 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             )
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "Session Expense"), value: barSessionStart2 ? "$" + fmtWhole(sessionPayouts) : "—", color: "#fca5a5" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "Session Income"), value: barSessionStart2 ? "$" + fmtWhole(sessionIncome) : "—", color: "#86efac" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "Session Expense"), value: barSessionStart ? "$" + fmtWhole(sessionPayouts) : "—", color: "#fca5a5" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "Session Income"), value: barSessionStart ? "$" + fmtWhole(sessionIncome) : "—", color: "#86efac" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               StatCard,
               {
                 label: t("session_profit", "Session Profit"),
-                value: barSessionStart2 ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—",
-                color: !barSessionStart2 ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"
+                value: barSessionStart ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—",
+                color: !barSessionStart ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"
               }
             )
           ] }),
@@ -44917,7 +44917,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-DTf4BRgK.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-CebOCAay.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -45241,7 +45241,7 @@ function AllHistoryTab({ entries, machines }) {
   ] });
 }
 function SummaryTab({ entries, machines, ownerId }) {
-  const [barSessionStart2, setBarSessionStart] = reactExports.useState(null);
+  const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
   const [barClosedAt, setBarClosedAt] = reactExports.useState(null);
   reactExports.useEffect(() => {
     if (!ownerId) return;
@@ -45266,6 +45266,14 @@ function SummaryTab({ entries, machines, ownerId }) {
   const today = todayTT();
   const [pickerDate, setPickerDate] = reactExports.useState(today);
   const [pickerMonth, setPickerMonth] = reactExports.useState((/* @__PURE__ */ new Date()).getMonth());
+  const [barSessions, setBarSessions] = reactExports.useState([]);
+  const [selectedSessionId, setSelectedSessionId] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    if (!ownerId) return;
+    supabase.from("bar_sessions").select("id, opened_at, closed_at").eq("owner_id", ownerId).order("opened_at", { ascending: false }).then(({ data }) => {
+      setBarSessions(data ?? []);
+    });
+  }, [ownerId]);
   const availableYears = Array.from(
     new Set(entries.map((e) => parseInt(e.created_at.slice(0, 4))))
   ).sort((a, b) => b - a);
@@ -45273,17 +45281,19 @@ function SummaryTab({ entries, machines, ownerId }) {
   const [pickerYear, setPickerYear] = reactExports.useState(defaultYear);
   const handleFilterChange = (f) => {
     setSummaryFilter(f);
+    setSelectedSessionId(null);
     setPickerDate(today);
     setPickerMonth((/* @__PURE__ */ new Date()).getMonth());
     setPickerYear(availableYears[0] ?? (/* @__PURE__ */ new Date()).getFullYear());
   };
   const getFilterRange = () => {
-    if (summaryFilter === "all") return null;
-    if (summaryFilter === "session") {
-      if (!barSessionStart2) return null;
-      const end = barClosedAt ?? (/* @__PURE__ */ new Date()).toISOString();
-      return { start: barSessionStart2.slice(0, 10), end: end.slice(0, 10), startIso: barSessionStart2, endIso: end };
+    if (selectedSessionId) {
+      const s = barSessions.find((b) => b.id === selectedSessionId);
+      if (!s) return null;
+      const end = s.closed_at ?? (/* @__PURE__ */ new Date()).toISOString();
+      return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
+    if (summaryFilter === "all") return null;
     if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
     if (summaryFilter === "week") {
       const end = /* @__PURE__ */ new Date(pickerDate + "T12:00:00");
@@ -45301,10 +45311,10 @@ function SummaryTab({ entries, machines, ownerId }) {
   const filterRange = getFilterRange();
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const filteredEntries = filterRange ? sorted.filter((e) => {
-    const d = e.created_at.slice(0, 10);
-    if (summaryFilter === "session" && filterRange.startIso && filterRange.endIso) {
+    if (filterRange.startIso && filterRange.endIso) {
       return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
     }
+    const d = e.created_at.slice(0, 10);
     return d >= filterRange.start && d <= filterRange.end;
   }) : sorted;
   const totalMachinePayout = filteredEntries.filter((e) => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
@@ -45329,16 +45339,64 @@ function SummaryTab({ entries, machines, ownerId }) {
   const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map((m) => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border p-3 space-y-3", style: { background: "var(--gradient-card)" }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1", children: ["all", "session", "day", "week", "month", "year"].map((f) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1", children: ["all", "day", "week", "month", "year"].map((f) => /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
       {
         onClick: () => handleFilterChange(f),
         className: "flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize",
-        style: summaryFilter === f ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" },
-        children: f === "all" ? "All" : f === "session" ? "Session" : f.charAt(0).toUpperCase() + f.slice(1)
+        style: summaryFilter === f && !selectedSessionId ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" },
+        children: f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)
       },
       f
     )) }),
+    barSessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[9px] font-black text-white/40 uppercase tracking-wider", children: "Sessions" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1 max-h-40 overflow-y-auto", children: barSessions.map((s) => {
+        const isActive = !s.closed_at;
+        const isSelected = selectedSessionId === s.id;
+        const openedFmt = new Date(s.opened_at).toLocaleString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+        const closedFmt = s.closed_at ? new Date(s.closed_at).toLocaleString("en-GB", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        }) : null;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => {
+              if (isSelected) {
+                setSelectedSessionId(null);
+              } else {
+                setSelectedSessionId(s.id);
+                setSummaryFilter("all");
+              }
+            },
+            className: "w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]",
+            style: isSelected ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${isActive ? "bg-green-500/30 text-green-400" : "bg-white/10 text-white/40"}`, children: isActive ? "LIVE" : "CLOSED" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-bold truncate", children: openedFmt })
+              ] }),
+              closedFmt && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[9px] text-white/40 shrink-0 ml-2", children: [
+                "→ ",
+                closedFmt
+              ] })
+            ]
+          },
+          s.id
+        );
+      }) })
+    ] }),
     summaryFilter === "day" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -45525,6 +45583,24 @@ function MachinesPage() {
   const [selectedInitialTab, setSelectedInitialTab] = reactExports.useState("payout");
   const ownerId = effectiveOwnerId(profile?.role === "cashier" ? profile.parent_id ?? "" : profile?.id ?? "");
   const isOwner = profile?.role === "owner";
+  const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    if (!ownerId) return;
+    supabase.from("profiles").select("bar_session_start").eq("id", ownerId).single().then(({ data }) => {
+      setBarSessionStart(data?.bar_session_start ?? null);
+    });
+    const ch = supabase.channel("machines-page-bar-session-" + ownerId).on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "profiles", filter: "id=eq." + ownerId },
+      (payload) => {
+        const r2 = payload.new;
+        if ("bar_session_start" in r2) setBarSessionStart(r2.bar_session_start ?? null);
+      }
+    ).subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [ownerId]);
   reactExports.useEffect(() => {
     let cleanup = () => {
     };
@@ -47053,7 +47129,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-BtjJaNnk.js");
+const $$splitComponentImporter = () => import("./credit-BuuD8w9y.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

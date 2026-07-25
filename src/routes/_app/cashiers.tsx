@@ -1188,6 +1188,7 @@ export default function CashiersPage() {
         job_title: customTitle.trim(),
         role: "custom",
         parent_id: ownerIdForQuery,
+        has_login: false,
         wallet_balance: 0,
         status: "approved",
       });

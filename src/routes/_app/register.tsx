@@ -2251,7 +2251,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
           value={discountVal}
           onChange={e => setDiscountVal(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") applyDiscount(); if (e.key === "Escape") { setDiscountOpen(false); setDiscountVal(""); } }}
-          className="flex-1 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-green-500"
+          className="w-20 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-green-500"
           placeholder={Number(item.price).toFixed(2)}
         />
         <button onClick={applyDiscount}
@@ -2645,20 +2645,16 @@ function CashCustomerOverlay({
     // 3. Record shot/pack units
     await recordShotPack();
 
-    // 4. Record charge + immediate payment on the credit account
-    //    This saves the purchase history without leaving a balance.
+    // 4. Record the purchase in the customer's credit history (no balance change — cash was paid)
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-    await supabase.rpc("record_credit_charge", {
-      p_credit_account_id: account.id,
-      p_cashier_id: profile.id,
-      p_amount: total,
-      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
-      p_note: "[CASH] " + itemsDesc,
-    });
-    await supabase.rpc("record_credit_payment", {
-      p_credit_account_id: account.id,
-      p_cashier_id: profile.id,
-      p_amount: total,
+    await (supabase as any).from("credit_transactions").insert({
+      credit_account_id: account.id,
+      owner_id: ownerId,
+      cashier_id: profile.id,
+      type: "charge",
+      amount: total,
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      note: "[CASH] " + itemsDesc,
     });
 
     setBusy(false);

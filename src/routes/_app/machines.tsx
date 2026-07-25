@@ -5742,6 +5742,30 @@ export default function MachinesPage() {
   const isOwner = profile?.role === "owner";
 
 
+  // Bar session state — used by ScreensTab for session stats anchor
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("profiles")
+      .select("bar_session_start")
+      .eq("id", ownerId)
+      .single()
+      .then(({ data }: { data: { bar_session_start: string | null } | null }) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+      });
+    const ch = supabase.channel("machines-page-bar-session-" + ownerId)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: "id=eq." + ownerId },
+        (payload: any) => {
+          const r = payload.new as Record<string, unknown>;
+          if ("bar_session_start" in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
+        }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
+
 
 
 

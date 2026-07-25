@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-ql_THtAa.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-ChpB8xKS.js";
-import { C as ChartColumn } from "./chart-column-Dp54bipr.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-DAWm70PB.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-Nt7e068I.js";
+import { C as ChartColumn } from "./chart-column-BfQzv2f7.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -162,6 +162,12 @@ function AppLayout() {
       bar_session_start: now,
       bar_closed_at: null
     }).eq("id", ownerId);
+    if (!error) {
+      await supabase.from("bar_sessions").insert({
+        owner_id: ownerId,
+        opened_at: now
+      });
+    }
     setBarToggleBusy(false);
     if (error) {
       toast.error("Failed to open bar");
@@ -181,11 +187,9 @@ function AppLayout() {
     } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId).single();
     const sessionStart = ownerRow?.bar_session_start ?? null;
     if (sessionStart) {
-      await supabase.from("bar_sessions").insert({
-        owner_id: ownerId,
-        session_start: sessionStart,
-        session_end: now
-      });
+      await supabase.from("bar_sessions").update({
+        closed_at: now
+      }).eq("owner_id", ownerId).is("closed_at", null);
     }
     const {
       error
