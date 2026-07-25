@@ -16,6 +16,8 @@ type OrderItem = { id?: string; name: string; qty: number; price: number };
 type Order = {
   id: string;
   total: number;
+  paid: number;
+  change_given: number;
   items: OrderItem[];
   created_at: string;
 };
@@ -68,12 +70,19 @@ function filterLabel(filter: FilterType, from: string, to: string): string {
 function aggregateItems(
   orders: Order[],
   costMap: Map<string, number>,
+  nameMap: Map<string, number>,
 ): { name: string; qty: number; revenue: number; costTotal: number }[] {
   const map = new Map<string, { qty: number; revenue: number; costTotal: number }>();
   for (const o of orders) {
     for (const it of o.items) {
       const existing = map.get(it.name) ?? { qty: 0, revenue: 0, costTotal: 0 };
-      const costEach = it.id ? (costMap.get(it.id) ?? 0) : 0;
+      // Try exact ID match first; shots/packs have synthetic IDs so fall back to name match
+      let costEach = 0;
+      if (it.id && costMap.has(it.id)) {
+        costEach = costMap.get(it.id)!;
+      } else if (nameMap.has(it.name)) {
+        costEach = nameMap.get(it.name)!;
+      }
       map.set(it.name, {
         qty:       existing.qty + it.qty,
         revenue:   existing.revenue + it.qty * it.price,
@@ -357,7 +366,7 @@ export default function SummaryPage() {
     const [ordersRes, expensesRes, productsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id, total, items, created_at")
+        .select("id, total, paid, change_given, items, created_at")
         .eq("owner_id", ownerId)
         .gte("created_at", startIso)
         .lte("created_at", endIso)
@@ -399,6 +408,14 @@ export default function SummaryPage() {
       p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price,
     ])
   );
+  // Name-based fallback: for shots/packs whose order item ID is synthetic (e.g. "shot-<uuid>")
+  // the cost is stored on the parent product. Match by product name as a fallback.
+  const nameMap = new Map<string, number>(
+    products.map((p) => [
+      p.name,
+      p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price,
+    ])
+  );
 
   // Non-stock + reverted stock expenses (shown in the Expenses section)
   const nonStockExpenses = expenses.filter((e) => {
@@ -410,7 +427,7 @@ export default function SummaryPage() {
     .filter((e) => Number(e.amount) > 0)
     .reduce((s, e) => s + Number(e.amount), 0);
 
-  const items         = aggregateItems(orders, costMap);
+  const items         = aggregateItems(orders, costMap, nameMap);
   const totalIncome   = items.reduce((s, it) => s + it.revenue, 0);
   const totalCostPrice = items.reduce((s, it) => s + it.costTotal, 0) + totalNonStockExpenses;
   const totalProfit   = totalIncome - totalCostPrice;
@@ -563,6 +580,8 @@ export default function SummaryPage() {
     }
   };
 
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
   return (
     <div className="space-y-5 pb-24">
       {/* Header */}
@@ -666,18 +685,39 @@ export default function SummaryPage() {
         </div>
       )}
 
-      {/* ── Shared session info bar — shown under every non-session filter picker ── */}
-      {filter !== "session" && barSessionStart && (
+      {/* ── Shared filter date-range badge — shown under every non-session filter picker ── */}
+      {filter !== "session" && (
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3"
           style={{ background: barIsOpen ? "rgba(134,239,172,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${barIsOpen ? "rgba(134,239,172,0.25)" : "rgba(255,255,255,0.08)"}` }}>
           <span className="text-sm shrink-0">{barIsOpen ? "🟢" : "🔴"}</span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: barIsOpen ? "#86efac" : "var(--muted-foreground)" }}>
               {barIsOpen ? "Bar Open" : "Bar Closed"}
             </p>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Opened: <span className="font-bold text-foreground">{fmtTs(barSessionStart)}</span>
-              {barClosedAt && <> · Closed: <span className="font-bold text-foreground">{fmtTs(barClosedAt)}</span></>}
+              {filter === "day" && (
+                <span className="font-bold text-foreground">
+                  {new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                </span>
+              )}
+              {filter === "week" && (
+                <><span className="font-bold text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                {" → "}
+                <span className="font-bold text-foreground">{new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></>
+              )}
+              {filter === "month" && (
+                <span className="font-bold text-foreground">
+                  {new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                </span>
+              )}
+              {filter === "year" && (
+                <span className="font-bold text-foreground">{fromDate.slice(0, 4)}</span>
+              )}
+              {filter === "period" && (
+                <><span className="font-bold text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                {" → "}
+                <span className="font-bold text-foreground">{new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></>
+              )}
             </p>
           </div>
         </div>
@@ -912,6 +952,90 @@ export default function SummaryPage() {
               </div>
             )}
           </div>
+
+          {/* ── Order Records ── */}
+          {orders.length > 0 && (
+            <div className="rounded-2xl border border-border overflow-hidden"
+              style={{ background: "var(--gradient-card)" }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <span className="font-black text-sm">Order Records</span>
+                <span className="text-xs text-muted-foreground font-semibold">{orders.length} order{orders.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="divide-y divide-border/50">
+                {orders.map((o) => {
+                  const isExpanded = expandedOrderId === o.id;
+                  const timeStr = new Date(o.created_at).toLocaleString("en-GB", {
+                    day: "numeric", month: "short",
+                    hour: "2-digit", minute: "2-digit", hour12: true,
+                    timeZone: "America/Port_of_Spain",
+                  });
+                  return (
+                    <div key={o.id}>
+                      {/* Row header — tap to expand */}
+                      <button
+                        onClick={() => setExpandedOrderId(isExpanded ? null : o.id)}
+                        className="w-full px-4 py-3 flex items-center justify-between gap-3 active:bg-white/5 transition text-left"
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-xs text-muted-foreground leading-tight">{timeStr}</span>
+                          <span className="text-xs text-white/40 leading-tight">
+                            {o.items.map(i => `${i.qty}× ${i.name}`).join(" · ")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
+                          <svg
+                            className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                            strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Expanded: per-item breakdown + totals */}
+                      {isExpanded && (
+                        <div className="px-4 pb-3 space-y-1.5 border-t border-border/40"
+                          style={{ background: "rgba(0,0,0,0.15)" }}>
+                          {/* Item lines */}
+                          <div className="pt-2 space-y-1">
+                            {o.items.map((item, idx) => {
+                              const lineTotal = item.qty * Number(item.price);
+                              return (
+                                <div key={idx} className="flex items-center justify-between gap-2">
+                                  <div className="flex items-baseline gap-1.5 min-w-0">
+                                    <span className="text-xs font-black text-white/70 shrink-0">{item.qty}×</span>
+                                    <span className="text-xs font-semibold truncate">{item.name}</span>
+                                    <span className="text-[10px] text-white/40 shrink-0">@ ${fmt(Number(item.price))}</span>
+                                  </div>
+                                  <span className="font-black text-xs shrink-0" style={{ color: "#86efac" }}>${fmt(lineTotal)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {/* Divider */}
+                          <div className="border-t border-border/40 pt-1.5 space-y-0.5">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-white/50">Total</span>
+                              <span className="font-black" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-white/50">Paid</span>
+                              <span className="font-semibold text-white/80">${fmt(Number(o.paid))}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-white/50">Change</span>
+                              <span className="font-semibold text-white/60">${fmt(Number(o.change_given))}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Non-stock expenses ── */}
           {nonStockExpenses.length > 0 && (

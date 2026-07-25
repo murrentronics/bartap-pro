@@ -90,10 +90,20 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
   y += 3; doc.setDrawColor(200,200,200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 5;
 
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0,0,0);
+
+  // Column x positions for item table
+  const C_ITEM  = LM + 4;
+  const C_QTY   = LM + 90;
+  const C_SP    = LM + 118;
+  const C_CP    = LM + 146;
+  const C_PROF  = RM;
+
   for (const tx of txs ?? []) {
     if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
     const isCharge = tx.type === "charge";
     const dateStr = new Date(tx.created_at).toLocaleString("en-GB", { hour:"2-digit", minute:"2-digit", hour12:true, day:"2-digit", month:"short", year:"numeric" });
+
+    // Row header: CHARGE/PAYMENT label + date + total amount
     doc.setFont("helvetica","bold");
     doc.setTextColor(isCharge?200:40, isCharge?60:140, 40);
     doc.text(isCharge?"CHARGE":"PAYMENT", LM, y);
@@ -102,13 +112,85 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
     doc.setFont("helvetica","bold");
     doc.setTextColor(isCharge?200:40, isCharge?60:140, 40);
     doc.text((isCharge?"+":"-")+"$"+Number(tx.amount).toFixed(2), RM, y, { align:"right" });
-    doc.setTextColor(0,0,0); y += 5;
-    if (tx.note) {
+    doc.setTextColor(0,0,0);
+    y += 5;
+
+    // Per-item breakdown for charges
+    if (isCharge && tx.items && Array.isArray(tx.items) && (tx.items as any[]).length > 0) {
+      if (y > CONTENT_BOTTOM - 8) { doc.addPage(); y = 20; }
+
+      // Sub-header row
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5); doc.setTextColor(150,150,150);
+      doc.text("ITEM",   C_ITEM, y);
+      doc.text("QTY",    C_QTY,  y, { align:"right" });
+      doc.text("SALE",   C_SP,   y, { align:"right" });
+      doc.text("COST",   C_CP,   y, { align:"right" });
+      doc.text("PROFIT", C_PROF, y, { align:"right" });
+      y += 3.5;
+      doc.setDrawColor(210,210,210); doc.setLineWidth(0.15);
+      doc.line(C_ITEM, y, RM, y); y += 3;
+
+      let chargeTotalSP = 0;
+      let chargeTotalCP = 0;
+      let hasCPData = false;
+
+      for (const it of tx.items as any[]) {
+        if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+        const qty    = Number(it.qty ?? 1);
+        const sp     = Number(it.price ?? 0) * qty;
+        const cp     = Number(it.cost_price ?? 0) * qty;
+        const profit = sp - cp;
+        const hasCP  = (it.cost_price ?? 0) > 0;
+        chargeTotalSP += sp;
+        chargeTotalCP += cp;
+        if (hasCP) hasCPData = true;
+
+        doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(30,30,30);
+        const nameStr = doc.splitTextToSize(it.name ?? "", 72)[0];
+        doc.text(nameStr, C_ITEM, y);
+        doc.text(String(qty), C_QTY, y, { align:"right" });
+
+        doc.setFont("helvetica","bold"); doc.setTextColor(...ORANGE);
+        doc.text("$"+sp.toFixed(2), C_SP, y, { align:"right" });
+
+        doc.setFont("helvetica","normal"); doc.setTextColor(100,100,100);
+        doc.text(hasCP ? "$"+cp.toFixed(2) : "—", C_CP, y, { align:"right" });
+
+        const profColor: [number,number,number] = hasCP
+          ? (profit >= 0 ? [22,163,74] : [220,38,38])
+          : [160,160,160];
+        doc.setFont("helvetica","bold"); doc.setTextColor(...profColor);
+        doc.text(hasCP ? "$"+profit.toFixed(2) : "—", C_PROF, y, { align:"right" });
+        doc.setTextColor(0,0,0);
+        y += 4.5;
+      }
+
+      // Subtotal row
+      if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+      doc.setDrawColor(210,210,210); doc.setLineWidth(0.15); doc.line(C_ITEM, y, RM, y); y += 3;
+      doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+      doc.text("Subtotal", C_ITEM, y);
+      doc.setTextColor(...ORANGE);
+      doc.text("$"+chargeTotalSP.toFixed(2), C_SP, y, { align:"right" });
+      if (hasCPData) {
+        doc.setTextColor(100,100,100);
+        doc.text("$"+chargeTotalCP.toFixed(2), C_CP, y, { align:"right" });
+        const totalProfit = chargeTotalSP - chargeTotalCP;
+        doc.setTextColor(totalProfit >= 0 ? 22 : 220, totalProfit >= 0 ? 163 : 38, totalProfit >= 0 ? 74 : 38);
+        doc.text("$"+totalProfit.toFixed(2), C_PROF, y, { align:"right" });
+      }
+      doc.setTextColor(0,0,0); doc.setFontSize(8.5);
+      y += 5;
+    }
+
+    // Note — only show if no items table (avoids duplicate text)
+    if (tx.note && !(isCharge && Array.isArray(tx.items) && (tx.items as any[]).length > 0)) {
       doc.setFont("helvetica","italic"); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
       const wrapped = doc.splitTextToSize("  "+tx.note, RM-LM-4);
       doc.text(wrapped, LM, y); y += wrapped.length*4+1;
       doc.setFontSize(8.5); doc.setTextColor(0,0,0);
     }
+
     doc.setDrawColor(220,220,220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
   }
 

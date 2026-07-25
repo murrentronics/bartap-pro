@@ -1146,6 +1146,7 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
+          onDiscount={(id, newPrice) => setCart(c => c.map(i => i.id === id ? { ...i, price: newPrice } : i))}
           onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
@@ -1188,6 +1189,7 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
+          onDiscount={(id, newPrice) => setCart(c => c.map(i => i.id === id ? { ...i, price: newPrice } : i))}
           onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCreditOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
@@ -2114,12 +2116,101 @@ export default function RegisterPage() {
 }
 
 // ΓöÇΓöÇΓöÇ Cash Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── CashItemActions — shared action bar for cash & credit order item rows ──────
+function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
+  item: CartItem;
+  onDec: (id: string) => void;
+  onAdd: (p: CartItem) => void;
+  onRemove: (id: string) => void;
+  onDiscount: (id: string, newPrice: number) => void;
+}) {
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [discountVal, setDiscountVal] = useState("");
+
+  const applyDiscount = () => {
+    const newPrice = parseFloat(discountVal);
+    if (isNaN(newPrice) || newPrice < 0) return;
+    onDiscount(item.id, newPrice);
+    setDiscountOpen(false);
+    setDiscountVal("");
+  };
+
+  if (discountOpen) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] text-muted-foreground shrink-0">New price $</span>
+        <input
+          autoFocus
+          type="number"
+          min="0"
+          step="0.01"
+          value={discountVal}
+          onChange={e => setDiscountVal(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") applyDiscount(); if (e.key === "Escape") { setDiscountOpen(false); setDiscountVal(""); } }}
+          className="flex-1 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-green-500"
+          placeholder={Number(item.price).toFixed(2)}
+        />
+        <button onClick={applyDiscount}
+          className="h-10 px-3 rounded-xl font-black text-xs active:scale-95 transition"
+          style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}>
+          OK
+        </button>
+        <button onClick={() => { setDiscountOpen(false); setDiscountVal(""); }}
+          className="h-10 w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center"
+          style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      {/* D — discount */}
+      <button
+        onClick={() => { setDiscountOpen(true); setDiscountVal(Number(item.price).toFixed(2)); }}
+        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
+        style={{ background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.45)" }}
+        title="Discount">
+        <span className="font-black text-sm text-white">D</span>
+      </button>
+      {/* − */}
+      <button
+        onClick={() => onDec(item.id)}
+        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
+        style={{ background: "#ef4444" }}>
+        <Minus className="h-5 w-5 text-white" />
+      </button>
+      {/* qty */}
+      <div className="h-11 min-w-[2.75rem] px-2 rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
+        style={{ background: "#1a1a1a" }}>
+        {item.qty}
+      </div>
+      {/* + */}
+      <button
+        onClick={() => onAdd(item)}
+        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
+        style={{ background: "var(--gradient-hero)" }}>
+        <Plus className="h-5 w-5 text-black" />
+      </button>
+      {/* X */}
+      <button
+        onClick={() => onRemove(item.id)}
+        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
+        style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid rgba(239,68,68,0.35)" }}>
+        <X className="h-5 w-5 text-red-400" />
+      </button>
+    </div>
+  );
+}
+
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
-  onRemove: (id: string) => void; onClearCart: () => void;
+  onRemove: (id: string) => void; onDiscount: (id: string, newPrice: number) => void;
+  onClearCart: () => void;
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
   ownerId: string;
 }) {
@@ -2222,38 +2313,23 @@ function CashOverlay({
                       )}
                     </div>
                     {/* Content */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      {/* Title row — full width */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-2">
+                      {/* Top row: name left, prices right */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
-                        <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
-                          <X className="h-5 w-5" />
-                        </Button>
-                      </div>
-                      {/* Price + controls row */}
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="font-black text-primary text-base">${(i.qty * Number(i.price)).toFixed(2)}</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => onDec(i.id)}
-                            className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
-                            style={{ background: "#ef4444" }}>
-                            <Minus className="h-4 w-4 text-black" />
-                          </button>
-                          <div className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-black text-white"
-                            style={{ background: "#1a1a1a" }}>
-                            {i.qty}
-                          </div>
-                          <button
-                            onClick={() => onAdd(i)}
-                            className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition"
-                            style={{ background: "var(--gradient-hero)" }}>
-                            <Plus className="h-4 w-4 text-black" />
-                          </button>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
+                          <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
                         </div>
                       </div>
-                      {/* Unit price */}
-                      <div className="text-xs text-muted-foreground mt-0.5">${Number(i.price).toFixed(2)} each</div>
+                      {/* Action bar: D − qty + X */}
+                      <CashItemActions
+                        item={i}
+                        onDec={onDec}
+                        onAdd={onAdd}
+                        onRemove={onRemove}
+                        onDiscount={onDiscount}
+                      />
                     </div>
                   </div>
                 ))}
@@ -2377,13 +2453,14 @@ type CreditAccount = {
 };
 
 function CreditSaleOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number;
   cart: CartItem[];
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
+  onDiscount: (id: string, newPrice: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: () => void;
@@ -2544,28 +2621,23 @@ function CreditSaleOverlay({
                         <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div className="flex-1 min-w-0 flex flex-col gap-2">
+                      {/* Top row: name left, prices right */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
-                        <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive shrink-0 -mt-0.5" onClick={() => onRemove(i.id)}>
-                          <X className="h-5 w-5" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => onDec(i.id)} className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition" style={{ background: "#ef4444" }}>
-                            <Minus className="h-4 w-4 text-black" />
-                          </button>
-                          <div className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-black text-white" style={{ background: "#1a1a1a" }}>
-                            {i.qty}
-                          </div>
-                          <button onClick={() => onAdd(i)} className="h-9 w-9 rounded-full flex items-center justify-center active:scale-90 transition" style={{ background: "var(--gradient-hero)" }}>
-                            <Plus className="h-4 w-4 text-black" />
-                          </button>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
+                          <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">${Number(i.price).toFixed(2)} each</div>
+                      {/* Action bar: D − qty + X */}
+                      <CashItemActions
+                        item={i}
+                        onDec={onDec}
+                        onAdd={onAdd}
+                        onRemove={onRemove}
+                        onDiscount={onDiscount}
+                      />
                     </div>
                   </div>
                 ))}
