@@ -30,7 +30,13 @@ type Expense = {
 
 type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number };
 
-type FilterType = "day" | "week" | "month" | "year" | "period";
+type FilterType = "session" | "day" | "week" | "month" | "year" | "period";
+
+type BarSession = {
+  id: string;
+  session_start: string;
+  session_end: string | null;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
@@ -47,6 +53,7 @@ function addDays(date: string, days: number): string {
 
 function filterLabel(filter: FilterType, from: string, to: string): string {
   const fmt2 = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  if (filter === "session") return `Session: ${fmt2(from.slice(0, 10))}`;
   if (filter === "day")    return fmt2(from);
   if (filter === "week")   return `${fmt2(from)} – ${fmt2(to)}`;
   if (filter === "month") {
@@ -164,7 +171,7 @@ export default function SummaryPage() {
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
   const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
-  const [filter,    setFilter]   = useState<FilterType>("day");
+  const [filter,    setFilter]   = useState<FilterType>("session");
   const [fromDate,  setFromDate] = useState(today);
   const [toDate,    setToDate]   = useState(today);
   const [selMonth,  setSelMonth] = useState(() => tzNow().getMonth());
@@ -176,6 +183,13 @@ export default function SummaryPage() {
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
   const barIsOpen = !!barSessionStart && !barClosedAt;
+
+  // ── Session list for the session filter ────────────────────────────────────
+  const [barSessions,       setBarSessions]       = useState<BarSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionStartIso,   setSessionStartIso]   = useState<string | null>(null);
+  const [sessionEndIso,     setSessionEndIso]     = useState<string | null>(null);
+  const [loadingSessions,   setLoadingSessions]   = useState(true);
 
   const fmtTs = (iso: string) => {
     const d = new Date(iso);
@@ -193,18 +207,46 @@ export default function SummaryPage() {
 
   const ownerId = profile ? effectiveOwnerId(profile.id) : "";
 
-  // Task 2 — Load bar session info from owner profile
+  // Load bar session info + session history
   useEffect(() => {
     if (!ownerId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("profiles")
-      .select("bar_session_start, bar_closed_at")
-      .eq("id", ownerId)
-      .single()
-      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
-        setBarSessionStart(data?.bar_session_start ?? null);
-        setBarClosedAt(data?.bar_closed_at ?? null);
-      });
+    setLoadingSessions(true);
+    Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from("profiles")
+        .select("bar_session_start, bar_closed_at")
+        .eq("id", ownerId).single(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from("bar_sessions")
+        .select("id, session_start, session_end")
+        .eq("owner_id", ownerId)
+        .order("session_start", { ascending: false })
+        .limit(60),
+    ]).then(([profileRes, sessionsRes]: any[]) => {
+      const pData = profileRes.data;
+      const sessionStart: string | null = pData?.bar_session_start ?? null;
+      const closedAt: string | null = pData?.bar_closed_at ?? null;
+      setBarSessionStart(sessionStart);
+      setBarClosedAt(closedAt);
+
+      const history: BarSession[] = sessionsRes.data ?? [];
+
+      // Build full list: active session first (if bar is open), then history
+      const all: BarSession[] = [];
+      if (sessionStart && !closedAt) {
+        all.push({ id: "active", session_start: sessionStart, session_end: null });
+      }
+      history.forEach((s: BarSession) => all.push(s));
+
+      setBarSessions(all);
+      // Auto-select most recent
+      if (all.length > 0) {
+        setSelectedSessionId(all[0].id);
+        setSessionStartIso(all[0].session_start);
+        setSessionEndIso(all[0].session_end);
+      }
+      setLoadingSessions(false);
+    });
   }, [ownerId]);
 
   // Fetch earliest record once to bound pickers + build year list
@@ -236,7 +278,9 @@ export default function SummaryPage() {
     const nowMonth = nowTZ.getMonth();
     const nowYear  = nowTZ.getFullYear();
 
-    if (filter === "day") {
+    if (filter === "session") {
+      // handled by session picker — no date range
+    } else if (filter === "day") {
       setFromDate(nowToday);
       setToDate(nowToday);
     } else if (filter === "week") {
@@ -287,13 +331,28 @@ export default function SummaryPage() {
     setToDate(end.toLocaleDateString("en-CA"));
   }, [fromDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Task 7 — load() uses date range from the selected filter
+  // load() uses exact session timestamps for "session" filter, date range for all others
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
 
-    const startIso = new Date(fromDate + "T00:00:00").toISOString();
-    const endIso   = new Date(toDate   + "T23:59:59").toISOString();
+    let startIso: string;
+    let endIso: string;
+    let expFrom: string;
+    let expTo: string;
+
+    if (filter === "session") {
+      if (!sessionStartIso) { setLoading(false); return; }
+      startIso = sessionStartIso;
+      endIso   = sessionEndIso ?? new Date().toISOString();
+      expFrom  = startIso.slice(0, 10);
+      expTo    = endIso.slice(0, 10);
+    } else {
+      startIso = new Date(fromDate + "T00:00:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59").toISOString();
+      expFrom  = fromDate;
+      expTo    = toDate;
+    }
 
     const [ordersRes, expensesRes, productsRes] = await Promise.all([
       supabase
@@ -303,24 +362,27 @@ export default function SummaryPage() {
         .gte("created_at", startIso)
         .lte("created_at", endIso)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("owner_expenses")
-        .select("id, amount, description, expense_date, created_at")
-        .eq("owner_id", ownerId)
-        .gte("expense_date", fromDate)
-        .lte("expense_date", toDate)
-        .order("expense_date", { ascending: false }),
-      supabase
-        .from("products")
-        .select("id, name, cost_price, units_per_item")
-        .eq("owner_id", ownerId),
+      filter === "session"
+        ? supabase.from("owner_expenses")
+            .select("id, amount, description, expense_date, created_at")
+            .eq("owner_id", ownerId)
+            .gte("created_at", startIso)
+            .lte("created_at", endIso)
+            .order("created_at", { ascending: false })
+        : supabase.from("owner_expenses")
+            .select("id, amount, description, expense_date, created_at")
+            .eq("owner_id", ownerId)
+            .gte("expense_date", expFrom)
+            .lte("expense_date", expTo)
+            .order("expense_date", { ascending: false }),
+      supabase.from("products").select("id, name, cost_price, units_per_item").eq("owner_id", ownerId),
     ]);
 
     setOrders((ordersRes.data ?? []) as Order[]);
     setExpenses((expensesRes.data ?? []) as Expense[]);
     setProducts((productsRes.data ?? []) as ProductCost[]);
     setLoading(false);
-  }, [ownerId, fromDate, toDate]);
+  }, [ownerId, filter, fromDate, toDate, sessionStartIso, sessionEndIso]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -354,6 +416,7 @@ export default function SummaryPage() {
   const totalProfit   = totalIncome - totalCostPrice;
 
   const FILTERS: { key: FilterType; label: string }[] = [
+    { key: "session", label: "Session" },
     { key: "day",    label: "Day"    },
     { key: "week",   label: "Week"   },
     { key: "month",  label: "Month"  },
@@ -541,8 +604,70 @@ export default function SummaryPage() {
 
       {/* Task 6 — Session picker removed: session info shown under every filter instead */}
 
-      {/* ── Shared session info bar — shown under every filter picker ── */}
-      {barSessionStart && (
+      {/* ── Session filter picker ── */}
+      {filter === "session" && (
+        <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>Select Bar Session</p>
+          {loadingSessions ? (
+            <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          ) : barSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">No sessions recorded yet. Open the bar from the Cashiers page to start tracking sessions.</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+              {barSessions.map((s) => {
+                const isSelected = s.id === selectedSessionId;
+                const isActive = !s.session_end;
+                return (
+                  <button key={s.id} type="button"
+                    onClick={() => {
+                      setSelectedSessionId(s.id);
+                      setSessionStartIso(s.session_start);
+                      setSessionEndIso(s.session_end);
+                    }}
+                    className="w-full rounded-xl px-3 py-2.5 text-left transition active:scale-[0.98]"
+                    style={{
+                      background: isSelected ? "rgba(var(--primary-rgb,251 146 60)/0.12)" : "rgba(255,255,255,0.04)",
+                      border: `${isSelected ? 2 : 1}px solid ${isSelected ? "var(--primary)" : "var(--border)"}`,
+                    }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
+                        {/* Start */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs shrink-0">{isActive ? "🟢" : "🔴"}</span>
+                          <span className="text-xs font-black text-foreground">
+                            {new Date(s.session_start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
+                            {" "}<span style={{ color: "var(--primary)" }}>
+                              {new Date(s.session_start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                            </span>
+                          </span>
+                        </div>
+                        {/* End */}
+                        <div className="text-[10px] text-muted-foreground pl-4">
+                          {s.session_end
+                            ? <>→ {new Date(s.session_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
+                              {" "}<span style={{ color: "var(--primary)" }}>
+                                {new Date(s.session_end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                              </span></>
+                            : <span className="font-black text-green-400">Still open</span>}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: "var(--gradient-hero)" }}>
+                          <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Shared session info bar — shown under every non-session filter picker ── */}
+      {filter !== "session" && barSessionStart && (
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3"
           style={{ background: barIsOpen ? "rgba(134,239,172,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${barIsOpen ? "rgba(134,239,172,0.25)" : "rgba(255,255,255,0.08)"}` }}>
           <span className="text-sm shrink-0">{barIsOpen ? "🟢" : "🔴"}</span>

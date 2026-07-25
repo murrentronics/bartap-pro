@@ -14,7 +14,7 @@ import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
 
 type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
-type Product = { id: string; name: string; price: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
+type Product = { id: string; name: string; price: number; cost_price?: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
 type CartItem = Product & { qty: number };
 type OpenedBottle = {
   id: string; owner_id: string; product_id: string; product_name: string;
@@ -34,10 +34,15 @@ export default function RegisterPage() {
   // ── Bar session state — blocks sales when bar is closed ────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  const [barSessionLoading, setBarSessionLoading] = useState(true);
+  // Delay showing the overlay so we don't flash it during initial profile/ownerId resolution
+  const [barOverlayReady, setBarOverlayReady] = useState(false);
   const barIsOpen = !!barSessionStart && !barClosedAt;
 
   useEffect(() => {
     if (!ownerId) return;
+    setBarSessionLoading(true);
+    setBarOverlayReady(false);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("profiles")
       .select("bar_session_start, bar_closed_at")
@@ -46,6 +51,9 @@ export default function RegisterPage() {
       .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
         setBarSessionStart(data?.bar_session_start ?? null);
         setBarClosedAt(data?.bar_closed_at ?? null);
+        setBarSessionLoading(false);
+        // Small delay so the overlay only appears after the data is confirmed — no flash
+        setTimeout(() => setBarOverlayReady(true), 150);
       });
 
     // Realtime: watch for bar open/close changes on the owner profile
@@ -61,6 +69,40 @@ export default function RegisterPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId]);
+
+  // ── Bar open / close toggle (owner only) ─────────────────────────────────
+  const [barToggleBusy, setBarToggleBusy] = useState(false);
+
+  const handleOpenBar = async () => {
+    setBarToggleBusy(true);
+    const now = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles")
+      .update({ bar_session_start: now, bar_closed_at: null })
+      .eq("id", ownerId);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to open bar: " + error.message); return; }
+    setBarSessionStart(now);
+    setBarClosedAt(null);
+    toast.success("🟢 Bar opened");
+  };
+
+  const handleCloseBar = async () => {
+    setBarToggleBusy(true);
+    const now = new Date().toISOString();
+    const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId!).single();
+    const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
+    if (sessionStart) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, session_start: sessionStart, session_end: now });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to close bar: " + error.message); return; }
+    setBarClosedAt(now);
+    toast.success("🔴 Bar closed");
+  };
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
@@ -496,6 +538,11 @@ export default function RegisterPage() {
         // Require shot pricing to be set up (non-zero shot price variation)
         const hasValidShotPrice = (p.bottle_variations ?? []).some((v) => v.key === "shot" && v.price > 0);
         if (!hasValidShotPrice) return false;
+        // All non-shot variations must also have a price set
+        const hasIncompleteVariation = (p.bottle_variations ?? [])
+          .filter((v) => v.key !== "shot")
+          .some((v) => v.label && v.units_consumed > 0 && v.price <= 0);
+        if (hasIncompleteVariation) return false;
         // Subtract how many are already in the cart as whole-bottle sales
         const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
         // Subtract open bottles from available stock so we don't open more than we have
@@ -669,8 +716,8 @@ export default function RegisterPage() {
   return (
     <>
       {/* ── Bar Closed overlay — blocks all selling ── */}
-      {!barIsOpen && (
-        <div className="fixed inset-0 z-[9000] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
+      {barOverlayReady && !barSessionLoading && !barIsOpen && (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
           <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
             style={{ background: "var(--gradient-card)" }}>
             <div className="px-6 pt-8 pb-4">
@@ -683,10 +730,22 @@ export default function RegisterPage() {
               </p>
             </div>
             <div className="px-6 pb-6 pt-2">
-              <div className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
-                Ask the owner to go to <span className="font-black text-foreground">Wallet → Update Float → New Session</span>
-              </div>
+              {profile?.role === "owner" ? (
+                <button
+                  type="button"
+                  disabled={barToggleBusy}
+                  onClick={handleOpenBar}
+                  className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+                  style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}
+                >
+                  {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "🟢 Open Bar Now"}
+                </button>
+              ) : (
+                <div className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+                  Ask the owner to go to <span className="font-black text-foreground">Wallet → Update Float → New Session</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -694,8 +753,8 @@ export default function RegisterPage() {
 
       {/* Sticky category tabs — sits below the app header */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        {/* Category tabs — icons + label, 6 across */}
-        <div className="max-w-2xl lg:max-w-4xl mx-auto grid grid-cols-6 gap-1.5">
+        {/* Mobile: horizontal scroll strip; sm+: fixed grid */}
+        <div className="sm:hidden flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
@@ -704,7 +763,28 @@ export default function RegisterPage() {
                 setCategory(cat.value);
                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
               }}
-              className={`h-14 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
+              className={`h-10 shrink-0 rounded-xl font-black transition flex items-center justify-center px-4 ${
+                category === cat.value
+                  ? "text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              }`}
+              style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
+            >
+              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+            </button>
+          ))}
+        </div>
+        {/* Tablet / desktop: fixed grid, all tabs visible */}
+        <div className="hidden sm:grid max-w-2xl lg:max-w-4xl mx-auto grid-cols-7 gap-1.5">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.value}
+              onClick={() => {
+                handleBarDone();
+                setCategory(cat.value);
+                document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+              }}
+              className={`h-10 lg:h-11 rounded-xl font-black transition flex items-center justify-center ${
                 category === cat.value
                   ? "text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -712,10 +792,7 @@ export default function RegisterPage() {
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              <span className="text-xl sm:text-2xl leading-none">{cat.icon}</span>
-              <span className="hidden sm:block text-[11px] font-black leading-none">
-                {cat.value === "miscellaneous" ? "Misc." : cat.label}
-              </span>
+              <span className="text-xs lg:text-sm leading-none text-center">{cat.label}</span>
             </button>
           ))}
         </div>
@@ -754,7 +831,25 @@ export default function RegisterPage() {
             {category === "liquor" && !barEditMode && (
               <div className="mb-3">
                 <button
-                  onClick={() => setShotModalOpen(true)}
+                  onClick={() => {
+                    // If there's a currently selected bottle that is at capacity with 0 shots sold,
+                    // auto-open a new bottle instead of showing the same useless empty bottle.
+                    if (shotBottleId) {
+                      const curBottle = openedBottles.find((b) => b.id === shotBottleId);
+                      if (curBottle) {
+                        const curProd = products.find((p) => p.id === curBottle.product_id);
+                        const curCap = curProd?.units_per_item ?? 0;
+                        const isAtCap = curCap > 0 && curBottle.units_consumed >= curCap;
+                        if (isAtCap && curBottle.shots_sold === 0) {
+                          // Empty bottle with no shots sold — go straight to new bottle picker
+                          setShotModalOpen(true);
+                          setShowNewBottleGrid(true);
+                          return;
+                        }
+                      }
+                    }
+                    setShotModalOpen(true);
+                  }}
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
                 >
@@ -1146,12 +1241,12 @@ export default function RegisterPage() {
 
               {!showNewBottleGrid ? (
                 <>
-                  {/* Currently open — 3-col card grid */}
-                  {openedBottles.length > 0 && (
+                  {/* Currently open — 3-col card grid (exclude already-selected bottle) */}
+                  {openedBottles.filter((b) => b.id !== shotBottleId).length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
                       <div className="grid grid-cols-3 gap-2">
-                        {openedBottles.map((b) => {
+                        {openedBottles.filter((b) => b.id !== shotBottleId).map((b) => {
                           const prod = products.find(p => p.id === b.product_id);
                           return (
                             <div key={b.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
@@ -1177,13 +1272,28 @@ export default function RegisterPage() {
                               {/* Tap image area to sell a shot — blocked if owner hasn't set up shot prices */}
                               {(() => {
                                 const hasShots = (prod?.bottle_variations ?? []).length > 0;
+                                const bCap = prod?.units_per_item ?? 0;
+                                const isEmptyNoShots = bCap > 0 && b.units_consumed >= bCap && b.shots_sold === 0;
                                 return hasShots ? (
                                   <button
-                                    onClick={() => { setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false); }}
+                                    onClick={() => {
+                                      if (isEmptyNoShots) {
+                                        // Bottle is empty with 0 shots — skip to open new bottle
+                                        setShowNewBottleGrid(true);
+                                        return;
+                                      }
+                                      setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false);
+                                    }}
                                     className="aspect-[3/4] relative w-full active:scale-95 transition"
                                     style={{ background: "var(--gradient-card)" }}>
                                     {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                     <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
+                                    {isEmptyNoShots && (
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 px-2 text-center">
+                                        <span className="text-lg">🍾</span>
+                                        <span className="text-[9px] font-black text-amber-400 leading-tight">Tap to open new</span>
+                                      </div>
+                                    )}
                                   </button>
                                 ) : (
                                   <div
@@ -2346,7 +2456,7 @@ function CreditSaleOverlay({
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
       p_amount: total,
-      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: c.cost_price ?? 0, qty: c.qty })),
       p_note: itemsDesc,
     });
     if (error) { setBusy(false); toast.error(error.message); return; }
@@ -2380,7 +2490,7 @@ function CreditSaleOverlay({
       p_credit_account_id: acc.id,
       p_cashier_id: profile.id,
       p_amount: total,
-      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: c.cost_price ?? 0, qty: c.qty })),
       p_note: itemsDesc,
     });
     if (chargeErr) { setBusy(false); toast.error(chargeErr.message); return; }

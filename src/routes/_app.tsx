@@ -1,8 +1,11 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2 } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useChain } from "@/lib/ChainContext";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -10,10 +13,17 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
+  const { effectiveOwnerId } = useChain();
   const nav = useNavigate();
   const loc = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // ── Bar session state (owner only — for the toggle in the header) ──────────
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  const [barToggleBusy,   setBarToggleBusy]   = useState(false);
+  const barIsOpen = !!barSessionStart && !barClosedAt;
 
   useEffect(() => {
     if (!loading && !session) nav({ to: "/login" });
@@ -31,6 +41,12 @@ function AppLayout() {
     }
   }, [loading, profile, loc.pathname, nav]);
 
+  useEffect(() => {
+    if (!loading && profile?.role === "manager" && loc.pathname === "/register") {
+      nav({ to: "/manager" as "/" });
+    }
+  }, [loading, profile, loc.pathname, nav]);
+
   // Close menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -45,6 +61,68 @@ function AppLayout() {
   // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
 
+  // Load bar session state for owner toggle
+  useEffect(() => {
+    if (!profile || profile.role !== "owner") return;
+    const ownerId = effectiveOwnerId(profile.id);
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("profiles")
+      .select("bar_session_start, bar_closed_at")
+      .eq("id", ownerId)
+      .single()
+      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAt(data?.bar_closed_at ?? null);
+      });
+    const ch = supabase
+      .channel(`bar-session-layout-${ownerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+        (payload) => {
+          const rec = payload.new as Record<string, unknown>;
+          if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
+          if ("bar_closed_at"     in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOpenBar = async () => {
+    if (!profile || profile.role !== "owner") return;
+    const ownerId = effectiveOwnerId(profile.id);
+    setBarToggleBusy(true);
+    const now = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles")
+      .update({ bar_session_start: now, bar_closed_at: null })
+      .eq("id", ownerId);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to open bar"); return; }
+    setBarSessionStart(now);
+    setBarClosedAt(null);
+    toast.success("🟢 Bar opened");
+  };
+
+  const handleCloseBar = async () => {
+    if (!profile || profile.role !== "owner") return;
+    const ownerId = effectiveOwnerId(profile.id);
+    setBarToggleBusy(true);
+    const now = new Date().toISOString();
+    const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId!).single();
+    const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
+    if (sessionStart) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, session_start: sessionStart, session_end: now });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to close bar"); return; }
+    setBarClosedAt(now);
+    toast.success("🔴 Bar closed");
+  };
+
   if (loading || !session || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -53,8 +131,9 @@ function AppLayout() {
     );
   }
 
-  const isOwner = profile.role === "owner";
-  const isAdmin = profile.role === "admin";
+  const isOwner   = profile.role === "owner";
+  const isAdmin   = profile.role === "admin";
+  const isManager = profile.role === "manager";
 
   if (!isAdmin) {
     if (profile.status === "expelled") {
@@ -79,18 +158,23 @@ function AppLayout() {
 
   const navItems = isAdmin
     ? [{ to: "/admin", label: "Users", icon: Users }]
+    : isManager
+    ? [
+        { to: "/products", label: "Items",   icon: Package  },
+        { to: "/manager",  label: "Manager", icon: BarChart3 },
+      ]
     : [
         { to: "/register", label: "Cashier",  icon: Wine },
         { to: "/credit",   label: "Credit",   icon: Receipt },
         { to: "/machines", label: "Machines", icon: Gamepad2 },
         ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: "Cashiers", icon: Users    }] : []),
+        ...(isOwner ? [{ to: "/cashiers", label: "Staff",    icon: Users    }] : []),
         { to: "/wallet",   label: "Wallet",   icon: Wallet },
       ];
 
   return (
     <div className="min-h-screen">
-      <header className="bg-background/90 backdrop-blur border-b border-border relative z-30" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+      <header className="bg-background/90 backdrop-blur border-b border-border relative z-50" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="max-w-2xl mx-auto px-3 h-11 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -100,11 +184,28 @@ function AppLayout() {
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Right side: username + hamburger menu */}
+          {/* Right side: username + bar toggle (owner) + hamburger menu */}
           <div className="flex items-center gap-2" ref={menuRef}>
             <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
               {profile.username}
             </span>
+            {/* Bar open/close toggle — owner only, inline with username */}
+            {isOwner && (
+              <button
+                type="button"
+                disabled={barToggleBusy}
+                onClick={barIsOpen ? handleCloseBar : handleOpenBar}
+                className="h-7 px-2.5 rounded-lg font-black text-[11px] flex items-center gap-1 transition active:scale-95 disabled:opacity-50 shrink-0"
+                style={barIsOpen
+                  ? { background: "rgba(134,239,172,0.12)", border: "1px solid #86efac", color: "#86efac" }
+                  : { background: "rgba(239,68,68,0.12)", border: "1px solid #f87171", color: "#f87171" }}
+              >
+                {barToggleBusy
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <span className="text-[10px]">{barIsOpen ? "🟢" : "🔴"}</span>}
+                {barIsOpen ? "Open" : "Closed"}
+              </button>
+            )}
             <button
               onClick={() => setMenuOpen((o) => !o)}
               className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"

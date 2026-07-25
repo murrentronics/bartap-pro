@@ -20,7 +20,7 @@ import {
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
-type Cashier = { id: string; username: string; wallet_balance: number };
+type Cashier = { id: string; username: string; wallet_balance: number; role?: string; job_title?: string; cashier_access?: string };
 
 type SalaryRecord = {
   id: string;
@@ -833,7 +833,7 @@ function CashierStatement({ cashier, ownerName, onClose }: { cashier: Cashier; o
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" });
           y += 5;
           doc.setFont("helvetica", "normal");
-          const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
+          const items = (o.items || []).slice().sort((a: any, b: any) => a.name.localeCompare(b.name)).map((i) => i.qty + "x " + i.name).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
           doc.text(wrapped, LM, y);
           y += wrapped.length * 4.5 + 1;
@@ -1058,6 +1058,8 @@ export default function CashiersPage() {
   // ── Role picker state ──────────────────────────────────────────────────────
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"cashier" | "manager" | "custom" | null>(null);
+  const [cashierAccess, setCashierAccess] = useState<"bar" | "machines" | "both">("bar");
+  const [createStep, setCreateStep] = useState<"role" | "form" | "access">("role");
   // cashier / manager fields
   const [u, setU] = useState("");
   const [p, setP] = useState("");
@@ -1073,6 +1075,42 @@ export default function CashiersPage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showCreatePw, setShowCreatePw] = useState(false);
   const [resettingPw, setResettingPw] = useState(false);
+
+  // ── Bar open/closed state ──────────────────────────────────────────────────
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  const [barToggleBusy,   setBarToggleBusy]   = useState(false);
+  const barIsOpen = !!barSessionStart && !barClosedAt;
+
+  const ownerIdForBar = profile ? effectiveOwnerId(profile.id) : "";
+
+  // Load bar session state
+  useEffect(() => {
+    if (!ownerIdForBar) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("profiles")
+      .select("bar_session_start, bar_closed_at")
+      .eq("id", ownerIdForBar).single()
+      .then(({ data }: any) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAt(data?.bar_closed_at ?? null);
+      });
+  }, [ownerIdForBar]);
+
+  // Realtime: reflect open/close from any device immediately
+  useEffect(() => {
+    if (!ownerIdForBar) return;
+    const ch = supabase
+      .channel(`bar-session-cashiers-${ownerIdForBar}`)
+      .on("postgres_changes" as any, { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerIdForBar}` },
+        (payload: any) => {
+          const rec = payload.new as Record<string, unknown>;
+          if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
+          if ("bar_closed_at" in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerIdForBar]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const create = createCashier;
@@ -1083,7 +1121,7 @@ export default function CashiersPage() {
     const ownerIdForQuery = effectiveOwnerId(profile.id);
     const { data } = await supabase
       .from("profiles")
-      .select("id,username,wallet_balance,role,job_title")
+      .select("id,username,wallet_balance,role,job_title,cashier_access")
       .eq("parent_id", ownerIdForQuery)
       .in("role", ["cashier", "manager", "custom"])
       .order("created_at", { ascending: false });
@@ -1167,15 +1205,9 @@ export default function CashiersPage() {
   };
 
   const onClear = async (c: Cashier) => {
+  const onClear = async (c: Cashier) => {
     const { error } = await supabase.rpc("transfer_cashier_to_owner", { _cashier_id: c.id });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      load();
-      refreshProfile();
-      // Ask owner whether to keep bar open or close it for the night
-      setClearModalCashier(c);
-    }
+    if (error) { toast.error(error.message); } else { load(); refreshProfile(); toast.success(`Balance cleared from ${c.username}`); }
   };
 
   const onResetPassword = async () => {
@@ -1184,75 +1216,70 @@ export default function CashiersPage() {
     try {
       await resetCashierPassword({ cashier_id: resetPwCashier.id, new_password: newPw });
       toast.success(`Password updated for ${resetPwCashier.username}`);
-      setResetPwCashier(null);
-      setNewPw("");
-      setShowNewPw(false);
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to reset password");
-    } finally {
-      setResettingPw(false);
-    }
+      setResetPwCashier(null); setNewPw(""); setShowNewPw(false);
+    } catch (err: any) { toast.error(err.message ?? "Failed to reset password"); }
+    finally { setResettingPw(false); }
   };
 
   const onDelete = async (c: Cashier) => {
     if (!session?.access_token) { toast.error("Not authenticated"); return; }
     try {
       await del({ cashier_id: c.id });
-      toast.success(`Removed ${c.username}`);
-      load();
-      refreshProfile();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete cashier");
-    }
+      toast.success(`Removed ${c.username}`); load(); refreshProfile();
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "Failed to delete cashier"); }
   };
 
-  const handleKeepBarOpen = () => {
-    toast.success("Bar stays open — session continues");
-    setClearModalCashier(null);
+  const handleOpenBar = async () => {
+    setBarToggleBusy(true);
+    const now = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("profiles")
+      .update({ bar_session_start: now, bar_closed_at: null })
+      .eq("id", ownerIdForBar);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to open bar: " + error.message); return; }
+    setBarSessionStart(now); setBarClosedAt(null);
+    toast.success("🟢 Bar opened at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
   };
 
   const handleCloseBar = async () => {
-    // Write bar_closed_at timestamp to owner profile
+    setBarToggleBusy(true);
     const now = new Date().toISOString();
-    const ownerId = effectiveOwnerId(profile.id);
-
-    // First read the current session start so we can record the full period
-    const { data: ownerRow } = await supabase.from("profiles")
-      .select("bar_session_start")
-      .eq("id", ownerId)
-      .single();
-
-    const sessionStart: string | null = ownerRow?.bar_session_start ?? null;
-
-    // Record this session in bar_sessions history table
+    const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerIdForBar).single();
+    const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
     if (sessionStart) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("bar_sessions").insert({
-        owner_id: ownerId,
-        session_start: sessionStart,
-        session_end: now,
-      });
+      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerIdForBar, session_start: sessionStart, session_end: now });
     }
-
-    // Mark the profile as closed (cast to any — new column not in generated types)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("profiles")
-      .update({ bar_closed_at: now })
-      .eq("id", ownerId);
-
-    if (error) {
-      toast.error("Failed to close bar: " + error.message);
-    } else {
-      toast.success("Bar closed — session ended at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
-    }
-    setClearModalCashier(null);
+    const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerIdForBar);
+    setBarToggleBusy(false);
+    if (error) { toast.error("Failed to close bar: " + error.message); return; }
+    setBarClosedAt(now);
+    toast.success("🔴 Bar closed at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
   };
 
   return (
     <div>
       {/* Sticky page title */}
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">{t("cashiers_title", "Cashiers")}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-black leading-tight">{t("cashiers_title", "Cashiers")}</h1>
+          {/* Bar Open / Closed toggle */}
+          <button
+            type="button"
+            disabled={barToggleBusy}
+            onClick={barIsOpen ? handleCloseBar : handleOpenBar}
+            className="h-10 px-4 rounded-xl font-black text-sm flex items-center gap-2 transition active:scale-95 disabled:opacity-50"
+            style={barIsOpen
+              ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }
+              : { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" }}>
+            {barToggleBusy
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <span className="text-xs">{barIsOpen ? "🟢" : "🔴"}</span>}
+            {barIsOpen ? "Bar Open" : "Bar Closed"}
+          </button>
+        </div>
       </div>
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
@@ -1510,45 +1537,9 @@ export default function CashiersPage() {
         </div>
       )}
 
-      {/* ── Keep Bar Open / Close Bar Modal ── */}
-      {clearModalCashier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-            <div className="px-6 pt-6 pb-2 text-center">
-              <div className="h-12 w-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}>
-                <CheckCircle2 className="h-6 w-6" style={{ color: "var(--primary)" }} />
-              </div>
-              <h3 className="font-black text-base">{t("clear_complete", "Balance Cleared")}</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                ${Number(clearModalCashier.wallet_balance).toFixed(2)} transferred from {clearModalCashier.username}
-              </p>
-            </div>
-            <div className="px-6 pb-6 pt-4 space-y-3">
-              <p className="text-sm text-center" style={{ color: "var(--primary)" }}>Is the bar staying open?</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-14 font-black text-sm"
-                  onClick={handleKeepBarOpen}
-                >
-                  Keep Bar Open
-                </Button>
-                <Button
-                  className="h-14 font-black text-sm"
-                  onClick={handleCloseBar}
-                  style={{ background: "#dc2626", color: "#fff" }}
-                >
-                  Close Bar
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center leading-snug">
-                <span className="font-bold">Keep Bar Open</span> continues the session. <span className="font-bold">Close Bar</span> marks the end of the day for Summary reports.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Keep Bar Open / Close Bar Modal removed — use toggle button in header instead ── */}
       </div>
     </div>
   );
+}
 }

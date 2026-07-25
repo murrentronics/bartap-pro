@@ -147,21 +147,104 @@ async function printBill(account: CreditAccount, ownerName: string) {
     doc.setTextColor(0, 0, 0);
     y += 5;
 
-    // Items for charges
+    // Items for charges — per-item table with SP, CP, Profit
     if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
-      const itemStr = tx.items.map((it: any) => `${it.qty}× ${it.name}`).join(", ");
-      doc.setFont("helvetica", "normal");
+      if (y > CONTENT_BOTTOM - 8) { doc.addPage(); y = 20; }
+
+      // Column x positions (LM=15, RM=195, width=180)
+      const C_ITEM  = LM + 4;   // item name — left aligned
+      const C_QTY   = LM + 90;  // qty
+      const C_SP    = LM + 118; // sale price (per unit × qty)
+      const C_CP    = LM + 146; // cost price
+      const C_PROF  = RM;       // profit — right edge
+
+      // Sub-header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(150, 150, 150);
+      doc.text("ITEM", C_ITEM, y);
+      doc.text("QTY", C_QTY, y, { align: "right" });
+      doc.text("SALE", C_SP, y, { align: "right" });
+      doc.text("COST", C_CP, y, { align: "right" });
+      doc.text("PROFIT", C_PROF, y, { align: "right" });
+      y += 3.5;
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.15);
+      doc.line(C_ITEM, y, RM, y);
+      y += 3;
+
+      let chargeTotalSP = 0;
+      let chargeTotalCP = 0;
+      let hasCPData = false;
+
+      for (const it of tx.items as any[]) {
+        if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+        const qty    = Number(it.qty ?? 1);
+        const sp     = Number(it.price ?? 0) * qty;
+        const cp     = Number(it.cost_price ?? 0) * qty;
+        const profit = sp - cp;
+        const hasCP  = (it.cost_price ?? 0) > 0;
+        chargeTotalSP += sp;
+        chargeTotalCP += cp;
+        if (hasCP) hasCPData = true;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(30, 30, 30);
+
+        // Truncate long names
+        const nameStr = doc.splitTextToSize(it.name ?? "", 72)[0];
+        doc.text(nameStr, C_ITEM, y);
+        doc.text(String(qty), C_QTY, y, { align: "right" });
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...ORANGE);
+        doc.text("$" + sp.toFixed(2), C_SP, y, { align: "right" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text(hasCP ? "$" + cp.toFixed(2) : "—", C_CP, y, { align: "right" });
+
+        const profitColor: [number, number, number] = hasCP
+          ? (profit >= 0 ? [22, 163, 74] : [220, 38, 38])
+          : [160, 160, 160];
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...profitColor);
+        doc.text(hasCP ? "$" + profit.toFixed(2) : "—", C_PROF, y, { align: "right" });
+        doc.setTextColor(0, 0, 0);
+
+        y += 4.5;
+      }
+
+      // Charge subtotal row
+      if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.15);
+      doc.line(C_ITEM, y, RM, y);
+      y += 3;
+
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(80, 80, 80);
-      const wrapped = doc.splitTextToSize("  " + itemStr, RM - LM - 4);
-      doc.text(wrapped, LM, y);
-      y += wrapped.length * 4 + 1;
-      doc.setFontSize(8.5);
+      doc.text("Subtotal", C_ITEM, y);
+
+      doc.setTextColor(...ORANGE);
+      doc.text("$" + chargeTotalSP.toFixed(2), C_SP, y, { align: "right" });
+
+      if (hasCPData) {
+        doc.setTextColor(100, 100, 100);
+        doc.text("$" + chargeTotalCP.toFixed(2), C_CP, y, { align: "right" });
+        const totalProfit = chargeTotalSP - chargeTotalCP;
+        doc.setTextColor(totalProfit >= 0 ? 22 : 220, totalProfit >= 0 ? 163 : 38, totalProfit >= 0 ? 74 : 38);
+        doc.text("$" + totalProfit.toFixed(2), C_PROF, y, { align: "right" });
+      }
       doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8.5);
+      y += 5;
     }
 
-    // Note
-    if (tx.note) {
+    // Note — skip for charges that already have the item table (note is just a duplicate itemsDesc)
+    if (tx.note && !(isCharge && Array.isArray(tx.items) && tx.items.length > 0)) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7.5);
       doc.setTextColor(120, 120, 120);
@@ -782,7 +865,7 @@ function PaymentOverlay({
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [printed, setPrinted] = useState(false);
-  const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number }[] | null; created_at: string; cashier_id: string | null }[]>([]);
+  const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number; price?: number; cost_price?: number }[] | null; created_at: string; cashier_id: string | null }[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const ownerName = profile?.username ?? "Bar";
   const amountNum = parseFloat(amount) || 0;
@@ -916,32 +999,76 @@ function PaymentOverlay({
               {charges.map((c) => {
                 const itemsArr = Array.isArray(c.items) ? c.items : [];
                 const isNewest = c.id === charges[0].id;
+                // Per-charge totals for cost/profit (only if cost_price stored)
+                const hasCostData = itemsArr.some((i: any) => (i.cost_price ?? 0) > 0);
+                const chargeCost   = itemsArr.reduce((s: number, i: any) => s + (i.cost_price ?? 0) * (i.qty ?? 1), 0);
+                const chargeProfit = Number(c.amount) - chargeCost;
                 return (
-                  <div key={c.id} className="flex items-start gap-3 rounded-xl px-3 py-2.5 border border-border"
+                  <div key={c.id} className="rounded-xl border border-border overflow-hidden"
                     style={{ background: "oklch(0.20 0.04 45 / 0.30)" }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
-                      </div>
-                      <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                        +${Number(c.amount).toFixed(2)}
-                      </div>
-                      {itemsArr.length > 0 && (
-                        <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                          {itemsArr.map((i: any) => `${i.qty}x ${i.name}`).join(", ")}
+                    {/* Charge header row */}
+                    <div className="flex items-start gap-2 px-3 pt-2.5 pb-1.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
                         </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-sm font-black" style={{ color: "var(--primary)" }}>+${Number(c.amount).toFixed(2)}</span>
+                          {hasCostData && (
+                            <>
+                              <span className="text-xs text-muted-foreground">cost ${chargeCost.toFixed(2)}</span>
+                              <span className="text-xs font-bold" style={{ color: chargeProfit >= 0 ? "#86efac" : "#f87171" }}>
+                                profit ${chargeProfit.toFixed(2)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {isNewest && (
+                        <button
+                          onClick={() => deleteCharge(c.id)}
+                          disabled={!!deletingId}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0 disabled:opacity-50 mt-0.5"
+                        >
+                          {deletingId === c.id
+                            ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                            : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                        </button>
                       )}
                     </div>
-                    {isNewest && (
-                      <button
-                        onClick={() => deleteCharge(c.id)}
-                        disabled={!!deletingId}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0 disabled:opacity-50"
-                      >
-                        {deletingId === c.id
-                          ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                          : <Trash2 className="h-3.5 w-3.5 text-white" />}
-                      </button>
+                    {/* Per-item rows */}
+                    {itemsArr.length > 0 && (
+                      <div className="border-t border-border/40 px-3 pb-2 pt-1.5 space-y-1">
+                        {/* Header labels */}
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-1">
+                          <span>Item</span>
+                          <span className="text-right">SP</span>
+                          <span className="text-right">CP</span>
+                          <span className="text-right">Profit</span>
+                        </div>
+                        {itemsArr.map((it: any, idx: number) => {
+                          const sp     = Number(it.price ?? 0) * (it.qty ?? 1);
+                          const cp     = Number(it.cost_price ?? 0) * (it.qty ?? 1);
+                          const profit = sp - cp;
+                          const hasCP  = (it.cost_price ?? 0) > 0;
+                          return (
+                            <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-baseline">
+                              <span className="text-xs text-foreground font-semibold truncate">
+                                {it.qty > 1 ? `${it.qty}× ` : ""}{it.name}
+                              </span>
+                              <span className="text-xs font-black text-right" style={{ color: "var(--primary)" }}>
+                                ${sp.toFixed(2)}
+                              </span>
+                              <span className="text-xs text-right text-muted-foreground">
+                                {hasCP ? `$${cp.toFixed(2)}` : "—"}
+                              </span>
+                              <span className="text-xs font-bold text-right" style={{ color: hasCP ? (profit >= 0 ? "#86efac" : "#f87171") : "var(--muted-foreground)" }}>
+                                {hasCP ? `$${profit.toFixed(2)}` : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );

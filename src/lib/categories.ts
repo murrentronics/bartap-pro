@@ -1,9 +1,10 @@
 export const CATEGORIES = [
-  { value: "beers",          label: "Beers",          icon: "🍺" },
-  { value: "liquor",         label: "Liquor",         icon: "🍾" },
-  { value: "drinks",         label: "Drinks",         icon: "🧃" },
+  { value: "beers",          label: "Beer",           icon: "🍺" },
+  { value: "liquor",         label: "Rum",            icon: "🍾" },
+  { value: "drinks",         label: "Soft Drinks",    icon: "🧃" },
+  { value: "cigarettes",     label: "Cigs",           icon: "🚬" },
   { value: "snacks",         label: "Snacks",         icon: "🍟" },
-  { value: "cigarettes",     label: "Cigarettes",     icon: "🚬" },
+  { value: "food",           label: "Food",           icon: "🍽️" },
   { value: "miscellaneous",  label: "Misc",           icon: "📦" },
 ] as const;
 

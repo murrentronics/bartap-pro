@@ -1160,8 +1160,8 @@ export default function ProductsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [profile?.id, load, effectiveOwnerId]);
 
-  if (profile?.role !== "owner") {
-    return <div className="text-center text-muted-foreground py-20">Only owners can manage items.</div>;
+  if (profile?.role !== "owner" && profile?.role !== "manager") {
+    return <div className="text-center text-muted-foreground py-20">Only owners and managers can manage items.</div>;
   }
 
   const ownerIdForQuery = effectiveOwnerId(profile.id);
@@ -1219,21 +1219,34 @@ export default function ProductsPage() {
           </Dialog>
           </div>
         </div>
-        <div className="grid grid-cols-6 gap-1.5">
+        {/* Mobile: horizontal scroll; sm+: fixed grid */}
+        <div className="sm:hidden flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-14 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
+              className={`h-10 shrink-0 rounded-xl font-black transition flex items-center justify-center px-4 ${
+                category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"
+              }`}
+              style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
+            >
+              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="hidden sm:grid grid-cols-7 gap-1.5">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.value}
+              onClick={() => setCategory(cat.value)}
+              className={`h-12 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
                 category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={cat.label}
             >
-              <span className="text-xl sm:text-2xl leading-none">{cat.icon}</span>
-              <span className="hidden sm:block text-[11px] font-black leading-none">
-                {cat.value === "miscellaneous" ? "Misc." : cat.label}
-              </span>
+              <span className="text-xl leading-none">{cat.icon}</span>
+              <span className="text-[10px] font-black leading-none">{cat.label}</span>
             </button>
           ))}
         </div>
@@ -1662,7 +1675,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
         </div>
       </DialogHeader>
 
-      <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(251,146,60,0.4) transparent" }}>
         {showTemplates ? (
           <div className="flex flex-col h-full">
             {/* Sticky search + category tabs */}
@@ -1689,9 +1702,9 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   </button>
                 )}
               </div>
-              {/* Category tabs — no Misc since templates aren't available for that category */}
+              {/* Category tabs — no Misc or Food since templates aren't available for those categories */}
               <div className="grid grid-cols-5 gap-2">
-                {CATEGORIES.filter((cat) => cat.value !== "miscellaneous").map((cat) => (
+                {CATEGORIES.filter((cat) => cat.value !== "miscellaneous" && cat.value !== "food").map((cat) => (
                   <button
                     key={cat.value}
                     onClick={() => setTemplateCat(cat.value)}
@@ -1776,7 +1789,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   </div>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">{category === "cigarettes" ? "Pack Sale Price" : "Bottle Price"}</Label>
+                  <Label className="text-xs">{category === "cigarettes" ? "Pack Sale Price" : category === "liquor" ? "Bottle Price" : "Sale Price"}</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}

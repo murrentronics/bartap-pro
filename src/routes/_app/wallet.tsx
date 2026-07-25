@@ -1000,7 +1000,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           doc.text(new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" }); y += 5;
           doc.setFont("helvetica", "normal");
-          const items = (o.items || []).map((i) => i.qty + "x " + i.name).join(", ");
+          const items = (o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => i.qty + "x " + i.name).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
           doc.text(wrapped, LM, y); y += wrapped.length * 4.5 + 1;
           doc.setTextColor(100, 100, 100);
@@ -1233,7 +1233,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                 <span className="font-black text-primary text-sm ml-2">${fmt(Number(o.total))}</span>
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground break-words whitespace-normal">
-                                {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
+                                {(o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
                               </div>
                               <div className="mt-0.5 text-xs text-muted-foreground">
                                 Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
@@ -1963,11 +1963,11 @@ type FlatRecord =
   | { kind: "order"; data: Order; ts: number }
   | { kind: "tx"; data: WalletTx; ts: number };
 
-function CashierBadge() {
+function StaffBadge({ label = "Cashier" }: { label?: string }) {
   return (
     <span className="text-xs shrink-0 px-2 py-0.5 rounded-full font-semibold self-start mt-0.5"
       style={{ background: "rgba(99,102,241,0.15)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)" }}>
-      Cashier
+      {label}
     </span>
   );
 }
@@ -2183,7 +2183,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         </div>
                       )}
                     </div>
-                    <CashierBadge />
+                    <StaffBadge />
                   </div>
                 );
               }
@@ -2239,12 +2239,12 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
                       )}
                     </div>
-                    {/* Credit payment: +$X if owner collected, "Cashier" badge if cashier collected */}
-                    {/* Credit charge: only show Cashier badge if a cashier did it */}
+                    {/* Credit payment: +$X if owner collected, Staff/Manager badge if staff collected */}
+                    {/* Credit charge: only show Staff badge if a cashier/manager did it */}
                     {!isPayment ? (
-                      cashierPart ? <CashierBadge /> : null
+                      cashierPart ? <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} /> : null
                     ) : isReadOnly && cashierPart ? (
-                      <CashierBadge />
+                      <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} />
                     ) : !isReadOnly ? (
                       <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
                         +${fmt(Number(tx.amount))}
@@ -2344,7 +2344,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         <div className="text-[10px] text-muted-foreground mt-0.5">Closed by: {bottleCashierName}</div>
                       )}
                     </div>
-                    {bottleCashierName && <CashierBadge />}
+                    {bottleCashierName && <StaffBadge />}
                   </div>
                 );
               }
@@ -2381,7 +2381,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         <div className="text-[10px] text-muted-foreground mt-0.5">Closed by: {packCashierName}</div>
                       )}
                     </div>
-                    {packCashierName && <CashierBadge />}
+                    {packCashierName && <StaffBadge />}
                   </div>
                 );
               }

@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppSwitchBarRouteImport } from './routes/_app/switch-bar'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
+import { Route as AppManagerRouteImport } from './routes/_app/manager'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
 import { Route as AppCreateBarRouteImport } from './routes/_app/create-bar'
@@ -31,6 +32,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppManagerRoute = AppManagerRouteImport.update({
+  id: '/manager',
+  path: '/manager',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSwitchBarRoute = AppSwitchBarRouteImport.update({
   id: '/switch-bar',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/credit': typeof AppCreditRoute
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
+  '/manager': typeof AppManagerRoute
   '/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/credit': typeof AppCreditRoute
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
+  '/manager': typeof AppManagerRoute
   '/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRoutesById {
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/_app/credit': typeof AppCreditRoute
   '/_app/factory-reset': typeof AppFactoryResetRoute
   '/_app/machines': typeof AppMachinesRoute
+  '/_app/manager': typeof AppManagerRoute
   '/_app/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRouteTypes {
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/credit'
     | '/factory-reset'
     | '/machines'
+    | '/manager'
     | '/switch-bar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/credit'
     | '/factory-reset'
     | '/machines'
+    | '/manager'
     | '/switch-bar'
   id:
     | '__root__'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/_app/credit'
     | '/_app/factory-reset'
     | '/_app/machines'
+    | '/_app/manager'
     | '/_app/switch-bar'
   fileRoutesById: FileRoutesById
 }
@@ -186,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCreateBarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/manager': {
+      id: '/_app/manager'
+      path: '/manager'
+      fullPath: '/manager'
+      preLoaderRoute: typeof AppManagerRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -194,6 +213,7 @@ interface AppRouteChildren {
   AppCreditRoute: typeof AppCreditRoute
   AppFactoryResetRoute: typeof AppFactoryResetRoute
   AppMachinesRoute: typeof AppMachinesRoute
+  AppManagerRoute: typeof AppManagerRoute
   AppSwitchBarRoute: typeof AppSwitchBarRoute
 }
 
@@ -202,6 +222,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCreditRoute: AppCreditRoute,
   AppFactoryResetRoute: AppFactoryResetRoute,
   AppMachinesRoute: AppMachinesRoute,
+  AppManagerRoute: AppManagerRoute,
   AppSwitchBarRoute: AppSwitchBarRoute,
 }
 
