@@ -147,16 +147,15 @@ async function printBill(account: CreditAccount, ownerName: string) {
     doc.setTextColor(0, 0, 0);
     y += 5;
 
-    // Items for charges — per-item table with SP, CP, Profit
+    // Items for charges — per-item table with name, qty, unit price, and total
     if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
       if (y > CONTENT_BOTTOM - 8) { doc.addPage(); y = 20; }
 
       // Column x positions (LM=15, RM=195, width=180)
       const C_ITEM  = LM + 4;   // item name — left aligned
-      const C_QTY   = LM + 90;  // qty
-      const C_SP    = LM + 118; // sale price (per unit × qty)
-      const C_CP    = LM + 146; // cost price
-      const C_PROF  = RM;       // profit — right edge
+      const C_QTY   = LM + 100; // qty
+      const C_PRICE = LM + 138; // unit price
+      const C_TOTAL = RM;       // row total — right edge
 
       // Sub-header
       doc.setFont("helvetica", "bold");
@@ -164,59 +163,44 @@ async function printBill(account: CreditAccount, ownerName: string) {
       doc.setTextColor(150, 150, 150);
       doc.text("ITEM", C_ITEM, y);
       doc.text("QTY", C_QTY, y, { align: "right" });
-      doc.text("SALE", C_SP, y, { align: "right" });
-      doc.text("COST", C_CP, y, { align: "right" });
-      doc.text("PROFIT", C_PROF, y, { align: "right" });
+      doc.text("PRICE", C_PRICE, y, { align: "right" });
+      doc.text("TOTAL", C_TOTAL, y, { align: "right" });
       y += 3.5;
       doc.setDrawColor(210, 210, 210);
       doc.setLineWidth(0.15);
       doc.line(C_ITEM, y, RM, y);
       y += 3;
 
-      let chargeTotalSP = 0;
-      let chargeTotalCP = 0;
-      let hasCPData = false;
+      let chargeTotal = 0;
 
       for (const it of tx.items as any[]) {
         if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
-        const qty    = Number(it.qty ?? 1);
-        const sp     = Number(it.price ?? 0) * qty;
-        const cp     = Number(it.cost_price ?? 0) * qty;
-        const profit = sp - cp;
-        const hasCP  = (it.cost_price ?? 0) > 0;
-        chargeTotalSP += sp;
-        chargeTotalCP += cp;
-        if (hasCP) hasCPData = true;
+        const qty   = Number(it.qty ?? 1);
+        const price = Number(it.price ?? 0);
+        const total = price * qty;
+        chargeTotal += total;
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
         doc.setTextColor(30, 30, 30);
 
-        // Truncate long names
-        const nameStr = doc.splitTextToSize(it.name ?? "", 72)[0];
+        const nameStr = doc.splitTextToSize(it.name ?? "", 82)[0];
         doc.text(nameStr, C_ITEM, y);
         doc.text(String(qty), C_QTY, y, { align: "right" });
 
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+        doc.text("$" + price.toFixed(2), C_PRICE, y, { align: "right" });
+
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...ORANGE);
-        doc.text("$" + sp.toFixed(2), C_SP, y, { align: "right" });
-
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100);
-        doc.text(hasCP ? "$" + cp.toFixed(2) : "—", C_CP, y, { align: "right" });
-
-        const profitColor: [number, number, number] = hasCP
-          ? (profit >= 0 ? [22, 163, 74] : [220, 38, 38])
-          : [160, 160, 160];
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(...profitColor);
-        doc.text(hasCP ? "$" + profit.toFixed(2) : "—", C_PROF, y, { align: "right" });
+        doc.text("$" + total.toFixed(2), C_TOTAL, y, { align: "right" });
         doc.setTextColor(0, 0, 0);
 
         y += 4.5;
       }
 
-      // Charge subtotal row
+      // Subtotal row
       if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
       doc.setDrawColor(210, 210, 210);
       doc.setLineWidth(0.15);
@@ -229,15 +213,7 @@ async function printBill(account: CreditAccount, ownerName: string) {
       doc.text("Subtotal", C_ITEM, y);
 
       doc.setTextColor(...ORANGE);
-      doc.text("$" + chargeTotalSP.toFixed(2), C_SP, y, { align: "right" });
-
-      if (hasCPData) {
-        doc.setTextColor(100, 100, 100);
-        doc.text("$" + chargeTotalCP.toFixed(2), C_CP, y, { align: "right" });
-        const totalProfit = chargeTotalSP - chargeTotalCP;
-        doc.setTextColor(totalProfit >= 0 ? 22 : 220, totalProfit >= 0 ? 163 : 38, totalProfit >= 0 ? 74 : 38);
-        doc.text("$" + totalProfit.toFixed(2), C_PROF, y, { align: "right" });
-      }
+      doc.text("$" + chargeTotal.toFixed(2), C_TOTAL, y, { align: "right" });
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(8.5);
       y += 5;

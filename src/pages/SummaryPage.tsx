@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 import { downloadPdf } from "@/lib/download";
+import { CATEGORIES } from "@/lib/categories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type OrderItem = { id?: string; name: string; qty: number; price: number };
@@ -30,7 +31,7 @@ type Expense = {
   created_at: string;
 };
 
-type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number };
+type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number; category: string | null };
 
 type FilterType = "session" | "day" | "week" | "month" | "year" | "period";
 
@@ -71,11 +72,12 @@ function aggregateItems(
   orders: Order[],
   costMap: Map<string, number>,
   nameMap: Map<string, number>,
-): { name: string; qty: number; revenue: number; costTotal: number }[] {
-  const map = new Map<string, { qty: number; revenue: number; costTotal: number }>();
+  categoryMap: Map<string, string>,
+): { name: string; qty: number; revenue: number; costTotal: number; category: string }[] {
+  const map = new Map<string, { qty: number; revenue: number; costTotal: number; category: string }>();
   for (const o of orders) {
     for (const it of o.items) {
-      const existing = map.get(it.name) ?? { qty: 0, revenue: 0, costTotal: 0 };
+      const existing = map.get(it.name) ?? { qty: 0, revenue: 0, costTotal: 0, category: "miscellaneous" };
       // Try exact ID match first; shots/packs have synthetic IDs so fall back to name match
       let costEach = 0;
       if (it.id && costMap.has(it.id)) {
@@ -83,10 +85,12 @@ function aggregateItems(
       } else if (nameMap.has(it.name)) {
         costEach = nameMap.get(it.name)!;
       }
+      const cat = categoryMap.get(it.name) ?? existing.category;
       map.set(it.name, {
         qty:       existing.qty + it.qty,
         revenue:   existing.revenue + it.qty * it.price,
         costTotal: existing.costTotal + it.qty * costEach,
+        category:  cat,
       });
     }
   }
@@ -213,6 +217,7 @@ export default function SummaryPage() {
   const [loading,  setLoading]  = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloaded,  setDownloaded]  = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const ownerId = profile ? effectiveOwnerId(profile.id) : "";
 
@@ -384,7 +389,7 @@ export default function SummaryPage() {
             .gte("expense_date", expFrom)
             .lte("expense_date", expTo)
             .order("expense_date", { ascending: false }),
-      supabase.from("products").select("id, name, cost_price, units_per_item").eq("owner_id", ownerId),
+      supabase.from("products").select("id, name, cost_price, units_per_item, category").eq("owner_id", ownerId),
     ]);
 
     setOrders((ordersRes.data ?? []) as Order[]);
@@ -416,6 +421,9 @@ export default function SummaryPage() {
       p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price,
     ])
   );
+  const categoryMap = new Map<string, string>(
+    products.map((p) => [p.name, p.category ?? "miscellaneous"])
+  );
 
   // Non-stock + reverted stock expenses (shown in the Expenses section)
   const nonStockExpenses = expenses.filter((e) => {
@@ -427,7 +435,8 @@ export default function SummaryPage() {
     .filter((e) => Number(e.amount) > 0)
     .reduce((s, e) => s + Number(e.amount), 0);
 
-  const items         = aggregateItems(orders, costMap, nameMap);
+  const allItems      = aggregateItems(orders, costMap, nameMap, categoryMap);
+  const items         = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
   const totalIncome   = items.reduce((s, it) => s + it.revenue, 0);
   const totalCostPrice = items.reduce((s, it) => s + it.costTotal, 0) + totalNonStockExpenses;
   const totalProfit   = totalIncome - totalCostPrice;
@@ -592,17 +601,30 @@ export default function SummaryPage() {
             {filterLabel(filter, fromDate, toDate)}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 font-black"
-          disabled={downloading || loading}
-          onClick={handleDownloadPdf}
-          style={downloaded ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
-          {downloading
-            ? <Loader2 className="h-3 w-3 animate-spin" />
-            : downloaded
-            ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-            : <Download className="h-3 w-3" />}
-          {downloading ? "…" : downloaded ? "Done" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} PDF`}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Category filter dropdown */}
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+            style={{ color: "var(--foreground)" }}>
+            <option value="all">All</option>
+            {CATEGORIES.map(c => (
+              <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+            ))}
+          </select>
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 font-black"
+            disabled={downloading || loading}
+            onClick={handleDownloadPdf}
+            style={downloaded ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+            {downloading
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : downloaded
+              ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              : <Download className="h-3 w-3" />}
+            {downloading ? "…" : downloaded ? "Done" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} PDF`}
+          </Button>
+        </div>
       </div>
 
       {/* Filter tabs — scrollable row */}

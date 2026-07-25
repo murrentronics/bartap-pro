@@ -104,6 +104,66 @@ function PaginationBar({
 }
 
 // ─── Cashier Wallet ───────────────────────────────────────────────────────────
+// ── ExpenseRow — shared row renderer for cashier expense history ──────────────
+function ExpenseRow({ expense: e }: { expense: OwnerExpense }) {
+  const raw = (e.description ?? "").replace(/\[Cashier:[^\]]+\]\s*$/, "").trim();
+  const isReverted = raw.startsWith("Reverted Stock Expense");
+  const isBulk = raw.startsWith("Bulk Expense") || raw.startsWith("Non-Stock Expense") || isReverted;
+  const amt = Number(e.amount);
+  const isRefund = amt < 0;
+  const dateStr = new Date(e.created_at).toLocaleString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    day: "numeric", month: "short", year: "numeric",
+    timeZone: "America/Port_of_Spain",
+  });
+
+  if (isBulk) {
+    const lines = raw.split("\n").filter(Boolean);
+    const title = lines[0];
+    const itemLines = lines.slice(1);
+    return (
+      <div className="px-4 py-3" style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-sm" style={isRefund ? { color: "#86efac" } : {}}>{title}</div>
+            <div className="mt-1 space-y-0.5">
+              {itemLines.map((line, li) => {
+                const eqIdx = line.lastIndexOf(" = ");
+                const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
+                const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
+                if (left.startsWith("[Cashier:")) return null;
+                return (
+                  <div key={li} className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground flex-1">{left}</span>
+                    {right && <span className="text-xs font-black shrink-0" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>{right}</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">{dateStr}</div>
+          </div>
+          <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
+            {isRefund ? `+$${Number(Math.abs(amt)).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}` : `-$${amt.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-3 flex items-center justify-between gap-3"
+      style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-bold break-words" style={isRefund ? { color: "#86efac" } : {}}>{raw || "Expense"}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{dateStr}</div>
+      </div>
+      <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
+        {isRefund ? `+$${Math.abs(amt).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}` : `-$${amt.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+      </div>
+    </div>
+  );
+}
+
 function CashierWallet({ profile }: { profile: { id: string; wallet_balance: number; role: string; username?: string; parent_id?: string | null } }) {
   const { t } = useTranslation();
   const { refreshProfile } = useAuth();
@@ -319,6 +379,33 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [savingExpense, setSavingExpense] = useState(false);
   const [confirmingExpense, setConfirmingExpense] = useState(false);
   const [openExpenseMonth, setOpenExpenseMonth] = useState<string | null>(null);
+  const [openExpenseSession, setOpenExpenseSession] = useState<string | null>(null);
+
+  // Bar sessions for expense grouping + date filter
+  const [barSessions, setBarSessions] = useState<{ id: string; session_start: string; session_end: string | null }[]>([]);
+  const [activeBarSession, setActiveBarSession] = useState<{ start: string; end: string | null } | null>(null);
+  const [expenseDateFilter, setExpenseDateFilter] = useState<"session" | "day" | "week" | "month" | "all">("session");
+
+  const loadBarSessions = useCallback(async () => {
+    const { data: profileData } = await sb.from("profiles")
+      .select("bar_session_start, bar_closed_at")
+      .eq("id", ownerId).single();
+    const sessionStart: string | null = profileData?.bar_session_start ?? null;
+    const closedAt: string | null = profileData?.bar_closed_at ?? null;
+    setActiveBarSession(sessionStart ? { start: sessionStart, end: closedAt } : null);
+
+    const { data: hist } = await sb.from("bar_sessions")
+      .select("id, session_start, session_end")
+      .eq("owner_id", ownerId)
+      .order("session_start", { ascending: false })
+      .limit(30);
+    const all: { id: string; session_start: string; session_end: string | null }[] = [];
+    if (sessionStart) all.push({ id: "active", session_start: sessionStart, session_end: closedAt });
+    (hist ?? []).forEach((s: any) => all.push(s));
+    setBarSessions(all);
+  }, [ownerId]);
+
+  useEffect(() => { loadBarSessions(); }, [loadBarSessions]);
 
   const addExpenseLine = () => setExpenseLines(l => [...l, { description: "", amount: "" }]);
   const removeExpenseLine = (i: number) => setExpenseLines(l => l.filter((_, idx) => idx !== i));
@@ -449,8 +536,55 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     }
   };
 
+  // Apply date filter to cashier expenses
+  const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
+  const todayTT = tzNow().toLocaleDateString("en-CA");
+
+  const filteredCashierExpenses = (() => {
+    if (expenseDateFilter === "all") return cashierExpenses;
+    if (expenseDateFilter === "day") {
+      return cashierExpenses.filter(e => e.created_at.slice(0, 10) === todayTT);
+    }
+    if (expenseDateFilter === "week") {
+      const weekAgo = new Date(tzNow()); weekAgo.setDate(weekAgo.getDate() - 7);
+      return cashierExpenses.filter(e => new Date(e.created_at) >= weekAgo);
+    }
+    if (expenseDateFilter === "month") {
+      const monthAgo = new Date(tzNow()); monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return cashierExpenses.filter(e => new Date(e.created_at) >= monthAgo);
+    }
+    if (expenseDateFilter === "session") {
+      // Group into bar sessions — each session = session_start to session_end (or now if active)
+      return cashierExpenses; // full list — we group by session below
+    }
+    return cashierExpenses;
+  })();
+
+  // Group filtered expenses into bar sessions
+  const fmtSessionTs = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "America/Port_of_Spain" })
+      + " · " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
+  };
+
+  // Build session buckets: each bar session is a time window
+  type ExpenseSession = { id: string; start: string; end: string | null; expenses: OwnerExpense[] };
+  const expenseSessions: ExpenseSession[] = (() => {
+    if (expenseDateFilter !== "session" || barSessions.length === 0) return [];
+    return barSessions.map(s => {
+      const startMs = new Date(s.session_start).getTime();
+      const endMs = s.session_end ? new Date(s.session_end).getTime() : Date.now();
+      const inSession = filteredCashierExpenses.filter(e => {
+        const t = new Date(e.created_at).getTime();
+        return t >= startMs && t <= endMs;
+      });
+      return { id: s.id, start: s.session_start, end: s.session_end, expenses: inSession };
+    }).filter(s => s.expenses.length > 0);
+  })();
+
+  // For non-session filters: still group by month for display
   const cashierExpensesByMonth: Record<string, OwnerExpense[]> = {};
-  cashierExpenses.forEach((e) => {
+  filteredCashierExpenses.forEach((e) => {
     const key = monthKey(e.expense_date);
     if (!cashierExpensesByMonth[key]) cashierExpensesByMonth[key] = [];
     cashierExpensesByMonth[key].push(e);
@@ -808,14 +942,67 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           )}
         </div>
 
-        {/* Expense history by month */}
+        {/* Date filter tabs */}
+        <div className="flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+          {(["session", "day", "week", "month", "all"] as const).map(f => (
+            <button key={f} onClick={() => setExpenseDateFilter(f)}
+              className="shrink-0 h-8 px-3 rounded-xl text-xs font-black transition active:scale-[0.97]"
+              style={expenseDateFilter === f
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Expense history */}
         {loadingExpenses ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />)}</div>
+        ) : expenseDateFilter === "session" ? (
+          expenseSessions.length === 0 ? (
+            <div className="text-muted-foreground text-sm py-8 text-center">No expenses yet.</div>
+          ) : (
+            <div className="space-y-2">
+              <h3 className="font-black text-sm text-muted-foreground px-1">Expense History</h3>
+              {expenseSessions.map((sess) => {
+                const sTotal = sess.expenses.reduce((s, e) => s + Number(e.amount), 0);
+                const isOpen = openExpenseSession === sess.id;
+                const isActive = !sess.end;
+                return (
+                  <div key={sess.id} className="rounded-2xl border border-border overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
+                      onClick={() => setOpenExpenseSession(isOpen ? null : sess.id)}>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{isActive ? "🟢" : "🔴"}</span>
+                          <span className="font-black text-sm">{fmtSessionTs(sess.start)}</span>
+                        </div>
+                        {sess.end && (
+                          <span className="text-[10px] text-muted-foreground pl-5">→ {fmtSessionTs(sess.end)}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground pl-5">{sess.expenses.length} {sess.expenses.length === 1 ? "entry" : "entries"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm font-black text-pink-400">-${fmt(sTotal)}</span>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="border-t border-border divide-y divide-border/50">
+                        {sess.expenses.map((e) => <ExpenseRow key={e.id} expense={e} />)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : cashierExpenseMonths.length === 0 ? (
-          <div className="text-muted-foreground text-sm py-8 text-center">No expenses yet.</div>
+          <div className="text-muted-foreground text-sm py-8 text-center">No expenses for this period.</div>
         ) : (
           <div className="space-y-2">
-            <h3 className="font-black text-sm text-muted-foreground uppercase tracking-wider px-1">Expense History</h3>
+            <h3 className="font-black text-sm text-muted-foreground px-1">Expense History</h3>
             {cashierExpenseMonths.map((mk) => {
               const mExpenses = cashierExpensesByMonth[mk];
               const mTotal = mExpenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -826,74 +1013,17 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                     className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition"
                     onClick={() => setOpenExpenseMonth(isOpen ? null : mk)}>
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-sm sm:text-base">{monthLabel(mk)}</span>
+                      <span className="font-black text-sm">{monthLabel(mk)}</span>
                       <span className="text-xs text-muted-foreground">{mExpenses.length} {mExpenses.length === 1 ? "entry" : "entries"}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-pink-400 font-bold">-${fmt(mTotal)}</span>
+                      <span className="text-sm font-black text-pink-400">-${fmt(mTotal)}</span>
                       <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                     </div>
                   </button>
                   {isOpen && (
                     <div className="border-t border-border divide-y divide-border/50">
-                      {mExpenses.map((e) => {
-                        const raw = (e.description ?? "").replace(/\[Cashier:[^\]]+\]\s*$/, "").trim();
-                        const isReverted = raw.startsWith("Reverted Stock Expense");
-                        const isBulk = raw.startsWith("Bulk Expense") || raw.startsWith("Non-Stock Expense") || isReverted;
-                        if (isBulk) {
-                          const lines = raw.split("\n").filter(Boolean);
-                          const title = lines[0];
-                          const itemLines = lines.slice(1);
-                          const amt = Number(e.amount);
-                          const isRefund = amt < 0;
-                          return (
-                            <div key={e.id} className="px-4 py-3"
-                              style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-black text-sm" style={isRefund ? { color: "#86efac" } : {}}>{title}</div>
-                                  <div className="mt-1 space-y-0.5">
-                                    {itemLines.map((line, li) => {
-                                      const eqIdx = line.lastIndexOf(" = ");
-                                      const left = eqIdx !== -1 ? line.slice(0, eqIdx) : line;
-                                      const right = eqIdx !== -1 ? line.slice(eqIdx + 3) : null;
-                                      if (left.startsWith("[Cashier:")) return null;
-                                      return (
-                                        <div key={li} className="flex items-center justify-between gap-2">
-                                          <span className="text-xs text-muted-foreground flex-1">{left}</span>
-                                          {right && <span className="text-xs font-black shrink-0" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>{right}</span>}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
-                                  </div>
-                                </div>
-                                <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
-                                  {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        const amt = Number(e.amount);
-                        const isRefund = amt < 0;
-                        return (
-                          <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3"
-                            style={isRefund ? { background: "rgba(134,239,172,0.04)" } : {}}>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-bold break-words" style={isRefund ? { color: "#86efac" } : {}}>{raw || "Expense"}</div>
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                {new Date(e.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
-                              </div>
-                            </div>
-                            <div className="shrink-0 font-black text-sm" style={{ color: isRefund ? "#86efac" : "#f9a8d4" }}>
-                              {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {mExpenses.map((e) => <ExpenseRow key={e.id} expense={e} />)}
                     </div>
                   )}
                 </div>

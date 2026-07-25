@@ -100,7 +100,7 @@ type MachineEntry = {
   id: string; machine_id: string; owner_id: string;
 
 
-  type: "payout" | "income"; amount: number;
+  type: "payout" | "income" | "expense"; amount: number;
 
 
   note: string | null; entry_date: string; created_at: string;
@@ -742,7 +742,10 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
           const mIncome = mEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
-          const mProfit = mIncome - mPayout;
+          const mExpense = mEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+          const mProfit = mIncome - mPayout - mExpense;
 
 
           const isOpen = openMonth === mk;
@@ -2158,7 +2161,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       const mIncome = monthEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
-      const mProfit = mIncome - mPayout;
+      const mExpense = monthEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+      const mProfit = mIncome - mPayout - mExpense;
 
 
       doc.setFillColor(245, 240, 230);
@@ -3454,7 +3460,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   onSetFloat: () => void;
 
 
-  onAddExpense: (machineId: string) => void;
+  onAddExpense: () => void;
 
 
   onDeleteMachine: (id: string) => void;
@@ -3931,7 +3937,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("float_set", "Float Set")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("float_set", "Float Set")}</div>
 
 
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
@@ -3952,7 +3958,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("session_payout", "Session Expense")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("session_payout", "Session Expense")}</div>
 
 
             <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
@@ -3973,7 +3979,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40 uppercase tracking-wider">{t("remaining", "Remaining")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("remaining", "Remaining")}</div>
 
 
             <div className="font-black text-xs"
@@ -4030,7 +4036,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             <button
 
 
-              onClick={() => onAddExpense(orderedMachines[0].id)}
+              onClick={() => onAddExpense()}
 
 
               className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
@@ -4135,7 +4141,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           const mIncome = entries.filter(e => e.machine_id === m.id && e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
-          const mProfit = mIncome - mPayout;
+          const mExpense = entries.filter(e => e.machine_id === m.id && e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+          const mProfit = mIncome - mPayout - mExpense;
 
 
           // Session profit — since last float update, resets to 0 on every float update
@@ -4426,7 +4435,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 // ── All History Tab ────────────────────────────────────────────────────────────
 
 
-function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; machines: Machine[]; ownerId: string }) {
+function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machines: Machine[] }) {
 
 
   const [openMonth, setOpenMonth] = useState<string | null>(null);
@@ -4448,267 +4457,10 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
 
 
 
-
-
-  // ── Bar session state (for Session filter) ─────────────────────────────────
-
-
-  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
-
-
-  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
-
-
-  useEffect(() => {
-
-
-    if (!ownerId) return;
-
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-
-
-    (supabase as any).from('profiles').select('bar_session_start, bar_closed_at')
-
-
-      .eq('id', ownerId).single()
-
-
-      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
-
-
-        setBarSessionStart(data?.bar_session_start ?? null);
-
-
-        setBarClosedAt(data?.bar_closed_at ?? null);
-
-
-      });
-
-
-    const ch = supabase.channel('bar-allhistory-' + ownerId)
-
-
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'id=eq.' + ownerId },
-
-
-        (payload: any) => {
-
-
-          const r = payload.new as Record<string, unknown>;
-
-
-          if ('bar_session_start' in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
-
-
-          if ('bar_closed_at' in r) setBarClosedAt((r.bar_closed_at as string | null) ?? null);
-
-
-        }).subscribe();
-
-
-    return () => { supabase.removeChannel(ch); };
-
-
-  }, [ownerId]);
-
-
-
-
-
-  // ── Summary filter ──────────────────────────────────────────────────────────
-
-
-  type SummaryFilter = "all" | "session" | "day" | "week" | "month" | "year";
-
-
-  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
-
-
-  const [showSummaryPicker, setShowSummaryPicker] = useState(false);
-
-
-  const today = todayTT();
-
-
-  const [pickerDate,  setPickerDate]  = useState(today);
-
-
-  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
-
-
-
-
-
-  // Derive available years from actual entries
-
-
-  const availableYears = Array.from(
-
-
-    new Set(entries.map(e => parseInt(e.created_at.slice(0, 4))))
-
-
-  ).sort((a, b) => b - a);
-
-
-  const defaultYear = availableYears[0] ?? new Date().getFullYear();
-
-
-  const [pickerYear, setPickerYear] = useState(defaultYear);
-
-
-
-
-
-  // Reset picker to today when filter changes
-
-
-  const handleFilterChange = (f: SummaryFilter) => {
-
-
-    setSummaryFilter(f);
-
-
-    setPickerDate(today);
-
-
-    setPickerMonth(new Date().getMonth());
-
-
-    setPickerYear(availableYears[0] ?? new Date().getFullYear());
-
-
-  };
-
-
-
-
-
-  // Compute filtered date range
-
-
-  const getFilterRange = (): { start: string; end: string; startIso?: string; endIso?: string } | null => {
-
-
-    if (summaryFilter === "all") return null;
-
-
-    if (summaryFilter === "session") {
-
-
-      if (!barSessionStart) return null;
-
-
-      const end = barClosedAt ?? new Date().toISOString();
-
-
-      return {
-
-
-        start: barSessionStart.slice(0, 10),
-
-
-        end: end.slice(0, 10),
-
-
-        startIso: barSessionStart,
-
-
-        endIso: end,
-
-
-      };
-
-
-    }
-
-
-    if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
-
-
-    if (summaryFilter === "week") {
-
-
-      const end = new Date(pickerDate + "T12:00:00");
-
-
-      end.setDate(end.getDate() + 6);
-
-
-      return { start: pickerDate, end: end.toLocaleDateString("en-CA") };
-
-
-    }
-
-
-    if (summaryFilter === "month") {
-
-
-      const first = new Date(pickerYear, pickerMonth, 1, 12);
-
-
-      const last  = new Date(pickerYear, pickerMonth + 1, 0, 12);
-
-
-      return { start: first.toLocaleDateString("en-CA"), end: last.toLocaleDateString("en-CA") };
-
-
-    }
-
-
-    if (summaryFilter === "year") {
-
-
-      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
-
-
-    }
-
-
-    return null;
-
-
-  };
-
-
-
-
-
-  const filterRange = getFilterRange();
-
-
-
-
-
   // All records sorted newest first
 
 
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
-
-
-
-
-
-  // Filtered entries for stat cards
-
-
-  const filteredEntries = filterRange
-
-
-    ? sorted.filter(e => {
-
-
-        const d = e.created_at.slice(0, 10);
-
-
-        return d >= filterRange.start && d <= filterRange.end;
-
-
-      })
-
-
-    : sorted;
 
 
 
@@ -4759,21 +4511,6 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
 
 
 
-  // All-time totals (use filtered entries)
-
-
-  const totalPayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const totalIncome = filteredEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const totalProfit = totalIncome - totalPayout;
-
-
-
-
-
   const buildPdf = async (
 
 
@@ -4819,7 +4556,10 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
     const mIncome = rows.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
-    const mProfit = mIncome - mPayout;
+    const mExpense = rows.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+    const mProfit = mIncome - mPayout - mExpense;
 
 
     doc.setFillColor(245, 240, 230);
@@ -5095,602 +4835,22 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
     <div className="space-y-3">
 
 
-      {/* Header — totals + Download All */}
-
-
-      <div className="rounded-2xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
-
-
+      {/* Header — Download All */}
+      <div className="rounded-2xl border border-border p-3" style={{ background: "var(--gradient-card)" }}>
         <div className="flex items-center justify-between">
-
-
-          <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{filteredEntries.length} records</span>
-
-
-          <div className="flex items-center gap-2">
-
-
-            {/* Summary filter button — same style as Set Alerts */}
-
-
-            <button
-
-
-              onClick={() => setShowSummaryPicker(v => !v)}
-
-
-              className="flex items-center gap-1.5 h-9 px-3 rounded-xl font-bold text-xs transition active:scale-95"
-
-
-              style={{
-
-
-                background: "rgba(251,146,60,0.18)",
-
-
-                color: "var(--primary)",
-
-
-                border: "1px solid rgba(251,146,60,0.4)",
-
-
-              }}>
-
-
-              <BarChart3 className="h-3.5 w-3.5 text-primary" />
-
-
-              {summaryFilter === "all" ? "Summary" : summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)}
-
-
-              {summaryFilter !== "all" && (
-
-
-                <span className="h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-black"
-
-
-                  style={{ background: "var(--gradient-hero)" }}>✓</span>
-
-
-              )}
-
-
-            </button>
-
-
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
-
-
-              disabled={downloading} onClick={handleDownloadAll}
-
-
-              style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
-
-
-              {downloading
-
-
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-
-
-                : downloadedAll
-
-
-                ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-
-
-                : <Download className="h-3 w-3" />}
-
-
-              {downloadedAll ? "Done" : summaryFilter === "all" ? "All PDF" : `${summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1)} PDF`}
-
-
-            </Button>
-
-
-          </div>
-
-
+          <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{sorted.length} records</span>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 font-bold text-xs"
+            disabled={downloading} onClick={handleDownloadAll}
+            style={downloadedAll ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+            {downloading
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : downloadedAll
+              ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              : <Download className="h-3 w-3" />}
+            {downloadedAll ? "Done" : "All PDF"}
+          </Button>
         </div>
-
-
-
-
-
-        {/* ── Summary picker row — visible when showSummaryPicker ── */}
-
-
-        {showSummaryPicker && (
-
-
-          <div className="space-y-2 pt-1 border-t border-border/40">
-
-
-            {/* Filter tabs */}
-
-
-            <div className="flex gap-1">
-
-
-              {(["all","day","week","month","year"] as SummaryFilter[]).map(f => (
-
-
-                <button key={f} onClick={() => handleFilterChange(f)}
-
-
-                  className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
-
-
-                  style={summaryFilter === f
-
-
-                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-
-
-                    : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
-
-
-                  {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
-
-
-                </button>
-
-
-              ))}
-
-
-            </div>
-
-
-            {/* Day picker */}
-
-
-            {summaryFilter === "day" && (
-
-
-              <div>
-
-
-                <div className="relative">
-
-
-                  <input type="date" value={pickerDate} max={today}
-
-
-                    onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-
-
-                    className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
-
-
-                  <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
-
-
-                    {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
-
-
-                  </div>
-
-
-                </div>
-
-
-                <p className="text-[10px] text-muted-foreground mt-1 text-center">
-
-
-                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-
-
-                </p>
-
-
-              </div>
-
-
-            )}
-
-
-            {/* Week picker */}
-
-
-            {summaryFilter === "week" && (
-
-
-              <div className="space-y-1">
-
-
-                <div className="relative">
-
-
-                  <input type="date" value={pickerDate} max={today}
-
-
-                    onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-
-
-                    className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
-
-
-                  <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
-
-
-                    {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
-
-
-                  </div>
-
-
-                </div>
-
-
-                <p className="text-[10px] text-muted-foreground text-center">
-
-
-                  {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-
-
-                  {" â†’ "}
-
-
-                  {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate()+6); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })()}
-
-
-                </p>
-
-
-              </div>
-
-
-            )}
-
-
-            {/* Month picker */}
-
-
-            {summaryFilter === "month" && (
-
-
-              <div className="flex gap-2">
-
-
-                <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
-
-
-                  className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-
-
-                  {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m,i) => (
-
-
-                    <option key={i} value={i}>{m}</option>
-
-
-                  ))}
-
-
-                </select>
-
-
-                <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-
-
-                  className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-
-
-                  {availableYears.map(y => (
-
-
-                    <option key={y} value={y}>{y}</option>
-
-
-                  ))}
-
-
-                </select>
-
-
-              </div>
-
-
-            )}
-
-
-            {/* Year picker — dropdown of years with actual records */}
-
-
-            {summaryFilter === "year" && (
-
-
-              <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-
-
-                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
-
-
-                {availableYears.map(y => (
-
-
-                  <option key={y} value={y}>{y}</option>
-
-
-                ))}
-
-
-              </select>
-
-
-            )}
-
-
-          </div>
-
-
-        )}
-
-
-
-
-
-        <div className="grid grid-cols-3 gap-2">
-
-
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-
-
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Expense</div>
-
-
-            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalPayout)}</div>
-
-
-          </div>
-
-
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-
-
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Income</div>
-
-
-            <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(totalIncome)}</div>
-
-
-          </div>
-
-
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-
-
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Profit</div>
-
-
-            <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-
-
-              {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
-
-
-            </div>
-
-
-          </div>
-
-
-        </div>
-
-
-
-
-
-        {/* Machine performance breakdown — always shown when summary picker is open */}
-
-
-        {showSummaryPicker && (() => {
-
-
-          // Tally income and payout per machine for filtered entries
-
-
-          const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
-
-
-          filteredEntries.forEach(e => {
-
-
-            const m = machines.find(x => x.id === e.machine_id);
-
-
-            const name = m?.name ?? "Unknown";
-
-
-            if (!machineStats[e.machine_id]) machineStats[e.machine_id] = { name, income: 0, payout: 0 };
-
-
-            if (e.type === "income") machineStats[e.machine_id].income += Number(e.amount);
-
-
-            else machineStats[e.machine_id].payout += Number(e.amount);
-
-
-          });
-
-
-          const statList = Object.values(machineStats);
-
-
-          if (statList.length === 0) return null;
-
-
-          const byIncome = [...statList].sort((a, b) => b.income - a.income);
-
-
-          const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
-
-
-          return (
-
-
-            <div className="space-y-2 pt-1 border-t border-border/40">
-
-
-              {/* Income ranking */}
-
-
-              <div>
-
-
-                <p className="text-[9px] sm:text-xs font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
-
-
-                <div className="space-y-1">
-
-
-                  {byIncome.map((m, i) => (
-
-
-                    <div key={m.name + "i"} className="flex items-center gap-2">
-
-
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-
-
-                      <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-
-
-                      <span className="text-xs font-black text-green-400 shrink-0">${fmtWhole(m.income)}</span>
-
-
-                    </div>
-
-
-                  ))}
-
-
-                </div>
-
-
-              </div>
-
-
-              {/* Payout ranking */}
-
-
-              <div>
-
-
-                <p className="text-[9px] sm:text-xs font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
-
-
-                <div className="space-y-1">
-
-
-                  {byPayout.filter(m => m.payout > 0).map((m, i) => (
-
-
-                    <div key={m.name + "p"} className="flex items-center gap-2">
-
-
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-
-
-                      <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-
-
-                      <span className="text-xs font-black text-red-400 shrink-0">${fmtWhole(m.payout)}</span>
-
-
-                    </div>
-
-
-                  ))}
-
-
-                </div>
-
-
-              </div>
-
-
-              {/* Profit ranking */}
-
-
-              <div>
-
-
-                <p className="text-[9px] sm:text-xs font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
-
-
-                <div className="space-y-1">
-
-
-                  {(() => {
-
-
-                    const profitList = [...statList]
-
-
-                      .map(m => ({ ...m, profit: m.income - m.payout }))
-
-
-                      .sort((a, b) => b.profit - a.profit);
-
-
-                    return profitList.map((m, i) => {
-
-
-                      const isPos = m.profit >= 0;
-
-
-                      return (
-
-
-                        <div key={m.name + "prof"} className="flex items-center gap-2">
-
-
-                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-
-
-                          <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-
-
-                          <span className="text-xs font-black shrink-0" style={{ color: isPos ? "#86efac" : "#f472b6" }}>
-
-
-                            {isPos ? "+" : ""}${fmtWhole(m.profit)}
-
-
-                          </span>
-
-
-                        </div>
-
-
-                      );
-
-
-                    });
-
-
-                  })()}
-
-
-                </div>
-
-
-              </div>
-
-
-            </div>
-
-
-          );
-
-
-        })()}
-
-
       </div>
-
 
 
 
@@ -5713,7 +4873,10 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
           const mIncome = mEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
 
-          const mProfit = mIncome - mPayout;
+          const mExpense = mEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+          const mProfit = mIncome - mPayout - mExpense;
 
 
           const isOpen = openMonth === mk;
@@ -6124,6 +5287,263 @@ function AllHistoryTab({ entries, machines, ownerId }: { entries: MachineEntry[]
 
 
 
+
+// ── Summary Tab ─────────────────────────────────────────────────────────────
+
+function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; machines: Machine[]; ownerId: string }) {
+
+  // ── Bar session state ───────────────────────────────────────────────────────
+  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
+  const [barClosedAt, setBarClosedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from('profiles').select('bar_session_start, bar_closed_at')
+      .eq('id', ownerId).single()
+      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
+        setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAt(data?.bar_closed_at ?? null);
+      });
+    const ch = supabase.channel('bar-summary-' + ownerId)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'id=eq.' + ownerId },
+        (payload: any) => {
+          const r = payload.new as Record<string, unknown>;
+          if ('bar_session_start' in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
+          if ('bar_closed_at' in r) setBarClosedAt((r.bar_closed_at as string | null) ?? null);
+        }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
+  // ── Filter state ─────────────────────────────────────────────────────────────
+  type SummaryFilter = "all" | "session" | "day" | "week" | "month" | "year";
+  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
+  const today = todayTT();
+  const [pickerDate, setPickerDate] = useState(today);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+
+  const availableYears = Array.from(
+    new Set(entries.map(e => parseInt(e.created_at.slice(0, 4))))
+  ).sort((a, b) => b - a);
+  const defaultYear = availableYears[0] ?? new Date().getFullYear();
+  const [pickerYear, setPickerYear] = useState(defaultYear);
+
+  const handleFilterChange = (f: SummaryFilter) => {
+    setSummaryFilter(f);
+    setPickerDate(today);
+    setPickerMonth(new Date().getMonth());
+    setPickerYear(availableYears[0] ?? new Date().getFullYear());
+  };
+
+  const getFilterRange = (): { start: string; end: string; startIso?: string; endIso?: string } | null => {
+    if (summaryFilter === "all") return null;
+    if (summaryFilter === "session") {
+      if (!barSessionStart) return null;
+      const end = barClosedAt ?? new Date().toISOString();
+      return { start: barSessionStart.slice(0, 10), end: end.slice(0, 10), startIso: barSessionStart, endIso: end };
+    }
+    if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
+    if (summaryFilter === "week") {
+      const end = new Date(pickerDate + "T12:00:00");
+      end.setDate(end.getDate() + 6);
+      return { start: pickerDate, end: end.toLocaleDateString("en-CA") };
+    }
+    if (summaryFilter === "month") {
+      const first = new Date(pickerYear, pickerMonth, 1, 12);
+      const last = new Date(pickerYear, pickerMonth + 1, 0, 12);
+      return { start: first.toLocaleDateString("en-CA"), end: last.toLocaleDateString("en-CA") };
+    }
+    if (summaryFilter === "year") return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
+    return null;
+  };
+
+  const filterRange = getFilterRange();
+  const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  const filteredEntries = filterRange
+    ? sorted.filter(e => {
+        const d = e.created_at.slice(0, 10);
+        if (summaryFilter === "session" && filterRange.startIso && filterRange.endIso) {
+          return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
+        }
+        return d >= filterRange.start && d <= filterRange.end;
+      })
+    : sorted;
+
+  const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+  const totalSessionExpense = filteredEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+  const totalIncome = filteredEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const totalProfit = totalIncome - totalMachinePayout - totalSessionExpense;
+
+  if (sorted.length === 0) {
+    return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
+  }
+
+  // Machine breakdown — only payout/income entries (expense entries are session-level, not per-machine)
+  const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
+  filteredEntries.filter(e => e.type !== "expense").forEach(e => {
+    const m = machines.find(x => x.id === e.machine_id);
+    const name = m?.name ?? "Unknown";
+    if (!machineStats[e.machine_id]) machineStats[e.machine_id] = { name, income: 0, payout: 0 };
+    if (e.type === "income") machineStats[e.machine_id].income += Number(e.amount);
+    else machineStats[e.machine_id].payout += Number(e.amount);
+  });
+  const statList = Object.values(machineStats);
+  const byIncome = [...statList].sort((a, b) => b.income - a.income);
+  const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
+  const profitList = [...statList].map(m => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-border p-3 space-y-3" style={{ background: "var(--gradient-card)" }}>
+
+        {/* Period filter tabs — always visible */}
+        <div className="flex gap-1">
+          {(["all", "session", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
+            <button key={f} onClick={() => handleFilterChange(f)}
+              className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
+              style={summaryFilter === f
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
+              {f === "all" ? "All" : f === "session" ? "Session" : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Date pickers */}
+        {summaryFilter === "day" && (
+          <div>
+            <div className="relative">
+              <input type="date" value={pickerDate} max={today}
+                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
+              <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+                {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1 text-center">
+              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+        )}
+        {summaryFilter === "week" && (
+          <div className="space-y-1">
+            <div className="relative">
+              <input type="date" value={pickerDate} max={today}
+                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
+                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
+              <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+                {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+              {" \u2192 "}
+              {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })()}
+            </p>
+          </div>
+        )}
+        {summaryFilter === "month" && (
+          <div className="flex gap-2">
+            <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
+              className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+              {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
+            <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
+              className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+              {availableYears.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {summaryFilter === "year" && (
+          <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
+            className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
+            {availableYears.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        )}
+
+        {/* 4 stat cards: Machine Payout | Income | Profit | Session Expense */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Machine Payout</div>
+            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalMachinePayout)}</div>
+          </div>
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Income</div>
+            <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(totalIncome)}</div>
+          </div>
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Net Profit</div>
+            <div className="font-black text-xs sm:text-sm" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+              {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
+            </div>
+          </div>
+          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Expense</div>
+            <div className="font-black text-xs sm:text-sm text-amber-400">${fmtWhole(totalSessionExpense)}</div>
+          </div>
+        </div>
+
+        {/* Machine performance breakdown */}
+        {statList.length > 0 && (
+          <div className="space-y-2 pt-1 border-t border-border/40">
+            {/* Income ranking */}
+            <div>
+              <p className="text-[9px] sm:text-xs font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
+              <div className="space-y-1">
+                {byIncome.map((m, i) => (
+                  <div key={m.name + "i"} className="flex items-center gap-2">
+                    <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                    <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                    <span className="text-xs font-black text-green-400 shrink-0">${fmtWhole(m.income)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Payout ranking */}
+            <div>
+              <p className="text-[9px] sm:text-xs font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
+              <div className="space-y-1">
+                {byPayout.filter(m => m.payout > 0).map((m, i) => (
+                  <div key={m.name + "p"} className="flex items-center gap-2">
+                    <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                    <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                    <span className="text-xs font-black text-red-400 shrink-0">${fmtWhole(m.payout)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Profit ranking */}
+            <div>
+              <p className="text-[9px] sm:text-xs font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
+              <div className="space-y-1">
+                {profitList.map((m, i) => {
+                  const isPos = m.profit >= 0;
+                  return (
+                    <div key={m.name + "prof"} className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                      <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                      <span className="text-xs font-black shrink-0" style={{ color: isPos ? "#86efac" : "#f472b6" }}>
+                        {isPos ? "+" : ""}${fmtWhole(m.profit)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 
@@ -6172,7 +5592,7 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
 
 
-  const [tab, setTab] = useState<"screens" | "payouts" | "create">("screens");
+  const [tab, setTab] = useState<"screens" | "allHistory" | "summary" | "create">("screens");
 
 
   const [selected, setSelected] = useState<Machine | null>(null);
@@ -6631,7 +6051,9 @@ export default function MachinesPage() {
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
 
-    if (!expenseMachineId) { toast.error("No machine selected"); return; }
+    // Session-level expense — not tied to any specific machine.
+    // We still need a machine_id for the FK, so we use the first available.
+    const targetMachineId = machines[0]?.id ?? null;
 
 
     setSavingExpense(true);
@@ -6643,13 +6065,13 @@ export default function MachinesPage() {
     const { error } = await sb.from("machine_entries").insert({
 
 
-      machine_id: expenseMachineId,
+      machine_id: targetMachineId,
 
 
       owner_id: ownerId,
 
 
-      type: "payout",
+      type: "expense",
 
 
       amount: val,
@@ -7252,7 +6674,10 @@ export default function MachinesPage() {
     { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
 
 
-    { key: "payouts", label: t("all_history", "All History") },
+    { key: "allHistory", label: t("all_history", "All History") },
+
+
+    { key: "summary", label: t("summary", "Summary") },
 
 
     ...(isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []),
@@ -7468,7 +6893,7 @@ export default function MachinesPage() {
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
 
 
-              onAddExpense={(machineId) => { setExpenseMachineId(machineId); setShowAddMachineExpense(true); setExpenseAmount(""); setExpenseNote(""); }}
+              onAddExpense={() => { setShowAddMachineExpense(true); setExpenseAmount(""); setExpenseNote(""); }}
 
 
               onDeleteMachine={(id) => {
@@ -7489,7 +6914,10 @@ export default function MachinesPage() {
           )}
 
 
-          {tab === "payouts" && <AllHistoryTab entries={entries} machines={machines} ownerId={ownerId} />}
+          {tab === "allHistory" && <AllHistoryTab entries={entries} machines={machines} />}
+
+
+          {tab === "summary" && <SummaryTab entries={entries} machines={machines} ownerId={ownerId} />}
 
 
           {tab === "create" && (
@@ -7882,45 +7310,6 @@ export default function MachinesPage() {
             {/* Machine picker */}
 
 
-            {machines.length > 1 && (
-
-
-              <div className="flex gap-1.5 flex-wrap">
-
-
-                {machines.map(m => (
-
-
-                  <button key={m.id} onClick={() => setExpenseMachineId(m.id)}
-
-
-                    className="px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition"
-
-
-                    style={expenseMachineId === m.id
-
-
-                      ? { background: "rgba(239,68,68,0.3)", color: "#f87171", border: "1.5px solid rgba(239,68,68,0.6)" }
-
-
-                      : { background: "oklch(0.20 0.04 60)", color: "rgba(255,255,255,0.5)", border: "1.5px solid oklch(0.28 0.06 60)" }}>
-
-
-                    {m.name}
-
-
-                  </button>
-
-
-                ))}
-
-
-              </div>
-
-
-            )}
-
-
             {/* Amount */}
 
 
@@ -8080,7 +7469,7 @@ export default function MachinesPage() {
               </button>
 
 
-              <button onClick={handleSaveMachineExpense} disabled={savingExpense || !expenseAmount || !expenseMachineId}
+              <button onClick={handleSaveMachineExpense} disabled={savingExpense || !expenseAmount}
 
 
                 className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
