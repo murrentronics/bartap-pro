@@ -624,7 +624,7 @@ export default function SummaryPage() {
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+            className="h-7 rounded-lg border border-border bg-background px-1.5 text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary max-w-[90px]"
             style={{ color: "var(--foreground)" }}>
             <option value="all">All</option>
             {CATEGORIES.map(c => (
