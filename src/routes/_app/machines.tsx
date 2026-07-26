@@ -1246,7 +1246,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
 
 
-function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted }: {
+function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted, barSessionStart }: {
 
 
   machine: Machine; screenNumber: number; ownerId: string;
@@ -1265,6 +1265,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
   onBack: () => void; onDeleted: () => void;
+
+
+  barSessionStart: string | null;
 
 
 }) {
@@ -1576,7 +1579,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   // ── All-time totals ────────────────────────────────────────────────────────
 
 
-  const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+  const totalPayout = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
 
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
@@ -1588,16 +1591,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-  // ── Session totals — payouts/income since the last machine clear (income entry).
+  // ── Session totals — payouts/income since bar was opened (barSessionStart).
 
 
-  // If there's never been a clear, counts everything (anchor = null = all time).
+  // If bar has never been opened, counts everything (anchor = null = all time).
 
 
   const sessionPayouts = entries
 
 
-    .filter(e => e.type === "payout" && (!sessionAnchor || new Date(e.created_at) > new Date(sessionAnchor)))
+    .filter(e => (e.type === "payout" || e.type === "expense") && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart)))
 
 
     .reduce((s, e) => s + Number(e.amount), 0);
@@ -1606,7 +1609,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const sessionIncome = entries
 
 
-    .filter(e => e.type === "income" && (!sessionAnchor || new Date(e.created_at) > new Date(sessionAnchor)))
+    .filter(e => e.type === "income" && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart)))
 
 
     .reduce((s, e) => s + Number(e.amount), 0);
@@ -3472,7 +3475,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const { t } = useTranslation();
 
 
-  const totalPayout = entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+  const totalPayout = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
 
   const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
@@ -3490,7 +3493,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const todayStr = todayTT();
 
 
-  const todayPayouts = entries.filter(e => e.type === "payout" && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
+  const todayPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense") && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
 
 
   const todayIncome = entries.filter(e => e.type === "income" && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
@@ -3508,13 +3511,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     ? entries
 
 
-        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart))
+        .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
 
 
-    : entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
+    : entries.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
 
 
   const sessionIncome = barSessionStart
@@ -3945,10 +3948,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
 
 
-        {/* Float row */}
+        {/* Float row — 2 cards only */}
 
 
-        <div className="relative grid grid-cols-3 gap-2">
+        <div className="relative grid grid-cols-2 gap-2">
 
 
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
@@ -3964,27 +3967,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
               {floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"}
-
-
-            </div>
-
-
-          </div>
-
-
-          <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
-
-
-            style={{ background: "oklch(0.22 0.02 60)" }}>
-
-
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("session_payout", "Session Expense")}</div>
-
-
-            <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
-
-
-              {floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
 
 
             </div>
@@ -6354,7 +6336,7 @@ export default function MachinesPage() {
 
 
 
-  // Session payouts = all payouts across ALL machines (owner + cashier) since float was last set
+  // Session payouts = all payouts + expenses across ALL machines since float was last set
 
 
   const sessionPayouts = floatSession
@@ -6363,7 +6345,7 @@ export default function MachinesPage() {
     ? entries
 
 
-        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at))
+        .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(floatSession.set_at))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
@@ -6874,6 +6856,9 @@ export default function MachinesPage() {
 
 
           remainingFloat={remainingFloat}
+
+
+          barSessionStart={barSessionStart}
 
 
           initialTab={selectedInitialTab}
