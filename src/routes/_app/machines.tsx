@@ -5403,7 +5403,8 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         if (filterRange.startIso && filterRange.endIso) {
           return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
         }
-        const d = e.created_at.slice(0, 10);
+        // Use entry_date (local TT date) when available, fall back to created_at UTC slice
+        const d = e.entry_date ?? e.created_at.slice(0, 10);
         return d >= filterRange.start && d <= filterRange.end;
       })
     : sorted;

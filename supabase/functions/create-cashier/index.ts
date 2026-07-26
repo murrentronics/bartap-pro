@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { username, password, bar_owner_id, role } = await req.json();
+    const { username, password, bar_owner_id, role, job_title } = await req.json();
 
     if (!username || !password) {
       return new Response(
@@ -61,8 +61,9 @@ serve(async (req) => {
       );
     }
 
-    // Only allow valid login roles via this function (manager or cashier)
-    const effectiveRole = role === "manager" ? "manager" : "cashier";
+    // Determine effective role — custom workers get cashier in the enum, flagged by has_login=false
+    const isCustom = role === "custom";
+    const effectiveRole = isCustom ? "cashier" : (role === "manager" ? "manager" : "cashier");
 
     // Determine the effective parent_id:
     // - Chain owners pass bar_owner_id (the active bar sub-account's id)
@@ -140,13 +141,15 @@ serve(async (req) => {
 
     // Force-set parent_id and role — don't rely solely on the trigger
     // Note: app_role enum only allows 'cashier'/'owner'/'admin', so 'manager' is stored
-    // as job_title while keeping role='cashier' for auth purposes
+    // as job_title while keeping role='cashier' for auth purposes.
+    // Custom workers also keep role='cashier' but get has_login=false + job_title.
     await supabaseClient
       .from("profiles")
       .update({
         parent_id: parentId,
-        role: "cashier",
+        role: isCustom ? "custom" : "cashier",
         ...(effectiveRole === "manager" ? { job_title: "manager" } : {}),
+        ...(isCustom ? { job_title: job_title ?? null, has_login: false } : {}),
       })
       .eq("id", authData.user.id);
 

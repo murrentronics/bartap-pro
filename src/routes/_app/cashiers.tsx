@@ -1181,7 +1181,6 @@ export default function CashiersPage() {
     setBusy(true);
     try {
       const ownerIdForQuery = effectiveOwnerId(profile!.id);
-      // Custom workers have no auth user — insert directly into profiles
       const { error } = await (supabase as any).from("profiles").insert({
         id: crypto.randomUUID(),
         username: customName.trim().toLowerCase().replace(/\s+/g, "_"),
