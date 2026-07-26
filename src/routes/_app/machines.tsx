@@ -5418,21 +5418,117 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map(m => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
 
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const generated = new Date().toLocaleString("en-GB", {
+        hour: "2-digit", minute: "2-digit", hour12: true,
+        day: "numeric", month: "short", year: "numeric",
+      });
+      // Build title from active filter
+      let title = "All Time";
+      if (selectedSessionId) {
+        const s = barSessions.find(b => b.id === selectedSessionId);
+        if (s) title = "Session: " + new Date(s.opened_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+      } else if (summaryFilter !== "all") {
+        title = summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1);
+      }
+      let y = await drawHeader(doc, "All Machines", "Summary", title, generated);
+      const bw = RM - LM;
+      // Summary box
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, bw, 26, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
+      const cols = [
+        { label: "Total Expense", value: "-$" + fmtWhole(totalExpense), r: 180, g: 40, b: 40 },
+        { label: "Total Income",  value: "+$" + fmtWhole(totalIncome),  r: 40,  g: 140, b: 40 },
+        { label: "Net Profit",    value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
+      ];
+      const cw = bw / 3;
+      cols.forEach((c, i) => {
+        const cx = LM + i * cw + cw / 2;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+        doc.text(c.label, cx, y + 10, { align: "center" });
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+        doc.setTextColor(c.r, c.g, c.b);
+        doc.text(c.value, cx, y + 19, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0); y += 32;
+      // Machine breakdown
+      if (statList.length > 0) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+        doc.text("Machine Breakdown", LM, y); y += 6;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(130, 130, 130);
+        doc.text("MACHINE", LM, y); doc.text("INCOME", LM + 80, y, { align: "right" }); doc.text("PAYOUT", LM + 130, y, { align: "right" }); doc.text("PROFIT", RM, y, { align: "right" });
+        y += 3; doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+        profitList.forEach(m => {
+          if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+          const isPos = m.profit >= 0;
+          doc.text(m.name, LM, y);
+          doc.setTextColor(40, 140, 40); doc.text("$" + fmtWhole(m.income), LM + 80, y, { align: "right" });
+          doc.setTextColor(180, 40, 40); doc.text("$" + fmtWhole(m.payout), LM + 130, y, { align: "right" });
+          doc.setTextColor(isPos ? 40 : 180, isPos ? 140 : 40, 40); doc.text((isPos ? "+" : "") + "$" + fmtWhole(m.profit), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0); y += 5;
+        });
+        y += 4;
+      }
+      // Expenses list
+      if (expenseEntries.length > 0) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+        doc.text("Expenses", LM, y); y += 6;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
+        expenseEntries.forEach(e => {
+          if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+          const label = e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+          doc.text(label, LM, y);
+          doc.setTextColor(180, 40, 40); doc.text("-$" + fmtWhole(Number(e.amount)), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0); y += 5;
+        });
+      }
+      addFootersToAllPages(doc);
+      await downloadPdf("machines-summary.pdf", doc.output("datauristring"));
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 4000);
+    } catch (err: any) { toast.error("PDF failed: " + err?.message); }
+    finally { setDownloading(false); }
+  };
+
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-border p-3 space-y-3" style={{ background: "var(--gradient-card)" }}>
 
-        {/* Period filter tabs */}
-        <div className="flex gap-1">
-          {(["all", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
-            <button key={f} onClick={() => handleFilterChange(f)}
-              className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
-              style={summaryFilter === f && !selectedSessionId
-                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
-              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+        {/* Header row: filter tabs + PDF button */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 flex-1">
+            {(["all", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
+              <button key={f} onClick={() => handleFilterChange(f)}
+                className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
+                style={summaryFilter === f && !selectedSessionId
+                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                  : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
+                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="outline" className="h-8 gap-1 font-black text-xs shrink-0"
+            disabled={downloading}
+            onClick={handleDownloadPdf}
+            style={downloaded ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {}}>
+            {downloading
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : downloaded
+              ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              : <Download className="h-3 w-3" />}
+            PDF
+          </Button>
         </div>
 
         {/* Sessions list */}
