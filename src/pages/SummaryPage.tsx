@@ -84,8 +84,26 @@ function aggregateItems(
         costEach = costMap.get(it.id)!;
       } else if (nameMap.has(it.name)) {
         costEach = nameMap.get(it.name)!;
+      } else {
+        // Shots are stored as "2oz: Product Name" or "Shot (extras): Product Name"
+        // Packs/cigs are stored as "Retail: Product Name"
+        // Strip the prefix before ": " and try matching the product name
+        const colonIdx = it.name.indexOf(": ");
+        if (colonIdx !== -1) {
+          const productName = it.name.slice(colonIdx + 2);
+          if (nameMap.has(productName)) {
+            costEach = nameMap.get(productName)!;
+          }
+        }
       }
-      const cat = categoryMap.get(it.name) ?? existing.category;
+      const cat = categoryMap.get(it.name) ?? ((() => {
+        const colonIdx = it.name.indexOf(": ");
+        if (colonIdx !== -1) {
+          const productName = it.name.slice(colonIdx + 2);
+          return categoryMap.get(productName) ?? existing.category;
+        }
+        return existing.category;
+      })());
       map.set(it.name, {
         qty:       existing.qty + it.qty,
         revenue:   existing.revenue + it.qty * it.price,
