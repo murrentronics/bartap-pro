@@ -2241,29 +2241,58 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
 
   if (discountOpen) {
     return (
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] text-muted-foreground shrink-0">New price $</span>
-        <input
-          autoFocus
-          type="number"
-          min="0"
-          step="0.01"
-          value={discountVal}
-          onChange={e => setDiscountVal(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") applyDiscount(); if (e.key === "Escape") { setDiscountOpen(false); setDiscountVal(""); } }}
-          className="w-20 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-green-500"
-          placeholder={Number(item.price).toFixed(2)}
-        />
-        <button onClick={applyDiscount}
-          className="h-10 px-3 rounded-xl font-black text-xs active:scale-95 transition"
-          style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}>
-          OK
-        </button>
-        <button onClick={() => { setDiscountOpen(false); setDiscountVal(""); }}
-          className="h-10 w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center"
-          style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-          <X className="h-4 w-4" />
-        </button>
+      <div className="space-y-2">
+        {/* Display */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground shrink-0">New price $</span>
+          <div className="flex-1 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold flex items-center"
+            style={{ color: discountVal ? "#fff" : "rgba(255,255,255,0.3)" }}>
+            {discountVal || "0"}
+          </div>
+          <button onClick={applyDiscount}
+            className="h-10 px-3 rounded-xl font-black text-xs active:scale-95 transition shrink-0"
+            style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}>
+            OK
+          </button>
+          <button onClick={() => { setDiscountOpen(false); setDiscountVal(""); }}
+            className="h-10 w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center shrink-0"
+            style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Custom numpad */}
+        <div className="grid grid-cols-3 gap-1.5">
+          {["7","8","9","4","5","6","1","2","3"].map(k => (
+            <button key={k} type="button"
+              onClick={() => {
+                const parts = discountVal.split(".");
+                if (parts[1] !== undefined && parts[1].length >= 2) return;
+                setDiscountVal(v => v + k);
+              }}
+              className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
+              {k}
+            </button>
+          ))}
+          <button type="button"
+            onClick={() => { if (!discountVal.includes(".")) setDiscountVal(v => v + "."); }}
+            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
+            .
+          </button>
+          <button type="button"
+            onClick={() => {
+              const parts = discountVal.split(".");
+              if (parts[1] !== undefined && parts[1].length >= 2) return;
+              setDiscountVal(v => v + "0");
+            }}
+            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
+            0
+          </button>
+          <button type="button"
+            onClick={() => setDiscountVal(v => v.slice(0, -1))}
+            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-destructive/20 text-destructive">
+            ⌫
+          </button>
+        </div>
       </div>
     );
   }
@@ -2272,7 +2301,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
     <div className="flex items-center justify-between gap-2">
       {/* D — discount */}
       <button
-        onClick={() => { setDiscountOpen(true); setDiscountVal(Number(item.price).toFixed(2)); }}
+        onClick={() => { setDiscountOpen(true); setDiscountVal(""); }}
         className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
         style={{ background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.45)" }}
         title="Discount">
