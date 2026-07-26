@@ -856,10 +856,10 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                 <div className="border-t border-border divide-y divide-border/40">
 
 
-                  {mEntries.map((e) => {
+                  {mEntries.filter(e => e.type !== "expense").map((e) => {
 
 
-                    const isPayout = e.type === "payout";
+                    const isPayout = e.type === "payout" || e.type === "expense";
 
 
                     const isNewest = e.id === newestId;
@@ -4654,7 +4654,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       const m = machines.find(x => x.id === e.machine_id);
 
 
-      const isPayout = e.type === "payout";
+      const isPayout = e.type === "payout" || e.type === "expense";
 
 
       const dateStr = new Date(e.created_at).toLocaleString("en-GB", {
@@ -5040,7 +5040,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                     const m = machines.find(x => x.id === e.machine_id);
 
 
-                    const isPayout = e.type === "payout";
+                    const isPayout = e.type === "payout" || e.type === "expense";
 
 
                     const hasProof = !!e.proof_image_url;
