@@ -1269,7 +1269,7 @@ export default function CashiersPage() {
       {/* Sticky page title */}
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-black leading-tight">{t("cashiers_title", "Cashiers")}</h1>
+          <h1 className="text-xl font-black leading-tight">{t("cashiers_title", "Staff")}</h1>
           {/* Bar Open / Closed toggle */}
           <button
             type="button"
