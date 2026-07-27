@@ -211,10 +211,10 @@ function StatCard({ label, value, color }: {
       style={{ background: "oklch(0.18 0.02 60)" }}>
 
 
-      <div className="text-[8px] sm:text-[9px] font-semibold text-white/50 leading-tight">{label}</div>
+      <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/50 leading-tight">{label}</div>
 
 
-      <div className="font-black text-sm leading-tight" style={{ color }}>{value}</div>
+      <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{ color }}>{value}</div>
 
 
     </div>
@@ -1344,6 +1344,11 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorLoading,  setMonitorLoading]  = useState(false);
   const [monitorSaving,   setMonitorSaving]   = useState(false);
   const [monitorFocus,    setMonitorFocus]    = useState<"in" | "out" | null>(null);
+  const [monitorUpdateDone, setMonitorUpdateDone] = useState(false); // blocks re-click after save
+  const [showConfirmUpdate, setShowConfirmUpdate] = useState(false); // confirm modal before saving log
+
+  // Reset the "already saved" lock whenever the owner changes an input
+  useEffect(() => { setMonitorUpdateDone(false); }, [monitorIn, monitorOut]);
 
   // Monitor sub-tab: "monitor" | "logs"
   const [monitorSubTab, setMonitorSubTab] = useState<"monitor" | "logs">("monitor");
@@ -1413,6 +1418,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setEditingLogId(null);
     toast.success("Log updated");
     loadLogs();
+  };
+
+  const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
+  const handleDeleteLog = async (id: string) => {
+    setDeletingLogId(id);
+    await sb.from("machine_monitor_logs").delete().eq("id", id);
+    setMonitorLogs(prev => prev.filter(l => l.id !== id));
+    setOpenLogId(null);
+    setDeletingLogId(null);
+    toast.success("Log deleted");
   };
 
   // Load monitor row from Supabase on mount
@@ -1486,6 +1501,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     }).select().maybeSingle();
     if (newLog) setMonitorLogs(prev => [newLog as MonitorLog, ...prev]);
     setMonitorSaving(false);
+    setMonitorUpdateDone(true); // block re-click until inputs change
   };
 
   // When bar opens — move box1 into box2 (running total), clear box1 and diffs
@@ -3250,7 +3266,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 <button key={st} onClick={() => setMonitorSubTab(st)}
                   className={`flex-1 py-2 rounded-xl text-xs font-black capitalize transition ${monitorSubTab === st ? "text-primary-foreground" : "text-muted-foreground"}`}
                   style={monitorSubTab === st ? { background: "var(--gradient-hero)" } : {}}>
-                  {st === "monitor" ? "Monitor" : "Logs"}
+                  {st === "monitor" ? "Update" : "Logs"}
                 </button>
               ))}
             </div>
@@ -3415,13 +3431,35 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
               {/* Update button */}
               <button
-                onClick={() => { handleMonitorUpdate(); setMonitorFocus(null); }}
-                disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
+                onClick={() => { setShowConfirmUpdate(true); setMonitorFocus(null); }}
+                disabled={monitorSaving || monitorUpdateDone || (monitorIn === "" && monitorOut === "")}
                 className="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Update"}
+                {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : monitorUpdateDone ? "✓ Saved" : "Update"}
               </button>
+
+              {/* Confirm Update modal */}
+              {showConfirmUpdate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+                  <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                    <div className="px-6 pt-7 pb-4 text-center space-y-2">
+                      <div className="text-4xl">📋</div>
+                      <h2 className="font-black text-lg">Save Log Entry?</h2>
+                      <p className="text-sm text-muted-foreground leading-snug">This will record a snapshot of the current IN / OUT values to the Logs tab.</p>
+                    </div>
+                    <div className="grid grid-cols-2 border-t border-border">
+                      <button onClick={() => setShowConfirmUpdate(false)}
+                        className="h-14 font-black text-sm border-r border-border transition active:bg-muted/60">Cancel</button>
+                      <button onClick={() => { setShowConfirmUpdate(false); handleMonitorUpdate(); }}
+                        className="h-14 font-black text-sm transition active:opacity-80"
+                        style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                        Save Log
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               </>
               )}
             </div>
@@ -3466,6 +3504,11 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                       </div>
+                      {/* Chevron center bottom of header row */}
+                      <button onClick={() => setOpenLogId(isOpen ? null : log.id)}
+                        className="w-full flex justify-center pb-1 -mt-1">
+                        <svg className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
 
                       {/* Dropdown — card layout */}
                       {isOpen && (
@@ -3497,6 +3540,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                                   {savingLogEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save & Recalculate"}
                                 </button>
                               </div>
+                              {/* Delete record button */}
+                              <button onClick={() => handleDeleteLog(log.id)} disabled={deletingLogId === log.id}
+                                className="w-full h-10 rounded-xl font-black text-xs border border-red-500/40 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
+                                {deletingLogId === log.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Trash2 className="h-3.5 w-3.5" /> Delete Record</>}
+                              </button>
                             </div>
                           ) : (
                             /* View mode — same card layout as the monitor */
