@@ -295,7 +295,7 @@ export default function AppLayout() {
       ]
     : [
         ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
-        ...(ownerHasBar ? [{ to: "/credit",   label: t("credit", "Customers"), icon: Receipt }] : []),
+        ...(ownerHasBar ? [{ to: "/credit",   label: t("customers_title", "Customers"), icon: Receipt }] : []),
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
         ...(isOwner && ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
         ...(isOwner && ownerHasBar ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),

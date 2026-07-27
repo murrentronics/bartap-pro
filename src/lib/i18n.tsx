@@ -36,6 +36,7 @@ const ES: Record<string, string> = {
   "products":         "Productos",
   "machines":         "Máquinas",
   "credit":           "Clientes",
+  "customers_title":  "Clientes",
   "music":            "Música",
 
   // ── Common buttons ────────────────────────────────────────────────────────

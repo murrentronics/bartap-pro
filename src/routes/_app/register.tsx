@@ -1354,7 +1354,7 @@ export default function RegisterPage() {
         return (
           <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm"
             onClick={cancelShotBuffer}>
-            <div className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl overflow-y-auto max-h-[85dvh]"
+            <div className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl flex flex-col max-h-[92dvh]"
               style={{ background: "var(--gradient-card)" }}
               onClick={(e) => e.stopPropagation()}>
               {/* ── Opened bottles grid — tap to switch active bottle ── */}
@@ -1414,7 +1414,7 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              <div className="px-4 pb-2 space-y-2">
+              <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2">
                 {vars.length > 0 ? (
                   <>
                     <div className="grid grid-cols-2 gap-2">
@@ -2418,9 +2418,9 @@ function CashOverlay({
             w-full md:w-64 flex flex-col shrink-0 border-t md:border-t-0 border-border
             md:static
             ${showRightPanel
-              ? "fixed inset-x-3 bottom-3 z-[60] rounded-3xl"
+              ? "absolute inset-0 z-[60] rounded-3xl"
               : "hidden md:flex"}
-          `} style={{ background: "oklch(0.15 0.02 60)", ...(showRightPanel ? { top: "env(safe-area-inset-top, 12px)", maxHeight: "calc(100dvh - 24px)" } : {}) }}>
+          `} style={{ background: "oklch(0.15 0.02 60)" }}>
             {/* Done button — mobile only, closes the panel */}
             <div className="md:hidden flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
               <span className="text-sm font-black text-white/60">Customer / Payment</span>

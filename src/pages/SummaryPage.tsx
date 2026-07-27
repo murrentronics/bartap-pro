@@ -33,7 +33,7 @@ type Expense = {
 
 type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number; category: string | null };
 
-type FilterType = "session" | "day" | "week" | "month" | "year" | "period";
+type FilterType = "day" | "week" | "month" | "year" | "period";
 
 type BarSession = {
   id: string;
@@ -56,7 +56,6 @@ function addDays(date: string, days: number): string {
 
 function filterLabel(filter: FilterType, from: string, to: string): string {
   const fmt2 = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  if (filter === "session") return `Session: ${fmt2(from.slice(0, 10))}`;
   if (filter === "day")    return fmt2(from);
   if (filter === "week")   return `${fmt2(from)} – ${fmt2(to)}`;
   if (filter === "month") {
@@ -87,20 +86,31 @@ function aggregateItems(
       } else {
         // Shots are stored as "2oz: Product Name" or "Shot (extras): Product Name"
         // Packs/cigs are stored as "Retail: Product Name"
-        // Strip the prefix before ": " and try matching the product name
+        // Strip the prefix before ": " ONLY for known synthetic prefixes — NOT for product
+        // names like "Half Bottle: Hennessy" which are real products with their own cost.
+        const SYNTHETIC_PREFIXES = ["Shot", "2oz", "1oz", "Retail", "Pack"];
         const colonIdx = it.name.indexOf(": ");
         if (colonIdx !== -1) {
-          const productName = it.name.slice(colonIdx + 2);
-          if (nameMap.has(productName)) {
-            costEach = nameMap.get(productName)!;
+          const prefix = it.name.slice(0, colonIdx).trim();
+          const isSynthetic = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
+          if (isSynthetic) {
+            const productName = it.name.slice(colonIdx + 2);
+            if (nameMap.has(productName)) {
+              costEach = nameMap.get(productName)!;
+            }
           }
         }
       }
       const cat = categoryMap.get(it.name) ?? ((() => {
+        const SYNTHETIC_PREFIXES = ["Shot", "2oz", "1oz", "Retail", "Pack"];
         const colonIdx = it.name.indexOf(": ");
         if (colonIdx !== -1) {
-          const productName = it.name.slice(colonIdx + 2);
-          return categoryMap.get(productName) ?? existing.category;
+          const prefix = it.name.slice(0, colonIdx).trim();
+          const isSynthetic = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
+          if (isSynthetic) {
+            const productName = it.name.slice(colonIdx + 2);
+            return categoryMap.get(productName) ?? existing.category;
+          }
         }
         return existing.category;
       })());
@@ -202,7 +212,7 @@ export default function SummaryPage() {
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
   const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain" }));
-  const [filter,    setFilter]   = useState<FilterType>("session");
+  const [filter,    setFilter]   = useState<FilterType>("day");
   const [fromDate,  setFromDate] = useState(today);
   const [toDate,    setToDate]   = useState(today);
   const [selMonth,  setSelMonth] = useState(() => tzNow().getMonth());
@@ -221,6 +231,11 @@ export default function SummaryPage() {
   const [sessionStartIso,   setSessionStartIso]   = useState<string | null>(null);
   const [sessionEndIso,     setSessionEndIso]     = useState<string | null>(null);
   const [loadingSessions,   setLoadingSessions]   = useState(true);
+
+  // ── Session date picker state ─────────────────────────────────────────────
+  const [sessPickerYear,  setSessPickerYear]  = useState<number | null>(null);
+  const [sessPickerMonth, setSessPickerMonth] = useState<number | null>(null); // 0-indexed
+  const [sessPickerDay,   setSessPickerDay]   = useState<string | null>(null); // YYYY-MM-DD TT
 
   const fmtTs = (iso: string) => {
     const d = new Date(iso);
@@ -276,6 +291,12 @@ export default function SummaryPage() {
         setSelectedSessionId(all[0].id);
         setSessionStartIso(all[0].session_start);
         setSessionEndIso(all[0].session_end);
+        // Init session date picker to most-recent session's TT date
+        const d = new Date(all[0].session_start);
+        const ttDate = d.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+        setSessPickerYear(parseInt(ttDate.slice(0, 4)));
+        setSessPickerMonth(parseInt(ttDate.slice(5, 7)) - 1);
+        setSessPickerDay(ttDate);
       }
       setLoadingSessions(false);
     });
@@ -310,9 +331,7 @@ export default function SummaryPage() {
     const nowMonth = nowTZ.getMonth();
     const nowYear  = nowTZ.getFullYear();
 
-    if (filter === "session") {
-      // handled by session picker — no date range
-    } else if (filter === "day") {
+    if (filter === "day") {
       setFromDate(nowToday);
       setToDate(nowToday);
     } else if (filter === "week") {
@@ -370,21 +389,67 @@ export default function SummaryPage() {
 
     let startIso: string;
     let endIso: string;
-    let expFrom: string;
-    let expTo: string;
 
-    if (filter === "session") {
+    // Helper: given a calendar range [rangeStart, rangeEnd], find all bar sessions
+    // that OPENED within that range and return earliest open → latest close (or now).
+    // This means a session opening on the 30th and closing on the 31st is fully included
+    // when you pick the 30th, or any week/month/year that contains the 30th.
+    const sessionBoundsForRange = (rangeStart: Date, rangeEnd: Date): { start: string; end: string } => {
+      const inRange = barSessions.filter(s => {
+        const st = new Date(s.session_start);
+        return st >= rangeStart && st <= rangeEnd;
+      });
+      // Also include active session if it opened within range
+      if (barSessionStart) {
+        const st = new Date(barSessionStart);
+        if (st >= rangeStart && st <= rangeEnd &&
+            !inRange.some(s => s.session_start === barSessionStart)) {
+          inRange.push({ id: "active", session_start: barSessionStart, session_end: null });
+        }
+      }
+      if (inRange.length === 0) {
+        // No session started in this range — return the calendar bounds (empty result)
+        return { start: rangeStart.toISOString(), end: rangeEnd.toISOString() };
+      }
+      const earliest = inRange.reduce((a, b) => a.session_start < b.session_start ? a : b);
+      const latest   = inRange.reduce((a, b) =>
+        (a.session_end ?? "9999") > (b.session_end ?? "9999") ? a : b);
+      return {
+        start: earliest.session_start,
+        end:   latest.session_end ?? new Date().toISOString(),
+      };
+    };
+
+    if (filter === "day") {
+      // Day uses the session date picker — sessionStartIso/sessionEndIso set by picker
       if (!sessionStartIso) { setLoading(false); return; }
       startIso = sessionStartIso;
       endIso   = sessionEndIso ?? new Date().toISOString();
-      expFrom  = startIso.slice(0, 10);
-      expTo    = endIso.slice(0, 10);
+    } else if (filter === "week") {
+      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
+      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
+      const b = sessionBoundsForRange(rangeStart, rangeEnd);
+      startIso = b.start; endIso = b.end;
+    } else if (filter === "month") {
+      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
+      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
+      const b = sessionBoundsForRange(rangeStart, rangeEnd);
+      startIso = b.start; endIso = b.end;
+    } else if (filter === "year") {
+      const rangeStart = new Date(`${fromDate}T00:00:00-04:00`);
+      const rangeEnd   = new Date(`${toDate}T23:59:59-04:00`);
+      const b = sessionBoundsForRange(rangeStart, rangeEnd);
+      startIso = b.start; endIso = b.end;
     } else {
-      startIso = new Date(fromDate + "T00:00:00").toISOString();
-      endIso   = new Date(toDate   + "T23:59:59").toISOString();
-      expFrom  = fromDate;
-      expTo    = toDate;
+      // period
+      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
+      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
+      const b = sessionBoundsForRange(rangeStart, rangeEnd);
+      startIso = b.start; endIso = b.end;
     }
+
+    const expFrom = startIso.slice(0, 10);
+    const expTo   = endIso.slice(0, 10);
 
     const [ordersRes, expensesRes, productsRes] = await Promise.all([
       supabase
@@ -394,19 +459,13 @@ export default function SummaryPage() {
         .gte("created_at", startIso)
         .lte("created_at", endIso)
         .order("created_at", { ascending: false }),
-      filter === "session"
-        ? supabase.from("owner_expenses")
-            .select("id, amount, description, expense_date, created_at")
-            .eq("owner_id", ownerId)
-            .gte("created_at", startIso)
-            .lte("created_at", endIso)
-            .order("created_at", { ascending: false })
-        : supabase.from("owner_expenses")
-            .select("id, amount, description, expense_date, created_at")
-            .eq("owner_id", ownerId)
-            .gte("expense_date", expFrom)
-            .lte("expense_date", expTo)
-            .order("expense_date", { ascending: false }),
+      // Use created_at for all filters — sessions can span calendar days
+      supabase.from("owner_expenses")
+        .select("id, amount, description, expense_date, created_at")
+        .eq("owner_id", ownerId)
+        .gte("created_at", startIso)
+        .lte("created_at", endIso)
+        .order("created_at", { ascending: false }),
       supabase.from("products").select("id, name, cost_price, units_per_item, category").eq("owner_id", ownerId),
     ]);
 
@@ -414,7 +473,7 @@ export default function SummaryPage() {
     setExpenses((expensesRes.data ?? []) as Expense[]);
     setProducts((productsRes.data ?? []) as ProductCost[]);
     setLoading(false);
-  }, [ownerId, filter, fromDate, toDate, sessionStartIso, sessionEndIso]);
+  }, [ownerId, filter, fromDate, toDate, sessionStartIso, sessionEndIso, barSessions, barSessionStart]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -460,7 +519,6 @@ export default function SummaryPage() {
   const totalProfit   = totalIncome - totalCostPrice;
 
   const FILTERS: { key: FilterType; label: string }[] = [
-    { key: "session", label: "Session" },
     { key: "day",    label: "Day"    },
     { key: "week",   label: "Week"   },
     { key: "month",  label: "Month"  },
@@ -661,72 +719,176 @@ export default function SummaryPage() {
         ))}
       </div>
 
-      {/* Task 6 — Session picker removed: session info shown under every filter instead */}
-
-      {/* ── Session filter picker ── */}
-      {filter === "session" && (
-        <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
-          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>Select Bar Session</p>
+      {/* ── Day filter: session date picker ── */}
+      {filter === "day" && (
+        <div className="rounded-2xl border border-border p-4 space-y-4" style={{ background: "var(--gradient-card)" }}>
           {loadingSessions ? (
             <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : barSessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">No sessions recorded yet. Open the bar from the Cashiers page to start tracking sessions.</p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-              {barSessions.map((s) => {
-                const isSelected = s.id === selectedSessionId;
-                const isActive = !s.session_end;
-                return (
-                  <button key={s.id} type="button"
-                    onClick={() => {
-                      setSelectedSessionId(s.id);
-                      setSessionStartIso(s.session_start);
-                      setSessionEndIso(s.session_end);
+            <p className="text-sm text-muted-foreground text-center py-2">No sessions recorded yet.</p>
+          ) : (() => {
+            const TZ = "America/Port_of_Spain";
+
+            // Build sets of years, months (per year), days (per year+month) that have sessions
+            const ttDate = (iso: string) =>
+              new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+
+            const yearsSet = new Set<number>();
+            const monthsByYear = new Map<number, Set<number>>();
+            const daysByYearMonth = new Map<string, Set<string>>();
+
+            barSessions.forEach(s => {
+              const d = ttDate(s.session_start);
+              const y = parseInt(d.slice(0, 4));
+              const m = parseInt(d.slice(5, 7)) - 1;
+              const ym = `${y}-${m}`;
+              yearsSet.add(y);
+              if (!monthsByYear.has(y)) monthsByYear.set(y, new Set());
+              monthsByYear.get(y)!.add(m);
+              if (!daysByYearMonth.has(ym)) daysByYearMonth.set(ym, new Set());
+              daysByYearMonth.get(ym)!.add(d);
+            });
+
+            const years = [...yearsSet].sort((a, b) => b - a);
+            const curYear = sessPickerYear ?? years[0];
+            const months = [...(monthsByYear.get(curYear) ?? [])].sort((a, b) => b - a);
+            const curMonth = (sessPickerMonth !== null && months.includes(sessPickerMonth))
+              ? sessPickerMonth : months[0] ?? 0;
+            const ym = `${curYear}-${curMonth}`;
+            const days = [...(daysByYearMonth.get(ym) ?? [])].sort((a, b) => b.localeCompare(a));
+            const curDay = (sessPickerDay && days.includes(sessPickerDay)) ? sessPickerDay : days[0] ?? null;
+
+            // Sessions that opened on curDay (TT)
+            const dayStart = new Date(curDay + "T00:00:00-04:00");
+            const dayEnd   = new Date(curDay + "T23:59:59-04:00");
+            const daySessions = barSessions.filter(s => {
+              const st = new Date(s.session_start);
+              return st >= dayStart && st <= dayEnd;
+            });
+
+            const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+            return (
+              <>
+                {/* Year row */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {years.map(y => (
+                    <button key={y} onClick={() => {
+                      setSessPickerYear(y);
+                      // reset month to first available in that year
+                      const ms = [...(monthsByYear.get(y) ?? [])].sort((a, b) => b - a);
+                      const nm = ms[0] ?? 0;
+                      setSessPickerMonth(nm);
+                      const nd = [...(daysByYearMonth.get(`${y}-${nm}`) ?? [])].sort((a,b) => b.localeCompare(a))[0] ?? null;
+                      setSessPickerDay(nd);
                     }}
-                    className="w-full rounded-xl px-3 py-2.5 text-left transition active:scale-[0.98]"
-                    style={{
-                      background: isSelected ? "rgba(var(--primary-rgb,251 146 60)/0.12)" : "rgba(255,255,255,0.04)",
-                      border: `${isSelected ? 2 : 1}px solid ${isSelected ? "var(--primary)" : "var(--border)"}`,
-                    }}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 space-y-0.5">
-                        {/* Start */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs shrink-0">{isActive ? "🟢" : "🔴"}</span>
-                          <span className="text-xs font-black text-foreground">
-                            {new Date(s.session_start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
-                            {" "}<span style={{ color: "var(--primary)" }}>
-                              {new Date(s.session_start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
-                            </span>
-                          </span>
-                        </div>
-                        {/* End */}
-                        <div className="text-[10px] text-muted-foreground pl-4">
-                          {s.session_end
-                            ? <>→ {new Date(s.session_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" })}
-                              {" "}<span style={{ color: "var(--primary)" }}>
-                                {new Date(s.session_end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
-                              </span></>
-                            : <span className="font-black text-green-400">Still open</span>}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
-                          style={{ background: "var(--gradient-hero)" }}>
-                          <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                      className="h-8 px-3 rounded-xl text-xs font-black transition active:scale-95"
+                      style={curYear === y
+                        ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                        : { background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                      {y}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Month row */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {months.map(m => (
+                    <button key={m} onClick={() => {
+                      setSessPickerMonth(m);
+                      const nd = [...(daysByYearMonth.get(`${curYear}-${m}`) ?? [])].sort((a,b) => b.localeCompare(a))[0] ?? null;
+                      setSessPickerDay(nd);
+                    }}
+                      className="h-8 px-3 rounded-xl text-xs font-black transition active:scale-95"
+                      style={curMonth === m
+                        ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                        : { background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                      {MONTH_NAMES[m]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Day row */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {days.map(d => {
+                    const dayNum = parseInt(d.slice(8, 10));
+                    return (
+                      <button key={d} onClick={() => setSessPickerDay(d)}
+                        className="h-9 w-9 rounded-xl text-xs font-black transition active:scale-95"
+                        style={curDay === d
+                          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                          : { background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+                        {dayNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Sessions for selected day */}
+                <div className="space-y-2 pt-1 border-t border-border/40">
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--primary)" }}>
+                    {curDay ? new Date(curDay + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "No day selected"}
+                  </p>
+                  {daySessions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">No sessions on this day.</p>
+                  ) : (
+                    daySessions.map((s) => {
+                      const isSelected = s.id === selectedSessionId;
+                      const isActive   = !s.session_end;
+                      // When user picks a day session, set start = session_start, end = session_end (or now)
+                      const selectSession = () => {
+                        setSelectedSessionId(s.id);
+                        setSessionStartIso(s.session_start);
+                        setSessionEndIso(s.session_end);
+                      };
+                      // Auto-select first session of the day when day changes
+                      if (!isSelected && daySessions[0].id === s.id && !daySessions.some(x => x.id === selectedSessionId)) {
+                        selectSession();
+                      }
+                      return (
+                        <button key={s.id} type="button" onClick={selectSession}
+                          className="w-full rounded-xl px-3 py-2.5 text-left transition active:scale-[0.98]"
+                          style={{
+                            background: isSelected ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.04)",
+                            border: `${isSelected ? 2 : 1}px solid ${isSelected ? "var(--primary)" : "var(--border)"}`,
+                          }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs shrink-0">{isActive ? "🟢" : "🔴"}</span>
+                                <span className="text-xs font-black text-foreground">
+                                  {new Date(s.session_start).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ })}
+                                  <span className="font-normal text-muted-foreground"> open</span>
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground pl-4">
+                                {s.session_end
+                                  ? <>→ {new Date(s.session_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: TZ })}
+                                    {" "}<span style={{ color: "var(--primary)" }}>
+                                      {new Date(s.session_end).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ })}
+                                    </span> close</>
+                                  : <span className="font-black text-green-400">Still open</span>}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
+                                <svg className="h-3 w-3 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
       {/* ── Shared filter date-range badge — shown under every non-session filter picker ── */}
-      {filter !== "session" && (
+      {filter !== "day" && (
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3"
           style={{ background: barIsOpen ? "rgba(134,239,172,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${barIsOpen ? "rgba(134,239,172,0.25)" : "rgba(255,255,255,0.08)"}` }}>
           <span className="text-sm shrink-0">{barIsOpen ? "🟢" : "🔴"}</span>

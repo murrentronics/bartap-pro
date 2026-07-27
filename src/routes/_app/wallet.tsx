@@ -2694,27 +2694,27 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
-    // Trinidad midnight = UTC midnight + 4 hours
-    const todayDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
-    const todayStartTT = new Date(todayDateStr + "T00:00:00-04:00"); // Trinidad is UTC-4
 
-    // Bar session start — used for session income calculation
+    // Bar session start — used for BOTH today's and session income/expense
+    // "Today" = from current bar_session_start → now (resets only when bar closes & reopens)
     const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
 
-    // Find the earliest session start on today's bar day (for Today's Income)
-    // "Today" = from first bar open of today's TT calendar date → bar_closed_at (or now)
-    const todaySessionsRes = await (sb as any).from("bar_sessions")
-      .select("session_start")
-      .eq("owner_id", profile.id)
-      .gte("session_start", todayStartTT.toISOString())
-      .order("session_start", { ascending: true })
-      .limit(1);
-    // The earliest session today — could be a closed session from earlier in the day
-    const earliestTodayStart: string | null =
-      (todaySessionsRes.data && todaySessionsRes.data.length > 0)
-        ? todaySessionsRes.data[0].session_start
-        // If no closed sessions today, fall back to the active session start (bar opened today and still open)
-        : (barSessionStart && barSessionStart >= todayStartTT.toISOString() ? barSessionStart : null);
+    // "Today's" anchor = bar_session_start when open, or bar_closed_at's session start when closed.
+    // We look at bar_sessions to find the most recent closed session so Today still shows
+    // the right numbers after the bar has been closed.
+    const barClosedAtVal: string | null = (profile as any).bar_closed_at ?? null;
+    let todayAnchor: string | null = barSessionStart; // bar is open — use current session start
+    if (!barSessionStart && barClosedAtVal) {
+      // Bar was closed — find the most recent closed session's start time
+      const lastSessionRes = await (sb as any).from("bar_sessions")
+        .select("session_start")
+        .eq("owner_id", profile.id)
+        .order("session_start", { ascending: false })
+        .limit(1);
+      todayAnchor = (lastSessionRes.data && lastSessionRes.data.length > 0)
+        ? lastSessionRes.data[0].session_start
+        : null;
+    }
 
     const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionExpenseRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
@@ -2725,17 +2725,19 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
       supabase.from("products").select("id, price, cost_price, units_per_item, stock_qty").eq("owner_id", profile.id),
       sb.from("opened_bottles").select("revenue, product_id, products(price)").eq("owner_id", profile.id).eq("status", "open"),
-      // Today's orders: from earliest session start today → now (bar open to bar close, spans float resets)
-      earliestTodayStart
-        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", earliestTodayStart)
+      // Today's orders: from bar_session_start → now (resets only on bar close+reopen, not midnight)
+      todayAnchor
+        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayAnchor)
         : Promise.resolve({ data: [] }),
       // Today's orders with items for cost calculation (same window)
-      earliestTodayStart
-        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", earliestTodayStart)
-        : supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
-      // Today's non-stock expenses
-      supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
-        .eq("expense_date", todayDateStr).gt("amount", 0),
+      todayAnchor
+        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", todayAnchor)
+        : Promise.resolve({ data: [] }),
+      // Today's non-stock expenses (same window — from bar open anchor)
+      todayAnchor
+        ? supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
+            .gt("amount", 0).gte("created_at", todayAnchor)
+        : Promise.resolve({ data: [] }),
       // Session income: orders only since current bar_session_start (resets on New Session)
       barSessionStart
         ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", barSessionStart)
@@ -2887,42 +2889,56 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3,4,5].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {/* Row 1 — session stats (resets on New Session) */}
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Income</div>
-                <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                  {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+            <div className="space-y-2">
+              {/* Row 1 — session stats: 3 cards, resets on New Session */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Income</div>
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Expense</div>
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionExpense > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? (sessionExpense > 0 ? `$${fmt(sessionExpense)}` : "$0.00") : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Profit</div>
+                  {(() => {
+                    const sp = sessionIncome - sessionExpense;
+                    return (
+                      <div className="font-black text-xs" style={{ color: !barIsOpenWallet ? "rgba(255,255,255,0.3)" : sp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {barIsOpenWallet ? `${sp >= 0 ? "+" : ""}$${fmt(sp)}` : "—"}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Expense</div>
-                <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionExpense > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {barIsOpenWallet ? (sessionExpense > 0 ? `$${fmt(sessionExpense)}` : "$0.00") : "—"}
+              {/* Rows 2 & 3 — today stats: 2-col grid */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
+                  <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
                 </div>
-              </div>
-              {/* Row 2 — today stats */}
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
-                <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
-              </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Profit</div>
-                <div className="font-black text-sm" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                  {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Profit</div>
+                  <div className="font-black text-sm" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                    {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
+                  </div>
                 </div>
-              </div>
-              {/* Row 3 — today costs */}
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
-                <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
+                  <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Expenses</div>
-                <div className="font-black text-sm" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Expenses</div>
+                  <div className="font-black text-sm" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2967,20 +2983,19 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       </section>
 
       {/* ── Hero 3: Float ────────────────────────────────────────────────────────────────────────── */}
-      <section className="rounded-3xl p-4 relative overflow-hidden"
+      <section className="rounded-3xl px-4 py-3 relative overflow-hidden"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
           <div className="flex gap-3 items-stretch">
             <button
               onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
-              className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2"
+              className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2 py-3"
               style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
               {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
             </button>
-            <div className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2.5"
+            <div className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2"
               style={{ background: "oklch(0.18 0.02 60)", border: cashierFloat > 0 ? "1px solid oklch(0.38 0.12 60)" : "1px solid oklch(0.28 0.04 60)" }}>
-              <div className="text-[10px] sm:text-xs font-semibold mb-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>Cashier Float</div>
               {cashierFloat > 0 ? (
                 <>
                   <div className="flex items-center justify-between gap-2">

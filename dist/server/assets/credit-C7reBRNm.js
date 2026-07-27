@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-trY-Z65E.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, k as ChevronRight, i as LoaderCircle, P as Pencil, l as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, m as drawHeader, n as LM, o as RM, p as CONTENT_BOTTOM, q as addFootersToAllPages, r as downloadPdf } from "./router-CRsJpeT2.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-92YZiT0U.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-C0NdaLQ6.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -56,7 +56,7 @@ async function printBill(account, ownerName) {
   }
   const {
     jsPDF
-  } = await import("./jspdf.es.min-D40g0fxT.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -292,6 +292,9 @@ function CreditPage() {
   const {
     effectiveOwnerId
   } = useChain();
+  const {
+    t
+  } = useTranslation();
   const rawOwnerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
   const ownerId = profile?.role === "owner" ? effectiveOwnerId(profile.id) : rawOwnerId;
   const ownerName = profile?.username ?? "Bar";
@@ -349,12 +352,12 @@ function CreditPage() {
     fetchAccounts();
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-3 space-y-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: "Customers" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: t("customers_title", "Customers") }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 rounded-2xl p-1", style: {
       background: "var(--gradient-card)"
-    }, children: ["credit", "cleared", "create"].map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTab(t), className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === t ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`, style: tab === t ? {
+    }, children: ["credit", "cleared", "create"].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTab(tabKey), className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`, style: tab === tabKey ? {
       background: "var(--gradient-hero)"
-    } : {}, children: t === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : t === "cleared" ? "Cleared" : "Create" }, t)) }),
+    } : {}, children: tabKey === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create" }, tabKey)) }),
     tab === "credit" && /* @__PURE__ */ jsxRuntimeExports.jsx(OpenedTab, { accounts: opened, loading, ownerName, onSelect: setPayAccount, onEdit: setEditAccount }),
     tab === "cleared" && /* @__PURE__ */ jsxRuntimeExports.jsx(ClosedTab, { accounts: closed, loading, ownerName, onEdit: setEditAccount, ownerId }),
     tab === "create" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreateTab, { ownerId, onCreated: handleCreated }),

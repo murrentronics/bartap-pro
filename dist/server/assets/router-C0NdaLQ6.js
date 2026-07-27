@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-trY-Z65E.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-92YZiT0U.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-D-UoVS3x.js");
+          const { PushNotifications } = await import("./index-DgPH0EGe.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27100,7 +27100,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-aWxLin2T.css";
+const appCss = "/assets/styles-CDQJowWb.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-D3GU4T3p.js");
+const $$splitComponentImporter$3 = () => import("./login-CC0Dgcc9.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-DswBh_Uo.js");
+const $$splitComponentImporter$2 = () => import("./_app-DM0FESC3.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -31159,7 +31159,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-BoRWUx2w.js");
+const $$splitComponentImporter$1 = () => import("./manager-DsWIRyld.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43053,8 +43053,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-CgZe8CtY.js");
-    const { Share } = await import("./index-YBzkuJDm.js");
+    const { Filesystem, Directory } = await import("./index-Ccbt8s0C.js");
+    const { Share } = await import("./index-CnfQttTW.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43212,7 +43212,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-D6UowROU.js");
+      const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43231,7 +43231,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-D6UowROU.js");
+    const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43266,7 +43266,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-D6UowROU.js");
+      const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43339,7 +43339,7 @@ function SmallStat({ label, value, color }) {
     }
   );
 }
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier, ownerId }) {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier, ownerId, currentBarSession, barOpen }) {
   const [openMonth, setOpenMonth] = reactExports.useState(null);
   const [downloadingMonth, setDownloadingMonth] = reactExports.useState(null);
   const [downloadedAll, setDownloadedAll] = reactExports.useState(false);
@@ -43367,7 +43367,6 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
   };
   const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
   const [barClosedAt, setBarClosedAt] = reactExports.useState(null);
-  const barIsOpen = !!barSessionStart && !barClosedAt;
   reactExports.useEffect(() => {
     if (!ownerId) return;
     supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single().then(({ data }) => {
@@ -43404,6 +43403,21 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
       if (entryTime < floatTime) return null;
     }
     return newestPayoutEntry.id;
+  })();
+  const newestIncomeEntry = allSorted.find((e) => e.type === "income") ?? null;
+  const newestIncomeId = (() => {
+    if (isCashier) return null;
+    if (!barOpen) return null;
+    if (!newestIncomeEntry) return null;
+    if (lastDeletedAt !== null) {
+      const entryTime = new Date(newestIncomeEntry.created_at).getTime();
+      if (entryTime < lastDeletedAt - 2e3) return null;
+    }
+    if (currentBarSession) {
+      const entryTime = new Date(newestIncomeEntry.created_at).getTime();
+      if (entryTime < new Date(currentBarSession).getTime()) return null;
+    }
+    return newestIncomeEntry.id;
   })();
   const byMonth = {};
   allSorted.forEach((e) => {
@@ -43510,8 +43524,8 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                   ]
                 }
               ),
-              isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border divide-y divide-border/40", children: mEntries.map((e) => {
-                const isPayout = e.type === "payout";
+              isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border divide-y divide-border/40", children: mEntries.filter((e) => e.type !== "expense").map((e) => {
+                const isPayout = e.type === "payout" || e.type === "expense";
                 const isNewest = e.id === newestId;
                 const hasProof = !!e.proof_image_url;
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 py-3 flex items-start gap-3", children: [
@@ -43560,7 +43574,16 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                     }
                   ),
                   isNewest && deletingId === e.id && isPayout && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 text-white animate-spin" }) }),
-                  !isPayout && !isCashier && barIsOpen && barSessionStart && new Date(e.created_at) >= new Date(barSessionStart) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  e.id === newestIncomeId && !deletingId && !isPayout && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => onDelete(e.id),
+                      className: "h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5 text-white" })
+                    }
+                  ),
+                  e.id === newestIncomeId && deletingId === e.id && !isPayout && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 text-white animate-spin" }) }),
+                  !isPayout && !isCashier && barOpen && currentBarSession && new Date(e.created_at) >= new Date(currentBarSession) && /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
                       onClick: () => {
@@ -43649,6 +43672,113 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [loading, setLoading] = reactExports.useState(true);
   const isCashier = profile.role === "cashier";
   const [tab, setTab] = reactExports.useState(initialTab ?? "payout");
+  const [monitorIn, setMonitorIn] = reactExports.useState("");
+  const [monitorOut, setMonitorOut] = reactExports.useState("");
+  const [monitorInTotal, setMonitorInTotal] = reactExports.useState("");
+  const [monitorOutTotal, setMonitorOutTotal] = reactExports.useState("");
+  const [monitorInDiff, setMonitorInDiff] = reactExports.useState("");
+  const [monitorOutDiff, setMonitorOutDiff] = reactExports.useState("");
+  const [monitorLoading, setMonitorLoading] = reactExports.useState(false);
+  const [monitorSaving, setMonitorSaving] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setMonitorLoading(true);
+    sb.from("machine_monitor").select("in_entry, in_total, in_diff, out_entry, out_total, out_diff").eq("machine_id", machine.id).eq("owner_id", ownerId).maybeSingle().then(({ data }) => {
+      if (cancelled || !data) {
+        setMonitorLoading(false);
+        return;
+      }
+      setMonitorIn(data.in_entry ? String(data.in_entry) : "");
+      setMonitorOut(data.out_entry ? String(data.out_entry) : "");
+      setMonitorInTotal(data.in_total ? String(data.in_total) : "");
+      setMonitorOutTotal(data.out_total ? String(data.out_total) : "");
+      setMonitorInDiff(data.in_diff ? String(data.in_diff) : "");
+      setMonitorOutDiff(data.out_diff ? String(data.out_diff) : "");
+      setMonitorLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [machine.id, ownerId]);
+  const saveMonitor = async (fields) => {
+    await sb.from("machine_monitor").upsert({
+      machine_id: machine.id,
+      owner_id: ownerId,
+      in_entry: parseFloat(fields.in_entry) || 0,
+      in_total: parseFloat(fields.in_total) || 0,
+      in_diff: parseFloat(fields.in_diff) || 0,
+      out_entry: parseFloat(fields.out_entry) || 0,
+      out_total: parseFloat(fields.out_total) || 0,
+      out_diff: parseFloat(fields.out_diff) || 0,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }, { onConflict: "machine_id,owner_id" });
+  };
+  const handleMonitorUpdate = async () => {
+    const inVal = parseFloat(monitorIn) || 0;
+    const outVal = parseFloat(monitorOut) || 0;
+    const inDiff = inVal - (parseFloat(monitorInTotal) || 0);
+    const outDiff = outVal - (parseFloat(monitorOutTotal) || 0);
+    const inDiffStr = inDiff.toFixed(2);
+    const outDiffStr = outDiff.toFixed(2);
+    setMonitorInDiff(inDiffStr);
+    setMonitorOutDiff(outDiffStr);
+    setMonitorSaving(true);
+    await saveMonitor({
+      in_entry: monitorIn,
+      in_total: monitorInTotal,
+      in_diff: inDiffStr,
+      out_entry: monitorOut,
+      out_total: monitorOutTotal,
+      out_diff: outDiffStr
+    });
+    setMonitorSaving(false);
+  };
+  const handleMonitorSessionReset = async () => {
+    const newInTotal = ((parseFloat(monitorInTotal) || 0) + (parseFloat(monitorIn) || 0)).toFixed(2);
+    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    setMonitorInTotal(newInTotal);
+    setMonitorOutTotal(newOutTotal);
+    setMonitorIn("");
+    setMonitorOut("");
+    setMonitorInDiff("");
+    setMonitorOutDiff("");
+    await saveMonitor({
+      in_entry: "",
+      in_total: newInTotal,
+      in_diff: "",
+      out_entry: "",
+      out_total: newOutTotal,
+      out_diff: ""
+    });
+  };
+  const handleMonitorRollup = async () => {
+    if (monitorIn === "" && monitorOut === "") return;
+    setMonitorSaving(true);
+    const newInTotal = ((parseFloat(monitorInTotal) || 0) + (parseFloat(monitorIn) || 0)).toFixed(2);
+    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    setMonitorInTotal(newInTotal);
+    setMonitorOutTotal(newOutTotal);
+    setMonitorIn("");
+    setMonitorOut("");
+    setMonitorInDiff("");
+    setMonitorOutDiff("");
+    await saveMonitor({
+      in_entry: "",
+      in_total: newInTotal,
+      in_diff: "",
+      out_entry: "",
+      out_total: newOutTotal,
+      out_diff: ""
+    });
+    setMonitorSaving(false);
+  };
+  const prevBarSessionRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (prevBarSessionRef.current !== null && barSessionStart !== prevBarSessionRef.current) {
+      handleMonitorSessionReset();
+    }
+    prevBarSessionRef.current = barSessionStart;
+  }, [barSessionStart]);
   const [amount, setAmount] = reactExports.useState("");
   const [busy, setBusy] = reactExports.useState(false);
   const [deletingId, setDeletingId] = reactExports.useState(null);
@@ -43826,7 +43956,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-D40g0fxT.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -43931,7 +44061,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-D40g0fxT.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44158,13 +44288,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               ]
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 rounded-2xl p-1", style: { background: "var(--gradient-card)" }, children: ["payout", ...!isCashier ? ["income"] : [], "history"].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 rounded-2xl p-1", style: { background: "var(--gradient-card)" }, children: ["payout", ...!isCashier ? ["income"] : [], ...!isCashier ? ["history"] : [], ...!isCashier ? ["monitor"] : []].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx(
             "button",
             {
               onClick: () => setTab(tabKey),
-              className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`,
+              className: `flex-1 py-2.5 rounded-xl text-xs font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`,
               style: tab === tabKey ? { background: "var(--gradient-hero)" } : {},
-              children: tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : t("history", "History")
+              children: tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"
             },
             tabKey
           )) }),
@@ -44383,9 +44513,138 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               onDelete: handleDelete,
               onLightbox: (url) => setLightboxUrl(url),
               isCashier,
-              ownerId
+              ownerId,
+              currentBarSession: barSessionStart,
+              barOpen: barIsOpen
             }
-          )
+          ),
+          tab === "monitor" && !isCashier && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border p-4", style: { background: "var(--gradient-card)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-4", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-sm tracking-wide uppercase", style: { color: "oklch(0.82 0.18 65)" }, children: "Machine Monitor" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  onClick: handleMonitorRollup,
+                  disabled: monitorSaving || monitorIn === "" && monitorOut === "",
+                  className: "h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5",
+                  style: { background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" },
+                  title: "Move current entries into Running Total and clear for new input",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-3 w-3" }),
+                    " New Entry"
+                  ]
+                }
+              )
+            ] }),
+            monitorLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        inputMode: "decimal",
+                        pattern: "[0-9]*",
+                        placeholder: "0.00",
+                        value: monitorIn,
+                        onChange: (e) => setMonitorIn(e.target.value),
+                        className: "w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50",
+                        style: { color: "oklch(0.72 0.18 145)" }
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        readOnly: true,
+                        value: monitorInTotal ? `$${monitorInTotal}` : "—",
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
+                        style: { color: "oklch(0.72 0.18 145)" }
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        readOnly: true,
+                        value: monitorInDiff ? `$${monitorInDiff}` : "—",
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
+                        style: { color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }
+                      }
+                    )
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        inputMode: "decimal",
+                        pattern: "[0-9]*",
+                        placeholder: "0.00",
+                        value: monitorOut,
+                        onChange: (e) => setMonitorOut(e.target.value),
+                        className: "w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50",
+                        style: { color: "oklch(0.65 0.22 25)" }
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        readOnly: true,
+                        value: monitorOutTotal ? `$${monitorOutTotal}` : "—",
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
+                        style: { color: "oklch(0.65 0.22 25)" }
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        readOnly: true,
+                        value: monitorOutDiff ? `$${monitorOutDiff}` : "—",
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
+                        style: { color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }
+                      }
+                    )
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleMonitorUpdate,
+                  disabled: monitorSaving || monitorIn === "" && monitorOut === "",
+                  className: "mt-5 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2",
+                  style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
+                  children: monitorSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+                    " Saving…"
+                  ] }) : "Update"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 text-[10px] text-muted-foreground text-center leading-relaxed", children: "Difference = New Entry − Running Total.  When bar opens, New Entry moves to Running Total automatically." })
+            ] })
+          ] }) })
         ] }),
         showDeleteMachine && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
@@ -44822,16 +45081,16 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full px-2 pb-1.5 space-y-0.5", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[8px] font-black text-white/40 uppercase tracking-wider", children: "TP" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[9px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`, children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-black text-white/50 uppercase tracking-wider", children: "TP" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[11px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`, children: [
                         mProfit >= 0 ? "+" : "",
                         "$",
                         fmtWhole(mProfit)
                       ] })
                     ] }),
                     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[8px] font-black text-white/40 uppercase tracking-wider", children: "SP" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[9px] font-black ${mSessionProfit >= 0 ? "text-green-400" : "text-red-400"}`, children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-black text-white/50 uppercase tracking-wider", children: "SP" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[11px] font-black ${mSessionProfit >= 0 ? "text-green-400" : "text-red-400"}`, children: [
                         mSessionProfit >= 0 ? "+" : "",
                         "$",
                         fmtWhole(mSessionProfit)
@@ -44906,7 +45165,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-D40g0fxT.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -44973,7 +45232,7 @@ function AllHistoryTab({ entries, machines }) {
         y = 20;
       }
       const m = machines.find((x) => x.id === e.machine_id);
-      const isPayout = e.type === "payout";
+      const isPayout = e.type === "payout" || e.type === "expense";
       const dateStr = new Date(e.created_at).toLocaleString("en-GB", {
         day: "numeric",
         month: "short",
@@ -45149,7 +45408,7 @@ function AllHistoryTab({ entries, machines }) {
               ] }),
               mEntries.map((e) => {
                 const m = machines.find((x) => x.id === e.machine_id);
-                const isPayout = e.type === "payout";
+                const isPayout = e.type === "payout" || e.type === "expense";
                 const hasProof = !!e.proof_image_url;
                 return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 py-3 flex items-start gap-3", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `h-8 w-8 rounded-full flex items-center justify-center shrink-0 border text-xs font-black ${isPayout ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-green-500/15 border-green-500/30 text-green-400"}`, children: isPayout ? "P" : "I" }),
@@ -45167,7 +45426,7 @@ function AllHistoryTab({ entries, machines }) {
                       "$",
                       fmt(Number(e.amount))
                     ] }),
-                    m && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-semibold mt-0.5", style: { color: "var(--primary)" }, children: m.name }),
+                    e.type === "expense" ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "inline-block mt-0.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide", style: { background: "oklch(0.28 0.06 50)", color: "oklch(0.82 0.18 65)" }, children: "Cashier Expense" }) : m && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs font-semibold mt-0.5", style: { color: "var(--primary)" }, children: m.name }),
                     e.note && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground mt-0.5", children: e.note }),
                     e.cashier_name && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[10px] text-white/30 mt-0.5", children: [
                       isPayout ? "Expense by" : "Cleared by",
@@ -45283,7 +45542,25 @@ function SummaryTab({ entries, machines, ownerId }) {
       return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
     if (summaryFilter === "all") return null;
-    if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
+    if (summaryFilter === "day") {
+      const dayStartTT = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
+      const dayEndTT = /* @__PURE__ */ new Date(pickerDate + "T23:59:59-04:00");
+      const sessionsOnDay = barSessions.filter((s) => {
+        const st = new Date(s.opened_at);
+        return st >= dayStartTT && st <= dayEndTT;
+      });
+      if (sessionsOnDay.length > 0) {
+        const earliest = sessionsOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+        const latest = sessionsOnDay.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
+        const startIso = earliest.opened_at;
+        const endIso = latest.closed_at ?? (/* @__PURE__ */ new Date()).toISOString();
+        return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
+      }
+      if (barSessionStart && new Date(barSessionStart) >= dayStartTT && new Date(barSessionStart) <= dayEndTT) {
+        return { start: pickerDate, end: pickerDate, startIso: barSessionStart, endIso: (/* @__PURE__ */ new Date()).toISOString() };
+      }
+      return { start: pickerDate, end: pickerDate, startIso: dayStartTT.toISOString(), endIso: dayEndTT.toISOString() };
+    }
     if (summaryFilter === "week") {
       const end = /* @__PURE__ */ new Date(pickerDate + "T12:00:00");
       end.setDate(end.getDate() + 6);
@@ -45327,17 +45604,154 @@ function SummaryTab({ entries, machines, ownerId }) {
   const byIncome = [...statList].sort((a, b) => b.income - a.income);
   const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map((m) => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
+  const [downloading, setDownloading] = reactExports.useState(false);
+  const [downloaded, setDownloaded] = reactExports.useState(false);
+  const handleDownloadPdf = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+      let title = "All Time";
+      if (selectedSessionId) {
+        const s = barSessions.find((b) => b.id === selectedSessionId);
+        if (s) title = "Session: " + new Date(s.opened_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+      } else if (summaryFilter !== "all") {
+        title = summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1);
+      }
+      let y = await drawHeader(doc, "All Machines", "Summary", title, generated);
+      const bw = RM - LM;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, bw, 26, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
+      const cols = [
+        { label: "Total Expense", value: "-$" + fmtWhole(totalExpense), r: 180, g: 40, b: 40 },
+        { label: "Total Income", value: "+$" + fmtWhole(totalIncome), r: 40, g: 140, b: 40 },
+        { label: "Net Profit", value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 }
+      ];
+      const cw = bw / 3;
+      cols.forEach((c, i) => {
+        const cx2 = LM + i * cw + cw / 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(c.label, cx2, y + 10, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(c.r, c.g, c.b);
+        doc.text(c.value, cx2, y + 19, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0);
+      y += 32;
+      if (statList.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        doc.text("Machine Breakdown", LM, y);
+        y += 6;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(130, 130, 130);
+        doc.text("MACHINE", LM, y);
+        doc.text("INCOME", LM + 80, y, { align: "right" });
+        doc.text("PAYOUT", LM + 130, y, { align: "right" });
+        doc.text("PROFIT", RM, y, { align: "right" });
+        y += 3;
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.line(LM, y, RM, y);
+        y += 4;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        profitList.forEach((m) => {
+          if (y > CONTENT_BOTTOM) {
+            doc.addPage();
+            y = 20;
+          }
+          const isPos = m.profit >= 0;
+          doc.text(m.name, LM, y);
+          doc.setTextColor(40, 140, 40);
+          doc.text("$" + fmtWhole(m.income), LM + 80, y, { align: "right" });
+          doc.setTextColor(180, 40, 40);
+          doc.text("$" + fmtWhole(m.payout), LM + 130, y, { align: "right" });
+          doc.setTextColor(isPos ? 40 : 180, isPos ? 140 : 40, 40);
+          doc.text((isPos ? "+" : "") + "$" + fmtWhole(m.profit), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0);
+          y += 5;
+        });
+        y += 4;
+      }
+      if (expenseEntries.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        doc.text("Expenses", LM, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        expenseEntries.forEach((e) => {
+          if (y > CONTENT_BOTTOM) {
+            doc.addPage();
+            y = 20;
+          }
+          const label = e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+          doc.text(label, LM, y);
+          doc.setTextColor(180, 40, 40);
+          doc.text("-$" + fmtWhole(Number(e.amount)), RM, y, { align: "right" });
+          doc.setTextColor(0, 0, 0);
+          y += 5;
+        });
+      }
+      addFootersToAllPages(doc);
+      await downloadPdf("machines-summary.pdf", doc.output("datauristring"));
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 4e3);
+    } catch (err) {
+      toast.error("PDF failed: " + err?.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border p-3 space-y-3", style: { background: "var(--gradient-card)" }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1", children: ["all", "day", "week", "month", "year"].map((f) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        onClick: () => handleFilterChange(f),
-        className: "flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize",
-        style: summaryFilter === f && !selectedSessionId ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" },
-        children: f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)
-      },
-      f
-    )) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 flex-1", children: ["all", "day", "week", "month", "year"].map((f) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => handleFilterChange(f),
+          className: "flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize",
+          style: summaryFilter === f && !selectedSessionId ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" },
+          children: f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)
+        },
+        f
+      )) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        Button,
+        {
+          size: "sm",
+          variant: "outline",
+          className: "h-8 gap-1 font-black text-xs shrink-0",
+          disabled: downloading,
+          onClick: handleDownloadPdf,
+          style: downloaded ? { background: "#16a34a", color: "#fff", borderColor: "#16a34a" } : {},
+          children: [
+            downloading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : downloaded ? /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-3 w-3", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { className: "h-3 w-3" }),
+            "PDF"
+          ]
+        }
+      )
+    ] }),
     barSessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[9px] font-black text-white/40 uppercase tracking-wider", children: "Sessions" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1 max-h-40 overflow-y-auto", children: barSessions.map((s) => {
@@ -45725,6 +46139,14 @@ function MachinesPage() {
       toast.error("Enter a valid amount");
       return;
     }
+    if (remainingFloat === null) {
+      toast.error("Set a float before adding an expense");
+      return;
+    }
+    if (val > remainingFloat) {
+      toast.error(`Expense $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`);
+      return;
+    }
     const targetMachineId = machines[0]?.id ?? null;
     setSavingExpense(true);
     const now = /* @__PURE__ */ new Date();
@@ -46030,7 +46452,7 @@ function MachinesPage() {
             },
             floatSession,
             remainingFloat,
-            isCashier: !isOwner,
+            isCashier: profile.role === "cashier",
             barSessionStart,
             onSetFloat: () => {
               setFloatAmount("");
@@ -46229,6 +46651,13 @@ function MachinesPage() {
                 }
               )
             ] }),
+            remainingFloat === null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-xl px-3 py-2 text-center text-xs font-black text-red-400", style: { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }, children: "No float set — set a float first" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl px-3 py-2 flex items-center justify-between", style: { background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-semibold text-white/40", children: "Remaining Float" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-black", style: { color: remainingFloat <= 0 ? "#f87171" : "#86efac" }, children: [
+                "$",
+                remainingFloat.toFixed(2)
+              ] })
+            ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
@@ -46318,10 +46747,10 @@ function MachinesPage() {
                 "button",
                 {
                   onClick: handleSaveMachineExpense,
-                  disabled: savingExpense || !expenseAmount,
+                  disabled: savingExpense || !expenseAmount || remainingFloat === null || parseFloat(expenseAmount) > (remainingFloat ?? 0),
                   className: "flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50",
                   style: { background: "rgba(239,68,68,0.5)", color: "#fff", border: "1px solid rgba(239,68,68,0.7)" },
-                  children: savingExpense ? "Saving…" : "Save Expense"
+                  children: savingExpense ? "Saving…" : remainingFloat === null ? "Set Float First" : "Save Expense"
                 }
               )
             ] })
@@ -47119,7 +47548,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-_4nsGOX1.js");
+const $$splitComponentImporter = () => import("./credit-C7reBRNm.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });
@@ -47427,19 +47856,20 @@ export {
   useChain as h,
   LoaderCircle as i,
   Link as j,
-  ChevronRight as k,
-  CircleCheck as l,
-  drawHeader as m,
-  LM as n,
-  RM as o,
-  CONTENT_BOTTOM as p,
-  addFootersToAllPages as q,
-  downloadPdf as r,
+  useTranslation as k,
+  ChevronRight as l,
+  CircleCheck as m,
+  drawHeader as n,
+  LM as o,
+  RM as p,
+  CONTENT_BOTTOM as q,
+  addFootersToAllPages as r,
   supabase as s,
   toast as t,
   useComposedRefs as u,
-  registerPlugin as v,
-  WebPlugin as w,
-  buildRequestInit as x,
-  router as y
+  downloadPdf as v,
+  registerPlugin as w,
+  WebPlugin as x,
+  buildRequestInit as y,
+  router as z
 };

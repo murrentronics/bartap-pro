@@ -265,7 +265,7 @@ function SmallStat({ label, value, color }: { label: string; value: string; colo
 // ── History Month Accordion ────────────────────────────────────────────────────
 
 
-function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier, ownerId }: {
+function HistoryMonthAccordion({ entries, loading, downloading, deletingId, lastDeletedAt, floatSession, onDownloadAll, onDownloadMonth, onDelete, onLightbox, isCashier, ownerId, currentBarSession, barOpen }: {
 
 
   entries: MachineEntry[];
@@ -302,6 +302,12 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
 
   ownerId: string;
+
+
+  currentBarSession: string | null;
+
+
+  barOpen: boolean;
 
 
 }) {
@@ -577,6 +583,24 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
 
 
+
+  // Only show delete on the newest income entry for owner/manager when bar is still open.
+  // Hidden when: bar is closed, or entry predates the current bar session.
+  const newestIncomeEntry = allSorted.find(e => e.type === "income") ?? null;
+  const newestIncomeId = (() => {
+    if (isCashier) return null;
+    if (!barOpen) return null;
+    if (!newestIncomeEntry) return null;
+    if (lastDeletedAt !== null) {
+      const entryTime = new Date(newestIncomeEntry.created_at).getTime();
+      if (entryTime < lastDeletedAt - 2000) return null;
+    }
+    if (currentBarSession) {
+      const entryTime = new Date(newestIncomeEntry.created_at).getTime();
+      if (entryTime < new Date(currentBarSession).getTime()) return null;
+    }
+    return newestIncomeEntry.id;
+  })();
   // Group by YYYY-MM
 
 
@@ -1027,13 +1051,27 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                         )}
 
 
+                        {/* Delete income — owner/manager only, bar open, newest in current session */}
+                        {e.id === newestIncomeId && !deletingId && !isPayout && (
+                          <button onClick={() => onDelete(e.id)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0">
+                            <Trash2 className="h-3.5 w-3.5 text-white" />
+                          </button>
+                        )}
+                        {e.id === newestIncomeId && deletingId === e.id && !isPayout && (
+                          <div className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 shrink-0 opacity-50">
+                            <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                          </div>
+                        )}
+
+
                         {/* Edit income — owner/manager only, bar open, entry in current session */}
 
 
-                        {!isPayout && !isCashier && barIsOpen && barSessionStart &&
+                        {!isPayout && !isCashier && barOpen && currentBarSession &&
 
 
-                          new Date(e.created_at) >= new Date(barSessionStart) && (
+                          new Date(e.created_at) >= new Date(currentBarSession) && (
 
 
                           <button
@@ -1370,6 +1408,25 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       in_entry: "", in_total: newInTotal, in_diff: "",
       out_entry: "", out_total: newOutTotal, out_diff: "",
     });
+  };
+
+  // Manual rollup — same as session reset but triggered by owner button
+  const handleMonitorRollup = async () => {
+    if (monitorIn === "" && monitorOut === "") return;
+    setMonitorSaving(true);
+    const newInTotal  = ((parseFloat(monitorInTotal)  || 0) + (parseFloat(monitorIn)  || 0)).toFixed(2);
+    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    setMonitorInTotal(newInTotal);
+    setMonitorOutTotal(newOutTotal);
+    setMonitorIn("");
+    setMonitorOut("");
+    setMonitorInDiff("");
+    setMonitorOutDiff("");
+    await saveMonitor({
+      in_entry: "", in_total: newInTotal, in_diff: "",
+      out_entry: "", out_total: newOutTotal, out_diff: "",
+    });
+    setMonitorSaving(false);
   };
 
   // Detect bar session start changing → reset monitor
@@ -2654,7 +2711,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
 
 
-          {(["payout", ...(!isCashier ? ["income"] : []), "history", ...(!isCashier ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
+          {(["payout", ...(!isCashier ? ["income"] : []), ...(!isCashier ? ["history"] : []), ...(!isCashier ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
 
             <button key={tabKey} onClick={() => setTab(tabKey)}
@@ -3155,6 +3212,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             ownerId={ownerId}
 
 
+            currentBarSession={barSessionStart}
+
+
+            barOpen={barIsOpen}
+
+
           />
 
 
@@ -3165,9 +3228,20 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         {tab === "monitor" && !isCashier && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
-              <h2 className="font-black text-sm mb-4 text-center tracking-wide uppercase" style={{ color: "oklch(0.82 0.18 65)" }}>
-                Machine Monitor
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-black text-sm tracking-wide uppercase" style={{ color: "oklch(0.82 0.18 65)" }}>
+                  Machine Monitor
+                </h2>
+                <button
+                  onClick={handleMonitorRollup}
+                  disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
+                  className="h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  style={{ background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" }}
+                  title="Move current entries into Running Total and clear for new input"
+                >
+                  <Plus className="h-3 w-3" /> New Entry
+                </button>
+              </div>
 
               {monitorLoading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -3183,8 +3257,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="decimal"
+                      pattern="[0-9]*"
                       placeholder="0.00"
                       value={monitorIn}
                       onChange={(e) => setMonitorIn(e.target.value)}
@@ -3226,8 +3301,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="decimal"
+                      pattern="[0-9]*"
                       placeholder="0.00"
                       value={monitorOut}
                       onChange={(e) => setMonitorOut(e.target.value)}
@@ -4498,44 +4574,18 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
                 <div className="w-full px-2 pb-1.5 space-y-0.5">
-
-
                   <div className="flex items-center justify-between gap-1">
-
-
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-wider">TP</span>
-
-
-                    <span className={`text-[9px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-
-
+                    <span className="text-[10px] font-black text-white/50 uppercase tracking-wider">TP</span>
+                    <span className={`text-[11px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
-
-
                     </span>
-
-
                   </div>
-
-
                   <div className="flex items-center justify-between gap-1">
-
-
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-wider">SP</span>
-
-
-                    <span className={`text-[9px] font-black ${mSessionProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-
-
+                    <span className="text-[10px] font-black text-white/50 uppercase tracking-wider">SP</span>
+                    <span className={`text-[11px] font-black ${mSessionProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {mSessionProfit >= 0 ? "+" : ""}${fmtWhole(mSessionProfit)}
-
-
                     </span>
-
-
                   </div>
-
-
                 </div>
 
 
@@ -5310,7 +5360,10 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                           </div>
 
 
-                          {m && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{m.name}</div>}
+                          {e.type === "expense"
+                            ? <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide" style={{ background: "oklch(0.28 0.06 50)", color: "oklch(0.82 0.18 65)" }}>Cashier Expense</span>
+                            : m && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{m.name}</div>
+                          }
 
 
                           {e.note && <div className="text-xs text-muted-foreground mt-0.5">{e.note}</div>}
@@ -5575,7 +5628,29 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
     if (summaryFilter === "all") return null;
-    if (summaryFilter === "day") return { start: pickerDate, end: pickerDate };
+    if (summaryFilter === "day") {
+      // Day = from bar open on that calendar day (TT) until bar closes (may be next morning)
+      const dayStartTT = new Date(pickerDate + "T00:00:00-04:00");
+      const dayEndTT   = new Date(pickerDate + "T23:59:59-04:00");
+      const sessionsOnDay = barSessions.filter(s => {
+        const st = new Date(s.opened_at);
+        return st >= dayStartTT && st <= dayEndTT;
+      });
+      if (sessionsOnDay.length > 0) {
+        const earliest = sessionsOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+        const latest   = sessionsOnDay.reduce((a, b) =>
+          (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
+        const startIso = earliest.opened_at;
+        const endIso   = latest.closed_at ?? new Date().toISOString();
+        return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
+      }
+      // Active session started today
+      if (barSessionStart && new Date(barSessionStart) >= dayStartTT && new Date(barSessionStart) <= dayEndTT) {
+        return { start: pickerDate, end: pickerDate, startIso: barSessionStart, endIso: new Date().toISOString() };
+      }
+      // Nothing on this day — return calendar bounds so result is empty
+      return { start: pickerDate, end: pickerDate, startIso: dayStartTT.toISOString(), endIso: dayEndTT.toISOString() };
+    }
     if (summaryFilter === "week") {
       const end = new Date(pickerDate + "T12:00:00");
       end.setDate(end.getDate() + 6);
