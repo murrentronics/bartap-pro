@@ -387,7 +387,31 @@ function SalaryTab({ cashiers, ownerId }: { cashiers: Cashier[]; ownerId: string
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="font-black text-sm">{c.username}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="font-black text-sm">{c.username}</p>
+                  {(() => {
+                    const isCustom = (c as any).role === "custom";
+                    const isMgr = (c as any).job_title === "manager";
+                    if (isCustom) return (
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.4)", color: "#c4b5fd" }}>
+                        {(c as any).job_title ?? "Worker"}
+                      </span>
+                    );
+                    if (isMgr) return (
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: "rgba(134,239,172,0.15)", border: "1px solid rgba(134,239,172,0.4)", color: "#86efac" }}>
+                        Manager
+                      </span>
+                    );
+                    return (
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)", border: "1px solid rgba(var(--primary-rgb,251 146 60)/0.4)", color: "var(--primary)" }}>
+                        Cashier
+                      </span>
+                    );
+                  })()}
+                </div>
                 {salary ? (
                   <>
                     <p className="text-xs text-muted-foreground">
