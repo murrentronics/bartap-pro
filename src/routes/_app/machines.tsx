@@ -1752,7 +1752,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const sessionPayouts = entries
 
 
-    .filter(e => (e.type === "payout" || e.type === "expense") && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart)))
+    .filter(e => (e.type === "payout" || e.type === "expense") && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at)))
 
 
     .reduce((s, e) => s + Number(e.amount), 0);
@@ -1761,7 +1761,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const sessionIncome = entries
 
 
-    .filter(e => e.type === "income" && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart)))
+    .filter(e => e.type === "income" && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at)))
 
 
     .reduce((s, e) => s + Number(e.amount), 0);
@@ -3177,7 +3177,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 1 — new entry (tap to focus numpad) */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
                     <button
                       onClick={() => setMonitorFocus(monitorFocus === "in" ? null : "in")}
                       className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
@@ -3192,7 +3192,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 2 — running total */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Last</label>
                     <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
                       style={{ color: "oklch(0.72 0.18 145)" }}>
                       {monitorInTotal || "—"}
@@ -3201,7 +3201,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 3 — difference */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
                     <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
                       style={{ color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
                       {monitorInDiff || "—"}
@@ -3215,7 +3215,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 1 — new entry (tap to focus numpad) */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
                     <button
                       onClick={() => setMonitorFocus(monitorFocus === "out" ? null : "out")}
                       className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
@@ -3230,7 +3230,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 2 — running total */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Last</label>
                     <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
                       style={{ color: "oklch(0.65 0.22 25)" }}>
                       {monitorOutTotal || "—"}
@@ -3239,7 +3239,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                   {/* Box 3 — difference */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
                     <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
                       style={{ color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }}>
                       {monitorOutDiff || "—"}
@@ -6569,31 +6569,57 @@ export default function MachinesPage() {
     setSavingFloat(true);
 
 
-    const { error } = await sb.from("machine_float_sessions").insert({
+    let error: any = null;
 
 
-      owner_id: ownerId,
+    if (machineFloatMode === "same" && floatSession) {
 
 
-      amount: val,
+      // Same Session — add to existing float amount, payouts stay intact
+      const newAmount = Number(floatSession.amount) + val;
 
 
-      session_type: machineFloatMode,
+      ({ error } = await sb.from("machine_float_sessions")
 
 
-      set_at: new Date().toISOString(),
+        .update({ amount: newAmount })
 
 
-    });
+        .eq("id", floatSession.id));
+
+
+      if (!error) toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newAmount.toFixed(2)}`);
+
+
+    } else {
+
+
+      // New Session — fresh row, payout counter resets to $0
+      ({ error } = await sb.from("machine_float_sessions").insert({
+
+
+        owner_id: ownerId,
+
+
+        amount: val,
+
+
+        set_at: new Date().toISOString(),
+
+
+      }));
+
+
+      if (!error) toast.success(val === 0 ? "Float cleared" : "New machine session — float set to $" + val.toFixed(2));
+
+
+    }
 
 
     setSavingFloat(false);
 
 
     if (error) { toast.error(error.message); return; }
-
-
-    toast.success("Float set");
 
 
     setFloatAmount(""); setMachineFloatMode("new"); setShowSetFloat(false);

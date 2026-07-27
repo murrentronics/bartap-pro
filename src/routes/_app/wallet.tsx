@@ -2657,11 +2657,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newTotal.toFixed(2)}`);
       setTimeout(() => refreshProfile(), 300);
     } else {
-      // New Session — set the float to the new amount, reset used to $0,
-      // and mark bar_session_start so Summary knows when this night began
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (sb as any).from("profiles")
-        .update({ cashier_float: val, cashier_float_set_at: now, bar_session_start: now, bar_closed_at: null })
+      // New Session — reset float and stamp cashier_float_set_at as the new session anchor.
+      // bar_session_start is NOT touched — that belongs to Open Bar only.
+      // Session cards (income/expense/profit) use cashier_float_set_at as their anchor.
+      const { error } = await sb.from("profiles")
+        .update({ cashier_float: val, cashier_float_set_at: now })
         .eq("id", profile.id);
       setSavingFloat(false);
       if (error) { toast.error(error.message); return; }
@@ -2700,6 +2700,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Bar session start — used for BOTH today's and session income/expense
     // "Today" = from current bar_session_start → now (resets only when bar closes & reopens)
     const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
+
+    // Session cards anchor = cashier_float_set_at (resets when owner clicks New Session on float)
+    // This is independent of bar_session_start so machines/register/cashiers are unaffected.
+    const floatSessionStart: string | null = (profile as any).cashier_float_set_at ?? null;
 
     // "Today's" anchor = bar_session_start when open, or bar_closed_at's session start when closed.
     // We look at bar_sessions to find the most recent closed session so Today still shows
@@ -2740,18 +2744,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         ? supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
             .gt("amount", 0).gte("created_at", todayAnchor)
         : Promise.resolve({ data: [] }),
-      // Session income: orders only since current bar_session_start (resets on New Session)
-      barSessionStart
-        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", barSessionStart)
+      // Session income: orders only since cashier_float_set_at (resets on New Session float)
+      floatSessionStart
+        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", floatSessionStart)
         : Promise.resolve({ data: [] }),
-      // Session expense: manual (non-stock) expenses since current bar_session_start (resets on New Session)
-      barSessionStart
+      // Session expense: manual (non-stock) expenses since cashier_float_set_at
+      floatSessionStart
         ? supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
-            .gt("amount", 0).gte("created_at", barSessionStart)
+            .gt("amount", 0).gte("created_at", floatSessionStart)
         : Promise.resolve({ data: [] }),
       // Session orders with items for stock cost calculation (same window as session income)
-      barSessionStart
-        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", barSessionStart)
+      floatSessionStart
+        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", floatSessionStart)
         : Promise.resolve({ data: [] }),
       // All-time orders with items — for Est. Total Out calculation
       supabase.from("orders").select("items").eq("owner_id", profile.id),
@@ -3118,28 +3122,6 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="relative space-y-3">
           {/* Session mode selector — shown when a float is already set */}
-          {cashierFloat > 0 && (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFloatSessionMode("same")}
-                className="h-10 rounded-2xl font-black text-xs transition active:scale-95"
-                style={floatSessionMode === "same"
-                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
-                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
-                + Add to Float
-              </button>
-              <button
-                type="button"
-                onClick={() => setFloatSessionMode("new")}
-                className="h-10 rounded-2xl font-black text-xs transition active:scale-95"
-                style={floatSessionMode === "new"
-                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
-                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
-                New Session
-              </button>
-            </div>
-          )}
           <div className="flex gap-3 items-stretch">
             <button
               onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
