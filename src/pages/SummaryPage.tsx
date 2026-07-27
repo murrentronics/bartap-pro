@@ -84,16 +84,17 @@ function aggregateItems(
       } else if (nameMap.has(it.name)) {
         costEach = nameMap.get(it.name)!;
       } else {
-        // Shots are stored as "2oz: Product Name" or "Shot (extras): Product Name"
+        // Shots are stored as "<variation.label>: <product_name>" with a synthetic id "shot-..."
         // Packs/cigs are stored as "Retail: Product Name"
-        // Strip the prefix before ": " ONLY for known synthetic prefixes — NOT for product
-        // names like "Half Bottle: Hennessy" which are real products with their own cost.
+        // Strip the prefix before ": " for any shot (id starts with "shot-") OR known synthetic prefixes
         const SYNTHETIC_PREFIXES = ["Shot", "2oz", "1oz", "Retail", "Pack"];
         const colonIdx = it.name.indexOf(": ");
+        const isShotId = (it.id ?? "").startsWith("shot-");
         if (colonIdx !== -1) {
           const prefix = it.name.slice(0, colonIdx).trim();
-          const isSynthetic = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
-          if (isSynthetic) {
+          const isSyntheticPrefix = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
+          // Match if it's a known synthetic prefix OR if the item ID marks it as a shot
+          if (isSyntheticPrefix || isShotId) {
             const productName = it.name.slice(colonIdx + 2);
             if (nameMap.has(productName)) {
               costEach = nameMap.get(productName)!;
@@ -104,10 +105,11 @@ function aggregateItems(
       const cat = categoryMap.get(it.name) ?? ((() => {
         const SYNTHETIC_PREFIXES = ["Shot", "2oz", "1oz", "Retail", "Pack"];
         const colonIdx = it.name.indexOf(": ");
+        const isShotId = (it.id ?? "").startsWith("shot-");
         if (colonIdx !== -1) {
           const prefix = it.name.slice(0, colonIdx).trim();
-          const isSynthetic = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
-          if (isSynthetic) {
+          const isSyntheticPrefix = SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
+          if (isSyntheticPrefix || isShotId) {
             const productName = it.name.slice(colonIdx + 2);
             return categoryMap.get(productName) ?? existing.category;
           }
@@ -236,9 +238,10 @@ export default function SummaryPage() {
     return `${date} · ${time}`;
   };
 
-  const [orders,   setOrders]   = useState<Order[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [products, setProducts] = useState<ProductCost[]>([]);
+  const [orders,       setOrders]       = useState<Order[]>([]);
+  const [expenses,     setExpenses]     = useState<Expense[]>([]);
+  const [products,     setProducts]     = useState<ProductCost[]>([]);
+  const [walletIncome, setWalletIncome] = useState<number>(0);
   const [loading,  setLoading]  = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloaded,  setDownloaded]  = useState(false);
@@ -376,31 +379,38 @@ export default function SummaryPage() {
       // If bar opened/closed multiple times on the same day, span from first open → last close.
       const dayStartTT = new Date(fromDate + "T00:00:00-04:00");
       const dayEndTT   = new Date(fromDate + "T23:59:59-04:00");
+      const todayTT    = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      const isToday    = fromDate === todayTT;
 
-      // Collect all sessions that started on this calendar day
-      const sessionsOnDay = barSessions.filter(s => {
-        const st = new Date(s.session_start);
-        return st >= dayStartTT && st <= dayEndTT;
-      });
-      // Include active session if it started today
-      if (barSessionStart) {
-        const st = new Date(barSessionStart);
-        if (st >= dayStartTT && st <= dayEndTT &&
-            !sessionsOnDay.some(s => s.session_start === barSessionStart)) {
-          sessionsOnDay.push({ id: "active", session_start: barSessionStart, session_end: null });
-        }
+      // If viewing today and bar is currently open — use barSessionStart → now
+      if (isToday && barSessionStart && !barClosedAt) {
+        startIso = barSessionStart;
+        endIso   = new Date().toISOString();
       }
+      // If viewing today and bar was just closed — use barSessionStart → barClosedAt
+      else if (isToday && barSessionStart && barClosedAt) {
+        startIso = barSessionStart;
+        endIso   = barClosedAt;
+      }
+      else {
+        // Past day: try to find matching sessions in bar_sessions history
+        const sessionsOnDay = barSessions.filter(s => {
+          const st = new Date(s.session_start);
+          return st >= dayStartTT && st <= dayEndTT;
+        });
 
-      if (sessionsOnDay.length === 0) {
-        // No session on this day — impossible range → empty result
-        startIso = dayEndTT.toISOString();
-        endIso   = dayStartTT.toISOString();
-      } else {
-        const earliest = sessionsOnDay.reduce((a, b) => a.session_start < b.session_start ? a : b);
-        const latest   = sessionsOnDay.reduce((a, b) =>
-          (a.session_end ?? new Date().toISOString()) > (b.session_end ?? new Date().toISOString()) ? a : b);
-        startIso = earliest.session_start;
-        endIso   = latest.session_end ?? new Date().toISOString();
+        if (sessionsOnDay.length > 0) {
+          // Found session records — use exact session timestamps
+          const earliest = sessionsOnDay.reduce((a, b) => a.session_start < b.session_start ? a : b);
+          const latest   = sessionsOnDay.reduce((a, b) =>
+            (a.session_end ?? new Date().toISOString()) > (b.session_end ?? new Date().toISOString()) ? a : b);
+          startIso = earliest.session_start;
+          endIso   = latest.session_end ?? new Date().toISOString();
+        } else {
+          // No session record found — fall back to full calendar day so orders aren't hidden
+          startIso = dayStartTT.toISOString();
+          endIso   = dayEndTT.toISOString();
+        }
       }
     } else if (filter === "week") {
       // Week/month/year/period: use plain calendar bounds — all records in the date range
@@ -422,7 +432,7 @@ export default function SummaryPage() {
     const expFrom = startIso.slice(0, 10);
     const expTo   = endIso.slice(0, 10);
 
-    const [ordersRes, expensesRes, productsRes] = await Promise.all([
+    const [ordersRes, expensesRes, productsRes, walletTxRes] = await Promise.all([
       supabase
         .from("orders")
         .select("id, total, paid, change_given, items, created_at")
@@ -438,13 +448,22 @@ export default function SummaryPage() {
         .lte("created_at", endIso)
         .order("created_at", { ascending: false }),
       supabase.from("products").select("id, name, cost_price, units_per_item, category").eq("owner_id", ownerId),
+      // Wallet transactions (transfer_in + credit_payment) in the same window
+      supabase.from("wallet_transactions")
+        .select("amount, type, created_at")
+        .eq("profile_id", ownerId)
+        .in("type", ["transfer_in", "credit_payment"])
+        .gt("amount", 0)
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
     ]);
 
     setOrders((ordersRes.data ?? []) as Order[]);
     setExpenses((expensesRes.data ?? []) as Expense[]);
     setProducts((productsRes.data ?? []) as ProductCost[]);
+    setWalletIncome((walletTxRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0));
     setLoading(false);
-  }, [ownerId, filter, fromDate, toDate, barSessions, barSessionStart]);
+  }, [ownerId, filter, fromDate, toDate, barSessions, barSessionStart, barClosedAt]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -485,7 +504,7 @@ export default function SummaryPage() {
 
   const allItems      = aggregateItems(orders, costMap, nameMap, categoryMap);
   const items         = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
-  const totalIncome   = items.reduce((s, it) => s + it.revenue, 0);
+  const totalIncome   = items.reduce((s, it) => s + it.revenue, 0) + walletIncome;
   const totalCostPrice = items.reduce((s, it) => s + it.costTotal, 0) + totalNonStockExpenses;
   const totalProfit   = totalIncome - totalCostPrice;
 

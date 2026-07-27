@@ -367,7 +367,7 @@ function CreditPage() {
             }`}
             style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}
           >
-            {tabKey === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create"}
+            {tabKey === "credit" ? `Open Tabs${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create"}
           </button>
         ))}
       </div>

@@ -4622,12 +4622,14 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
                 <div className="w-full px-2 pb-1.5 space-y-0.5">
+                  {isOwner && (
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-[10px] font-black text-white/50 uppercase tracking-wider">TP</span>
                     <span className={`text-[11px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
                     </span>
                   </div>
+                  )}
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-[10px] font-black text-white/50 uppercase tracking-wider">SP</span>
                     <span className={`text-[11px] font-black ${mSessionProfit >= 0 ? "text-green-400" : "text-red-400"}`}>

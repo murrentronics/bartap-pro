@@ -2720,7 +2720,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionExpenseRes, sessionItemOrdersRes, allItemOrdersRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
-      sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
+      sb.from("owner_expenses").select("amount, description").eq("owner_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
@@ -2758,11 +2758,15 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     ]);
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
-    const monthlyExpenses = (expRes.data ?? []).reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
+    // Only count manual (non-stock) expenses for Est. Total Out — stock costs are in totalStockSoldCost
+    const monthlyExpenses = (expRes.data ?? [])
+      .filter((e: { description: string | null }) => (e.description ?? "").startsWith("Non-Stock Expense"))
+      .reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
     const transfersIncome = (transfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const ownerOrdersIncome = (ownerOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
+    const cashierOrdersIncome = (cashierOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
     const creditPaymentsIncome = (creditPaymentsRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const totalIncome = transfersIncome + ownerOrdersIncome + creditPaymentsIncome;
+    const totalIncome = transfersIncome + ownerOrdersIncome + cashierOrdersIncome + creditPaymentsIncome;
 
     const closedStockValue = (productsRes.data ?? []).reduce(
       (s: number, p: { price: number; cost_price: number; stock_qty: number }) => s + Number(p.price) * Number(p.stock_qty), 0
@@ -2782,15 +2786,39 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     // Build product cost map: id → effective cost per unit (cost_price ÷ units_per_item if set)
     const prodCostById = new Map<string, number>(
-      ((productsRes.data ?? []) as { id: string; cost_price: number; units_per_item: number }[])
+      ((productsRes.data ?? []) as { id: string; name: string; cost_price: number; units_per_item: number }[])
         .map((p) => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price])
     );
+    // Name-based fallback for shots with synthetic IDs (e.g. "shot-<bottleId>-<variationKey>-...")
+    const prodCostByName = new Map<string, number>(
+      ((productsRes.data ?? []) as { id: string; name: string; cost_price: number; units_per_item: number }[])
+        .map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price])
+    );
+
+    // Resolve cost for an order item — handles exact ID, name fallback, and shot synthetic IDs
+    const SHOT_SYNTHETIC_PREFIXES = ["Shot", "2oz", "1oz", "Retail", "Pack"];
+    const resolveItemCost = (it: { id?: string; name: string }): number => {
+      if (it.id && prodCostById.has(it.id)) return prodCostById.get(it.id)!;
+      if (prodCostByName.has(it.name)) return prodCostByName.get(it.name)!;
+      // Shot items: "<variation.label>: <product_name>" with id starting "shot-"
+      const colonIdx = it.name.indexOf(": ");
+      const isShotId = (it.id ?? "").startsWith("shot-");
+      if (colonIdx !== -1) {
+        const prefix = it.name.slice(0, colonIdx).trim();
+        const isSyntheticPrefix = SHOT_SYNTHETIC_PREFIXES.some(p => prefix.toLowerCase().startsWith(p.toLowerCase()));
+        if (isSyntheticPrefix || isShotId) {
+          const productName = it.name.slice(colonIdx + 2);
+          if (prodCostByName.has(productName)) return prodCostByName.get(productName)!;
+        }
+      }
+      return 0;
+    };
 
     // Today's cost = sum of (qty × cost_price) across all today's order items
     type OrderItemRaw = { id?: string; name: string; qty: number; price: number };
     const todayCostFromItems = (todayItemOrdersRes.data ?? []).reduce((s: number, o: { items: OrderItemRaw[] }) => {
       const items: OrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
-      return s + items.reduce((cs, it) => cs + (prodCostById.get(it.id ?? "") ?? 0) * it.qty, 0);
+      return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
     }, 0);
 
     // Today's non-stock expenses (positive only, same filter as Summary page)
@@ -2818,7 +2846,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     const sessionStockCost = barSessionStart
       ? (sessionItemOrdersRes.data ?? []).reduce((s: number, o: { items: SessionOrderItem[] }) => {
           const items: SessionOrderItem[] = Array.isArray(o.items) ? o.items : [];
-          return s + items.reduce((cs, it) => cs + (prodCostById.get(it.id ?? "") ?? 0) * it.qty, 0);
+          return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
         }, 0)
       : 0;
 
@@ -2826,7 +2854,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     type AllOrderItemRaw = { id?: string; name: string; qty: number; price: number };
     const totalStockSoldCost = (allItemOrdersRes.data ?? []).reduce((s: number, o: { items: AllOrderItemRaw[] }) => {
       const items: AllOrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
-      return s + items.reduce((cs, it) => cs + (prodCostById.get(it.id ?? "") ?? 0) * it.qty, 0);
+      return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
     }, 0);
 
     setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, totalStockSoldCost, sessionIncome, sessionExpense, sessionStockCost, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
@@ -2973,27 +3001,39 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
-                <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
-              </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Profit</div>
-                <div className="font-black text-sm" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                  {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
+            <div className="space-y-2">
+              {/* Row 1 — Today's In / Today's Out */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's In</div>
+                  <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
+                </div>
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Out</div>
+                  <div className="font-black text-sm" style={{ color: (todayStockCost + todayExpenses) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {(todayStockCost + todayExpenses) > 0 ? `$${fmt(todayStockCost + todayExpenses)}` : "—"}
+                  </div>
                 </div>
               </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
-                <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
+              {/* Row 2 — Today's Stock Cost + Today's Expenses + Today's Profit (3 cards) */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Stock Cost</div>
+                  <div className="font-black text-xs" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Expenses</div>
-                <div className="font-black text-sm" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Expenses</div>
+                  <div className="font-black text-xs" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Profit</div>
+                  <div className="font-black text-xs" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                    {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
+                  </div>
                 </div>
               </div>
             </div>
