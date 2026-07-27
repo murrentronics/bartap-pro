@@ -1337,6 +1337,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorOutDiff,  setMonitorOutDiff]  = useState<string>("");
   const [monitorLoading,  setMonitorLoading]  = useState(false);
   const [monitorSaving,   setMonitorSaving]   = useState(false);
+  const [monitorFocus,    setMonitorFocus]    = useState<"in" | "out" | null>(null);
 
   // Load monitor row from Supabase on mount
   useEffect(() => {
@@ -1410,18 +1411,20 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     });
   };
 
-  // Manual rollup — same as session reset but triggered by owner button
+  // Manual rollup — REPLACE running total with the current new entry, clear new entry and diffs
   const handleMonitorRollup = async () => {
     if (monitorIn === "" && monitorOut === "") return;
     setMonitorSaving(true);
-    const newInTotal  = ((parseFloat(monitorInTotal)  || 0) + (parseFloat(monitorIn)  || 0)).toFixed(2);
-    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    // Replace running total with new entry value (not accumulate)
+    const newInTotal  = monitorIn  !== "" ? monitorIn  : monitorInTotal;
+    const newOutTotal = monitorOut !== "" ? monitorOut : monitorOutTotal;
     setMonitorInTotal(newInTotal);
     setMonitorOutTotal(newOutTotal);
     setMonitorIn("");
     setMonitorOut("");
     setMonitorInDiff("");
     setMonitorOutDiff("");
+    setMonitorFocus(null);
     await saveMonitor({
       in_entry: "", in_total: newInTotal, in_diff: "",
       out_entry: "", out_total: newOutTotal, out_diff: "",
@@ -3237,7 +3240,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
                   className="h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                   style={{ background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" }}
-                  title="Move current entries into Running Total and clear for new input"
                 >
                   <Plus className="h-3 w-3" /> New Entry
                 </button>
@@ -3253,43 +3255,37 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 <div className="space-y-3">
                   <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
 
-                  {/* Box 1 — new entry (editable) */}
+                  {/* Box 1 — new entry (tap to focus numpad) */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*"
-                      placeholder="0.00"
-                      value={monitorIn}
-                      onChange={(e) => setMonitorIn(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      style={{ color: "oklch(0.72 0.18 145)" }}
-                    />
+                    <button
+                      onClick={() => setMonitorFocus(monitorFocus === "in" ? null : "in")}
+                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
+                      style={{
+                        background: monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                        borderColor: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
+                        color: "oklch(0.72 0.18 145)",
+                      }}>
+                      {monitorIn || "0"}
+                    </button>
                   </div>
 
-                  {/* Box 2 — running total (read-only) */}
+                  {/* Box 2 — running total */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={monitorInTotal ? `$${monitorInTotal}` : "—"}
-                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
-                      style={{ color: "oklch(0.72 0.18 145)" }}
-                    />
+                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                      style={{ color: "oklch(0.72 0.18 145)" }}>
+                      {monitorInTotal || "—"}
+                    </div>
                   </div>
 
-                  {/* Box 3 — difference (read-only) */}
+                  {/* Box 3 — difference */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={monitorInDiff ? `$${monitorInDiff}` : "—"}
-                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
-                      style={{ color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}
-                    />
+                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                      style={{ color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                      {monitorInDiff || "—"}
+                    </div>
                   </div>
                 </div>
 
@@ -3297,61 +3293,108 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 <div className="space-y-3">
                   <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
 
-                  {/* Box 1 — new entry (editable) */}
+                  {/* Box 1 — new entry (tap to focus numpad) */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*"
-                      placeholder="0.00"
-                      value={monitorOut}
-                      onChange={(e) => setMonitorOut(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      style={{ color: "oklch(0.65 0.22 25)" }}
-                    />
+                    <button
+                      onClick={() => setMonitorFocus(monitorFocus === "out" ? null : "out")}
+                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
+                      style={{
+                        background: monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                        borderColor: monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
+                        color: "oklch(0.65 0.22 25)",
+                      }}>
+                      {monitorOut || "0"}
+                    </button>
                   </div>
 
-                  {/* Box 2 — running total (read-only) */}
+                  {/* Box 2 — running total */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={monitorOutTotal ? `$${monitorOutTotal}` : "—"}
-                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
-                      style={{ color: "oklch(0.65 0.22 25)" }}
-                    />
+                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                      style={{ color: "oklch(0.65 0.22 25)" }}>
+                      {monitorOutTotal || "—"}
+                    </div>
                   </div>
 
-                  {/* Box 3 — difference (read-only) */}
+                  {/* Box 3 — difference */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={monitorOutDiff ? `$${monitorOutDiff}` : "—"}
-                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
-                      style={{ color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }}
-                    />
+                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                      style={{ color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }}>
+                      {monitorOutDiff || "—"}
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* ── Inline numpad — shown when a field is focused ── */}
+              {monitorFocus && (
+                <div className="mt-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-center mb-2"
+                    style={{ color: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                    Entering {monitorFocus.toUpperCase()}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["7","8","9","4","5","6","1","2","3"].map(k => (
+                      <button key={k} type="button"
+                        onClick={() => {
+                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                          const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
+                          const parts  = val.split(".");
+                          if (parts[1] !== undefined && parts[1].length >= 2) return;
+                          setter(val + k);
+                        }}
+                        className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                        style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                        {k}
+                      </button>
+                    ))}
+                    <button type="button"
+                      onClick={() => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
+                        if (!val.includes(".")) setter(val + ".");
+                      }}
+                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                      style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                      .
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
+                        const parts  = val.split(".");
+                        if (parts[1] !== undefined && parts[1].length >= 2) return;
+                        setter(val + "0");
+                      }}
+                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                      style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                      0
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
+                        setter(val.slice(0, -1));
+                      }}
+                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                      style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
+                      ⌫
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Update button */}
               <button
-                onClick={handleMonitorUpdate}
+                onClick={() => { handleMonitorUpdate(); setMonitorFocus(null); }}
                 disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
-                className="mt-5 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
                 {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Update"}
               </button>
-
-              <p className="mt-3 text-[10px] text-muted-foreground text-center leading-relaxed">
-                Difference = New Entry − Running Total.&nbsp;
-                When bar opens, New Entry moves to Running Total automatically.
-              </p>
               </>
               )}
             </div>
@@ -5628,40 +5671,56 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
     if (summaryFilter === "all") return null;
+
+    // Helper: given calendar bounds, find sessions that opened within range and return
+    // earliest open → latest close (or now). Entries from a session closing next morning
+    // are included when the session opened on the selected day/week/month/year.
+    const sessionBounds = (rangeStart: Date, rangeEnd: Date): { startIso: string; endIso: string } => {
+      const inRange = barSessions.filter(s => {
+        const st = new Date(s.opened_at);
+        return st >= rangeStart && st <= rangeEnd;
+      });
+      if (barSessionStart) {
+        const st = new Date(barSessionStart);
+        if (st >= rangeStart && st <= rangeEnd && !inRange.some(s => s.opened_at === barSessionStart)) {
+          inRange.push({ id: "active", opened_at: barSessionStart, closed_at: null });
+        }
+      }
+      if (inRange.length === 0) {
+        return { startIso: rangeStart.toISOString(), endIso: rangeEnd.toISOString() };
+      }
+      const earliest = inRange.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+      const latest   = inRange.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
+      return { startIso: earliest.opened_at, endIso: latest.closed_at ?? new Date().toISOString() };
+    };
+
     if (summaryFilter === "day") {
-      // Day = from bar open on that calendar day (TT) until bar closes (may be next morning)
       const dayStartTT = new Date(pickerDate + "T00:00:00-04:00");
       const dayEndTT   = new Date(pickerDate + "T23:59:59-04:00");
-      const sessionsOnDay = barSessions.filter(s => {
-        const st = new Date(s.opened_at);
-        return st >= dayStartTT && st <= dayEndTT;
-      });
-      if (sessionsOnDay.length > 0) {
-        const earliest = sessionsOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
-        const latest   = sessionsOnDay.reduce((a, b) =>
-          (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
-        const startIso = earliest.opened_at;
-        const endIso   = latest.closed_at ?? new Date().toISOString();
-        return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
-      }
-      // Active session started today
-      if (barSessionStart && new Date(barSessionStart) >= dayStartTT && new Date(barSessionStart) <= dayEndTT) {
-        return { start: pickerDate, end: pickerDate, startIso: barSessionStart, endIso: new Date().toISOString() };
-      }
-      // Nothing on this day — return calendar bounds so result is empty
-      return { start: pickerDate, end: pickerDate, startIso: dayStartTT.toISOString(), endIso: dayEndTT.toISOString() };
+      const b = sessionBounds(dayStartTT, dayEndTT);
+      return { start: pickerDate, end: b.endIso.slice(0, 10), startIso: b.startIso, endIso: b.endIso };
     }
     if (summaryFilter === "week") {
-      const end = new Date(pickerDate + "T12:00:00");
-      end.setDate(end.getDate() + 6);
-      return { start: pickerDate, end: end.toLocaleDateString("en-CA") };
+      const weekStart = new Date(pickerDate + "T00:00:00-04:00");
+      const weekEnd   = new Date(pickerDate + "T00:00:00-04:00");
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59);
+      const endDateStr = weekEnd.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      const b = sessionBounds(weekStart, new Date(endDateStr + "T23:59:59-04:00"));
+      return { start: pickerDate, end: endDateStr, startIso: b.startIso, endIso: b.endIso };
     }
     if (summaryFilter === "month") {
-      const first = new Date(pickerYear, pickerMonth, 1, 12);
-      const last = new Date(pickerYear, pickerMonth + 1, 0, 12);
-      return { start: first.toLocaleDateString("en-CA"), end: last.toLocaleDateString("en-CA") };
+      const first = new Date(pickerYear, pickerMonth, 1, 0, 0, 0);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0, 23, 59, 59);
+      const startStr = first.toLocaleDateString("en-CA");
+      const endStr   = last.toLocaleDateString("en-CA");
+      const b = sessionBounds(new Date(startStr + "T00:00:00-04:00"), new Date(endStr + "T23:59:59-04:00"));
+      return { start: startStr, end: endStr, startIso: b.startIso, endIso: b.endIso };
     }
-    if (summaryFilter === "year") return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
+    if (summaryFilter === "year") {
+      const b = sessionBounds(new Date(`${pickerYear}-01-01T00:00:00-04:00`), new Date(`${pickerYear}-12-31T23:59:59-04:00`));
+      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`, startIso: b.startIso, endIso: b.endIso };
+    }
     return null;
   };
 
@@ -5875,7 +5934,18 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground mt-1 text-center">
-              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              {filterRange?.startIso
+                ? (() => {
+                    const TZ = "America/Port_of_Spain";
+                    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+                    const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+                    const end   = filterRange.endIso
+                      ? new Date(filterRange.endIso).toLocaleString("en-GB", opts)
+                      : "Present";
+                    return `${start} → ${end}`;
+                  })()
+                : new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+              }
             </p>
           </div>
         )}
@@ -5890,35 +5960,68 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground text-center">
-              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-              {" \u2192 "}
-              {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); })()}
+              {filterRange?.startIso
+                ? (() => {
+                    const TZ = "America/Port_of_Spain";
+                    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+                    const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+                    const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+                    return `${start} → ${end}`;
+                  })()
+                : (() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`; })()
+              }
             </p>
           </div>
         )}
         {summaryFilter === "month" && (
-          <div className="flex gap-2">
-            <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
-              className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-              {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
-                <option key={i} value={i}>{m}</option>
-              ))}
-            </select>
+          <div className="space-y-1">
+            <div className="flex gap-2">
+              <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
+                className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+                {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
+                  <option key={i} value={i}>{m}</option>
+                ))}
+              </select>
+              <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
+                className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+                {availableYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            {filterRange?.startIso && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                {(() => {
+                  const TZ = "America/Port_of_Spain";
+                  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+                  const start = new Date(filterRange.startIso!).toLocaleString("en-GB", opts);
+                  const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+                  return `${start} → ${end}`;
+                })()}
+              </p>
+            )}
+          </div>
+        )}
+        {summaryFilter === "year" && (
+          <div className="space-y-1">
             <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-              className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
               {availableYears.map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
+            {filterRange?.startIso && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                {(() => {
+                  const TZ = "America/Port_of_Spain";
+                  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+                  const start = new Date(filterRange.startIso!).toLocaleString("en-GB", opts);
+                  const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+                  return `${start} → ${end}`;
+                })()}
+              </p>
+            )}
           </div>
-        )}
-        {summaryFilter === "year" && (
-          <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-            className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
-            {availableYears.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
         )}
 
         {/* 3 stat cards: Total Expense | Income | Net Profit */}

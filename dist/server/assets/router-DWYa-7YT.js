@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-92YZiT0U.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-DeJL325l.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-DgPH0EGe.js");
+          const { PushNotifications } = await import("./index-BipA3Q_k.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27100,7 +27100,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-CDQJowWb.css";
+const appCss = "/assets/styles-0uHyyOH9.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-CC0Dgcc9.js");
+const $$splitComponentImporter$3 = () => import("./login-0c5A2IAl.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-DM0FESC3.js");
+const $$splitComponentImporter$2 = () => import("./_app-BtsVM-Wx.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -31159,7 +31159,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-DsWIRyld.js");
+const $$splitComponentImporter$1 = () => import("./manager-BHHGF_AU.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43053,8 +43053,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-Ccbt8s0C.js");
-    const { Share } = await import("./index-CnfQttTW.js");
+    const { Filesystem, Directory } = await import("./index-KEss7eMv.js");
+    const { Share } = await import("./index-Ct65JAmG.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43212,7 +43212,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
+      const { LocalNotifications } = await import("./index-C2KxxdyI.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43231,7 +43231,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
+    const { LocalNotifications } = await import("./index-C2KxxdyI.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43266,7 +43266,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-Ch8ciMUh.js");
+      const { LocalNotifications } = await import("./index-C2KxxdyI.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43680,6 +43680,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorOutDiff, setMonitorOutDiff] = reactExports.useState("");
   const [monitorLoading, setMonitorLoading] = reactExports.useState(false);
   const [monitorSaving, setMonitorSaving] = reactExports.useState(false);
+  const [monitorFocus, setMonitorFocus] = reactExports.useState(null);
   reactExports.useEffect(() => {
     let cancelled = false;
     setMonitorLoading(true);
@@ -43754,14 +43755,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleMonitorRollup = async () => {
     if (monitorIn === "" && monitorOut === "") return;
     setMonitorSaving(true);
-    const newInTotal = ((parseFloat(monitorInTotal) || 0) + (parseFloat(monitorIn) || 0)).toFixed(2);
-    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    const newInTotal = monitorIn !== "" ? monitorIn : monitorInTotal;
+    const newOutTotal = monitorOut !== "" ? monitorOut : monitorOutTotal;
     setMonitorInTotal(newInTotal);
     setMonitorOutTotal(newOutTotal);
     setMonitorIn("");
     setMonitorOut("");
     setMonitorInDiff("");
     setMonitorOutDiff("");
+    setMonitorFocus(null);
     await saveMonitor({
       in_entry: "",
       in_total: newInTotal,
@@ -43956,7 +43958,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44061,7 +44063,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44528,7 +44530,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   disabled: monitorSaving || monitorIn === "" && monitorOut === "",
                   className: "h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5",
                   style: { background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" },
-                  title: "Move current entries into Running Total and clear for new input",
                   children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-3 w-3" }),
                     " New Entry"
@@ -44543,42 +44544,38 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "button",
                       {
-                        type: "text",
-                        inputMode: "decimal",
-                        pattern: "[0-9]*",
-                        placeholder: "0.00",
-                        value: monitorIn,
-                        onChange: (e) => setMonitorIn(e.target.value),
-                        className: "w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50",
-                        style: { color: "oklch(0.72 0.18 145)" }
+                        onClick: () => setMonitorFocus(monitorFocus === "in" ? null : "in"),
+                        className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition",
+                        style: {
+                          background: monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                          borderColor: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
+                          color: "oklch(0.72 0.18 145)"
+                        },
+                        children: monitorIn || "0"
                       }
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "div",
                       {
-                        type: "text",
-                        readOnly: true,
-                        value: monitorInTotal ? `$${monitorInTotal}` : "—",
-                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
-                        style: { color: "oklch(0.72 0.18 145)" }
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                        style: { color: "oklch(0.72 0.18 145)" },
+                        children: monitorInTotal || "—"
                       }
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "div",
                       {
-                        type: "text",
-                        readOnly: true,
-                        value: monitorInDiff ? `$${monitorInDiff}` : "—",
-                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
-                        style: { color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                        style: { color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                        children: monitorInDiff || "—"
                       }
                     )
                   ] })
@@ -44588,61 +44585,135 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "button",
                       {
-                        type: "text",
-                        inputMode: "decimal",
-                        pattern: "[0-9]*",
-                        placeholder: "0.00",
-                        value: monitorOut,
-                        onChange: (e) => setMonitorOut(e.target.value),
-                        className: "w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50",
-                        style: { color: "oklch(0.65 0.22 25)" }
+                        onClick: () => setMonitorFocus(monitorFocus === "out" ? null : "out"),
+                        className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition",
+                        style: {
+                          background: monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                          borderColor: monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
+                          color: "oklch(0.65 0.22 25)"
+                        },
+                        children: monitorOut || "0"
                       }
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "div",
                       {
-                        type: "text",
-                        readOnly: true,
-                        value: monitorOutTotal ? `$${monitorOutTotal}` : "—",
-                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
-                        style: { color: "oklch(0.65 0.22 25)" }
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                        style: { color: "oklch(0.65 0.22 25)" },
+                        children: monitorOutTotal || "—"
                       }
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "input",
+                      "div",
                       {
-                        type: "text",
-                        readOnly: true,
-                        value: monitorOutDiff ? `$${monitorOutDiff}` : "—",
-                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none",
-                        style: { color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }
+                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                        style: { color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" },
+                        children: monitorOutDiff || "—"
                       }
                     )
                   ] })
                 ] })
               ] }),
+              monitorFocus && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "p",
+                  {
+                    className: "text-[10px] font-black uppercase tracking-widest text-center mb-2",
+                    style: { color: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                    children: [
+                      "Entering ",
+                      monitorFocus.toUpperCase()
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+                  ["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val = monitorFocus === "in" ? monitorIn : monitorOut;
+                        const parts = val.split(".");
+                        if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                        setter(val + k);
+                      },
+                      className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                      style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                      children: k
+                    },
+                    k
+                  )),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val = monitorFocus === "in" ? monitorIn : monitorOut;
+                        if (!val.includes(".")) setter(val + ".");
+                      },
+                      className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                      style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                      children: "."
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val = monitorFocus === "in" ? monitorIn : monitorOut;
+                        const parts = val.split(".");
+                        if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                        setter(val + "0");
+                      },
+                      className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                      style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                      children: "0"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => {
+                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
+                        const val = monitorFocus === "in" ? monitorIn : monitorOut;
+                        setter(val.slice(0, -1));
+                      },
+                      className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                      style: { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" },
+                      children: "⌫"
+                    }
+                  )
+                ] })
+              ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
                 {
-                  onClick: handleMonitorUpdate,
+                  onClick: () => {
+                    handleMonitorUpdate();
+                    setMonitorFocus(null);
+                  },
                   disabled: monitorSaving || monitorIn === "" && monitorOut === "",
-                  className: "mt-5 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2",
+                  className: "mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2",
                   style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
                   children: monitorSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
                     " Saving…"
                   ] }) : "Update"
                 }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 text-[10px] text-muted-foreground text-center leading-relaxed", children: "Difference = New Entry − Running Total.  When bar opens, New Entry moves to Running Total automatically." })
+              )
             ] })
           ] }) })
         ] }),
@@ -45165,7 +45236,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -45542,36 +45613,51 @@ function SummaryTab({ entries, machines, ownerId }) {
       return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
     if (summaryFilter === "all") return null;
+    const sessionBounds = (rangeStart, rangeEnd) => {
+      const inRange = barSessions.filter((s) => {
+        const st = new Date(s.opened_at);
+        return st >= rangeStart && st <= rangeEnd;
+      });
+      if (barSessionStart) {
+        const st = new Date(barSessionStart);
+        if (st >= rangeStart && st <= rangeEnd && !inRange.some((s) => s.opened_at === barSessionStart)) {
+          inRange.push({ id: "active", opened_at: barSessionStart, closed_at: null });
+        }
+      }
+      if (inRange.length === 0) {
+        return { startIso: rangeStart.toISOString(), endIso: rangeEnd.toISOString() };
+      }
+      const earliest = inRange.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+      const latest = inRange.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
+      return { startIso: earliest.opened_at, endIso: latest.closed_at ?? (/* @__PURE__ */ new Date()).toISOString() };
+    };
     if (summaryFilter === "day") {
       const dayStartTT = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
       const dayEndTT = /* @__PURE__ */ new Date(pickerDate + "T23:59:59-04:00");
-      const sessionsOnDay = barSessions.filter((s) => {
-        const st = new Date(s.opened_at);
-        return st >= dayStartTT && st <= dayEndTT;
-      });
-      if (sessionsOnDay.length > 0) {
-        const earliest = sessionsOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
-        const latest = sessionsOnDay.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
-        const startIso = earliest.opened_at;
-        const endIso = latest.closed_at ?? (/* @__PURE__ */ new Date()).toISOString();
-        return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
-      }
-      if (barSessionStart && new Date(barSessionStart) >= dayStartTT && new Date(barSessionStart) <= dayEndTT) {
-        return { start: pickerDate, end: pickerDate, startIso: barSessionStart, endIso: (/* @__PURE__ */ new Date()).toISOString() };
-      }
-      return { start: pickerDate, end: pickerDate, startIso: dayStartTT.toISOString(), endIso: dayEndTT.toISOString() };
+      const b = sessionBounds(dayStartTT, dayEndTT);
+      return { start: pickerDate, end: b.endIso.slice(0, 10), startIso: b.startIso, endIso: b.endIso };
     }
     if (summaryFilter === "week") {
-      const end = /* @__PURE__ */ new Date(pickerDate + "T12:00:00");
-      end.setDate(end.getDate() + 6);
-      return { start: pickerDate, end: end.toLocaleDateString("en-CA") };
+      const weekStart = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
+      const weekEnd = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59);
+      const endDateStr = weekEnd.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      const b = sessionBounds(weekStart, /* @__PURE__ */ new Date(endDateStr + "T23:59:59-04:00"));
+      return { start: pickerDate, end: endDateStr, startIso: b.startIso, endIso: b.endIso };
     }
     if (summaryFilter === "month") {
-      const first = new Date(pickerYear, pickerMonth, 1, 12);
-      const last2 = new Date(pickerYear, pickerMonth + 1, 0, 12);
-      return { start: first.toLocaleDateString("en-CA"), end: last2.toLocaleDateString("en-CA") };
+      const first = new Date(pickerYear, pickerMonth, 1, 0, 0, 0);
+      const last2 = new Date(pickerYear, pickerMonth + 1, 0, 23, 59, 59);
+      const startStr = first.toLocaleDateString("en-CA");
+      const endStr = last2.toLocaleDateString("en-CA");
+      const b = sessionBounds(/* @__PURE__ */ new Date(startStr + "T00:00:00-04:00"), /* @__PURE__ */ new Date(endStr + "T23:59:59-04:00"));
+      return { start: startStr, end: endStr, startIso: b.startIso, endIso: b.endIso };
     }
-    if (summaryFilter === "year") return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31` };
+    if (summaryFilter === "year") {
+      const b = sessionBounds(/* @__PURE__ */ new Date(`${pickerYear}-01-01T00:00:00-04:00`), /* @__PURE__ */ new Date(`${pickerYear}-12-31T23:59:59-04:00`));
+      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`, startIso: b.startIso, endIso: b.endIso };
+    }
     return null;
   };
   const filterRange = getFilterRange();
@@ -45610,7 +45696,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -45816,7 +45902,13 @@ function SummaryTab({ entries, machines, ownerId }) {
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none", children: (/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground mt-1 text-center", children: (/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground mt-1 text-center", children: filterRange?.startIso ? (() => {
+        const TZ = "America/Port_of_Spain";
+        const opts = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+        const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+        const end = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+        return `${start} → ${end}`;
+      })() : (/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) })
     ] }),
     summaryFilter === "week" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
@@ -45834,45 +45926,65 @@ function SummaryTab({ entries, machines, ownerId }) {
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none", children: (/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground text-center", children: [
-        (/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
-        " → ",
-        (() => {
-          const d = /* @__PURE__ */ new Date(pickerDate + "T12:00:00");
-          d.setDate(d.getDate() + 6);
-          return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-        })()
-      ] })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground text-center", children: filterRange?.startIso ? (() => {
+        const TZ = "America/Port_of_Spain";
+        const opts = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+        const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+        const end = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+        return `${start} → ${end}`;
+      })() : (() => {
+        const d = /* @__PURE__ */ new Date(pickerDate + "T12:00:00");
+        d.setDate(d.getDate() + 6);
+        return `${(/* @__PURE__ */ new Date(pickerDate + "T12:00:00")).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`;
+      })() })
     ] }),
-    summaryFilter === "month" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "select",
-        {
-          value: pickerMonth,
-          onChange: (e) => setPickerMonth(Number(e.target.value)),
-          className: "flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none",
-          children: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: i, children: m }, i))
-        }
-      ),
+    summaryFilter === "month" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: pickerMonth,
+            onChange: (e) => setPickerMonth(Number(e.target.value)),
+            className: "flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none",
+            children: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: i, children: m }, i))
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: pickerYear,
+            onChange: (e) => setPickerYear(Number(e.target.value)),
+            className: "w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none",
+            children: availableYears.map((y) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: y, children: y }, y))
+          }
+        )
+      ] }),
+      filterRange?.startIso && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground text-center", children: (() => {
+        const TZ = "America/Port_of_Spain";
+        const opts = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+        const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+        const end = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+        return `${start} → ${end}`;
+      })() })
+    ] }),
+    summaryFilter === "year" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "select",
         {
           value: pickerYear,
           onChange: (e) => setPickerYear(Number(e.target.value)),
-          className: "w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none",
+          className: "w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary",
           children: availableYears.map((y) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: y, children: y }, y))
         }
-      )
+      ),
+      filterRange?.startIso && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] text-muted-foreground text-center", children: (() => {
+        const TZ = "America/Port_of_Spain";
+        const opts = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
+        const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
+        const end = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
+        return `${start} → ${end}`;
+      })() })
     ] }),
-    summaryFilter === "year" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "select",
-      {
-        value: pickerYear,
-        onChange: (e) => setPickerYear(Number(e.target.value)),
-        className: "w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary",
-        children: availableYears.map((y) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: y, children: y }, y))
-      }
-    ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl px-2 py-2 text-center", style: { background: "oklch(0.22 0.02 60)" }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider", children: "Total Expense" }),
@@ -47548,7 +47660,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-C7reBRNm.js");
+const $$splitComponentImporter = () => import("./credit-Da-i5pVp.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

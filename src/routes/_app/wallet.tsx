@@ -2682,6 +2682,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     totalIncome: number;
     sessionIncome: number;
     sessionExpense: number;
+    sessionStockCost: number;
     stockResaleValue: number;
     stockExpectedProfit: number;
     stockCost: number;
@@ -2716,7 +2717,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         : null;
     }
 
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionExpenseRes] = await Promise.all([
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionExpenseRes, sessionItemOrdersRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
@@ -2746,6 +2747,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       barSessionStart
         ? supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
             .gt("amount", 0).gte("created_at", barSessionStart)
+        : Promise.resolve({ data: [] }),
+      // Session orders with items for stock cost calculation (same window as session income)
+      barSessionStart
+        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", barSessionStart)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -2805,7 +2810,16 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           .reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0)
       : 0;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, sessionExpense, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
+    // Session stock cost: cost of items sold since current bar_session_start
+    type SessionOrderItem = { id?: string; name: string; qty: number; price: number };
+    const sessionStockCost = barSessionStart
+      ? (sessionItemOrdersRes.data ?? []).reduce((s: number, o: { items: SessionOrderItem[] }) => {
+          const items: SessionOrderItem[] = Array.isArray(o.items) ? o.items : [];
+          return s + items.reduce((cs, it) => cs + (prodCostById.get(it.id ?? "") ?? 0) * it.qty, 0);
+        }, 0)
+      : 0;
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, sessionExpense, sessionStockCost, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -2856,6 +2870,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const sessionIncome = financialSummary ? financialSummary.sessionIncome : 0;
   const sessionExpense = financialSummary ? financialSummary.sessionExpense : 0;
+  const sessionStockCost = financialSummary ? financialSummary.sessionStockCost : 0;
   const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
   const barIsOpenWallet = !!barSessionStart && !((profile as any).bar_closed_at);
   const todayIncome = financialSummary ? financialSummary.todayIncome : 0;
@@ -2890,12 +2905,27 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3,4,5].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="space-y-2">
-              {/* Row 1 — session stats: 3 cards, resets on New Session */}
+              {/* Row 1 — Session In / Session Out (2 cards) */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session In</div>
+                  <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Out</div>
+                  <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionExpense > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? (sessionExpense > 0 ? `$${fmt(sessionExpense)}` : "$0.00") : "—"}
+                  </div>
+                </div>
+              </div>
+              {/* Row 2 — Session Stock Cost + Session Expense + Session Profit (3 cards) */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Income</div>
-                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                    {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Stock Cost</div>
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? (sessionStockCost > 0 ? `$${fmt(sessionStockCost)}` : "$0.00") : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -2907,7 +2937,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Profit</div>
                   {(() => {
-                    const sp = sessionIncome - sessionExpense;
+                    const sp = sessionIncome - sessionStockCost - sessionExpense;
                     return (
                       <div className="font-black text-xs" style={{ color: !barIsOpenWallet ? "rgba(255,255,255,0.3)" : sp >= 0 ? "#86efac" : "#fca5a5" }}>
                         {barIsOpenWallet ? `${sp >= 0 ? "+" : ""}$${fmt(sp)}` : "—"}
@@ -2916,7 +2946,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   })()}
                 </div>
               </div>
-              {/* Rows 2 & 3 — today stats: 2-col grid */}
+              {/* Row 3 — Today's Income + Today's Profit */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
@@ -2928,6 +2958,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                     {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
                   </div>
                 </div>
+              </div>
+              {/* Row 4 — Today's Stock Cost + Today's Expenses */}
+              <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
                   <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>

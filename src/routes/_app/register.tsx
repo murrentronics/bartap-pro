@@ -351,6 +351,15 @@ export default function RegisterPage() {
   }, [cart, cashOpen]);
 
   const addToCart = (p: Product) => {
+    // Block items with no price or no cost price set
+    if (!p.price || Number(p.price) <= 0) {
+      toast.error(`${p.name} has no sale price set. Ask the owner to update it in Items.`);
+      return;
+    }
+    if (!p.cost_price || Number(p.cost_price) <= 0) {
+      toast.error(`${p.name} has no cost price set. Ask the owner to update it in Items.`);
+      return;
+    }
     setCart((c) => {
       const ex = c.find((i) => i.id === p.id);
       const currentQty = ex?.qty ?? 0;
@@ -903,6 +912,9 @@ export default function RegisterPage() {
                   {barOrdered.map((p) => {
                     const inCart = cart.find((i) => i.id === p.id);
                     const outOfStock = (p.stock_qty ?? 1) === 0;
+                    const missingPrice = !p.price || Number(p.price) <= 0;
+                    const missingCost  = !p.cost_price || Number(p.cost_price) <= 0;
+                    const incomplete   = missingPrice || missingCost;
                     const isSelected = barSelectedId === p.id;
                     return (
                       <div key={p.id}
@@ -934,7 +946,7 @@ export default function RegisterPage() {
                             saveBarSortIds(next.map(x => x.id));
                             setBarSelectedId(null);
                           }}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : ""}`}
+                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : ""} ${incomplete ? "opacity-50 grayscale" : ""}`}
                           style={{
                             background: "var(--gradient-card)",
                             boxShadow: isSelected ? "0 0 0 3px rgba(251,191,36,0.95), var(--shadow-elegant)" : "var(--shadow-elegant)",

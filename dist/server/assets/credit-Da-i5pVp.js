@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-92YZiT0U.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-C0NdaLQ6.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-DeJL325l.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-DWYa-7YT.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -55,8 +55,13 @@ async function printBill(account, ownerName) {
     return;
   }
   const {
+    data: products
+  } = await supabase.from("products").select("id, name, cost_price, units_per_item").eq("owner_id", account.owner_id);
+  const prodCostById = new Map((products ?? []).map((p) => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const prodCostByName = new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const {
     jsPDF
-  } = await import("./jspdf.es.min-CSjRVOFv.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -181,8 +186,9 @@ async function printBill(account, ownerName) {
         y = 20;
       }
       const C_ITEM = LM + 4;
-      const C_QTY = LM + 100;
-      const C_PRICE = LM + 138;
+      const C_QTY = LM + 80;
+      const C_SALE = LM + 110;
+      const C_COST = LM + 148;
       const C_TOTAL = RM;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
@@ -191,10 +197,13 @@ async function printBill(account, ownerName) {
       doc.text("QTY", C_QTY, y, {
         align: "right"
       });
-      doc.text("PRICE", C_PRICE, y, {
+      doc.text("SALE", C_SALE, y, {
         align: "right"
       });
-      doc.text("TOTAL", C_TOTAL, y, {
+      doc.text("COST", C_COST, y, {
+        align: "right"
+      });
+      doc.text("PROFIT", C_TOTAL, y, {
         align: "right"
       });
       y += 3.5;
@@ -203,6 +212,7 @@ async function printBill(account, ownerName) {
       doc.line(C_ITEM, y, RM, y);
       y += 3;
       let chargeTotal = 0;
+      let chargeCostTotal = 0;
       for (const it of tx.items) {
         if (y > CONTENT_BOTTOM - 6) {
           doc.addPage();
@@ -212,22 +222,31 @@ async function printBill(account, ownerName) {
         const price = Number(it.price ?? 0);
         const total = price * qty;
         chargeTotal += total;
+        const storedCost = Number(it.cost_price ?? 0);
+        const lookupCost = prodCostById.get(it.id ?? "") ?? prodCostByName.get(it.name ?? "") ?? 0;
+        const costEach = storedCost > 0 ? storedCost : lookupCost;
+        const costTotal = costEach * qty;
+        const rowProfit = total - costTotal;
+        chargeCostTotal += costTotal;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
         doc.setTextColor(30, 30, 30);
-        const nameStr = doc.splitTextToSize(it.name ?? "", 82)[0];
+        const nameStr = doc.splitTextToSize(it.name ?? "", 72)[0];
         doc.text(nameStr, C_ITEM, y);
         doc.text(String(qty), C_QTY, y, {
           align: "right"
         });
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(80, 80, 80);
-        doc.text("$" + price.toFixed(2), C_PRICE, y, {
+        doc.setTextColor(...ORANGE);
+        doc.text("$" + price.toFixed(2), C_SALE, y, {
+          align: "right"
+        });
+        doc.setTextColor(180, 40, 40);
+        doc.text(costEach > 0 ? "$" + costTotal.toFixed(2) : "—", C_COST, y, {
           align: "right"
         });
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(...ORANGE);
-        doc.text("$" + total.toFixed(2), C_TOTAL, y, {
+        doc.setTextColor(rowProfit >= 0 ? 40 : 180, rowProfit >= 0 ? 140 : 40, 40);
+        doc.text(costEach > 0 ? (rowProfit >= 0 ? "+" : "") + "$" + rowProfit.toFixed(2) : "—", C_TOTAL, y, {
           align: "right"
         });
         doc.setTextColor(0, 0, 0);
@@ -241,12 +260,21 @@ async function printBill(account, ownerName) {
       doc.setLineWidth(0.15);
       doc.line(C_ITEM, y, RM, y);
       y += 3;
+      const subtotalProfit = chargeTotal - chargeCostTotal;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(80, 80, 80);
       doc.text("Subtotal", C_ITEM, y);
       doc.setTextColor(...ORANGE);
-      doc.text("$" + chargeTotal.toFixed(2), C_TOTAL, y, {
+      doc.text("$" + chargeTotal.toFixed(2), C_SALE, y, {
+        align: "right"
+      });
+      doc.setTextColor(180, 40, 40);
+      doc.text(chargeCostTotal > 0 ? "$" + chargeCostTotal.toFixed(2) : "—", C_COST, y, {
+        align: "right"
+      });
+      doc.setTextColor(subtotalProfit >= 0 ? 40 : 180, subtotalProfit >= 0 ? 140 : 40, 40);
+      doc.text(chargeCostTotal > 0 ? (subtotalProfit >= 0 ? "+" : "") + "$" + subtotalProfit.toFixed(2) : "—", C_TOTAL, y, {
         align: "right"
       });
       doc.setTextColor(0, 0, 0);
