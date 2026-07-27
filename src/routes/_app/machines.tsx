@@ -4190,6 +4190,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Session stats — resets when float is updated to New Session */}
 
 
+        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -4209,11 +4210,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
+        )}
 
 
         {/* Float row — 2 cards only */}
 
 
+        {isOwner && (
         <div className="relative grid grid-cols-2 gap-2">
 
 
@@ -4263,6 +4266,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
+        )}
 
 
         {/* Float + Expense buttons */}
