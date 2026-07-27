@@ -1280,12 +1280,11 @@ export default function CashiersPage() {
       const machineFloatVal = parseFloat(floatMachineAmount);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
     }
-    setShowFloatModal(false);
     setBarToggleBusy(true);
     const now = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal })
+      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal, cashier_float_set_at: now })
       .eq("id", ownerIdForBar);
     if (error) { setBarToggleBusy(false); toast.error("Failed to open bar: " + error.message); return; }
     // Insert machine float session
@@ -1300,6 +1299,7 @@ export default function CashiersPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("bar_sessions").insert({ owner_id: ownerIdForBar, opened_at: now });
     setBarToggleBusy(false);
+    setShowFloatModal(false);
     setBarSessionStart(now); setBarClosedAt(null);
     toast.success("🟢 Bar opened at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
     setShowBarOpenedOverlay(true);
@@ -1406,10 +1406,10 @@ export default function CashiersPage() {
                 </button>
                 <button
                   onClick={confirmOpenBarWithFloat}
-                  disabled={!floatBarAmount || (hasMachinesAddon && !floatMachineAmount)}
-                  className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
+                  disabled={barToggleBusy || !floatBarAmount || (hasMachinesAddon && !floatMachineAmount)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
-                  Open Bar
+                  {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bar"}
                 </button>
               </div>
             </div>

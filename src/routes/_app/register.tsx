@@ -72,19 +72,59 @@ export default function RegisterPage() {
 
   // ── Bar open / close toggle (owner only) ─────────────────────────────────
   const [barToggleBusy, setBarToggleBusy] = useState(false);
+  const [showFloatModal, setShowFloatModal] = useState(false);
+  const [floatBarAmount, setFloatBarAmount] = useState("");
+  const [floatMachineAmount, setFloatMachineAmount] = useState("");
+  const [hasMachinesAddon, setHasMachinesAddon] = useState(false);
+  const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
 
   const handleOpenBar = async () => {
+    // Check if machines addon is active before showing float modal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: ownerRow } = await (supabase as any)
+      .from("profiles")
+      .select("machines_addon_active, plan_type")
+      .eq("id", ownerId)
+      .single();
+    const machinesActive = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
+    setHasMachinesAddon(machinesActive);
+    setFloatBarAmount("");
+    setFloatMachineAmount("");
+    setShowFloatModal(true);
+  };
+
+  const confirmOpenBarWithFloat = async () => {
+    const barFloatVal = parseFloat(floatBarAmount);
+    if (isNaN(barFloatVal) || barFloatVal < 0) { toast.error("Enter a valid bar float amount"); return; }
+    if (hasMachinesAddon) {
+      const machineFloatVal = parseFloat(floatMachineAmount);
+      if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
+    }
     setBarToggleBusy(true);
     const now = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null })
+      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal, cashier_float_set_at: now })
       .eq("id", ownerId);
+    if (error) { setBarToggleBusy(false); toast.error("Failed to open bar: " + error.message); return; }
+    // Insert machine float session if machines addon active
+    const machineAmt = hasMachinesAddon ? (parseFloat(floatMachineAmount) || 0) : 0;
+    if (hasMachinesAddon) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("machine_float_sessions").insert({
+        owner_id: ownerId,
+        amount: machineAmt,
+        set_at: now,
+      });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, opened_at: now });
     setBarToggleBusy(false);
-    if (error) { toast.error("Failed to open bar: " + error.message); return; }
+    setShowFloatModal(false);
     setBarSessionStart(now);
     setBarClosedAt(null);
-    toast.success("🟢 Bar opened");
+    toast.success("🟢 Bar opened at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
+    setShowBarOpenedOverlay(true);
   };
 
   const handleCloseBar = async () => {
@@ -724,6 +764,86 @@ export default function RegisterPage() {
 
   return (
     <>
+      {/* ── Float Modal (Open Bar) ── */}
+      {showFloatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}>
+                <span className="text-2xl">🟢</span>
+              </div>
+              <h2 className="font-black text-xl">Open Bar</h2>
+              <p className="text-xs text-muted-foreground mt-1">Set floats before starting the session</p>
+            </div>
+            <div className="px-6 pb-6 pt-4 space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
+                <input
+                  type="number" min="0" step="0.01" placeholder="e.g. 500.00"
+                  value={floatBarAmount} onChange={e => setFloatBarAmount(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                  autoFocus
+                />
+              </div>
+              {hasMachinesAddon && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
+                  <input
+                    type="number" min="0" step="0.01" placeholder="e.g. 200.00"
+                    value={floatMachineAmount} onChange={e => setFloatMachineAmount(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowFloatModal(false)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                  Cancel
+                </button>
+                <button onClick={confirmOpenBarWithFloat}
+                  disabled={barToggleBusy || !floatBarAmount || (hasMachinesAddon && !floatMachineAmount)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
+                  {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bar Opened overlay ── */}
+      {showBarOpenedOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-7 pb-4 text-center space-y-2">
+              <div className="text-5xl">🟢</div>
+              <h2 className="font-black text-xl">Bar is Open!</h2>
+              <p className="text-sm text-muted-foreground leading-snug">
+                Session started. Floats have been set. Good luck tonight!
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-2">
+              <button onClick={() => setShowBarOpenedOverlay(false)}
+                className="w-full h-12 rounded-2xl font-black text-sm transition active:scale-95 text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}>
+                Let's Go
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Page loading spinner while bar session state is being fetched ── */}
+      {barSessionLoading && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
       {/* ── Bar Closed overlay — blocks all selling ── */}
       {barOverlayReady && !barSessionLoading && !barIsOpen && (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">

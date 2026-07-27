@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-C9dc7jn3.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-BDHbD42e.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-DenXw5B8.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-B11RF-Ol.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -61,7 +61,7 @@ async function printBill(account, ownerName) {
   const prodCostByName = new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-DRRfi_j4.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -385,7 +385,7 @@ function CreditPage() {
       background: "var(--gradient-card)"
     }, children: ["credit", "cleared", "create"].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTab(tabKey), className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`, style: tab === tabKey ? {
       background: "var(--gradient-hero)"
-    } : {}, children: tabKey === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create" }, tabKey)) }),
+    } : {}, children: tabKey === "credit" ? `Open Tabs${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create" }, tabKey)) }),
     tab === "credit" && /* @__PURE__ */ jsxRuntimeExports.jsx(OpenedTab, { accounts: opened, loading, ownerName, onSelect: setPayAccount, onEdit: setEditAccount }),
     tab === "cleared" && /* @__PURE__ */ jsxRuntimeExports.jsx(ClosedTab, { accounts: closed, loading, ownerName, onEdit: setEditAccount, ownerId }),
     tab === "create" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreateTab, { ownerId, onCreated: handleCreated }),

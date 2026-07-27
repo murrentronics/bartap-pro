@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-C9dc7jn3.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-DenXw5B8.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-Cc8_k1ce.js");
+          const { PushNotifications } = await import("./index-C5AK6PyS.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-DO--Vnq-.js");
+const $$splitComponentImporter$3 = () => import("./login-D6WAFdJK.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-Dmaj0CPa.js");
+const $$splitComponentImporter$2 = () => import("./_app-BY-mPu5h.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -31159,7 +31159,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-B9vvFd8i.js");
+const $$splitComponentImporter$1 = () => import("./manager-DrjaFM8M.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43053,8 +43053,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-CgrWl5DK.js");
-    const { Share } = await import("./index-CLSQgBKP.js");
+    const { Filesystem, Directory } = await import("./index-Be4WIUjT.js");
+    const { Share } = await import("./index-_cDtVAXJ.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43212,7 +43212,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-B6miF4g0.js");
+      const { LocalNotifications } = await import("./index-DbA_N_kB.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43231,7 +43231,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-B6miF4g0.js");
+    const { LocalNotifications } = await import("./index-DbA_N_kB.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43266,7 +43266,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-B6miF4g0.js");
+      const { LocalNotifications } = await import("./index-DbA_N_kB.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43782,6 +43782,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     prevBarSessionRef.current = barSessionStart;
   }, [barSessionStart]);
   const [amount, setAmount] = reactExports.useState("");
+  const [amountFocused, setAmountFocused] = reactExports.useState(false);
   const [busy, setBusy] = reactExports.useState(false);
   const [deletingId, setDeletingId] = reactExports.useState(null);
   const MACHINE_DELETE_KEY = `machine_last_delete_${machine.id}`;
@@ -43874,10 +43875,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const totalPayout = entries.filter((e) => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = entries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
   const totalProfit = totalIncome - totalPayout;
-  const sessionPayouts = entries.filter((e) => (e.type === "payout" || e.type === "expense") && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart))).reduce((s, e) => s + Number(e.amount), 0);
-  const sessionIncome = entries.filter((e) => e.type === "income" && (!barSessionStart || new Date(e.created_at) >= new Date(barSessionStart))).reduce((s, e) => s + Number(e.amount), 0);
+  const sessionPayouts = entries.filter((e) => (e.type === "payout" || e.type === "expense") && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at))).reduce((s, e) => s + Number(e.amount), 0);
+  const sessionIncome = entries.filter((e) => e.type === "income" && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at))).reduce((s, e) => s + Number(e.amount), 0);
   const sessionProfit = sessionIncome - sessionPayouts;
-  const floatSessionPayout = floatSession ? entries.filter((e) => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at)).reduce((s, e) => s + Number(e.amount), 0) : null;
+  floatSession ? entries.filter((e) => e.type === "payout" && new Date(e.created_at) >= new Date(floatSession.set_at)).reduce((s, e) => s + Number(e.amount), 0) : null;
   const handleSave = async () => {
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) {
@@ -43958,7 +43959,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DRRfi_j4.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44063,7 +44064,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DRRfi_j4.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44230,9 +44231,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(Gamepad2, { className: "h-4 w-4 text-primary-foreground/70 shrink-0" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-base text-primary-foreground leading-tight truncate", children: machine.name })
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_payout", "Total Expense"), value: "$" + fmtWhole(totalPayout), color: "#fca5a5" }),
+                !isCashier && profile.role === "owner" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_income", "Total Income"), value: "$" + fmtWhole(totalIncome), color: "#86efac" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_payout", "Total Expense"), value: "$" + fmtWhole(totalPayout), color: "#fca5a5" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     StatCard,
                     {
@@ -44246,17 +44247,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
-                      label: t("session_payout", "Session Expense"),
-                      value: floatSession ? "$" + fmtWhole(sessionPayouts) : "—",
-                      color: "#fca5a5"
+                      label: t("session_income", "Session Income"),
+                      value: floatSession ? "$" + fmtWhole(sessionIncome) : "—",
+                      color: "#86efac"
                     }
                   ),
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
-                      label: t("session_income", "Session Income"),
-                      value: floatSession ? "$" + fmtWhole(sessionIncome) : "—",
-                      color: "#86efac"
+                      label: t("session_payout", "Session Expense"),
+                      value: floatSession ? "$" + fmtWhole(sessionPayouts) : "—",
+                      color: "#fca5a5"
                     }
                   ),
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -44268,16 +44269,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     }
                   )
                 ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-2 gap-2", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(SmallStat, { label: t("session_float", "Float Set"), value: floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—", color: "#fbbf24" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    SmallStat,
-                    {
-                      label: t("session_payout_this", "This Machine"),
-                      value: floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout),
-                      color: "#fca5a5"
-                    }
-                  ),
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
@@ -44309,17 +44302,22 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-sm", children: tab === "payout" ? t("save_payout", "Record Expense") : t("save_income", "Record amount cleared from machine") }),
                 !camOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "div",
+                    "button",
                     {
-                      className: "rounded-2xl px-5 py-4 text-center",
-                      style: { background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" },
+                      type: "button",
+                      onClick: () => setAmountFocused((f) => !f),
+                      className: "w-full rounded-2xl px-5 py-4 text-center transition",
+                      style: {
+                        background: amountFocused ? "oklch(0.22 0.06 65 / 0.4)" : "oklch(0.18 0.04 60)",
+                        border: amountFocused ? "1px solid oklch(0.60 0.18 65)" : "1px solid oklch(0.28 0.08 60)"
+                      },
                       children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-4xl", style: { color: "oklch(0.82 0.18 65)" }, children: [
                         "$",
                         amount === "" ? "0" : amount
                       ] })
                     }
                   ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+                  amountFocused && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
                     ["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "button",
                       {
@@ -44542,7 +44540,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "button",
                       {
@@ -44558,7 +44556,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Last" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "div",
                       {
@@ -44569,7 +44567,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "div",
                       {
@@ -44583,7 +44581,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "New Entry" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "button",
                       {
@@ -44599,7 +44597,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Running Total" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Last" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "div",
                       {
@@ -44610,7 +44608,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                     )
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Difference" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
                       "div",
                       {
@@ -44990,7 +44988,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style: { background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" },
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
+          isOwner && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_payout", "Total Expense"), value: "$" + fmtWhole(totalPayout), color: "#fca5a5" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("all_time_income", "Total Income"), value: "$" + fmtWhole(totalIncome), color: "#86efac" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -45151,7 +45149,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-black text-white/60 uppercase tracking-widest leading-tight text-center line-clamp-2 px-1", children: m.name })
                   ] }),
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full px-2 pb-1.5 space-y-0.5", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-1", children: [
+                    isOwner && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-1", children: [
                       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-black text-white/50 uppercase tracking-wider", children: "TP" }),
                       /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `text-[11px] font-black ${mProfit >= 0 ? "text-green-400" : "text-red-400"}`, children: [
                         mProfit >= 0 ? "+" : "",
@@ -45236,7 +45234,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-DRRfi_j4.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -45670,6 +45668,8 @@ function SummaryTab({ entries, machines, ownerId }) {
   };
   const filterRange = getFilterRange();
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const [downloading, setDownloading] = reactExports.useState(false);
+  const [downloaded, setDownloaded] = reactExports.useState(false);
   const filteredEntries = filterRange ? sorted.filter((e) => {
     if (filterRange.startIso && filterRange.endIso) {
       return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
@@ -45698,13 +45698,11 @@ function SummaryTab({ entries, machines, ownerId }) {
   const byIncome = [...statList].sort((a, b) => b.income - a.income);
   const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map((m) => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
-  const [downloading, setDownloading] = reactExports.useState(false);
-  const [downloaded, setDownloaded] = reactExports.useState(false);
   const handleDownloadPdf = async () => {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DRRfi_j4.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -46217,6 +46215,7 @@ function MachinesPage() {
   const [expenseNote, setExpenseNote] = reactExports.useState("");
   const [savingExpense, setSavingExpense] = reactExports.useState(false);
   const [floatAmount, setFloatAmount] = reactExports.useState("");
+  const [machineFloatMode, setMachineFloatMode] = reactExports.useState("new");
   const [savingFloat, setSavingFloat] = reactExports.useState(false);
   const [deleteTarget, setDeleteTarget] = reactExports.useState(null);
   const [deletingMachine, setDeletingMachine] = reactExports.useState(false);
@@ -46248,18 +46247,26 @@ function MachinesPage() {
       return;
     }
     setSavingFloat(true);
-    const { error } = await sb.from("machine_float_sessions").insert({
-      owner_id: ownerId,
-      amount: val,
-      set_at: (/* @__PURE__ */ new Date()).toISOString()
-    });
+    let error = null;
+    if (machineFloatMode === "same" && floatSession) {
+      const newAmount = Number(floatSession.amount) + val;
+      ({ error } = await sb.from("machine_float_sessions").update({ amount: newAmount }).eq("id", floatSession.id));
+      if (!error) toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newAmount.toFixed(2)}`);
+    } else {
+      ({ error } = await sb.from("machine_float_sessions").insert({
+        owner_id: ownerId,
+        amount: val,
+        set_at: (/* @__PURE__ */ new Date()).toISOString()
+      }));
+      if (!error) toast.success(val === 0 ? "Float cleared" : "New machine session — float set to $" + val.toFixed(2));
+    }
     setSavingFloat(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Float set");
     setFloatAmount("");
+    setMachineFloatMode("new");
     setShowSetFloat(false);
     loadFloat();
   };
@@ -46595,6 +46602,7 @@ function MachinesPage() {
             floatSession,
             remainingFloat,
             isCashier: profile.role === "cashier",
+            isOwner,
             barSessionStart,
             onSetFloat: () => {
               setFloatAmount("");
@@ -46688,6 +46696,29 @@ function MachinesPage() {
           style: { background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" },
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-center text-xs font-semibold", style: { color: "oklch(0.65 0.15 65)" }, children: "Set Cashier Float — All Machines" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setMachineFloatMode("same"),
+                  className: "h-12 rounded-2xl font-black text-sm transition active:scale-95",
+                  style: machineFloatMode === "same" ? { background: "oklch(0.60 0.18 65)", color: "#000" } : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" },
+                  children: "Same Session"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setMachineFloatMode("new"),
+                  className: "h-12 rounded-2xl font-black text-sm transition active:scale-95",
+                  style: machineFloatMode === "new" ? { background: "oklch(0.60 0.18 65)", color: "#000" } : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" },
+                  children: "New Session"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-center text-[11px]", style: { color: "oklch(0.55 0.10 65)" }, children: machineFloatMode === "same" ? "Adds to current float — used amount unchanged" : "Starts fresh — used amount resets to $0" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
@@ -47411,12 +47442,13 @@ function FactoryResetPage() {
     await supabase.from("owner_financials").delete().eq("owner_id", ownerId);
     await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);
     await supabase.from("products").update({
-      cost_price: 0,
       stock_qty: 0,
       stock_qty_undo: null,
       stock_qty_undo_saved: null,
       stock_last_expense_id: null
     }).eq("owner_id", ownerId);
+    await supabase.from("opened_bottles").delete().eq("owner_id", ownerId);
+    await supabase.from("opened_packs").delete().eq("owner_id", ownerId);
   };
   const resetBar = async (ownerId) => {
     const { data: cashiers } = await supabase.from("profiles").select("id").eq("parent_id", ownerId);
@@ -47486,9 +47518,11 @@ function FactoryResetPage() {
       "All wallet and statement records",
       "All credit accounts and bills",
       "All financial expense records",
-      "All cost prices (re-enter to rebuild financials)",
       "All stock quantities (reset to zero)",
-      "✓ Items (products list) are KEPT"
+      "All open bottles and shots sold",
+      "All open packs and pack quantities",
+      "✓ Items (products list) are KEPT",
+      "✓ Cost prices and shot/retail prices are KEPT"
     ],
     bar: [
       "All sales orders and transaction history",
@@ -47690,7 +47724,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-D7K2wh8o.js");
+const $$splitComponentImporter = () => import("./credit-l1MVKWh7.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

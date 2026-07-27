@@ -2872,7 +2872,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, totalStockSoldCost, sessionIncome, sessionExpense, sessionStockCost, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
     setLoadingSummary(false);
-  }, [profile.id]);
+  }, [profile.id, (profile as any).cashier_float_set_at, (profile as any).bar_session_start, (profile as any).bar_closed_at]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
@@ -2904,6 +2904,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
       // Opened/finished bottles → stock resale value changes
       .on("postgres_changes", { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${profile.id}` }, () => loadSummaryRef.current())
+      // Profile updates (bar_session_start, cashier_float_set_at) → session/today cards re-calculate
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${profile.id}` }, () => loadSummaryRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);

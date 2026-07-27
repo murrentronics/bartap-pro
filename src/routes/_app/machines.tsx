@@ -1009,7 +1009,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                             style={{ width: 100, height: 65 }}>
 
 
-                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
+                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" loading="lazy" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
 
 
                           </button>
@@ -2583,7 +2583,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
 
 
         {/* Hero */}
@@ -3757,13 +3757,18 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
 
-  const sessionPayouts = barSessionStart
+  // Machine session anchor = floatSession.set_at only.
+  // Bar "Update Float / New Session" uses bar_session_start (separate system).
+  // Machine "Update Float / New Session" inserts a new machine_float_sessions row → floatSession updates.
+  const machineSessionAnchor = floatSession ? floatSession.set_at : null;
+
+  const sessionPayouts = machineSessionAnchor
 
 
     ? entries
 
 
-        .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart))
+        .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(machineSessionAnchor))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
@@ -3772,13 +3777,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     : entries.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
 
 
-  const sessionIncome = barSessionStart
+  const sessionIncome = machineSessionAnchor
 
 
     ? entries
 
 
-        .filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart))
+        .filter(e => e.type === "income" && new Date(e.created_at) >= new Date(machineSessionAnchor))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
@@ -4178,25 +4183,25 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         </div>
         )}
-        {/* Session stats — resets only when bar is opened */}
+        {/* Session stats — resets when float is updated to New Session */}
 
 
         <div className="relative grid grid-cols-3 gap-2">
 
 
-          <StatCard label={t("session_payout", "Session Expense")} value={barSessionStart ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("session_payout", "Session Expense")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
 
 
-          <StatCard label={t("session_income", "Session Income")} value={barSessionStart ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+          <StatCard label={t("session_income", "Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
 
 
           <StatCard label={t("session_profit", "Session Profit")}
 
 
-            value={barSessionStart ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
 
 
-            color={!barSessionStart ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
         </div>
@@ -5408,7 +5413,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                             style={{ width: 100, height: 65 }}>
 
 
-                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" />
+                            <img src={e.proof_image_url!} alt="proof" className="w-full h-full object-cover" loading="lazy" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
 
 
                           </button>

@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports, V as React2, a2 as React } from "./server-C9dc7jn3.js";
-import { c as composeRefs, u as useComposedRefs, a as cn, b as useAuth, d as useNavigate, W as Wine, L as Label, I as Input, B as Button, e as usernameToEmail, s as supabase, t as toast, f as friendlyError, C as Capacitor } from "./router-BDHbD42e.js";
+import { r as reactExports, W as jsxRuntimeExports, V as React2, a2 as React } from "./server-DenXw5B8.js";
+import { c as composeRefs, u as useComposedRefs, a as cn, b as useAuth, d as useNavigate, W as Wine, L as Label, I as Input, B as Button, e as usernameToEmail, s as supabase, t as toast, f as friendlyError, C as Capacitor } from "./router-B11RF-Ol.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -1034,7 +1034,7 @@ function OtpInput({
         if (Capacitor.isNativePlatform()) {
           const {
             Clipboard
-          } = await import("./index-BOp1rNnY.js");
+          } = await import("./index-DNv_q14h.js");
           const {
             value: text
           } = await Clipboard.read();
