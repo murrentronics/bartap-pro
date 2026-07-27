@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-Cat304ed.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-BoLXNdSQ.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-C9dc7jn3.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-BDHbD42e.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -61,7 +61,7 @@ async function printBill(account, ownerName) {
   const prodCostByName = new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-BomY3AF-.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"

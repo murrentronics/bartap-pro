@@ -2618,6 +2618,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
 
 
+          {/* Lifetime totals — owner only */}
+          {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -2637,6 +2639,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
           </div>
+          )}
 
 
           {/* Session stats — reset to 0 on every float update */}
@@ -4238,9 +4241,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
 
-        {/* Lifetime totals — all machines combined */}
+        {/* Lifetime totals — owner only */}
 
 
+        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -4256,6 +4260,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
+        )}
         {/* Session stats — resets only when bar is opened */}
 
 
