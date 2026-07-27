@@ -512,7 +512,7 @@ export default function SummaryPage() {
   const totalProfit   = totalIncome - totalCostPrice;
 
   const FILTERS: { key: FilterType; label: string }[] = [
-    { key: "day",    label: "Day"    },
+    { key: "day",    label: "Session" },
     { key: "week",   label: "Week"   },
     { key: "month",  label: "Month"  },
     { key: "year",   label: "Year"   },
@@ -532,7 +532,7 @@ export default function SummaryPage() {
         day: "numeric", month: "short", year: "numeric",
       });
 
-      let y = await drawHeader(doc, businessName, "Summary Report", periodLabel, generated);
+      let y = await drawHeader(doc, businessName, filter === "day" ? "Session Report" : "Summary Report", periodLabel, generated);
 
       // Generated line
       doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(150, 100, 30);
