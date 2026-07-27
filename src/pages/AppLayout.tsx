@@ -37,8 +37,8 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
-    // Manager landing page — redirect away from bar page to items
-    if (!loading && (profile?.role as string) === "manager" && (loc.pathname === "/register" || loc.pathname === "/")) {
+    // Manager landing page — redirect away from bar/wallet to items
+    if (!loading && (profile?.role as string) === "manager" && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
       nav("/products", { replace: true });
     }
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
@@ -150,7 +150,7 @@ export default function AppLayout() {
       if (!profile?.id) return;
       const ownerId = isChainOwner && activeBarId
         ? activeBarId
-        : profile.role === "cashier" ? profile.parent_id : profile.id;
+        : (profile.role === "cashier" || (profile.role as string) === "manager") ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
         .select("plan_type, machines_addon_active, bar_addon_active").eq("id", ownerId).single();

@@ -942,18 +942,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           )}
         </div>
 
-        {/* Date filter tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
-          {(["session", "day", "week", "month", "all"] as const).map(f => (
-            <button key={f} onClick={() => setExpenseDateFilter(f)}
-              className="shrink-0 h-8 px-3 rounded-xl text-xs font-black transition active:scale-[0.97]"
-              style={expenseDateFilter === f
-                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* Date filter tabs — hidden, always show session view */}
 
         {/* Expense history */}
         {loadingExpenses ? (

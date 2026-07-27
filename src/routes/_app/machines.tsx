@@ -1345,6 +1345,76 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorSaving,   setMonitorSaving]   = useState(false);
   const [monitorFocus,    setMonitorFocus]    = useState<"in" | "out" | null>(null);
 
+  // Monitor sub-tab: "monitor" | "logs"
+  const [monitorSubTab, setMonitorSubTab] = useState<"monitor" | "logs">("monitor");
+
+  // Monitor logs
+  type MonitorLog = {
+    id: string; machine_id: string; owner_id: string;
+    in_present: number; out_present: number;
+    in_last: number; out_last: number;
+    in_diff: number; out_diff: number;
+    seq: number; logged_at: string;
+  };
+  const [monitorLogs, setMonitorLogs] = useState<MonitorLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [openLogId,   setOpenLogId]   = useState<string | null>(null);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editLogIn,    setEditLogIn]   = useState("");
+  const [editLogOut,   setEditLogOut]  = useState("");
+  const [savingLogEdit, setSavingLogEdit] = useState(false);
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    const { data } = await sb.from("machine_monitor_logs")
+      .select("*").eq("machine_id", machine.id)
+      .order("seq", { ascending: false });
+    setMonitorLogs((data ?? []) as MonitorLog[]);
+    setLogsLoading(false);
+  }, [machine.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (monitorSubTab === "logs") loadLogs();
+  }, [monitorSubTab, loadLogs]);
+
+  const handleSaveLogEdit = async (log: MonitorLog) => {
+    const newIn  = parseFloat(editLogIn);
+    const newOut = parseFloat(editLogOut);
+    if (isNaN(newIn) || isNaN(newOut)) { toast.error("Enter valid numbers"); return; }
+    setSavingLogEdit(true);
+    // Recalculate this log's diff against its last values
+    const newInDiff  = newIn  - log.in_last;
+    const newOutDiff = newOut - log.out_last;
+    // Update this log row
+    await sb.from("machine_monitor_logs").update({
+      in_present: newIn, out_present: newOut,
+      in_diff: newInDiff, out_diff: newOutDiff,
+    }).eq("id", log.id);
+    // Recalculate all subsequent logs in order (seq > this one)
+    const { data: subsequent } = await sb.from("machine_monitor_logs")
+      .select("*").eq("machine_id", machine.id)
+      .gt("seq", log.seq).order("seq", { ascending: true });
+    if (subsequent && subsequent.length > 0) {
+      // The "last" for the next entry is the present of the current entry
+      let runningInLast  = newIn;
+      let runningOutLast = newOut;
+      for (const s of subsequent as MonitorLog[]) {
+        const sInDiff  = s.in_present  - runningInLast;
+        const sOutDiff = s.out_present - runningOutLast;
+        await sb.from("machine_monitor_logs").update({
+          in_last:  runningInLast,  out_last:  runningOutLast,
+          in_diff:  sInDiff,        out_diff:  sOutDiff,
+        }).eq("id", s.id);
+        runningInLast  = s.in_present;
+        runningOutLast = s.out_present;
+      }
+    }
+    setSavingLogEdit(false);
+    setEditingLogId(null);
+    toast.success("Log updated");
+    loadLogs();
+  };
+
   // Load monitor row from Supabase on mount
   useEffect(() => {
     let cancelled = false;
@@ -1398,6 +1468,23 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       in_entry: monitorIn, in_total: monitorInTotal, in_diff: inDiffStr,
       out_entry: monitorOut, out_total: monitorOutTotal, out_diff: outDiffStr,
     });
+    // Insert a log snapshot so the Logs tab records this moment
+    const { data: seqData } = await sb.from("machine_monitor_logs")
+      .select("seq").eq("machine_id", machine.id).order("seq", { ascending: false }).limit(1).maybeSingle();
+    const nextSeq = ((seqData?.seq as number) ?? 0) + 1;
+    const { data: newLog } = await sb.from("machine_monitor_logs").insert({
+      machine_id:  machine.id,
+      owner_id:    ownerId,
+      in_present:  inVal,
+      out_present: outVal,
+      in_last:     parseFloat(monitorInTotal)  || 0,
+      out_last:    parseFloat(monitorOutTotal) || 0,
+      in_diff:     parseFloat(inDiffStr),
+      out_diff:    parseFloat(outDiffStr),
+      seq:         nextSeq,
+      logged_at:   new Date().toISOString(),
+    }).select().maybeSingle();
+    if (newLog) setMonitorLogs(prev => [newLog as MonitorLog, ...prev]);
     setMonitorSaving(false);
   };
 
@@ -3156,6 +3243,20 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         {/* ── Monitor Tab ─────────────────────────────────────────────────── */}
         {tab === "monitor" && isOwner && (
           <div className="space-y-4">
+
+            {/* Sub-tab: Monitor / Logs */}
+            <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
+              {(["monitor", "logs"] as const).map(st => (
+                <button key={st} onClick={() => setMonitorSubTab(st)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black capitalize transition ${monitorSubTab === st ? "text-primary-foreground" : "text-muted-foreground"}`}
+                  style={monitorSubTab === st ? { background: "var(--gradient-hero)" } : {}}>
+                  {st === "monitor" ? "Monitor" : "Logs"}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Monitor sub-tab ── */}
+            {monitorSubTab === "monitor" && (
             <div className="rounded-2xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-black text-sm tracking-wide uppercase" style={{ color: "oklch(0.82 0.18 65)" }}>
@@ -3324,6 +3425,119 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               </>
               )}
             </div>
+            )} {/* end monitor sub-tab */}
+
+            {/* ── Logs sub-tab ── */}
+            {monitorSubTab === "logs" && (
+              <div className="space-y-2">
+                {logsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : monitorLogs.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground text-sm">No logs yet. Press Update on the monitor to create entries.</div>
+                ) : monitorLogs.map((log) => {
+                  const isOpen    = openLogId   === log.id;
+                  const isEditing = editingLogId === log.id;
+                  const dt = new Date(log.logged_at);
+                  const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" });
+                  const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
+                  return (
+                    <div key={log.id} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                      {/* Accordion header */}
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <button className="flex-1 flex items-start gap-3 text-left" onClick={() => setOpenLogId(isOpen ? null : log.id)}>
+                          <div>
+                            <div className="font-black text-sm">{dateStr}</div>
+                            <div className="text-xs text-muted-foreground">{timeStr}</div>
+                          </div>
+                          <div className="ml-auto flex gap-3 items-center pr-2">
+                            <span className="text-xs font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {log.in_diff >= 0 ? "+" : ""}{log.in_diff.toFixed(2)}</span>
+                            <span className="text-xs font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {log.out_diff >= 0 ? "+" : ""}{log.out_diff.toFixed(2)}</span>
+                          </div>
+                        </button>
+                        {/* Edit pencil */}
+                        <button
+                          onClick={() => {
+                            setOpenLogId(log.id);
+                            if (editingLogId === log.id) { setEditingLogId(null); }
+                            else { setEditingLogId(log.id); setEditLogIn(String(log.in_present)); setEditLogOut(String(log.out_present)); }
+                          }}
+                          className="h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 ml-1"
+                          style={{ background: isEditing ? "var(--gradient-hero)" : "oklch(0.22 0.04 60)", color: isEditing ? "var(--primary-foreground)" : "oklch(0.72 0.18 145)" }}>
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      </div>
+
+                      {/* Dropdown — card layout */}
+                      {isOpen && (
+                        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+                          {isEditing ? (
+                            /* Edit mode — only in_present and out_present are editable */
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN Present</label>
+                                  <input type="number" value={editLogIn} onChange={e => setEditLogIn(e.target.value)}
+                                    className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
+                                    style={{ color: "oklch(0.72 0.18 145)" }} />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT Present</label>
+                                  <input type="number" value={editLogOut} onChange={e => setEditLogOut(e.target.value)}
+                                    className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
+                                    style={{ color: "oklch(0.65 0.22 25)" }} />
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => setEditingLogId(null)}
+                                  className="flex-1 h-10 rounded-xl font-black text-xs border border-border transition">Cancel</button>
+                                <button onClick={() => handleSaveLogEdit(log)} disabled={savingLogEdit}
+                                  className="flex-1 h-10 rounded-xl font-black text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                                  {savingLogEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save & Recalculate"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* View mode — same card layout as the monitor */
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* IN */}
+                              <div className="space-y-2">
+                                <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
+                                {[
+                                  { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
+                                  { label: "Last",    value: log.in_last.toFixed(2),    color: "oklch(0.72 0.18 145)" },
+                                  { label: "Total",   value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                                ].map(({ label, value, color }) => (
+                                  <div key={label} className="space-y-0.5">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+                                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* OUT */}
+                              <div className="space-y-2">
+                                <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
+                                {[
+                                  { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                                  { label: "Last",    value: log.out_last.toFixed(2),    color: "oklch(0.65 0.22 25)" },
+                                  { label: "Total",   value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: log.out_diff >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" },
+                                ].map(({ label, value, color }) => (
+                                  <div key={label} className="space-y-0.5">
+                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+                                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
