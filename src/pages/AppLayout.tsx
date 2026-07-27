@@ -37,6 +37,10 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
+    // Manager landing page — redirect away from bar page to items
+    if (!loading && (profile?.role as string) === "manager" && (loc.pathname === "/register" || loc.pathname === "/")) {
+      nav("/products", { replace: true });
+    }
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
       nav("/billing", { replace: true });
     }
@@ -288,9 +292,10 @@ export default function AppLayout() {
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
     : isManager ? [
-        // Manager: Expenses, Items, Machines (if enabled) — no Wallet page
-        { to: "/manager", label: t("expenses", "Expenses"), icon: TrendingDown },
+        // Manager: Items first, Customers, Expenses, Machines — no Bar, no Wallet
         ...(ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }] : []),
+        ...(ownerHasBar ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }] : []),
+        { to: "/manager", label: t("expenses", "Expenses"), icon: TrendingDown },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
       ]
     : [

@@ -1328,6 +1328,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
   const isCashier = profile.role === "cashier";
+  const isOwner = profile.role === "owner";
+  const isManager = (profile.role as string) === "manager";
 
 
   const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");
@@ -2713,7 +2715,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
 
 
-          {(["payout", ...(!isCashier ? ["income"] : []), ...(!isCashier ? ["history"] : []), ...(!isCashier ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
+          {(["payout", ...(isOwner || isManager ? ["income"] : []), ...(isOwner || isManager ? ["history"] : []), ...(isOwner ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
 
             <button key={tabKey} onClick={() => setTab(tabKey)}
@@ -3152,7 +3154,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
         {/* ── Monitor Tab ─────────────────────────────────────────────────── */}
-        {tab === "monitor" && !isCashier && (
+        {tab === "monitor" && isOwner && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
               <div className="flex items-center justify-between mb-4">
@@ -4190,7 +4192,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Session stats — resets when float is updated to New Session */}
 
 
-        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -4210,7 +4211,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
-        )}
 
 
         {/* Float row — 2 cards only */}
@@ -7282,10 +7282,10 @@ export default function MachinesPage() {
     { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
 
 
-    { key: "allHistory", label: t("all_history", "All History") },
+    ...(isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : []),
 
 
-    { key: "summary", label: t("summary", "Summary") },
+    ...(isOwner ? [{ key: "summary", label: t("summary", "Summary") }] : []),
 
 
     ...(isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []),
