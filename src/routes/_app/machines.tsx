@@ -1261,7 +1261,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   remainingFloat: number | null;
 
 
-  initialTab?: "payout" | "income" | "history";
+  initialTab?: "payout" | "income" | "history" | "monitor";
 
 
   onBack: () => void; onDeleted: () => void;
@@ -1288,7 +1288,98 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const isCashier = profile.role === "cashier";
 
 
-  const [tab, setTab] = useState<"payout" | "income" | "history">(initialTab ?? "payout");
+  const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");
+
+  // ── Monitor tab state ────────────────────────────────────────────────────
+  const [monitorIn,       setMonitorIn]       = useState<string>("");
+  const [monitorOut,      setMonitorOut]      = useState<string>("");
+  const [monitorInTotal,  setMonitorInTotal]  = useState<string>("");
+  const [monitorOutTotal, setMonitorOutTotal] = useState<string>("");
+  const [monitorInDiff,   setMonitorInDiff]   = useState<string>("");
+  const [monitorOutDiff,  setMonitorOutDiff]  = useState<string>("");
+  const [monitorLoading,  setMonitorLoading]  = useState(false);
+  const [monitorSaving,   setMonitorSaving]   = useState(false);
+
+  // Load monitor row from Supabase on mount
+  useEffect(() => {
+    let cancelled = false;
+    setMonitorLoading(true);
+    sb.from("machine_monitor")
+      .select("in_entry, in_total, in_diff, out_entry, out_total, out_diff")
+      .eq("machine_id", machine.id)
+      .eq("owner_id", ownerId)
+      .maybeSingle()
+      .then(({ data }: { data: any }) => {
+        if (cancelled || !data) { setMonitorLoading(false); return; }
+        setMonitorIn(data.in_entry   ? String(data.in_entry)   : "");
+        setMonitorOut(data.out_entry  ? String(data.out_entry)  : "");
+        setMonitorInTotal(data.in_total   ? String(data.in_total)   : "");
+        setMonitorOutTotal(data.out_total  ? String(data.out_total)  : "");
+        setMonitorInDiff(data.in_diff    ? String(data.in_diff)    : "");
+        setMonitorOutDiff(data.out_diff   ? String(data.out_diff)   : "");
+        setMonitorLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [machine.id, ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveMonitor = async (fields: {
+    in_entry: string; in_total: string; in_diff: string;
+    out_entry: string; out_total: string; out_diff: string;
+  }) => {
+    await sb.from("machine_monitor").upsert({
+      machine_id: machine.id,
+      owner_id:   ownerId,
+      in_entry:   parseFloat(fields.in_entry)   || 0,
+      in_total:   parseFloat(fields.in_total)   || 0,
+      in_diff:    parseFloat(fields.in_diff)    || 0,
+      out_entry:  parseFloat(fields.out_entry)  || 0,
+      out_total:  parseFloat(fields.out_total)  || 0,
+      out_diff:   parseFloat(fields.out_diff)   || 0,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "machine_id,owner_id" });
+  };
+
+  const handleMonitorUpdate = async () => {
+    const inVal   = parseFloat(monitorIn)       || 0;
+    const outVal  = parseFloat(monitorOut)      || 0;
+    const inDiff  = inVal  - (parseFloat(monitorInTotal)  || 0);
+    const outDiff = outVal - (parseFloat(monitorOutTotal) || 0);
+    const inDiffStr  = inDiff.toFixed(2);
+    const outDiffStr = outDiff.toFixed(2);
+    setMonitorInDiff(inDiffStr);
+    setMonitorOutDiff(outDiffStr);
+    setMonitorSaving(true);
+    await saveMonitor({
+      in_entry: monitorIn, in_total: monitorInTotal, in_diff: inDiffStr,
+      out_entry: monitorOut, out_total: monitorOutTotal, out_diff: outDiffStr,
+    });
+    setMonitorSaving(false);
+  };
+
+  // When bar opens — move box1 into box2 (running total), clear box1 and diffs
+  const handleMonitorSessionReset = async () => {
+    const newInTotal  = ((parseFloat(monitorInTotal)  || 0) + (parseFloat(monitorIn)  || 0)).toFixed(2);
+    const newOutTotal = ((parseFloat(monitorOutTotal) || 0) + (parseFloat(monitorOut) || 0)).toFixed(2);
+    setMonitorInTotal(newInTotal);
+    setMonitorOutTotal(newOutTotal);
+    setMonitorIn("");
+    setMonitorOut("");
+    setMonitorInDiff("");
+    setMonitorOutDiff("");
+    await saveMonitor({
+      in_entry: "", in_total: newInTotal, in_diff: "",
+      out_entry: "", out_total: newOutTotal, out_diff: "",
+    });
+  };
+
+  // Detect bar session start changing → reset monitor
+  const prevBarSessionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevBarSessionRef.current !== null && barSessionStart !== prevBarSessionRef.current) {
+      handleMonitorSessionReset();
+    }
+    prevBarSessionRef.current = barSessionStart;
+  }, [barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const [amount, setAmount] = useState("");
@@ -2563,13 +2654,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
 
 
-          {(["payout", ...(!isCashier ? ["income"] : []), "history"] as ("payout" | "income" | "history")[]).map((tabKey) => (
+          {(["payout", ...(!isCashier ? ["income"] : []), "history", ...(!isCashier ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
 
             <button key={tabKey} onClick={() => setTab(tabKey)}
 
 
-              className={`flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black capitalize transition ${
 
 
                 tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
@@ -2581,7 +2672,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
 
 
-              {tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : t("history", "History")}
+              {tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"}
 
 
             </button>
@@ -3067,6 +3158,128 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           />
 
 
+        )}
+
+
+        {/* ── Monitor Tab ─────────────────────────────────────────────────── */}
+        {tab === "monitor" && !isCashier && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
+              <h2 className="font-black text-sm mb-4 text-center tracking-wide uppercase" style={{ color: "oklch(0.82 0.18 65)" }}>
+                Machine Monitor
+              </h2>
+
+              {monitorLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+              ) : (
+              <>
+              <div className="grid grid-cols-2 gap-4">
+
+                {/* ── IN column ── */}
+                <div className="space-y-3">
+                  <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
+
+                  {/* Box 1 — new entry (editable) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={monitorIn}
+                      onChange={(e) => setMonitorIn(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      style={{ color: "oklch(0.72 0.18 145)" }}
+                    />
+                  </div>
+
+                  {/* Box 2 — running total (read-only) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={monitorInTotal ? `$${monitorInTotal}` : "—"}
+                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
+                      style={{ color: "oklch(0.72 0.18 145)" }}
+                    />
+                  </div>
+
+                  {/* Box 3 — difference (read-only) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={monitorInDiff ? `$${monitorInDiff}` : "—"}
+                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
+                      style={{ color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}
+                    />
+                  </div>
+                </div>
+
+                {/* ── OUT column ── */}
+                <div className="space-y-3">
+                  <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
+
+                  {/* Box 1 — new entry (editable) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">New Entry</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={monitorOut}
+                      onChange={(e) => setMonitorOut(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      style={{ color: "oklch(0.65 0.22 25)" }}
+                    />
+                  </div>
+
+                  {/* Box 2 — running total (read-only) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Running Total</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={monitorOutTotal ? `$${monitorOutTotal}` : "—"}
+                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
+                      style={{ color: "oklch(0.65 0.22 25)" }}
+                    />
+                  </div>
+
+                  {/* Box 3 — difference (read-only) */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Difference</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={monitorOutDiff ? `$${monitorOutDiff}` : "—"}
+                      className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center cursor-default select-none"
+                      style={{ color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Update button */}
+              <button
+                onClick={handleMonitorUpdate}
+                disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
+                className="mt-5 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Update"}
+              </button>
+
+              <p className="mt-3 text-[10px] text-muted-foreground text-center leading-relaxed">
+                Difference = New Entry − Running Total.&nbsp;
+                When bar opens, New Entry moves to Running Total automatically.
+              </p>
+              </>
+              )}
+            </div>
+          </div>
         )}
 
 
@@ -5806,7 +6019,7 @@ export default function MachinesPage() {
   const [selectedScreenNum, setSelectedScreenNum] = useState(0);
 
 
-  const [selectedInitialTab, setSelectedInitialTab] = useState<"payout" | "income" | "history">("payout");
+  const [selectedInitialTab, setSelectedInitialTab] = useState<"payout" | "income" | "history" | "monitor">("payout");
 
 
 
@@ -7125,7 +7338,7 @@ export default function MachinesPage() {
               floatSession={floatSession}
 
 
-              remainingFloat={remainingFloat} isCashier={!isOwner}
+              remainingFloat={remainingFloat} isCashier={profile.role === "cashier"}
 
 
               barSessionStart={barSessionStart}

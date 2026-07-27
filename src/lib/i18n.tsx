@@ -35,7 +35,7 @@ const ES: Record<string, string> = {
   "switch_bar":       "Cambiar bar",
   "products":         "Productos",
   "machines":         "Máquinas",
-  "credit":           "Crédito",
+  "credit":           "Clientes",
   "music":            "Música",
 
   // ── Common buttons ────────────────────────────────────────────────────────

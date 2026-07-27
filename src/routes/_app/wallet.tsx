@@ -2681,6 +2681,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     monthlyExpenses: number;
     totalIncome: number;
     sessionIncome: number;
+    sessionExpense: number;
     stockResaleValue: number;
     stockExpectedProfit: number;
     stockCost: number;
@@ -2700,7 +2701,22 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Bar session start — used for session income calculation
     const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
 
-    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionTransfersRes, sessionCreditRes] = await Promise.all([
+    // Find the earliest session start on today's bar day (for Today's Income)
+    // "Today" = from first bar open of today's TT calendar date → bar_closed_at (or now)
+    const todaySessionsRes = await (sb as any).from("bar_sessions")
+      .select("session_start")
+      .eq("owner_id", profile.id)
+      .gte("session_start", todayStartTT.toISOString())
+      .order("session_start", { ascending: true })
+      .limit(1);
+    // The earliest session today — could be a closed session from earlier in the day
+    const earliestTodayStart: string | null =
+      (todaySessionsRes.data && todaySessionsRes.data.length > 0)
+        ? todaySessionsRes.data[0].session_start
+        // If no closed sessions today, fall back to the active session start (bar opened today and still open)
+        : (barSessionStart && barSessionStart >= todayStartTT.toISOString() ? barSessionStart : null);
+
+    const [finRes, expRes, transfersRes, ownerOrdersRes, cashierOrdersRes, creditPaymentsRes, productsRes, openBottlesRes, todayOrdersRes, todayItemOrdersRes, todayNonStockExpRes, sessionOrdersRes, sessionExpenseRes] = await Promise.all([
       sb.from("owner_financials").select("initial_expense").eq("owner_id", profile.id).maybeSingle(),
       sb.from("owner_expenses").select("amount").eq("owner_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in"),
@@ -2709,24 +2725,25 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
       supabase.from("products").select("id, price, cost_price, units_per_item, stock_qty").eq("owner_id", profile.id),
       sb.from("opened_bottles").select("revenue, product_id, products(price)").eq("owner_id", profile.id).eq("status", "open"),
-      // Today's orders total (income) — ALL orders, same as Summary page
-      supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
-      // Today's orders with items for cost calculation
-      supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
-      // Today's non-stock expenses (positive only — not reverted)
+      // Today's orders: from earliest session start today → now (bar open to bar close, spans float resets)
+      earliestTodayStart
+        ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", earliestTodayStart)
+        : Promise.resolve({ data: [] }),
+      // Today's orders with items for cost calculation (same window)
+      earliestTodayStart
+        ? supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", earliestTodayStart)
+        : supabase.from("orders").select("items").eq("owner_id", profile.id).gte("created_at", todayStartTT.toISOString()),
+      // Today's non-stock expenses
       supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
         .eq("expense_date", todayDateStr).gt("amount", 0),
-      // Session income: all orders since bar_session_start
+      // Session income: orders only since current bar_session_start (resets on New Session)
       barSessionStart
         ? supabase.from("orders").select("total").eq("owner_id", profile.id).gte("created_at", barSessionStart)
         : Promise.resolve({ data: [] }),
-      // Session transfers in since bar_session_start
+      // Session expense: manual (non-stock) expenses since current bar_session_start (resets on New Session)
       barSessionStart
-        ? supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "transfer_in").gte("created_at", barSessionStart)
-        : Promise.resolve({ data: [] }),
-      // Session credit payments since bar_session_start
-      barSessionStart
-        ? supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0).gte("created_at", barSessionStart)
+        ? supabase.from("owner_expenses").select("amount, description").eq("owner_id", profile.id)
+            .gt("amount", 0).gte("created_at", barSessionStart)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -2774,13 +2791,19 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // todayProfit matches Summary page Day filter: income - item costs - non-stock expenses
     const todayProfit = todayIncome - todayCostFromItems - todayNonStock;
 
-    // Session income: orders + transfers_in + credit payments since bar_session_start
-    const sessionOrdersIncome    = (sessionOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0);
-    const sessionTransfersIncome = (sessionTransfersRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const sessionCreditIncome    = (sessionCreditRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
-    const sessionIncome = barSessionStart ? sessionOrdersIncome + sessionTransfersIncome + sessionCreditIncome : 0;
+    // Session income: orders only since current bar_session_start (resets on New Session, never exceeds Today)
+    const sessionIncome = barSessionStart
+      ? (sessionOrdersRes.data ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0)
+      : 0;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
+    // Session expense: manual (non-stock) expenses only since current bar_session_start
+    const sessionExpense = barSessionStart
+      ? (sessionExpenseRes.data ?? [])
+          .filter((e: { description: string | null }) => (e.description ?? "").startsWith("Non-Stock Expense"))
+          .reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0)
+      : 0;
+
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, sessionExpense, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -2830,6 +2853,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const totalExpenses = financialSummary ? financialSummary.monthlyExpenses : 0;
   const totalIncome = financialSummary ? financialSummary.totalIncome : balance;
   const sessionIncome = financialSummary ? financialSummary.sessionIncome : 0;
+  const sessionExpense = financialSummary ? financialSummary.sessionExpense : 0;
   const barSessionStart: string | null = (profile as any).bar_session_start ?? null;
   const barIsOpenWallet = !!barSessionStart && !((profile as any).bar_closed_at);
   const todayIncome = financialSummary ? financialSummary.todayIncome : 0;
@@ -2861,9 +2885,23 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             </button>
           </div>
           {loadingSummary ? (
-            <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
+            <div className="grid grid-cols-2 gap-2">{[0,1,2,3,4,5].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
+              {/* Row 1 — session stats (resets on New Session) */}
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Income</div>
+                <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                  {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Expense</div>
+                <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionExpense > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {barIsOpenWallet ? (sessionExpense > 0 ? `$${fmt(sessionExpense)}` : "$0.00") : "—"}
+                </div>
+              </div>
+              {/* Row 2 — today stats */}
               <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
@@ -2874,6 +2912,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
                 </div>
               </div>
+              {/* Row 3 — today costs */}
               <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
                 <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
@@ -2905,9 +2944,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</div>
               </div>
               <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Income</div>
-                <div className="font-black text-sm" style={{ color: sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                  {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Profit</div>
+                <div className="font-black text-sm" style={{ color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                  {stockExpectedProfit !== 0 ? `${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(Math.abs(stockExpectedProfit))}` : "—"}
                 </div>
               </div>
               <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>

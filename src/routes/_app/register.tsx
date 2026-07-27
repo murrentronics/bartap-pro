@@ -2300,15 +2300,13 @@ function CashOverlay({
               {step === 1 && (
                 <button
                   onClick={() => setShowRightPanel(v => !v)}
-                  className="md:hidden h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 active:scale-95 transition"
-                  style={payMode
-                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                    : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
+                  className="md:hidden h-11 px-4 rounded-xl font-black text-sm flex items-center gap-1.5 active:scale-95 transition"
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
                   👤
                   {selectedCustomer ? selectedCustomer.full_name.split(" ")[0] : payMode ?? "Guest"}
                 </button>
               )}
-              <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition" aria-label="Close">
+              <button onClick={onClose} className="h-11 w-11 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition" aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2420,59 +2418,62 @@ function CashOverlay({
             w-full md:w-64 flex flex-col shrink-0 border-t md:border-t-0 border-border
             md:static
             ${showRightPanel
-              ? "fixed inset-0 z-[60] rounded-3xl m-4"
+              ? "fixed inset-x-3 bottom-3 z-[60] rounded-3xl"
               : "hidden md:flex"}
-          `} style={{ background: "oklch(0.15 0.02 60)" }}>
+          `} style={{ background: "oklch(0.15 0.02 60)", ...(showRightPanel ? { top: "env(safe-area-inset-top, 12px)", maxHeight: "calc(100dvh - 24px)" } : {}) }}>
             {/* Done button — mobile only, closes the panel */}
-            <div className="md:hidden flex items-center justify-between px-3 pt-3 pb-1 shrink-0">
+            <div className="md:hidden flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
               <span className="text-sm font-black text-white/60">Customer / Payment</span>
               <button onClick={() => setShowRightPanel(false)}
-                className="h-8 px-4 rounded-xl font-black text-xs text-primary-foreground active:scale-95 transition"
+                className="h-9 px-5 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
                 style={{ background: "var(--gradient-hero)" }}>
                 Done
               </button>
             </div>
             {/* Cash / Credit big square buttons */}
-            <div className="grid grid-cols-2 gap-2 p-3 shrink-0">
+            <div className="grid grid-cols-2 gap-3 px-4 py-3 shrink-0">
               <button
                 onClick={() => { setPayMode(payMode === "cash" ? null : "cash"); if (payMode === "credit") setSelectedCustomer(null); }}
-                className="h-16 rounded-2xl font-black text-sm flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                className="h-20 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1.5 transition active:scale-95"
                 style={payMode === "cash"
                   ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                   : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
-                <span className="text-xl">💵</span>
+                <span className="text-2xl">💵</span>
                 Cash
               </button>
               <button
                 onClick={() => { setPayMode(payMode === "credit" ? null : "credit"); if (payMode === "cash") setSelectedCustomer(null); }}
-                className="h-16 rounded-2xl font-black text-sm flex flex-col items-center justify-center gap-1 transition active:scale-95"
+                className="h-20 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1.5 transition active:scale-95"
                 style={payMode === "credit"
                   ? { background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }
                   : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
-                <span className="text-xl">🧾</span>
+                <span className="text-2xl">🧾</span>
                 Credit
               </button>
             </div>
             {/* Customer list — visible when Cash or Credit is selected */}
             {payMode && (
-              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1 min-h-0">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">
-                  {payMode === "credit" ? "Select customer to charge" : "Select customer (optional)"}
-                </p>
+              <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 min-h-0 pt-1">
                 {loadingCustomers ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                 ) : customers.length === 0 ? (
-                  <p className="text-xs text-white/30 text-center py-4">No customers yet</p>
+                  <p className="text-xs text-white/30 text-center py-6">No customers yet</p>
                 ) : (
                   customers.map((c) => (
                     <button key={c.id}
                       onClick={() => setSelectedCustomer(selectedCustomer?.id === c.id ? null : c)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition active:scale-[0.98]"
+                      className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left transition active:scale-[0.98] min-h-[60px]"
                       style={selectedCustomer?.id === c.id
                         ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                        : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.8)" }}>
-                      <span className="text-xs font-black truncate flex-1">{c.full_name}</span>
-                      <span className={`text-[10px] font-black shrink-0 ml-1 ${Number(c.balance_owed) > 0 ? "text-red-400" : "text-green-400"}`}>
+                        : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }}>
+                      <span className="text-sm font-black leading-tight flex-1 pr-3">{c.full_name}</span>
+                      <span className={`text-xs font-black shrink-0 ${
+                        Number(c.balance_owed) > 0
+                          ? "text-red-400"
+                          : selectedCustomer?.id === c.id
+                            ? "text-primary-foreground/80"
+                            : "text-amber-700"
+                      }`}>
                         {Number(c.balance_owed) > 0 ? `-$${Number(c.balance_owed).toFixed(2)}` : "$0.00"}
                       </span>
                     </button>
@@ -2481,7 +2482,7 @@ function CashOverlay({
               </div>
             )}
             {!payMode && (
-              <div className="flex-1 flex items-center justify-center px-3 pb-3">
+              <div className="flex-1 flex items-center justify-center px-4 pb-4 min-h-[80px]">
                 <p className="text-xs text-white/30 text-center">Select Cash or Credit<br/>to assign a customer,<br/>or Proceed as Guest</p>
               </div>
             )}

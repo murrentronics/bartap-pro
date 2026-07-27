@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
+import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,6 +258,7 @@ async function printBill(account: CreditAccount, ownerName: string) {
 function CreditPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
+  const { t } = useTranslation();
   const rawOwnerId = profile?.role === "owner" ? profile.id : profile?.parent_id;
   const ownerId = profile?.role === "owner" ? effectiveOwnerId(profile.id) : rawOwnerId;
   const ownerName = profile?.username ?? "Bar";
@@ -316,22 +318,22 @@ function CreditPage() {
 
   return (
     <div className="py-3 space-y-4">
-      <h1 className="text-2xl font-black">Customers</h1>
+      <h1 className="text-2xl font-black">{t("credit", "Customers")}</h1>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
-        {(["credit", "cleared", "create"] as const).map((t) => (
+        {(["credit", "cleared", "create"] as const).map((tabKey) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
             className={`flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${
-              tab === t
+              tab === tabKey
                 ? "text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
-            style={tab === t ? { background: "var(--gradient-hero)" } : {}}
+            style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}
           >
-            {t === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : t === "cleared" ? "Cleared" : "Create"}
+            {tabKey === "credit" ? `Credit${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create"}
           </button>
         ))}
       </div>
