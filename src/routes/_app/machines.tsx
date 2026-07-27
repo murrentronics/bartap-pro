@@ -4539,7 +4539,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                   </span>
 
 
-                  <span className="text-[9px] font-black text-white/60 uppercase tracking-widest leading-tight text-center line-clamp-2 px-1">
+                  <span className="text-[11px] font-black text-white/80 uppercase tracking-widest leading-tight text-center truncate w-full px-0.5">
 
 
                     {m.name}
@@ -4602,7 +4602,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                     </span>
 
 
-                    <span className="text-[8px] font-black text-white/80 uppercase tracking-widest text-center px-1 line-clamp-1">
+                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest text-center truncate w-full px-0.5">
 
 
                       {m.name}

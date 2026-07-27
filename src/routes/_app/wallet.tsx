@@ -2963,13 +2963,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session In</div>
-                  <div className="font-black text-sm" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                  <div className="font-black text-xl" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Out</div>
-                  <div className="font-black text-sm" style={{ color: barIsOpenWallet && (sessionStockCost + sessionExpense) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  <div className="font-black text-xl" style={{ color: barIsOpenWallet && (sessionStockCost + sessionExpense) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionStockCost + sessionExpense)}` : "—"}
                   </div>
                 </div>
