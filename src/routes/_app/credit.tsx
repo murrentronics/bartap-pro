@@ -352,7 +352,7 @@ function CreditPage() {
 
   return (
     <div className="py-3 space-y-4">
-      <h1 className="text-2xl font-black">{t("customers_title", "Customers")}</h1>
+      <h1 className="text-2xl font-black">Customers</h1>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>

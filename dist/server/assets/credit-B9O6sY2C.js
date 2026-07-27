@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-DeJL325l.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-DWYa-7YT.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-Cat304ed.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, k as useTranslation, s as supabase, l as ChevronRight, i as LoaderCircle, P as Pencil, m as CircleCheck, L as Label, I as Input, B as Button, X, T as Trash2, t as toast, n as drawHeader, o as LM, p as RM, q as CONTENT_BOTTOM, r as addFootersToAllPages, v as downloadPdf } from "./router-BoLXNdSQ.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -61,7 +61,7 @@ async function printBill(account, ownerName) {
   const prodCostByName = new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -380,7 +380,7 @@ function CreditPage() {
     fetchAccounts();
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-3 space-y-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: t("customers_title", "Customers") }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: "Customers" }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 rounded-2xl p-1", style: {
       background: "var(--gradient-card)"
     }, children: ["credit", "cleared", "create"].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTab(tabKey), className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`, style: tab === tabKey ? {

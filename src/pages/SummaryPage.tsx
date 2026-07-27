@@ -371,63 +371,52 @@ export default function SummaryPage() {
     let startIso: string;
     let endIso: string;
 
-    // Helper: given a calendar range [rangeStart, rangeEnd], find all bar sessions
-    // that OPENED within that range and return earliest open → latest close (or now).
-    // This means a session opening on the 30th and closing on the 31st is fully included
-    // when you pick the 30th, or any week/month/year that contains the 30th.
-    const sessionBoundsForRange = (rangeStart: Date, rangeEnd: Date): { start: string; end: string } => {
-      const inRange = barSessions.filter(s => {
-        const st = new Date(s.session_start);
-        return st >= rangeStart && st <= rangeEnd;
-      });
-      // Also include active session if it opened within range
-      if (barSessionStart) {
-        const st = new Date(barSessionStart);
-        if (st >= rangeStart && st <= rangeEnd &&
-            !inRange.some(s => s.session_start === barSessionStart)) {
-          inRange.push({ id: "active", session_start: barSessionStart, session_end: null });
-        }
-      }
-      if (inRange.length === 0) {
-        // No session started in this range — return the calendar bounds (empty result)
-        return { start: rangeStart.toISOString(), end: rangeEnd.toISOString() };
-      }
-      const earliest = inRange.reduce((a, b) => a.session_start < b.session_start ? a : b);
-      const latest   = inRange.reduce((a, b) =>
-        (a.session_end ?? "9999") > (b.session_end ?? "9999") ? a : b);
-      return {
-        start: earliest.session_start,
-        end:   latest.session_end ?? new Date().toISOString(),
-      };
-    };
-
     if (filter === "day") {
-      // Day = from bar open on selected date to bar close (may span to next morning)
+      // Day = from bar open on selected TT date to bar close (may span to next morning).
+      // If bar opened/closed multiple times on the same day, span from first open → last close.
       const dayStartTT = new Date(fromDate + "T00:00:00-04:00");
       const dayEndTT   = new Date(fromDate + "T23:59:59-04:00");
-      const b = sessionBoundsForRange(dayStartTT, dayEndTT);
-      startIso = b.start; endIso = b.end;
+
+      // Collect all sessions that started on this calendar day
+      const sessionsOnDay = barSessions.filter(s => {
+        const st = new Date(s.session_start);
+        return st >= dayStartTT && st <= dayEndTT;
+      });
+      // Include active session if it started today
+      if (barSessionStart) {
+        const st = new Date(barSessionStart);
+        if (st >= dayStartTT && st <= dayEndTT &&
+            !sessionsOnDay.some(s => s.session_start === barSessionStart)) {
+          sessionsOnDay.push({ id: "active", session_start: barSessionStart, session_end: null });
+        }
+      }
+
+      if (sessionsOnDay.length === 0) {
+        // No session on this day — impossible range → empty result
+        startIso = dayEndTT.toISOString();
+        endIso   = dayStartTT.toISOString();
+      } else {
+        const earliest = sessionsOnDay.reduce((a, b) => a.session_start < b.session_start ? a : b);
+        const latest   = sessionsOnDay.reduce((a, b) =>
+          (a.session_end ?? new Date().toISOString()) > (b.session_end ?? new Date().toISOString()) ? a : b);
+        startIso = earliest.session_start;
+        endIso   = latest.session_end ?? new Date().toISOString();
+      }
     } else if (filter === "week") {
-      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
-      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
-      const b = sessionBoundsForRange(rangeStart, rangeEnd);
-      startIso = b.start; endIso = b.end;
+      // Week/month/year/period: use plain calendar bounds — all records in the date range
+      // Sessions that close after midnight are included because created_at falls in the range
+      startIso = new Date(fromDate + "T00:00:00-04:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59-04:00").toISOString();
     } else if (filter === "month") {
-      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
-      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
-      const b = sessionBoundsForRange(rangeStart, rangeEnd);
-      startIso = b.start; endIso = b.end;
+      startIso = new Date(fromDate + "T00:00:00-04:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59-04:00").toISOString();
     } else if (filter === "year") {
-      const rangeStart = new Date(`${fromDate}T00:00:00-04:00`);
-      const rangeEnd   = new Date(`${toDate}T23:59:59-04:00`);
-      const b = sessionBoundsForRange(rangeStart, rangeEnd);
-      startIso = b.start; endIso = b.end;
+      startIso = new Date(fromDate + "T00:00:00-04:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59-04:00").toISOString();
     } else {
       // period
-      const rangeStart = new Date(fromDate + "T00:00:00-04:00");
-      const rangeEnd   = new Date(toDate   + "T23:59:59-04:00");
-      const b = sessionBoundsForRange(rangeStart, rangeEnd);
-      startIso = b.start; endIso = b.end;
+      startIso = new Date(fromDate + "T00:00:00-04:00").toISOString();
+      endIso   = new Date(toDate   + "T23:59:59-04:00").toISOString();
     }
 
     const expFrom = startIso.slice(0, 10);

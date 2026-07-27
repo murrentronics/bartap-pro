@@ -5672,54 +5672,58 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     }
     if (summaryFilter === "all") return null;
 
-    // Helper: given calendar bounds, find sessions that opened within range and return
-    // earliest open → latest close (or now). Entries from a session closing next morning
-    // are included when the session opened on the selected day/week/month/year.
-    const sessionBounds = (rangeStart: Date, rangeEnd: Date): { startIso: string; endIso: string } => {
-      const inRange = barSessions.filter(s => {
+    if (summaryFilter === "day") {
+      // Day = bar open to bar close on selected TT calendar day (spans midnight if needed)
+      const dayStartTT = new Date(pickerDate + "T00:00:00-04:00");
+      const dayEndTT   = new Date(pickerDate + "T23:59:59-04:00");
+      const sessOnDay = barSessions.filter(s => {
         const st = new Date(s.opened_at);
-        return st >= rangeStart && st <= rangeEnd;
+        return st >= dayStartTT && st <= dayEndTT;
       });
       if (barSessionStart) {
         const st = new Date(barSessionStart);
-        if (st >= rangeStart && st <= rangeEnd && !inRange.some(s => s.opened_at === barSessionStart)) {
-          inRange.push({ id: "active", opened_at: barSessionStart, closed_at: null });
+        if (st >= dayStartTT && st <= dayEndTT && !sessOnDay.some(s => s.opened_at === barSessionStart)) {
+          sessOnDay.push({ id: "active", opened_at: barSessionStart, closed_at: null });
         }
       }
-      if (inRange.length === 0) {
-        return { startIso: rangeStart.toISOString(), endIso: rangeEnd.toISOString() };
+      if (sessOnDay.length === 0) {
+        // No session on this day — impossible range → empty result
+        return { start: pickerDate, end: pickerDate, startIso: dayEndTT.toISOString(), endIso: dayStartTT.toISOString() };
       }
-      const earliest = inRange.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
-      const latest   = inRange.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
-      return { startIso: earliest.opened_at, endIso: latest.closed_at ?? new Date().toISOString() };
-    };
-
-    if (summaryFilter === "day") {
-      const dayStartTT = new Date(pickerDate + "T00:00:00-04:00");
-      const dayEndTT   = new Date(pickerDate + "T23:59:59-04:00");
-      const b = sessionBounds(dayStartTT, dayEndTT);
-      return { start: pickerDate, end: b.endIso.slice(0, 10), startIso: b.startIso, endIso: b.endIso };
+      const earliest = sessOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+      const latest   = sessOnDay.reduce((a, b) =>
+        (a.closed_at ?? new Date().toISOString()) > (b.closed_at ?? new Date().toISOString()) ? a : b);
+      const startIso = earliest.opened_at;
+      const endIso   = latest.closed_at ?? new Date().toISOString();
+      return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
     }
     if (summaryFilter === "week") {
-      const weekStart = new Date(pickerDate + "T00:00:00-04:00");
-      const weekEnd   = new Date(pickerDate + "T00:00:00-04:00");
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59);
-      const endDateStr = weekEnd.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
-      const b = sessionBounds(weekStart, new Date(endDateStr + "T23:59:59-04:00"));
-      return { start: pickerDate, end: endDateStr, startIso: b.startIso, endIso: b.endIso };
+      const weekEndDate = new Date(pickerDate + "T00:00:00-04:00");
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      const endDateStr = weekEndDate.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      return {
+        start: pickerDate, end: endDateStr,
+        startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
+        endIso:   new Date(endDateStr + "T23:59:59-04:00").toISOString(),
+      };
     }
     if (summaryFilter === "month") {
       const first = new Date(pickerYear, pickerMonth, 1, 0, 0, 0);
       const last  = new Date(pickerYear, pickerMonth + 1, 0, 23, 59, 59);
       const startStr = first.toLocaleDateString("en-CA");
       const endStr   = last.toLocaleDateString("en-CA");
-      const b = sessionBounds(new Date(startStr + "T00:00:00-04:00"), new Date(endStr + "T23:59:59-04:00"));
-      return { start: startStr, end: endStr, startIso: b.startIso, endIso: b.endIso };
+      return {
+        start: startStr, end: endStr,
+        startIso: new Date(startStr + "T00:00:00-04:00").toISOString(),
+        endIso:   new Date(endStr   + "T23:59:59-04:00").toISOString(),
+      };
     }
     if (summaryFilter === "year") {
-      const b = sessionBounds(new Date(`${pickerYear}-01-01T00:00:00-04:00`), new Date(`${pickerYear}-12-31T23:59:59-04:00`));
-      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`, startIso: b.startIso, endIso: b.endIso };
+      return {
+        start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`,
+        startIso: new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString(),
+        endIso:   new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString(),
+      };
     }
     return null;
   };
@@ -6214,23 +6218,32 @@ export default function MachinesPage() {
 
   // Bar session state — used by ScreensTab for session stats anchor
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
-
+  const [barClosedAtMachines, setBarClosedAtMachines] = useState<string | null>(null);
+  const [barSessionLoadingMachines, setBarSessionLoadingMachines] = useState(true);
+  const [barOverlayReadyMachines, setBarOverlayReadyMachines] = useState(false);
+  const barIsOpenMachines = !!barSessionStart && !barClosedAtMachines;
 
   useEffect(() => {
     if (!ownerId) return;
+    setBarSessionLoadingMachines(true);
+    setBarOverlayReadyMachines(false);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("profiles")
-      .select("bar_session_start")
+      .select("bar_session_start, bar_closed_at")
       .eq("id", ownerId)
       .single()
-      .then(({ data }: { data: { bar_session_start: string | null } | null }) => {
+      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
         setBarSessionStart(data?.bar_session_start ?? null);
+        setBarClosedAtMachines(data?.bar_closed_at ?? null);
+        setBarSessionLoadingMachines(false);
+        setTimeout(() => setBarOverlayReadyMachines(true), 150);
       });
     const ch = supabase.channel("machines-page-bar-session-" + ownerId)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: "id=eq." + ownerId },
         (payload: any) => {
           const r = payload.new as Record<string, unknown>;
           if ("bar_session_start" in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
+          if ("bar_closed_at" in r) setBarClosedAtMachines((r.bar_closed_at as string | null) ?? null);
         }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId]);
@@ -7320,6 +7333,22 @@ export default function MachinesPage() {
 
     <>
 
+
+      {/* ── Machines locked when bar is closed ── */}
+      {barOverlayReadyMachines && !barSessionLoadingMachines && !barIsOpenMachines && (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-8 pb-6">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="font-black text-xl mb-2">Machines Locked</h2>
+              <p className="text-sm text-muted-foreground leading-snug">
+                The bar is closed. Machine records are view-only until the owner opens a new bar session.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MachineDetail overlays the list but keeps MachinesPage mounted so
 

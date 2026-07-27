@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-DeJL325l.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-Cat304ed.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26834,7 +26834,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BipA3Q_k.js");
+          const { PushNotifications } = await import("./index-DsyUv1f8.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27100,7 +27100,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-0uHyyOH9.css";
+const appCss = "/assets/styles-8hZxgVZA.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30731,11 +30731,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root.displayName;
-const $$splitComponentImporter$3 = () => import("./login-0c5A2IAl.js");
+const $$splitComponentImporter$3 = () => import("./login-DqRs0J_N.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-BtsVM-Wx.js");
+const $$splitComponentImporter$2 = () => import("./_app-BdWBMedx.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -31159,7 +31159,7 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-BHHGF_AU.js");
+const $$splitComponentImporter$1 = () => import("./manager-DIHhl6-e.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -43053,8 +43053,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-KEss7eMv.js");
-    const { Share } = await import("./index-Ct65JAmG.js");
+    const { Filesystem, Directory } = await import("./index-CWvOzexR.js");
+    const { Share } = await import("./index-DVb6VZXw.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -43212,7 +43212,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C2KxxdyI.js");
+      const { LocalNotifications } = await import("./index-BasVERwq.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -43231,7 +43231,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-C2KxxdyI.js");
+    const { LocalNotifications } = await import("./index-BasVERwq.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -43266,7 +43266,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C2KxxdyI.js");
+      const { LocalNotifications } = await import("./index-BasVERwq.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -43958,7 +43958,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -44063,7 +44063,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -45236,7 +45236,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -45613,50 +45613,58 @@ function SummaryTab({ entries, machines, ownerId }) {
       return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
     }
     if (summaryFilter === "all") return null;
-    const sessionBounds = (rangeStart, rangeEnd) => {
-      const inRange = barSessions.filter((s) => {
-        const st = new Date(s.opened_at);
-        return st >= rangeStart && st <= rangeEnd;
-      });
-      if (barSessionStart) {
-        const st = new Date(barSessionStart);
-        if (st >= rangeStart && st <= rangeEnd && !inRange.some((s) => s.opened_at === barSessionStart)) {
-          inRange.push({ id: "active", opened_at: barSessionStart, closed_at: null });
-        }
-      }
-      if (inRange.length === 0) {
-        return { startIso: rangeStart.toISOString(), endIso: rangeEnd.toISOString() };
-      }
-      const earliest = inRange.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
-      const latest = inRange.reduce((a, b) => (a.closed_at ?? "9999") > (b.closed_at ?? "9999") ? a : b);
-      return { startIso: earliest.opened_at, endIso: latest.closed_at ?? (/* @__PURE__ */ new Date()).toISOString() };
-    };
     if (summaryFilter === "day") {
       const dayStartTT = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
       const dayEndTT = /* @__PURE__ */ new Date(pickerDate + "T23:59:59-04:00");
-      const b = sessionBounds(dayStartTT, dayEndTT);
-      return { start: pickerDate, end: b.endIso.slice(0, 10), startIso: b.startIso, endIso: b.endIso };
+      const sessOnDay = barSessions.filter((s) => {
+        const st = new Date(s.opened_at);
+        return st >= dayStartTT && st <= dayEndTT;
+      });
+      if (barSessionStart) {
+        const st = new Date(barSessionStart);
+        if (st >= dayStartTT && st <= dayEndTT && !sessOnDay.some((s) => s.opened_at === barSessionStart)) {
+          sessOnDay.push({ id: "active", opened_at: barSessionStart, closed_at: null });
+        }
+      }
+      if (sessOnDay.length === 0) {
+        return { start: pickerDate, end: pickerDate, startIso: dayEndTT.toISOString(), endIso: dayStartTT.toISOString() };
+      }
+      const earliest = sessOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
+      const latest = sessOnDay.reduce((a, b) => (a.closed_at ?? (/* @__PURE__ */ new Date()).toISOString()) > (b.closed_at ?? (/* @__PURE__ */ new Date()).toISOString()) ? a : b);
+      const startIso = earliest.opened_at;
+      const endIso = latest.closed_at ?? (/* @__PURE__ */ new Date()).toISOString();
+      return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
     }
     if (summaryFilter === "week") {
-      const weekStart = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
-      const weekEnd = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59);
-      const endDateStr = weekEnd.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
-      const b = sessionBounds(weekStart, /* @__PURE__ */ new Date(endDateStr + "T23:59:59-04:00"));
-      return { start: pickerDate, end: endDateStr, startIso: b.startIso, endIso: b.endIso };
+      const weekEndDate = /* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00");
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      const endDateStr = weekEndDate.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+      return {
+        start: pickerDate,
+        end: endDateStr,
+        startIso: (/* @__PURE__ */ new Date(pickerDate + "T00:00:00-04:00")).toISOString(),
+        endIso: (/* @__PURE__ */ new Date(endDateStr + "T23:59:59-04:00")).toISOString()
+      };
     }
     if (summaryFilter === "month") {
       const first = new Date(pickerYear, pickerMonth, 1, 0, 0, 0);
       const last2 = new Date(pickerYear, pickerMonth + 1, 0, 23, 59, 59);
       const startStr = first.toLocaleDateString("en-CA");
       const endStr = last2.toLocaleDateString("en-CA");
-      const b = sessionBounds(/* @__PURE__ */ new Date(startStr + "T00:00:00-04:00"), /* @__PURE__ */ new Date(endStr + "T23:59:59-04:00"));
-      return { start: startStr, end: endStr, startIso: b.startIso, endIso: b.endIso };
+      return {
+        start: startStr,
+        end: endStr,
+        startIso: (/* @__PURE__ */ new Date(startStr + "T00:00:00-04:00")).toISOString(),
+        endIso: (/* @__PURE__ */ new Date(endStr + "T23:59:59-04:00")).toISOString()
+      };
     }
     if (summaryFilter === "year") {
-      const b = sessionBounds(/* @__PURE__ */ new Date(`${pickerYear}-01-01T00:00:00-04:00`), /* @__PURE__ */ new Date(`${pickerYear}-12-31T23:59:59-04:00`));
-      return { start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`, startIso: b.startIso, endIso: b.endIso };
+      return {
+        start: `${pickerYear}-01-01`,
+        end: `${pickerYear}-12-31`,
+        startIso: (/* @__PURE__ */ new Date(`${pickerYear}-01-01T00:00:00-04:00`)).toISOString(),
+        endIso: (/* @__PURE__ */ new Date(`${pickerYear}-12-31T23:59:59-04:00`)).toISOString()
+      };
     }
     return null;
   };
@@ -45696,7 +45704,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-jc3wa-4R.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Ceq7E4M2.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -46099,10 +46107,19 @@ function MachinesPage() {
   const ownerId = effectiveOwnerId(profile?.role === "cashier" ? profile.parent_id ?? "" : profile?.id ?? "");
   const isOwner = profile?.role === "owner";
   const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
+  const [barClosedAtMachines, setBarClosedAtMachines] = reactExports.useState(null);
+  const [barSessionLoadingMachines, setBarSessionLoadingMachines] = reactExports.useState(true);
+  const [barOverlayReadyMachines, setBarOverlayReadyMachines] = reactExports.useState(false);
+  const barIsOpenMachines = !!barSessionStart && !barClosedAtMachines;
   reactExports.useEffect(() => {
     if (!ownerId) return;
-    supabase.from("profiles").select("bar_session_start").eq("id", ownerId).single().then(({ data }) => {
+    setBarSessionLoadingMachines(true);
+    setBarOverlayReadyMachines(false);
+    supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single().then(({ data }) => {
       setBarSessionStart(data?.bar_session_start ?? null);
+      setBarClosedAtMachines(data?.bar_closed_at ?? null);
+      setBarSessionLoadingMachines(false);
+      setTimeout(() => setBarOverlayReadyMachines(true), 150);
     });
     const ch = supabase.channel("machines-page-bar-session-" + ownerId).on(
       "postgres_changes",
@@ -46110,6 +46127,7 @@ function MachinesPage() {
       (payload) => {
         const r2 = payload.new;
         if ("bar_session_start" in r2) setBarSessionStart(r2.bar_session_start ?? null);
+        if ("bar_closed_at" in r2) setBarClosedAtMachines(r2.bar_closed_at ?? null);
       }
     ).subscribe();
     return () => {
@@ -46487,6 +46505,18 @@ function MachinesPage() {
     ...isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    barOverlayReadyMachines && !barSessionLoadingMachines && !barIsOpenMachines && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center",
+        style: { background: "var(--gradient-card)" },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 pt-8 pb-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-5xl mb-4", children: "🔒" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-xl mb-2", children: "Machines Locked" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground leading-snug", children: "The bar is closed. Machine records are view-only until the owner opens a new bar session." })
+        ] })
+      }
+    ) }),
     selected && reactDomExports.createPortal(
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         MachineDetail,
@@ -47660,7 +47690,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-Da-i5pVp.js");
+const $$splitComponentImporter = () => import("./credit-B9O6sY2C.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

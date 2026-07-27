@@ -72,6 +72,8 @@ export default function RegisterPage() {
 
   // ── Bar open / close toggle (owner only) ─────────────────────────────────
   const [barToggleBusy, setBarToggleBusy] = useState(false);
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
+  const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
 
   const handleOpenBar = async () => {
     setBarToggleBusy(true);
@@ -85,6 +87,7 @@ export default function RegisterPage() {
     setBarSessionStart(now);
     setBarClosedAt(null);
     toast.success("🟢 Bar opened");
+    setShowBarOpenedOverlay(true); // show float / machine reset prompt
   };
 
   const handleCloseBar = async () => {
@@ -757,6 +760,81 @@ export default function RegisterPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Confirm Close Bar modal ── */}
+      {showConfirmClose && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-7 pb-4 text-center space-y-3">
+              <div className="text-5xl">🔴</div>
+              <h2 className="font-black text-xl">Close the Bar?</h2>
+              <p className="text-sm text-muted-foreground leading-snug">
+                This will end the current session. Cashiers will not be able to make sales until the bar is reopened.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-border">
+              <button
+                onClick={() => setShowConfirmClose(false)}
+                className="h-14 font-black text-sm border-r border-border transition active:bg-muted/60">
+                Cancel
+              </button>
+              <button
+                disabled={barToggleBusy}
+                onClick={async () => { setShowConfirmClose(false); await handleCloseBar(); }}
+                className="h-14 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
+                style={{ background: "#dc2626" }}>
+                {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Close Bar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bar Opened overlay — prompt to set float & reset machines ── */}
+      {showBarOpenedOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-7 pb-4 text-center space-y-2">
+              <div className="text-5xl">🟢</div>
+              <h2 className="font-black text-xl">Bar is Open!</h2>
+              <p className="text-sm text-muted-foreground leading-snug">
+                New session started. Remember to set the cashier float in Wallet and update machine session readings if needed.
+              </p>
+            </div>
+            <div className="px-6 pb-6 space-y-2 pt-2">
+              <button
+                onClick={() => setShowBarOpenedOverlay(false)}
+                className="w-full h-12 rounded-2xl font-black text-sm transition active:scale-95 text-primary-foreground"
+                style={{ background: "var(--gradient-hero)" }}>
+                Let's Go
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Owner bar status bar ── */}
+      {profile?.role === "owner" && barOverlayReady && !barSessionLoading && (
+        <div className="flex items-center justify-between px-1 pt-1 pb-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]">{barIsOpen ? "🟢" : "🔴"}</span>
+            <span className="text-[11px] font-black" style={{ color: barIsOpen ? "#86efac" : "#fca5a5" }}>
+              {barIsOpen ? "Bar Open" : "Bar Closed"}
+            </span>
+          </div>
+          {barIsOpen && (
+            <button
+              onClick={() => setShowConfirmClose(true)}
+              disabled={barToggleBusy}
+              className="h-7 px-3 rounded-xl font-black text-[11px] transition active:scale-95 disabled:opacity-50"
+              style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)", color: "#fca5a5" }}>
+              Close Bar
+            </button>
+          )}
         </div>
       )}
 
