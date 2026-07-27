@@ -2686,6 +2686,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     stockCost: number;
     todayIncome: number;
     todayProfit: number;
+    todayStockCost: number;
+    todayExpenses: number;
   } | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
@@ -2778,7 +2780,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     const sessionCreditIncome    = (sessionCreditRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0);
     const sessionIncome = barSessionStart ? sessionOrdersIncome + sessionTransfersIncome + sessionCreditIncome : 0;
 
-    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit });
+    setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, sessionIncome, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });
     setLoadingSummary(false);
   }, [profile.id]);
 
@@ -2836,20 +2838,21 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const stockResaleValue = financialSummary ? financialSummary.stockResaleValue : 0;
   const stockExpectedProfit = financialSummary ? financialSummary.stockExpectedProfit : 0;
   const stockCost = financialSummary ? financialSummary.stockCost : 0;
+  const todayStockCost = financialSummary ? financialSummary.todayStockCost : 0;
+  const todayExpenses = financialSummary ? financialSummary.todayExpenses : 0;
   const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
     <div className="space-y-5">
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="rounded-3xl p-5 relative overflow-hidden"
+      {/* ── Hero 1: Today’s stats ──────────────────────────────────────────────────────────── */}
+      <section className="rounded-3xl p-4 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative space-y-4">
-          {/* Title row */}
-          <div className="flex items-center justify-between">
+        <div className="relative">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "rgba(0,0,0,0.75)" }}>
-              <WalletIcon className="h-4 w-4" /> Owner Wallet
+              <WalletIcon className="h-4 w-4" /> Today
             </div>
             <button onClick={() => setShowStatement(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
@@ -2857,112 +2860,81 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <FileText className="h-3.5 w-3.5" /> Statement
             </button>
           </div>
-
-          {/* Mini stat cards */}
           {loadingSummary ? (
-            <div className="grid grid-cols-2 gap-2">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="rounded-2xl h-20 bg-white/10 animate-pulse" />)}
-            </div>
+            <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
-            <>
-            {/* Total Expense + Total Profit — first row */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" /> Total Expense
-                </div>
-                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                  {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Income</div>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Profit</div>
+                <div className="font-black text-sm" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                  {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
                 </div>
               </div>
-              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Total Profit
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Stock Cost</div>
+                <div className="font-black text-sm" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
                 </div>
-                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
-                  color: !hasFinancials ? "rgba(255,255,255,0.3)"
-                    : netProfit >= 0 ? "#86efac"
-                    : "#fca5a5"
-                }}>
-                  {hasFinancials ? `${netProfit >= 0 ? "+" : ""}$${fmt(netProfit)}` : "—"}
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Expenses</div>
+                <div className="font-black text-sm" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      </section>
 
-            {/* Stock Expense + Net Profit — second row */}
+      {/* ── Hero 2: Running totals + stock ──────────────────────────────────────── */}
+      <section className="rounded-3xl p-4 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div className="absolute -left-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          {loadingSummary ? (
+            <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
+          ) : (
             <div className="grid grid-cols-2 gap-2">
-              {/* Stock Expense — current total cost price of all stock on hand */}
-              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Expense
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Total Income</div>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</div>
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Income</div>
+                <div className="font-black text-sm" style={{ color: sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                  {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
                 </div>
-                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+              </div>
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Cost</div>
+                <div className="font-black text-sm" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                   {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
                 </div>
               </div>
-
-              {/* Stock Profit = Stock Resale Cost − Stock Expense */}
-              <div className="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-1 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Profit
-                </div>
-                <div className="font-black text-sm sm:text-base lg:text-lg leading-tight" style={{
-                  color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5"
-                }}>
-                  {`${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(stockExpectedProfit)}`}
+              <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Value</div>
+                <div className="font-black text-sm" style={{ color: stockResaleValue > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                  {stockResaleValue > 0 ? `$${fmt(stockResaleValue)}` : "—"}
                 </div>
               </div>
             </div>
-            </>
           )}
+        </div>
+      </section>
 
-          {/* Stock Resale + Today's Profit — 2 cards */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" /> Stock Resale Cost
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#eab308" }}>
-                ${fmt(stockResaleValue)}
-              </span>
-            </div>
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /> Today's Profit
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{
-                color: todayProfit > 0 ? "#86efac" : todayProfit < 0 ? "#fca5a5" : "rgba(255,255,255,0.3)"
-              }}>
-                {todayIncome > 0 ? `${todayProfit >= 0 ? "+" : ""}$${fmt(todayProfit)}` : "—"}
-              </span>
-            </div>
-          </div>
-
-          {/* Total Income + Session Income — 2 cards */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs lg:text-sm font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Total Income
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: "#86efac" }}>${fmt(totalIncome)}</span>
-            </div>
-            <div className="flex flex-col items-center justify-center gap-1 text-center rounded-2xl px-3 py-2.5" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" /> Session Income
-              </div>
-              <span className="font-black text-sm sm:text-base lg:text-lg" style={{ color: barIsOpenWallet ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
-              </span>
-              {barIsOpenWallet && (
-                <span className="text-[9px] text-green-400/60 font-semibold">Live session</span>
-              )}
-            </div>
-          </div>
-
-          {/* Cashier Float row — narrow button (left) + wider float card (right) */}
-          <div className="flex gap-2 items-stretch">
+      {/* ── Hero 3: Float ────────────────────────────────────────────────────────────────────────── */}
+      <section className="rounded-3xl p-4 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <div className="flex gap-3 items-stretch">
             <button
-              onClick={() => { setFloatInput(cashierFloat > 0 ? String(cashierFloat) : ""); setShowSetFloat(true); }}
+              onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
               className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2"
               style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
               {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
@@ -2988,7 +2960,6 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
           </div>
         </div>
       </section>
-
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="flex rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
         <button

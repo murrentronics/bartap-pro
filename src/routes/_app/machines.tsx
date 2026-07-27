@@ -6280,6 +6280,12 @@ export default function MachinesPage() {
     if (isNaN(val) || val <= 0) { toast.error("Enter a valid amount"); return; }
 
 
+    if (remainingFloat === null) { toast.error("Set a float before adding an expense"); return; }
+
+
+    if (val > remainingFloat) { toast.error(`Expense $${val.toFixed(2)} exceeds remaining float $${remainingFloat.toFixed(2)}`); return; }
+
+
     // Session-level expense — not tied to any specific machine.
     // We still need a machine_id for the FK, so we use the first available.
     const targetMachineId = machines[0]?.id ?? null;
@@ -7542,7 +7548,37 @@ export default function MachinesPage() {
             </div>
 
 
-            {/* Machine picker */}
+            {/* Remaining float info */}
+
+
+            {remainingFloat === null ? (
+
+
+              <div className="rounded-xl px-3 py-2 text-center text-xs font-black text-red-400" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+
+
+                No float set — set a float first
+
+
+              </div>
+
+
+            ) : (
+
+
+              <div className="rounded-xl px-3 py-2 flex items-center justify-between" style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+
+
+                <span className="text-[10px] font-semibold text-white/40">Remaining Float</span>
+
+
+                <span className="text-sm font-black" style={{ color: remainingFloat <= 0 ? "#f87171" : "#86efac" }}>${remainingFloat.toFixed(2)}</span>
+
+
+              </div>
+
+
+            )}
 
 
             {/* Amount */}
@@ -7704,7 +7740,7 @@ export default function MachinesPage() {
               </button>
 
 
-              <button onClick={handleSaveMachineExpense} disabled={savingExpense || !expenseAmount}
+              <button onClick={handleSaveMachineExpense} disabled={savingExpense || !expenseAmount || remainingFloat === null || parseFloat(expenseAmount) > (remainingFloat ?? 0)}
 
 
                 className="flex-1 py-4 rounded-2xl text-sm font-black active:scale-95 transition disabled:opacity-50"
@@ -7713,7 +7749,7 @@ export default function MachinesPage() {
                 style={{ background: "rgba(239,68,68,0.5)", color: "#fff", border: "1px solid rgba(239,68,68,0.7)" }}>
 
 
-                {savingExpense ? "Saving…" : "Save Expense"}
+                {savingExpense ? "Saving…" : remainingFloat === null ? "Set Float First" : "Save Expense"}
 
 
               </button>

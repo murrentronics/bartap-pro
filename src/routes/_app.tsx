@@ -25,6 +25,13 @@ function AppLayout() {
   const [barToggleBusy,   setBarToggleBusy]   = useState(false);
   const barIsOpen = !!barSessionStart && !barClosedAt;
 
+  // ── Open Bar modal ─────────────────────────────────────────────────────────
+  const [showOpenBarModal, setShowOpenBarModal] = useState(false);
+  const [openBarFloat, setOpenBarFloat] = useState("");
+  const [openMachineFloat, setOpenMachineFloat] = useState("");
+  const [hasMachines, setHasMachines] = useState(false);
+  const [showCloseBarConfirm, setShowCloseBarConfirm] = useState(false);
+
   useEffect(() => {
     if (!loading && !session) nav({ to: "/login" });
   }, [session, loading, nav]);
@@ -91,16 +98,47 @@ function AppLayout() {
   const handleOpenBar = async () => {
     if (!profile || profile.role !== "owner") return;
     const ownerId = effectiveOwnerId(profile.id);
+    // Check if owner has machines enabled
+    const { data: ownerProfile } = await (supabase as any)
+      .from("profiles").select("machines_addon_active, plan_type").eq("id", ownerId).single();
+    const machinesEnabled = !!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium";
+    setHasMachines(machinesEnabled);
+    setOpenBarFloat("");
+    setOpenMachineFloat("");
+    setShowOpenBarModal(true);
+  };
+
+  const confirmOpenBar = async () => {
+    if (!profile || profile.role !== "owner") return;
+    const ownerId = effectiveOwnerId(profile.id);
+    const barFloatVal = parseFloat(openBarFloat);
+    if (isNaN(barFloatVal) || barFloatVal < 0) { toast.error("Enter a valid bar float amount"); return; }
+    if (hasMachines) {
+      const machineFloatVal = parseFloat(openMachineFloat);
+      if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
+    }
     setBarToggleBusy(true);
+    setShowOpenBarModal(false);
     const now = new Date().toISOString();
+    // 1. Update bar session start and set cashier float
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null })
+      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal })
       .eq("id", ownerId);
     if (!error) {
-      // Record new session row so summary can show history
+      // 2. Record session history row
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, opened_at: now });
+    }
+    // 3. Set machine float if machines enabled
+    if (hasMachines) {
+      const machineFloatVal = parseFloat(openMachineFloat) || 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("machine_float_sessions").insert({
+        owner_id: ownerId,
+        amount: machineFloatVal,
+        set_at: now,
+      });
     }
     setBarToggleBusy(false);
     if (error) { toast.error("Failed to open bar"); return; }
@@ -203,7 +241,7 @@ function AppLayout() {
               <button
                 type="button"
                 disabled={barToggleBusy}
-                onClick={barIsOpen ? handleCloseBar : handleOpenBar}
+                onClick={barIsOpen ? () => setShowCloseBarConfirm(true) : handleOpenBar}
                 className="h-7 px-2.5 rounded-lg font-black text-[11px] flex items-center gap-1 transition active:scale-95 disabled:opacity-50 shrink-0"
                 style={barIsOpen
                   ? { background: "rgba(134,239,172,0.12)", border: "1px solid #86efac", color: "#86efac" }
@@ -263,6 +301,101 @@ function AppLayout() {
       <main className="max-w-2xl mx-auto px-3 py-3">
         <Outlet />
       </main>
+
+      {/* ── Close Bar Confirm Modal ────────────────────────────────────── */}
+      {showCloseBarConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}>
+                <span className="text-2xl">🔴</span>
+              </div>
+              <h2 className="font-black text-xl">Close Bar?</h2>
+              <p className="text-sm text-muted-foreground mt-2">This will end the current session. Are you sure?</p>
+            </div>
+            <div className="px-6 pb-6 pt-4 flex gap-3">
+              <button
+                onClick={() => setShowCloseBarConfirm(false)}
+                className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowCloseBarConfirm(false); handleCloseBar(); }}
+                disabled={barToggleBusy}
+                className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
+                style={{ background: "rgba(239,68,68,0.15)", border: "1.5px solid #f87171", color: "#f87171" }}>
+                {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Close Bar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Open Bar Modal ─────────────────────────────────────────────── */}
+      {showOpenBarModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}>
+                <span className="text-2xl">🟢</span>
+              </div>
+              <h2 className="font-black text-xl">Open Bar</h2>
+              <p className="text-xs text-muted-foreground mt-1">Set floats before starting the session</p>
+            </div>
+
+            <div className="px-6 pb-6 pt-4 space-y-4">
+              {/* Bar Float */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 500.00"
+                  value={openBarFloat}
+                  onChange={e => setOpenBarFloat(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Machine Float — only if machines enabled */}
+              {hasMachines && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 200.00"
+                    value={openMachineFloat}
+                    onChange={e => setOpenMachineFloat(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowOpenBarModal(false)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmOpenBar}
+                  disabled={!openBarFloat || (hasMachines && !openMachineFloat)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
+                  style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
+                  Open Bar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
