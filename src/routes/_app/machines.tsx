@@ -1284,7 +1284,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
 
 
-function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted, barSessionStart }: {
+function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted, barSessionStart, barClosedAt }: {
 
 
   machine: Machine; screenNumber: number; ownerId: string;
@@ -1308,9 +1308,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   barSessionStart: string | null;
 
 
+  barClosedAt: string | null;
+
+
 }) {
 
 
+  const barIsOpen = !!barSessionStart && !barClosedAt;
   const { t } = useTranslation();
 
 
@@ -7342,6 +7346,9 @@ export default function MachinesPage() {
 
 
           barSessionStart={barSessionStart}
+
+
+          barClosedAt={barClosedAtMachines}
 
 
           initialTab={selectedInitialTab}
