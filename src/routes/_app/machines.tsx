@@ -1443,6 +1443,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
   const [amount, setAmount] = useState("");
+  const [amountFocused, setAmountFocused] = useState(false);
 
 
   const [busy, setBusy] = useState(false);
@@ -2623,10 +2624,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-3 gap-2">
 
 
-            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-
-
             <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+
+
+            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
 
 
             <StatCard label={t("all_time_profit", "Total Profit")}
@@ -2648,15 +2649,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-3 gap-2">
 
 
-            <SmallStat label={t("session_payout", "Session Expense")}
-
-
-              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
-
-
-              color="#fca5a5" />
-
-
             <SmallStat label={t("session_income", "Session Income")}
 
 
@@ -2664,6 +2656,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
               color="#86efac" />
+
+
+            <SmallStat label={t("session_payout", "Session Expense")}
+
+
+              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+
+
+              color="#fca5a5" />
 
 
             <SmallStat label={t("session_profit", "Session Profit")}
@@ -2678,19 +2679,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
 
 
-          <div className="relative grid grid-cols-3 gap-2">
+          <div className="relative grid grid-cols-2 gap-2">
 
 
             <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-
-
-            <SmallStat label={t("session_payout_this", "This Machine")}
-
-
-              value={floatSessionPayout === null ? "—" : "$" + fmtWhole(floatSessionPayout)}
-
-
-              color="#fca5a5" />
 
 
             <SmallStat label={t("remaining", "Remaining")}
@@ -2771,7 +2763,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             </h2>
 
 
-            {/* Amount display + Numpad — hidden when camera is open */}
+            {/* Tappable amount display — tap to show/hide numpad */}
 
 
             {!camOpen && (
@@ -2780,133 +2772,58 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               <>
 
 
-            <div className="rounded-2xl px-5 py-4 text-center"
-
-
-              style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
-
-
+            <button
+              type="button"
+              onClick={() => setAmountFocused(f => !f)}
+              className="w-full rounded-2xl px-5 py-4 text-center transition"
+              style={{
+                background: amountFocused ? "oklch(0.22 0.06 65 / 0.4)" : "oklch(0.18 0.04 60)",
+                border: amountFocused ? "1px solid oklch(0.60 0.18 65)" : "1px solid oklch(0.28 0.08 60)",
+              }}>
               <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
-
-
                 ${amount === "" ? "0" : amount}
-
-
               </span>
+            </button>
 
 
-            </div>
-
-
-            {/* Numpad */}
-
-
+            {amountFocused && (
             <div className="grid grid-cols-3 gap-2">
-
-
               {["7","8","9","4","5","6","1","2","3"].map(k => (
-
-
                 <button key={k} type="button"
-
-
                   onClick={() => {
-
-
                     const parts = amount.split(".");
-
-
                     if (parts[1] !== undefined && parts[1].length >= 2) return;
-
-
                     setAmount(prev => prev + k);
-
-
                   }}
-
-
                   className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-
-
                   style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-
-
                   {k}
-
-
                 </button>
-
-
               ))}
-
-
               <button type="button"
-
-
                 onClick={() => { if (!amount.includes(".")) setAmount(prev => prev + "."); }}
-
-
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-
-
                 style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-
-
                 .
-
-
               </button>
-
-
               <button type="button"
-
-
                 onClick={() => {
-
-
                   const parts = amount.split(".");
-
-
                   if (parts[1] !== undefined && parts[1].length >= 2) return;
-
-
                   setAmount(prev => prev + "0");
-
-
                 }}
-
-
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-
-
                 style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-
-
                 0
-
-
               </button>
-
-
               <button type="button"
-
-
                 onClick={() => setAmount(prev => prev.slice(0, -1))}
-
-
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-
-
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
-
-
                 ⌫
-
-
               </button>
-
-
             </div>
+            )}
 
 
               </>
@@ -5738,6 +5655,9 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   const filterRange = getFilterRange();
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+
   const filteredEntries = filterRange
     ? sorted.filter(e => {
         if (filterRange.startIso && filterRange.endIso) {
@@ -5775,9 +5695,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   const byIncome = [...statList].sort((a, b) => b.income - a.income);
   const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map(m => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
-
-  const [downloading, setDownloading] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
 
   const handleDownloadPdf = async () => {
     if (downloading) return;
@@ -6553,6 +6470,9 @@ export default function MachinesPage() {
   const [floatAmount, setFloatAmount] = useState("");
 
 
+  const [machineFloatMode, setMachineFloatMode] = useState<"same" | "new">("new");
+
+
   const [savingFloat, setSavingFloat] = useState(false);
 
 
@@ -6658,6 +6578,9 @@ export default function MachinesPage() {
       amount: val,
 
 
+      session_type: machineFloatMode,
+
+
       set_at: new Date().toISOString(),
 
 
@@ -6673,7 +6596,7 @@ export default function MachinesPage() {
     toast.success("Float set");
 
 
-    setFloatAmount(""); setShowSetFloat(false);
+    setFloatAmount(""); setMachineFloatMode("new"); setShowSetFloat(false);
 
 
     loadFloat();
@@ -7555,6 +7478,9 @@ export default function MachinesPage() {
               remainingFloat={remainingFloat} isCashier={profile.role === "cashier"}
 
 
+              isOwner={isOwner}
+
+
               barSessionStart={barSessionStart}
 
 
@@ -7783,6 +7709,34 @@ export default function MachinesPage() {
               Set Cashier Float — All Machines
 
 
+            </p>
+
+
+            {/* Session mode selector */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMachineFloatMode("same")}
+                className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+                style={machineFloatMode === "same"
+                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                Same Session
+              </button>
+              <button
+                type="button"
+                onClick={() => setMachineFloatMode("new")}
+                className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+                style={machineFloatMode === "new"
+                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                New Session
+              </button>
+            </div>
+            <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
+              {machineFloatMode === "same"
+                ? "Adds to current float — used amount unchanged"
+                : "Starts fresh — used amount resets to $0"}
             </p>
 
 

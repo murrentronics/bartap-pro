@@ -3116,7 +3116,30 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       <section className="rounded-3xl px-4 py-3 relative overflow-hidden"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
+        <div className="relative space-y-3">
+          {/* Session mode selector — shown when a float is already set */}
+          {cashierFloat > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFloatSessionMode("same")}
+                className="h-10 rounded-2xl font-black text-xs transition active:scale-95"
+                style={floatSessionMode === "same"
+                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                + Add to Float
+              </button>
+              <button
+                type="button"
+                onClick={() => setFloatSessionMode("new")}
+                className="h-10 rounded-2xl font-black text-xs transition active:scale-95"
+                style={floatSessionMode === "new"
+                  ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                  : { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                New Session
+              </button>
+            </div>
+          )}
           <div className="flex gap-3 items-stretch">
             <button
               onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
