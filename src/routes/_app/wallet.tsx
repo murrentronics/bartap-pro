@@ -2815,10 +2815,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     };
 
     // Today's cost = sum of (qty × cost_price) across all today's order items
-    type OrderItemRaw = { id?: string; name: string; qty: number; price: number };
+    type OrderItemRaw = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
     const todayCostFromItems = (todayItemOrdersRes.data ?? []).reduce((s: number, o: { items: OrderItemRaw[] }) => {
       const items: OrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
-      return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
+      return s + items.reduce((cs, it) => {
+        const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
+        return cs + resolveItemCost(it) * costUnits;
+      }, 0);
     }, 0);
 
     // Today's non-stock expenses (positive only, same filter as Summary page)
@@ -2842,19 +2845,25 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       : 0;
 
     // Session stock cost: cost of items sold since current bar_session_start
-    type SessionOrderItem = { id?: string; name: string; qty: number; price: number };
+    type SessionOrderItem = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
     const sessionStockCost = barSessionStart
       ? (sessionItemOrdersRes.data ?? []).reduce((s: number, o: { items: SessionOrderItem[] }) => {
           const items: SessionOrderItem[] = Array.isArray(o.items) ? o.items : [];
-          return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
+          return s + items.reduce((cs, it) => {
+            const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
+            return cs + resolveItemCost(it) * costUnits;
+          }, 0);
         }, 0)
       : 0;
 
     // All-time stock sold cost = sum of (qty × cost_price) across ALL order items ever
-    type AllOrderItemRaw = { id?: string; name: string; qty: number; price: number };
+    type AllOrderItemRaw = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
     const totalStockSoldCost = (allItemOrdersRes.data ?? []).reduce((s: number, o: { items: AllOrderItemRaw[] }) => {
       const items: AllOrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
-      return s + items.reduce((cs, it) => cs + resolveItemCost(it) * it.qty, 0);
+      return s + items.reduce((cs, it) => {
+        const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
+        return cs + resolveItemCost(it) * costUnits;
+      }, 0);
     }, 0);
 
     setFinancialSummary({ initialExpense, monthlyExpenses, totalIncome, totalStockSoldCost, sessionIncome, sessionExpense, sessionStockCost, stockResaleValue, stockExpectedProfit, stockCost: closedStockCost, todayIncome, todayProfit, todayStockCost: todayCostFromItems, todayExpenses: todayNonStock });

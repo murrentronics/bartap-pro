@@ -2274,7 +2274,7 @@ function CashOverlay({
     // ── Cash order (guest or customer) ────────────────────────────────
     const { error } = await supabase.from("orders").insert({
       owner_id: ownerId, cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
       total, paid: paidNum, change_given: changeNum,
     });
     if (error) { setBusy(false); toast.error(error.message); return; }
@@ -2289,7 +2289,7 @@ function CashOverlay({
         cashier_id: profile.id,
         type: "charge",
         amount: total,
-        items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+        items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
         note: "[CASH] " + itemsDesc,
       });
     }
@@ -2615,7 +2615,7 @@ function CashCustomerOverlay({
     const { error: orderErr } = await supabase.from("orders").insert({
       owner_id: ownerId,
       cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
       total,
       paid: paidNum,
       change_given: changeNum,
@@ -2637,7 +2637,7 @@ function CashCustomerOverlay({
       cashier_id: profile.id,
       type: "charge",
       amount: total,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
       note: "[CASH] " + itemsDesc,
     });
 

@@ -76,12 +76,14 @@ export default function FactoryResetPage() {
     await (supabase as any).from("owner_financials").delete().eq("owner_id", ownerId);
     await supabase.from("profiles").update({ wallet_balance: 0 }).eq("id", ownerId);
     await supabase.from("products").update({
-      cost_price: 0,
       stock_qty: 0,
       stock_qty_undo: null,
       stock_qty_undo_saved: null,
       stock_last_expense_id: null,
     }).eq("owner_id", ownerId);
+    // Clear all open bottles and open packs — wipes shots sold and pack quantities
+    await (supabase as any).from("opened_bottles").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("opened_packs").delete().eq("owner_id", ownerId);
   };
 
   const resetBar = async (ownerId: string) => {
@@ -181,9 +183,11 @@ export default function FactoryResetPage() {
       "All wallet and statement records",
       "All credit accounts and bills",
       "All financial expense records",
-      "All cost prices (re-enter to rebuild financials)",
       "All stock quantities (reset to zero)",
+      "All open bottles and shots sold",
+      "All open packs and pack quantities",
       "✓ Items (products list) are KEPT",
+      "✓ Cost prices and shot/retail prices are KEPT",
     ],
     bar: [
       "All sales orders and transaction history",

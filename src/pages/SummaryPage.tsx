@@ -12,7 +12,7 @@ import { downloadPdf } from "@/lib/download";
 import { CATEGORIES } from "@/lib/categories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type OrderItem = { id?: string; name: string; qty: number; price: number };
+type OrderItem = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
 
 type Order = {
   id: string;
@@ -116,10 +116,13 @@ function aggregateItems(
         }
         return existing.category;
       })());
+      // For shots, units_consumed is stored on the item (e.g. Half Bottle = 8 shots consumed).
+      // Use it for cost so "Half Bottle: Hennessy" costs 8 × cost_per_shot, not 1 × cost_per_shot.
+      const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
       map.set(it.name, {
         qty:       existing.qty + it.qty,
         revenue:   existing.revenue + it.qty * it.price,
-        costTotal: existing.costTotal + it.qty * costEach,
+        costTotal: existing.costTotal + costUnits * costEach,
         category:  cat,
       });
     }
