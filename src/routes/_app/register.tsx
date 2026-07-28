@@ -101,24 +101,46 @@ export default function RegisterPage() {
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
     }
     setBarToggleBusy(true);
+
+    // Guard: do not create a new session if one is already open
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingOpen } = await (supabase as any).from("bar_sessions")
+      .select("id").eq("owner_id", ownerId).is("closed_at", null).limit(1).maybeSingle();
+    if (existingOpen) {
+      setBarToggleBusy(false);
+      toast.error("Bar is already open — close the current session first");
+      return;
+    }
+
     const now = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
       .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal, cashier_float_set_at: now })
       .eq("id", ownerId);
     if (error) { setBarToggleBusy(false); toast.error("Failed to open bar: " + error.message); return; }
+
     // Insert machine float session if machines addon active
-    const machineAmt = hasMachinesAddon ? (parseFloat(floatMachineAmount) || 0) : 0;
     if (hasMachinesAddon) {
+      const machineAmt = parseFloat(floatMachineAmount) || 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("machine_float_sessions").insert({
+      await (supabase as any).from("machine_float_sessions").insert({ owner_id: ownerId, amount: machineAmt, set_at: now });
+    }
+
+    // Insert bar_sessions parent row + first sub-session
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newSession } = await (supabase as any).from("bar_sessions")
+      .insert({ owner_id: ownerId, opened_at: now })
+      .select("id").single();
+    if (newSession?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("bar_sub_sessions").insert({
         owner_id: ownerId,
-        amount: machineAmt,
-        set_at: now,
+        bar_session_id: newSession.id,
+        opened_at: now,
+        cashier_float: barFloatVal,
       });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, opened_at: now });
+
     setBarToggleBusy(false);
     setShowFloatModal(false);
     setBarSessionStart(now);
@@ -130,12 +152,14 @@ export default function RegisterPage() {
   const handleCloseBar = async () => {
     setBarToggleBusy(true);
     const now = new Date().toISOString();
-    // Close the open bar_sessions row — UPDATE closed_at on the row with no closed_at yet
+    // Close open sub-sessions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("bar_sub_sessions")
+      .update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
+    // Close open bar_session row
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("bar_sessions")
-      .update({ closed_at: now })
-      .eq("owner_id", ownerId)
-      .is("closed_at", null);
+      .update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
     setBarToggleBusy(false);

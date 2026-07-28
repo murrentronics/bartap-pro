@@ -119,29 +119,52 @@ function AppLayout() {
     }
     setBarToggleBusy(true);
     setShowOpenBarModal(false);
+
+    // Guard: do not create a new session if one is already open
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingOpen } = await (supabase as any).from("bar_sessions")
+      .select("id").eq("owner_id", ownerId).is("closed_at", null).limit(1).maybeSingle();
+    if (existingOpen) {
+      setBarToggleBusy(false);
+      toast.error("Bar is already open — close the current session first");
+      return;
+    }
+
     const now = new Date().toISOString();
-    // 1. Update bar session start and set cashier float
+    // 1. Update profiles: set bar_session_start, clear bar_closed_at, set cashier float
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal })
+      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal, cashier_float_set_at: now })
       .eq("id", ownerId);
-    if (!error) {
-      // 2. Record session history row
+    if (error) { setBarToggleBusy(false); toast.error("Failed to open bar"); return; }
+
+    // 2. Insert bar_sessions row
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newSession } = await (supabase as any).from("bar_sessions")
+      .insert({ owner_id: ownerId, opened_at: now })
+      .select("id").single();
+
+    // 3. Insert first sub-session for this bar open
+    if (newSession?.id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerId, opened_at: now });
+      await (supabase as any).from("bar_sub_sessions").insert({
+        owner_id: ownerId,
+        bar_session_id: newSession.id,
+        opened_at: now,
+        cashier_float: barFloatVal,
+      });
     }
-    // 3. Set machine float if machines enabled
+
+    // 4. Set machine float if machines enabled
     if (hasMachines) {
       const machineFloatVal = parseFloat(openMachineFloat) || 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("machine_float_sessions").insert({
-        owner_id: ownerId,
-        amount: machineFloatVal,
-        set_at: now,
+        owner_id: ownerId, amount: machineFloatVal, set_at: now,
       });
     }
+
     setBarToggleBusy(false);
-    if (error) { toast.error("Failed to open bar"); return; }
     setBarSessionStart(now);
     setBarClosedAt(null);
     toast.success("🟢 Bar opened");
@@ -152,16 +175,19 @@ function AppLayout() {
     const ownerId = effectiveOwnerId(profile.id);
     setBarToggleBusy(true);
     const now = new Date().toISOString();
-    const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId!).single();
-    const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
-    if (sessionStart) {
-      // Close the most recent open session row
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("bar_sessions")
-        .update({ closed_at: now })
-        .eq("owner_id", ownerId)
-        .is("closed_at", null);
-    }
+    // 1. Close any open sub-sessions for this owner
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("bar_sub_sessions")
+      .update({ closed_at: now })
+      .eq("owner_id", ownerId)
+      .is("closed_at", null);
+    // 2. Close the open bar_sessions row
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("bar_sessions")
+      .update({ closed_at: now })
+      .eq("owner_id", ownerId)
+      .is("closed_at", null);
+    // 3. Stamp bar_closed_at on profiles
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
     setBarToggleBusy(false);

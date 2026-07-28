@@ -39,7 +39,7 @@ function ManagerPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
 
-  if (!profile || profile.role !== "manager") {
+  if (!profile || (profile.role !== "manager" && (profile as any).job_title !== "manager")) {
     return (
       <div className="text-center text-muted-foreground py-20">
         Manager access only.
@@ -47,7 +47,7 @@ function ManagerPage() {
     );
   }
 
-  const ownerId = effectiveOwnerId(profile.parent_id ?? profile.id);
+  const ownerId = effectiveOwnerId((profile as any).parent_id ?? profile.id);
 
   return <ManagerExpenses profile={profile} ownerId={ownerId} />;
 }

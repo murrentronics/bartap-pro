@@ -4588,10 +4588,15 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
 
 
-        {/* Lifetime totals — owner only */}
+      </section>
 
+      {/* Hero 2 — Stats (owner only) */}
+      {isOwner && (
+      <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
-        {isOwner && (
+        {/* Lifetime totals */}
         <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -4607,8 +4612,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
-        )}
-
 
         {/* Session stats */}
 
@@ -4635,6 +4638,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
       </section>
+      )}
 
 
 
@@ -5855,49 +5859,29 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
 function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; machines: Machine[]; ownerId: string }) {
 
-  // ── Bar session state ───────────────────────────────────────────────────────
-  const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
-  const [barClosedAt, setBarClosedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!ownerId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from('profiles').select('bar_session_start, bar_closed_at')
-      .eq('id', ownerId).single()
-      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
-        setBarSessionStart(data?.bar_session_start ?? null);
-        setBarClosedAt(data?.bar_closed_at ?? null);
-      });
-    const ch = supabase.channel('bar-summary-' + ownerId)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'id=eq.' + ownerId },
-        (payload: any) => {
-          const r = payload.new as Record<string, unknown>;
-          if ('bar_session_start' in r) setBarSessionStart((r.bar_session_start as string | null) ?? null);
-          if ('bar_closed_at' in r) setBarClosedAt((r.bar_closed_at as string | null) ?? null);
-        }).subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [ownerId]);
-
-  // ── Filter state ─────────────────────────────────────────────────────────────
   type SummaryFilter = "all" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
   const today = todayTT();
   const [pickerDate, setPickerDate] = useState(today);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
 
-  // ── Bar sessions list ────────────────────────────────────────────────────────
-  type BarSession = { id: string; opened_at: string; closed_at: string | null };
-  const [barSessions, setBarSessions] = useState<BarSession[]>([]);
+  // Machine sessions = machine_float_sessions rows (newest first)
+  type FloatSessionRow = { id: string; set_at: string; amount: number };
+  const [floatSessions, setFloatSessions] = useState<FloatSessionRow[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [loadingSessionsList, setLoadingSessionsList] = useState(true);
 
   useEffect(() => {
     if (!ownerId) return;
-    (supabase as any).from("bar_sessions")
-      .select("id, opened_at, closed_at")
+    setLoadingSessionsList(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("machine_float_sessions")
+      .select("id, set_at, amount")
       .eq("owner_id", ownerId)
-      .order("opened_at", { ascending: false })
-      .then(({ data }: { data: BarSession[] | null }) => {
-        setBarSessions(data ?? []);
+      .order("set_at", { ascending: false })
+      .then(({ data }: { data: FloatSessionRow[] | null }) => {
+        setFloatSessions(data ?? []);
+        setLoadingSessionsList(false);
       });
   }, [ownerId]);
 
@@ -5915,87 +5899,62 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     setPickerYear(availableYears[0] ?? new Date().getFullYear());
   };
 
-  const getFilterRange = (): { start: string; end: string; startIso?: string; endIso?: string } | null => {
-    if (selectedSessionId) {
-      const s = barSessions.find(b => b.id === selectedSessionId);
-      if (!s) return null;
-      const end = s.closed_at ?? new Date().toISOString();
-      return { start: s.opened_at.slice(0, 10), end: end.slice(0, 10), startIso: s.opened_at, endIso: end };
-    }
-    if (summaryFilter === "all") return null;
-
+  // Filter sessions list by active date tab
+  const filteredSessions: FloatSessionRow[] = (() => {
+    if (summaryFilter === "all") return floatSessions;
     if (summaryFilter === "day") {
-      // Day = bar open to bar close on selected TT calendar day (spans midnight if needed)
-      const dayStartTT = new Date(pickerDate + "T00:00:00-04:00");
-      const dayEndTT   = new Date(pickerDate + "T23:59:59-04:00");
-      const sessOnDay = barSessions.filter(s => {
-        const st = new Date(s.opened_at);
-        return st >= dayStartTT && st <= dayEndTT;
-      });
-      if (barSessionStart) {
-        const st = new Date(barSessionStart);
-        if (st >= dayStartTT && st <= dayEndTT && !sessOnDay.some(s => s.opened_at === barSessionStart)) {
-          sessOnDay.push({ id: "active", opened_at: barSessionStart, closed_at: null });
-        }
-      }
-      if (sessOnDay.length === 0) {
-        // No session on this day — impossible range → empty result
-        return { start: pickerDate, end: pickerDate, startIso: dayEndTT.toISOString(), endIso: dayStartTT.toISOString() };
-      }
-      const earliest = sessOnDay.reduce((a, b) => a.opened_at < b.opened_at ? a : b);
-      const latest   = sessOnDay.reduce((a, b) =>
-        (a.closed_at ?? new Date().toISOString()) > (b.closed_at ?? new Date().toISOString()) ? a : b);
-      const startIso = earliest.opened_at;
-      const endIso   = latest.closed_at ?? new Date().toISOString();
-      return { start: pickerDate, end: endIso.slice(0, 10), startIso, endIso };
+      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
+      const e = new Date(pickerDate + "T23:59:59-04:00").toISOString();
+      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
     }
     if (summaryFilter === "week") {
-      const weekEndDate = new Date(pickerDate + "T00:00:00-04:00");
-      weekEndDate.setDate(weekEndDate.getDate() + 6);
-      const endDateStr = weekEndDate.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
-      return {
-        start: pickerDate, end: endDateStr,
-        startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
-        endIso:   new Date(endDateStr + "T23:59:59-04:00").toISOString(),
-      };
+      const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
+      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
+      const e = new Date(we.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
+      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
     }
     if (summaryFilter === "month") {
-      const first = new Date(pickerYear, pickerMonth, 1, 0, 0, 0);
-      const last  = new Date(pickerYear, pickerMonth + 1, 0, 23, 59, 59);
-      const startStr = first.toLocaleDateString("en-CA");
-      const endStr   = last.toLocaleDateString("en-CA");
-      return {
-        start: startStr, end: endStr,
-        startIso: new Date(startStr + "T00:00:00-04:00").toISOString(),
-        endIso:   new Date(endStr   + "T23:59:59-04:00").toISOString(),
-      };
+      const first = new Date(pickerYear, pickerMonth, 1);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0);
+      const s = new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString();
+      const e = new Date(last.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
+      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
     }
     if (summaryFilter === "year") {
-      return {
-        start: `${pickerYear}-01-01`, end: `${pickerYear}-12-31`,
-        startIso: new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString(),
-        endIso:   new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString(),
-      };
+      const s = new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString();
+      const e = new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString();
+      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
     }
-    return null;
+    return floatSessions;
+  })();
+
+  // Entry range for the selected session:
+  // from session.set_at → the next session's set_at (floatSessions sorted newest-first)
+  const getEntryRange = (): { startIso: string; endIso: string } | null => {
+    if (!selectedSessionId) return null;
+    const idx = floatSessions.findIndex(s => s.id === selectedSessionId);
+    if (idx === -1) return null;
+    const sel = floatSessions[idx];
+    // Entries in this session run until the next newer session's set_at (idx-1)
+    const newerSession = idx > 0 ? floatSessions[idx - 1] : null;
+    return { startIso: sel.set_at, endIso: newerSession ? newerSession.set_at : new Date().toISOString() };
   };
 
-  const filterRange = getFilterRange();
+  const entryRange = getEntryRange();
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
-  const filteredEntries = filterRange
-    ? sorted.filter(e => {
-        if (filterRange.startIso && filterRange.endIso) {
-          return e.created_at >= filterRange.startIso && e.created_at <= filterRange.endIso;
-        }
-        // Use entry_date (local TT date) when available, fall back to created_at UTC slice
-        const d = e.entry_date ?? e.created_at.slice(0, 10);
-        return d >= filterRange.start && d <= filterRange.end;
-      })
-    : sorted;
+  if (sorted.length === 0) {
+    return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
+  }
+
+  // Only show data when a session is selected (or "all" tab with nothing selected = all entries)
+  const filteredEntries = selectedSessionId && entryRange
+    ? sorted.filter(e => e.created_at >= entryRange.startIso && e.created_at <= entryRange.endIso)
+    : !selectedSessionId && summaryFilter === "all" ? sorted
+    : [];
 
   const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalSessionExpense = filteredEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
@@ -6037,8 +5996,8 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       // Build title from active filter
       let title = "All Time";
       if (selectedSessionId) {
-        const s = barSessions.find(b => b.id === selectedSessionId);
-        if (s) title = "Session: " + new Date(s.opened_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+        const s = floatSessions.find(b => b.id === selectedSessionId);
+        if (s) title = "Session: " + new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
       } else if (summaryFilter !== "all") {
         title = summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1);
       }
@@ -6134,262 +6093,163 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           </Button>
         </div>
 
-        {/* Sessions list */}
-        {barSessions.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">Sessions</p>
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {barSessions.map(s => {
-                const isActive = !s.closed_at;
+        {/* Sessions list — filtered by active date tab, always visible */}
+        <div className="space-y-1">
+          <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">
+            Sessions{filteredSessions.length > 0 ? ` (${filteredSessions.length})` : ""}
+          </p>
+          {loadingSessionsList ? (
+            <div className="h-8 rounded-xl bg-muted/30 animate-pulse" />
+          ) : filteredSessions.length === 0 ? (
+            <p className="text-[10px] text-white/30 text-center py-2">No sessions for this period</p>
+          ) : (
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {filteredSessions.map(s => {
                 const isSelected = selectedSessionId === s.id;
-                const openedFmt = new Date(s.opened_at).toLocaleString("en-GB", {
-                  day: "numeric", month: "short", year: "numeric",
-                  hour: "2-digit", minute: "2-digit", hour12: true,
-                });
-                const closedFmt = s.closed_at
-                  ? new Date(s.closed_at).toLocaleString("en-GB", {
-                      day: "numeric", month: "short",
-                      hour: "2-digit", minute: "2-digit", hour12: true,
-                    })
-                  : null;
+                const fmtd = new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
                 return (
                   <button key={s.id}
-                    onClick={() => {
-                      if (isSelected) { setSelectedSessionId(null); }
-                      else { setSelectedSessionId(s.id); setSummaryFilter("all"); }
-                    }}
+                    onClick={() => setSelectedSessionId(isSelected ? null : s.id)}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]"
                     style={isSelected
                       ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                       : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${isActive ? "bg-green-500/30 text-green-400" : "bg-white/10 text-white/40"}`}>
-                        {isActive ? "LIVE" : "CLOSED"}
-                      </span>
-                      <span className="text-[10px] font-bold truncate">{openedFmt}</span>
-                    </div>
-                    {closedFmt && (
-                      <span className="text-[9px] text-white/40 shrink-0 ml-2">→ {closedFmt}</span>
-                    )}
+                    <span className="text-[10px] font-bold truncate">{fmtd}</span>
+                    <span className="text-[9px] shrink-0 ml-2" style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)" }}>
+                      Float ${fmtWhole(Number(s.amount))}
+                    </span>
                   </button>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <div>
-            <div className="relative">
-              <input type="date" value={pickerDate} max={today}
-                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
-              <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
-                {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
-              </div>
+          <div className="relative">
+            <input type="date" value={pickerDate} max={today}
+              onChange={e => { if (e.target.value) { setPickerDate(e.target.value); setSelectedSessionId(null); } }}
+              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none opacity-0 absolute inset-0 z-10 cursor-pointer" />
+            <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1 text-center">
-              {filterRange?.startIso
-                ? (() => {
-                    const TZ = "America/Port_of_Spain";
-                    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
-                    const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
-                    const end   = filterRange.endIso
-                      ? new Date(filterRange.endIso).toLocaleString("en-GB", opts)
-                      : "Present";
-                    return `${start} → ${end}`;
-                  })()
-                : new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-              }
-            </p>
           </div>
         )}
         {summaryFilter === "week" && (
-          <div className="space-y-1">
-            <div className="relative">
-              <input type="date" value={pickerDate} max={today}
-                onChange={e => { if (e.target.value) setPickerDate(e.target.value); }}
-                className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary opacity-0 absolute inset-0 z-10 cursor-pointer" />
-              <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
-                {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
-              </div>
+          <div className="relative">
+            <input type="date" value={pickerDate} max={today}
+              onChange={e => { if (e.target.value) { setPickerDate(e.target.value); setSelectedSessionId(null); } }}
+              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none opacity-0 absolute inset-0 z-10 cursor-pointer" />
+            <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+              {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`; })()}
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              {filterRange?.startIso
-                ? (() => {
-                    const TZ = "America/Port_of_Spain";
-                    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
-                    const start = new Date(filterRange.startIso).toLocaleString("en-GB", opts);
-                    const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
-                    return `${start} → ${end}`;
-                  })()
-                : (() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`; })()
-              }
-            </p>
           </div>
         )}
         {summaryFilter === "month" && (
-          <div className="space-y-1">
-            <div className="flex gap-2">
-              <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
-                className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-                {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
-                  <option key={i} value={i}>{m}</option>
-                ))}
-              </select>
-              <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-                className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
-                {availableYears.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            {filterRange?.startIso && (
-              <p className="text-[10px] text-muted-foreground text-center">
-                {(() => {
-                  const TZ = "America/Port_of_Spain";
-                  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
-                  const start = new Date(filterRange.startIso!).toLocaleString("en-GB", opts);
-                  const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
-                  return `${start} → ${end}`;
-                })()}
-              </p>
-            )}
+          <div className="flex gap-2">
+            <select value={pickerMonth} onChange={e => { setPickerMonth(Number(e.target.value)); setSelectedSessionId(null); }}
+              className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+              {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+            <select value={pickerYear} onChange={e => { setPickerYear(Number(e.target.value)); setSelectedSessionId(null); }}
+              className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
         )}
         {summaryFilter === "year" && (
-          <div className="space-y-1">
-            <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
-              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary">
-              {availableYears.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            {filterRange?.startIso && (
-              <p className="text-[10px] text-muted-foreground text-center">
-                {(() => {
-                  const TZ = "America/Port_of_Spain";
-                  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ };
-                  const start = new Date(filterRange.startIso!).toLocaleString("en-GB", opts);
-                  const end   = filterRange.endIso ? new Date(filterRange.endIso).toLocaleString("en-GB", opts) : "Present";
-                  return `${start} → ${end}`;
-                })()}
-              </p>
-            )}
-          </div>
+          <select value={pickerYear} onChange={e => { setPickerYear(Number(e.target.value)); setSelectedSessionId(null); }}
+            className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none">
+            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         )}
 
-        {/* 3 stat cards: Total Expense | Income | Net Profit */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Total Expense</div>
-            <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(totalExpense)}</div>
-          </div>
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Income</div>
-            <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(totalIncome)}</div>
-          </div>
-          <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-            <div className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">Net Profit</div>
-            <div className="font-black text-xs sm:text-sm" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-              {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
+        {/* Stats — shown when session selected or on All tab */}
+        {filteredEntries.length > 0 && (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Total Expense</div>
+                <div className="font-black text-xs text-red-400">${fmtWhole(totalExpense)}</div>
+              </div>
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Income</div>
+                <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
+              </div>
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Net Profit</div>
+                <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                  {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Machine performance breakdown */}
-        {statList.length > 0 && (
-          <div className="space-y-2 pt-1 border-t border-border/40">
-            {/* Income ranking */}
-            <div>
-              <p className="text-[9px] sm:text-xs font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
-              <div className="space-y-1">
-                {byIncome.map((m, i) => (
-                  <div key={m.name + "i"} className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                    <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-                    <span className="text-xs font-black text-green-400 shrink-0">${fmtWhole(m.income)}</span>
+            {statList.length > 0 && (
+              <div className="space-y-2 pt-1 border-t border-border/40">
+                <div>
+                  <p className="text-[9px] font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
+                  <div className="space-y-1">
+                    {byIncome.map((m, i) => (
+                      <div key={m.name + "i"} className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                        <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                        <span className="text-xs font-black text-green-400 shrink-0">${fmtWhole(m.income)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            {/* Payout ranking */}
-            <div>
-              <p className="text-[9px] sm:text-xs font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
-              <div className="space-y-1">
-                {byPayout.filter(m => m.payout > 0).map((m, i) => (
-                  <div key={m.name + "p"} className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                    <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-                    <span className="text-xs font-black text-red-400 shrink-0">${fmtWhole(m.payout)}</span>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
+                  <div className="space-y-1">
+                    {byPayout.filter(m => m.payout > 0).map((m, i) => (
+                      <div key={m.name + "p"} className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                        <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                        <span className="text-xs font-black text-red-400 shrink-0">${fmtWhole(m.payout)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            {/* Profit ranking */}
-            <div>
-              <p className="text-[9px] sm:text-xs font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
-              <div className="space-y-1">
-                {profitList.map((m, i) => {
-                  const isPos = m.profit >= 0;
-                  return (
-                    <div key={m.name + "prof"} className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                      <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
-                      <span className="text-xs font-black shrink-0" style={{ color: isPos ? "#86efac" : "#f472b6" }}>
-                        {isPos ? "+" : ""}${fmtWhole(m.profit)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            {/* Expense list — manual expenses added from the machines side */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[9px] sm:text-xs font-black text-amber-400/70 uppercase tracking-wider">Expense</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
+                  <div className="space-y-1">
+                    {profitList.map((m, i) => {
+                      const isPos = m.profit >= 0;
+                      return (
+                        <div key={m.name + "prof"} className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                          <span className="text-xs font-black text-white/80 truncate flex-1">{m.name}</span>
+                          <span className="text-xs font-black shrink-0" style={{ color: isPos ? "#86efac" : "#f472b6" }}>
+                            {isPos ? "+" : ""}${fmtWhole(m.profit)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 {expenseEntries.length > 0 && (
-                  <span className="text-xs font-black text-amber-400">${fmtWhole(totalSessionExpense)}</span>
+                  <div>
+                    <p className="text-[9px] font-black text-amber-400/70 uppercase tracking-wider mb-1.5">Expense</p>
+                    <div className="space-y-1">
+                      {expenseEntries.map((e, i) => (
+                        <div key={e.id} className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
+                          <span className="text-xs text-white/60 truncate flex-1">
+                            {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                          </span>
+                          <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              {expenseEntries.length === 0 ? (
-                <p className="text-[10px] text-white/30 text-center py-1">No expenses recorded</p>
-              ) : (
-                <div className="space-y-1">
-                  {expenseEntries.map((e, i) => (
-                    <div key={e.id} className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                      <span className="text-xs text-white/60 truncate flex-1">
-                        {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                      </span>
-                      <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </>
         )}
-        {/* Show expense section even when no machine stats exist */}
-        {statList.length === 0 && expenseEntries.length > 0 && (
-          <div className="pt-1 border-t border-border/40">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[9px] sm:text-xs font-black text-amber-400/70 uppercase tracking-wider">Expense</p>
-              <span className="text-xs font-black text-amber-400">${fmtWhole(totalSessionExpense)}</span>
-            </div>
-            <div className="space-y-1">
-              {expenseEntries.map((e, i) => (
-                <div key={e.id} className="flex items-center gap-2">
-                  <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                  <span className="text-xs text-white/60 truncate flex-1">
-                    {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                  </span>
-                  <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+
+        {!selectedSessionId && summaryFilter !== "all" && filteredSessions.length > 0 && (
+          <p className="text-[10px] text-white/40 text-center py-1">Select a session above to view its breakdown</p>
         )}
       </div>
     </div>

@@ -2648,9 +2648,31 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newTotal.toFixed(2)}`);
       setTimeout(() => refreshProfile(), 300);
     } else {
-      // New Session — reset float and stamp cashier_float_set_at as the new session anchor.
-      // bar_session_start is NOT touched — that belongs to Open Bar only.
-      // Session cards (income/expense/profit) use cashier_float_set_at as their anchor.
+      // New Session (cashier change) — close the current open sub-session and create a new one.
+      // This does NOT touch bar_session_start — the bar parent session stays open.
+      // Reset the cashier float to the new value and stamp a new cashier_float_set_at anchor.
+
+      // Find the current open bar_session to attach the new sub-session to
+      const { data: openBarSession } = await sb.from("bar_sessions")
+        .select("id").eq("owner_id", profile.id).is("closed_at", null)
+        .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+
+      // Close the current open sub-session
+      if (openBarSession?.id) {
+        await sb.from("bar_sub_sessions")
+          .update({ closed_at: now })
+          .eq("owner_id", profile.id)
+          .eq("bar_session_id", openBarSession.id)
+          .is("closed_at", null);
+        // Insert new sub-session
+        await sb.from("bar_sub_sessions").insert({
+          owner_id: profile.id,
+          bar_session_id: openBarSession.id,
+          opened_at: now,
+          cashier_float: val,
+        });
+      }
+
       const { error } = await sb.from("profiles")
         .update({ cashier_float: val, cashier_float_set_at: now })
         .eq("id", profile.id);
@@ -2661,7 +2683,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       setFloatUsed(0);
       setFloatInput("");
       setShowSetFloat(false);
-      toast.success(val === 0 ? "Float cleared" : "New session started — float set to $" + val.toFixed(2));
+      toast.success(val === 0 ? "Float cleared" : "New cashier session started — float set to $" + val.toFixed(2));
       setTimeout(() => refreshProfile(), 300);
     }
   };

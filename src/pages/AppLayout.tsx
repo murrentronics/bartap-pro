@@ -295,7 +295,7 @@ export default function AppLayout() {
         // Manager: Items first, Customers, Expenses, Machines — no Bar, no Wallet
         ...(ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }] : []),
         ...(ownerHasBar ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }] : []),
-        { to: "/manager", label: t("expenses", "Expenses"), icon: TrendingDown },
+        { to: "/manager", label: t("bar_expense", "Bar Expense"), icon: TrendingDown },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
       ]
     : [

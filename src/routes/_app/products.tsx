@@ -1216,11 +1216,15 @@ export default function ProductsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [profile?.id, load, effectiveOwnerId]);
 
-  if (profile?.role !== "owner" && profile?.role !== "manager") {
+  if (profile?.role !== "owner" && profile?.role !== "manager" && profile?.job_title !== "manager") {
     return <div className="text-center text-muted-foreground py-20">Only owners and managers can manage items.</div>;
   }
 
-  const ownerIdForQuery = effectiveOwnerId(profile.id);
+  const ownerIdForQuery = effectiveOwnerId(
+    (profile.role === "manager" || (profile as any).job_title === "manager")
+      ? (profile.parent_id ?? profile.id)
+      : profile.id
+  );
   const filtered = items.filter((p) => (p.category || "beers") === category);
 
   const updateStock = async (id: string, delta: number) => {
