@@ -1139,7 +1139,7 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     const p = profileRef.current;
     if (!p) return;
-    const ownerIdForQuery = effectiveOwnerId(p.role === "manager" ? (p.parent_id ?? p.id) : p.id);
+    const ownerIdForQuery = effectiveOwnerId((p.role === "manager" || p.job_title === "manager") ? (p.parent_id ?? p.id) : p.id);
     const { data } = await supabase
       .from("products")
       .select("*")
@@ -1152,7 +1152,7 @@ export default function ProductsPage() {
   useEffect(() => {
     if (!profile?.id) return;
     load();
-    const ownerIdForQuery = effectiveOwnerId(profile.role === "manager" ? (profile.parent_id ?? profile.id) : profile.id);
+    const ownerIdForQuery = effectiveOwnerId((profile.role === "manager" || profile.job_title === "manager") ? (profile.parent_id ?? profile.id) : profile.id);
     const ch = supabase
       .channel(`products-mgmt-${ownerIdForQuery}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerIdForQuery}` }, () => load())

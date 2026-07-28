@@ -29,6 +29,7 @@ export type Profile = {
   is_bar_account?: boolean;
   is_machines_account?: boolean;
   bar_addon_active?: boolean;
+  job_title?: string;
 };
 
 type AuthCtx = {

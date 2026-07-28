@@ -1329,7 +1329,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const isCashier = profile.role === "cashier";
   const isOwner = profile.role === "owner";
-  const isManager = profile.role === "manager";
+  const isManager = profile.role === "manager" || profile.job_title === "manager";
 
 
   const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");

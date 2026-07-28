@@ -38,7 +38,7 @@ export default function AppLayout() {
       nav("/register", { replace: true });
     }
     // Manager landing page — redirect away from bar/wallet to items
-    if (!loading && profile?.role === "manager" && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
+    if (!loading && (profile?.role === "manager" || profile?.job_title === "manager") && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
       nav("/products", { replace: true });
     }
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
@@ -150,7 +150,7 @@ export default function AppLayout() {
       if (!profile?.id) return;
       const ownerId = isChainOwner && activeBarId
         ? activeBarId
-        : (profile.role === "cashier" || profile.role === "manager") ? profile.parent_id : profile.id;
+        : (profile.role === "cashier" || profile.role === "manager" || profile.job_title === "manager") ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
         .select("plan_type, machines_addon_active, bar_addon_active").eq("id", ownerId).single();
@@ -197,7 +197,7 @@ export default function AppLayout() {
   const isOwner    = profile.role === "owner";
   const isAdmin    = profile.role === "admin";
   const isCashier  = profile.role === "cashier";
-  const isManager  = profile.role === "manager";
+  const isManager  = profile.role === "manager" || (profile as any).job_title === "manager";
   const isPending  = !isAdmin && !isCashier && !isManager && profile.status === "pending";
   const isSuspended = !isAdmin && !isCashier && !isManager && profile.status === "suspended";
   const hasMusic   = isOwner || isCashier || isManager;
@@ -325,7 +325,7 @@ export default function AppLayout() {
           </div>
 
           {/* Music / Machines-or-Bar toggle — always visible for owners with music addon */}
-          {hasMusic && (
+          {hasMusic && !isManager && (
             <Link
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
@@ -333,6 +333,15 @@ export default function AppLayout() {
               title={isOnMusic ? (isMachinesOnlyUser ? "Back to Machines" : "Back to Bar") : "Open Music Player"}
             >
             {isOnMusic ? (isMachinesOnlyUser ? t("machines", "Machines") : t("bar", "Bar")) : t("music", "Music")}
+            </Link>
+          )}
+          {hasMusic && isManager && (
+            <Link
+              to={isOnMusic ? "/products" : "/music"}
+              className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {isOnMusic ? t("products_title", "Items") : t("music", "Music")}
             </Link>
           )}
 
