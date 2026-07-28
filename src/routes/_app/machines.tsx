@@ -1346,6 +1346,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorFocus,    setMonitorFocus]    = useState<"in" | "out" | null>(null);
   const [monitorUpdateDone, setMonitorUpdateDone] = useState(false); // blocks re-click after save
   const [showConfirmUpdate, setShowConfirmUpdate] = useState(false); // confirm modal before saving log
+  const [monitorInputsLocked, setMonitorInputsLocked] = useState(false); // locked after update until New Entry
 
   // Reset the "already saved" lock whenever the owner changes an input
   useEffect(() => { setMonitorUpdateDone(false); }, [monitorIn, monitorOut]);
@@ -1504,6 +1505,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (newLog) setMonitorLogs(prev => [newLog as MonitorLog, ...prev]);
     setMonitorSaving(false);
     setMonitorUpdateDone(true); // block re-click until inputs change
+    setMonitorInputsLocked(true); // lock Present inputs until New Entry is clicked
+    setMonitorFocus(null); // close numpad
   };
 
   // When bar opens — move box1 into box2 (running total), clear box1 and diffs
@@ -3282,8 +3285,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   Machine Monitor
                 </h2>
                 <button
-                  onClick={handleMonitorRollup}
-                  disabled={monitorSaving || (monitorIn === "" && monitorOut === "")}
+                  onClick={() => {
+                    // Clear inputs and unlock for a fresh entry
+                    setMonitorIn("");
+                    setMonitorOut("");
+                    setMonitorInDiff("");
+                    setMonitorOutDiff("");
+                    setMonitorFocus("in");
+                    setMonitorInputsLocked(false);
+                    setMonitorUpdateDone(false);
+                  }}
+                  disabled={monitorSaving}
                   className="h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                   style={{ background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" }}
                 >
@@ -3305,11 +3317,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
                     <button
-                      onClick={() => setMonitorFocus(monitorFocus === "in" ? null : "in")}
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
+                      onClick={() => !monitorInputsLocked && setMonitorFocus(monitorFocus === "in" ? null : "in")}
+                      disabled={monitorInputsLocked}
+                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
-                        background: monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
-                        borderColor: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
+                        background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                        borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
                         color: "oklch(0.72 0.18 145)",
                       }}>
                       {monitorIn || "0"}
@@ -3343,11 +3356,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
                     <button
-                      onClick={() => setMonitorFocus(monitorFocus === "out" ? null : "out")}
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition"
+                      onClick={() => !monitorInputsLocked && setMonitorFocus(monitorFocus === "out" ? null : "out")}
+                      disabled={monitorInputsLocked}
+                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
-                        background: monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
-                        borderColor: monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
+                        background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                        borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
                         color: "oklch(0.65 0.22 25)",
                       }}>
                       {monitorOut || "0"}
@@ -3374,8 +3388,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 </div>
               </div>
 
-              {/* ── Inline numpad — shown when a field is focused ── */}
-              {monitorFocus && (
+              {/* ── Inline numpad — shown when a field is focused and not locked ── */}
+              {monitorFocus && !monitorInputsLocked && (
                 <div className="mt-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-center mb-2"
                     style={{ color: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
@@ -3435,7 +3449,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               {/* Update button */}
               <button
                 onClick={() => { setShowConfirmUpdate(true); setMonitorFocus(null); }}
-                disabled={monitorSaving || monitorUpdateDone || (monitorIn === "" && monitorOut === "")}
+                disabled={monitorSaving || monitorUpdateDone || monitorInputsLocked || monitorIn === "" || monitorOut === ""}
                 className="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
@@ -4830,7 +4844,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                   </span>
 
 
-                  <span className="text-[11px] font-black text-white/80 uppercase tracking-widest leading-tight text-center truncate w-full px-0.5">
+                  <span className="font-black text-white/80 uppercase leading-tight text-center w-full px-0.5 block"
+                    style={{
+                      fontSize: m.name.length > 9 ? (m.name.length > 13 ? "7px" : "9px") : "11px",
+                      letterSpacing: m.name.length > 9 ? "0.03em" : "0.08em",
+                      wordBreak: "break-word", overflowWrap: "break-word", lineHeight: 1.2,
+                    }}>
 
 
                     {m.name}
@@ -4893,7 +4912,12 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
                     </span>
 
 
-                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest text-center truncate w-full px-0.5">
+                    <span className="font-black text-white/80 uppercase leading-tight text-center w-full px-0.5 block"
+                      style={{
+                        fontSize: m.name.length > 9 ? (m.name.length > 13 ? "7px" : "9px") : "11px",
+                        letterSpacing: m.name.length > 9 ? "0.03em" : "0.08em",
+                        wordBreak: "break-word", overflowWrap: "break-word", lineHeight: 1.2,
+                      }}>
 
 
                       {m.name}

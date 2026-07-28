@@ -1308,12 +1308,12 @@ export default function CashiersPage() {
   const handleCloseBar = async () => {
     setBarToggleBusy(true);
     const now = new Date().toISOString();
-    const { data: ownerRow } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerIdForBar).single();
-    const sessionStart: string | null = (ownerRow as any)?.bar_session_start ?? null;
-    if (sessionStart) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("bar_sessions").insert({ owner_id: ownerIdForBar, session_start: sessionStart, session_end: now });
-    }
+    // Close the open bar_sessions row — UPDATE closed_at on the row with no closed_at yet
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("bar_sessions")
+      .update({ closed_at: now })
+      .eq("owner_id", ownerIdForBar)
+      .is("closed_at", null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerIdForBar);
     setBarToggleBusy(false);

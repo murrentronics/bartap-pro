@@ -395,13 +395,13 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     setActiveBarSession(sessionStart ? { start: sessionStart, end: closedAt } : null);
 
     const { data: hist } = await sb.from("bar_sessions")
-      .select("id, session_start, session_end")
+      .select("id, opened_at, closed_at")
       .eq("owner_id", ownerId)
-      .order("session_start", { ascending: false })
+      .order("opened_at", { ascending: false })
       .limit(30);
     const all: { id: string; session_start: string; session_end: string | null }[] = [];
     if (sessionStart) all.push({ id: "active", session_start: sessionStart, session_end: closedAt });
-    (hist ?? []).forEach((s: any) => all.push(s));
+    (hist ?? []).forEach((s: any) => all.push({ id: s.id, session_start: s.opened_at, session_end: s.closed_at }));
     setBarSessions(all);
   }, [ownerId]);
 
@@ -1526,10 +1526,11 @@ function FinancialsTab({ ownerId, ownerWalletBalance, totalIncome, onDataChange,
   useEffect(() => {
     if (!ownerId) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("bar_sessions").select("id, session_start, session_end")
-      .eq("owner_id", ownerId).order("session_start", { ascending: false }).limit(10)
-      .then(({ data }: { data: { id: string; session_start: string; session_end: string | null }[] | null }) => {
-        setAvailableSessions(data ?? []);
+    (supabase as any).from("bar_sessions").select("id, opened_at, closed_at")
+      .eq("owner_id", ownerId).order("opened_at", { ascending: false }).limit(10)
+      .then(({ data }: { data: { id: string; opened_at: string; closed_at: string | null }[] | null }) => {
+        // Map to the shape the rest of this component expects (session_start/session_end)
+        setAvailableSessions((data ?? []).map(s => ({ id: s.id, session_start: s.opened_at, session_end: s.closed_at })));
       });
   }, [ownerId]);
 
@@ -2703,12 +2704,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     if (!barSessionStart && barClosedAtVal) {
       // Bar was closed — find the most recent closed session's start time
       const lastSessionRes = await (sb as any).from("bar_sessions")
-        .select("session_start")
+        .select("opened_at")
         .eq("owner_id", profile.id)
-        .order("session_start", { ascending: false })
+        .order("opened_at", { ascending: false })
         .limit(1);
       todayAnchor = (lastSessionRes.data && lastSessionRes.data.length > 0)
-        ? lastSessionRes.data[0].session_start
+        ? lastSessionRes.data[0].opened_at
         : null;
     }
 

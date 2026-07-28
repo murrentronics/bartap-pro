@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -653,22 +653,34 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   const [unitsPerItems, setUnitsPerItems] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((p) => [p.id, p.units_per_item > 0 ? String(p.units_per_item) : ""]))
   );
+  // Variation prices: keyed by `${productId}__${varKey}`
+  const [varPrices, setVarPrices] = useState<Record<string, string>>(() => {
+    const entries: [string, string][] = [];
+    items.forEach((p) => {
+      (p.bottle_variations ?? []).forEach((v) => {
+        entries.push([`${p.id}__${v.key}`, String(v.price ?? "")]);
+      });
+    });
+    return Object.fromEntries(entries);
+  });
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   // id + field for active numpad in the table
-  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" | "units" } | null>(null);
+  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" | "units" | "vp" } | null>(null);
 
   const handleNumpad = (k: string) => {
     if (!activeNumpad) return;
     const { id, field } = activeNumpad;
-    const isDecimal = field === "cp" || field === "sp";
-    const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : field === "units" ? (unitsPerItems[id] ?? "") : (newQtys[id] ?? "");
+    const isDecimal = field === "cp" || field === "sp" || field === "vp";
+    const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : field === "units" ? (unitsPerItems[id] ?? "") : field === "vp" ? (varPrices[id] ?? "") : (newQtys[id] ?? "");
     const setter = field === "cp"
       ? (v: string) => setCostPrices((p) => ({ ...p, [id]: v }))
       : field === "sp"
       ? (v: string) => setSellPrices((p) => ({ ...p, [id]: v }))
       : field === "units"
       ? (v: string) => setUnitsPerItems((p) => ({ ...p, [id]: v }))
+      : field === "vp"
+      ? (v: string) => setVarPrices((p) => ({ ...p, [id]: v }))
       : (v: string) => setNewQtys((p) => ({ ...p, [id]: v }));
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
     if (k === ".") { if (isDecimal && !current.includes(".")) setter(current + "."); return; }
@@ -701,7 +713,11 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
     const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
     const unitsChanged = !isNaN(newUnits) && newUnits !== Number(p.units_per_item ?? 0);
-    return cpChanged || spChanged || unitsChanged;
+    const varChanged = (p.bottle_variations ?? []).some((bv) => {
+      const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
+      return !isNaN(nv) && nv !== Number(bv.price ?? 0);
+    });
+    return cpChanged || spChanged || unitsChanged || varChanged;
   });
 
   // All items with any change — shown in preview
@@ -790,15 +806,19 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       const cpChanged = !isNaN(newCp) && newCp !== Number(p.cost_price ?? 0);
       const spChanged = !isNaN(newSp) && newSp !== Number(p.price ?? 0);
       const unitsChanged = !isNaN(newUnits) && newUnits !== Number(p.units_per_item ?? 0);
-      if (!cpChanged && !spChanged && !unitsChanged) continue;
-      const { error } = await supabase
-        .from("products")
-        .update({
-          ...(cpChanged ? { cost_price: newCp } : {}),
-          ...(spChanged ? { price: newSp } : {}),
-          ...(unitsChanged ? { units_per_item: newUnits } : {}),
-        })
-        .eq("id", p.id);
+      // Check variation price changes
+      const varUpdates = (p.bottle_variations ?? []).map((bv) => {
+        const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
+        return { ...bv, price: !isNaN(nv) && nv !== Number(bv.price ?? 0) ? nv : bv.price, changed: !isNaN(nv) && nv !== Number(bv.price ?? 0) };
+      });
+      const anyVarChanged = varUpdates.some((v) => v.changed);
+      if (!cpChanged && !spChanged && !unitsChanged && !anyVarChanged) continue;
+      const updatePayload: Record<string, unknown> = {};
+      if (cpChanged) updatePayload.cost_price = newCp;
+      if (spChanged) updatePayload.price = newSp;
+      if (unitsChanged) updatePayload.units_per_item = newUnits;
+      if (anyVarChanged) updatePayload.bottle_variations = varUpdates.map(({ changed: _c, ...rest }) => rest);
+      const { error } = await supabase.from("products").update(updatePayload).eq("id", p.id);
       if (!error) {
         patches.push({
           id: p.id,
@@ -809,6 +829,15 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           ...(unitsChanged ? { units_per_item: newUnits } : {}),
         });
       }
+    }
+    // Save variation price changes for items that DID have qty updates too
+    for (const p of updates) {
+      const varUpdates = (p.bottle_variations ?? []).map((bv) => {
+        const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
+        return { ...bv, price: !isNaN(nv) && nv !== Number(bv.price ?? 0) ? nv : bv.price, changed: !isNaN(nv) && nv !== Number(bv.price ?? 0) };
+      });
+      if (!varUpdates.some((v) => v.changed)) continue;
+      await supabase.from("products").update({ bottle_variations: varUpdates.map(({ changed: _c, ...rest }) => rest) }).eq("id", p.id);
     }
 
     setBusy(false);
@@ -910,8 +939,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                     const cpIsZero = hasAdd && (parseFloat(cpVal) || 0) === 0;
                     const spIsZero = hasAdd && (parseFloat(spVal) || 0) === 0;
                     return (
+                      <React.Fragment key={p.id}>
                       <tr
-                        key={p.id}
                         className="border-t border-border/40 transition"
                         style={hasAdd ? { background: "rgba(251,146,60,0.07)" } : {}}
                       >
@@ -981,10 +1010,37 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           </div>
                         </td>
                       </tr>
+                      {/* Variation rows — one per variation, indented, price-only editable */}
+                      {(p.bottle_variations ?? []).map((bv) => {
+                        const varKey = `${p.id}__${bv.key}`;
+                        const vPrice = varPrices[varKey] ?? "";
+                        const isActive = activeNumpad?.id === varKey && activeNumpad.field === "vp";
+                        return (
+                          <tr key={varKey} className="border-t border-border/20" style={{ background: "rgba(255,255,255,0.02)" }}>
+                            <td className="pl-3 pr-2 py-1" />
+                            <td className="px-2 py-1">
+                              <span className="text-[10px] font-semibold text-muted-foreground pl-3">↳ {bv.label}</span>
+                              <span className="text-[9px] text-muted-foreground/50 ml-1">({bv.units_consumed}u)</span>
+                            </td>
+                            <td className="px-2 py-1" colSpan={2}>
+                              <div
+                                onClick={() => setActiveNumpad(isActive ? null : { id: varKey, field: "vp" })}
+                                className="h-7 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                                style={{ borderColor: isActive ? "var(--primary)" : "var(--border)", color: "var(--foreground)" }}
+                              >
+                                {vPrice || "0.00"}
+                              </div>
+                            </td>
+                            <td colSpan={3} />
+                          </tr>
+                        );
+                      })}
+                      </React.Fragment>
                     );
                   })}
                 </>
               ))}
+
             </tbody>
           </table>
         </div>
@@ -994,7 +1050,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : "Add Qty"}
+                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : activeNumpad.field === "vp" ? "Variation Price" : "Add Qty"}
               </span>
               <button onClick={() => setActiveNumpad(null)}
                 className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
