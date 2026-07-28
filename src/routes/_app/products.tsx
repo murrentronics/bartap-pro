@@ -881,11 +881,11 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
               <tr>
                 <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-10 sm:w-14"></th>
                 <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground">Name</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[52px]">Units</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[52px] leading-tight">Drink/<br/>Retail</th>
                 <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[44px]">Qty</th>
-                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[72px]" style={{ color: "var(--primary)" }}>+ Add</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[72px]" style={{ color: "var(--primary)" }}>Add</th>
               </tr>
             </thead>
             <tbody>
@@ -1612,7 +1612,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     const unitsVal = parseInt(unitsPerItem, 10) || 0;
     const variationsVal = category === "liquor" ? [
       ...(unitsVal > 0 && parseFloat(shotPricePerUnit) > 0
-        ? [{ key: "shot", label: "Shot", units_consumed: 1, price: parseFloat(shotPricePerUnit) }]
+        ? [{ key: "shot", label: "Drink", units_consumed: 1, price: parseFloat(shotPricePerUnit) }]
         : []),
       ...bottleVariations.filter((v) => v.key !== "shot" && v.label && v.units_consumed > 0),
     ] : category === "cigarettes" ? [
@@ -1809,18 +1809,18 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">🍾 Shots per Bottle</Label>
+                    <Label className="text-xs">🍾 Drinks per Bottle</Label>
                     <div
                       className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                       onClick={() => setActiveNumpad(activeNumpad === "units" ? null : "units")}
                     >
                       <span className={`text-base font-black ${activeNumpad === "units" ? "text-primary" : "text-muted-foreground"}`}>
-                        {unitsPerItem || "0"} shots
+                        {unitsPerItem || "0"} drinks
                       </span>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">Shot Price ($)</Label>
+                    <Label className="text-xs">Drink Price ($)</Label>
                     <div
                       className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                       onClick={() => setActiveNumpad(activeNumpad === "shotprice" ? null : "shotprice")}
@@ -1917,7 +1917,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">🥃 Bottle Variations</Label>
-                  <p className="text-[10px] text-muted-foreground">Shots used from bottle</p>
+                  <p className="text-[10px] text-muted-foreground">Drinks used from bottle</p>
                 </div>
                 {bottleVariations.length === 0 && (
                   <button type="button"
@@ -1945,7 +1945,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <p className="text-[10px] text-muted-foreground mb-0.5">Shots used</p>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Drinks used</p>
                         <div
                           className="h-8 rounded-lg border border-border bg-muted/30 flex items-center px-2 cursor-pointer active:bg-muted/50 transition"
                           onClick={() => setActiveNumpad(activeNumpad === `var_${i}_shots` ? null : `var_${i}_shots`)}
