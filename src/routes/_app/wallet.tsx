@@ -1257,7 +1257,7 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               const cashierLabel = parts[0] ?? "Cashier sale";
                               const totalStr     = parts[1] ?? "";
                               const rawItems = parts.slice(2).join(", ");
-                              const itemsStr = rawItems.replace(/├ù/g, "x").replace(/\u00d7/g, "x");
+                              const itemsStr = rawItems.replace(/├ù/g, "x").replace(/\u00d7/g, "x").replace(/Shot \(extras\)/g, "Drink (extras)").replace(/\bShot\b/g, "Drink");
                               return (
                                 <div key={tx.id} className="px-4 py-3 bg-blue-500/5 flex items-start gap-3">
                                   <div className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400">🧾</div>
@@ -2446,6 +2446,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 const hasNumbers = !isNaN(bottlePrice) && !isNaN(shotsRevenue) && (bottlePrice > 0 || shotsRevenue > 0);
                 const bottleByPart = noteParts.find(p => p.startsWith("By:") || p.startsWith("Cashier:")) ?? "";
                 const bottleCashierName = bottleByPart.replace(/^(By:|Cashier:)\s*/, "").trim();
+                const sub2Display = sub2.replace(/^Shots revenue/, "Drinks revenue");
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-amber-500/30 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.06 80 / 0.35)" }}>
@@ -2454,7 +2455,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                       <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                       <div className="text-sm font-black text-amber-300 mt-0.5">{title}</div>
                       {sub1 && <div className="text-xs text-muted-foreground mt-0.5">{sub1}</div>}
-                      {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2}</div>}
+                      {sub2 && <div className="text-xs text-amber-400 font-semibold mt-0.5">{sub2Display}</div>}
                       {hasNumbers && (
                         <div className="text-xs font-black mt-1" style={{ color: diff >= 0 ? "#86efac" : "#fca5a5" }}>
                           {diff >= 0 ? `Gain: +$${fmt(diff)}` : `Loss: -$${Math.abs(diff).toFixed(2)}`}
@@ -2930,6 +2931,40 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     <div className="space-y-5">
 
       {/* ── Hero 1: Today’s stats ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero 3: Float ─────────────────────────────────────── */}
+      <section className="rounded-3xl px-4 py-3 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative space-y-3">
+          <div className="flex gap-3 items-stretch">
+            <button
+              onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
+              className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2 py-3"
+              style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+              {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
+            </button>
+            <div className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2"
+              style={{ background: "oklch(0.18 0.02 60)", border: cashierFloat > 0 ? "1px solid oklch(0.38 0.12 60)" : "1px solid oklch(0.28 0.04 60)" }}>
+              {cashierFloat > 0 ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Set</span>
+                    <span className="font-black text-sm sm:text-base" style={{ color: "#fbbf24" }}>${fmt(cashierFloat)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Remain</span>
+                    <span className="font-black text-sm sm:text-base" style={{ color: floatRemaining > 0 ? "#86efac" : "#fca5a5" }}>${fmt(floatRemaining)}</span>
+                  </div>
+                </>
+              ) : (
+                <span className="font-black text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Hero 1: Session stats ──────────────────────────────────────────── */}
       <section className="rounded-3xl p-4 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -3014,8 +3049,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                 </div>
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Out</div>
-                  <div className="font-black text-sm" style={{ color: (todayStockCost + todayExpenses) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {(todayStockCost + todayExpenses) > 0 ? `$${fmt(todayStockCost + todayExpenses)}` : "—"}
+                  <div className="font-black text-sm" style={{ color: (todayStockCost + todayExpenses) > 0 ? "#fca5a5" : "#fca5a5" }}>
+                    {(todayStockCost + todayExpenses) > 0 ? `$${fmt(todayStockCost + todayExpenses)}` : "$0.00"}
                   </div>
                 </div>
               </div>
@@ -3023,14 +3058,14 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Stock Cost</div>
-                  <div className="font-black text-xs" style={{ color: todayStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "—"}
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    {todayStockCost > 0 ? `$${fmt(todayStockCost)}` : "$0.00"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Expenses</div>
-                  <div className="font-black text-xs" style={{ color: todayExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "—"}
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "$0.00"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -3087,18 +3122,18 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
               </div>
-              {/* Row 3 — Est. Stock Cost / Est. Stock Value */}
+              {/* Row 3 — Est. Stock Value / Est. Stock Cost */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Cost</div>
-                  <div className="font-black text-sm" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
-                  </div>
-                </div>
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Value</div>
                   <div className="font-black text-sm" style={{ color: stockResaleValue > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                     {stockResaleValue > 0 ? `$${fmt(stockResaleValue)}` : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Cost</div>
+                  <div className="font-black text-sm" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
                   </div>
                 </div>
               </div>
@@ -3107,39 +3142,6 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         </div>
       </section>
 
-      {/* ── Hero 3: Float ────────────────────────────────────────────────────────────────────────── */}
-      <section className="rounded-3xl px-4 py-3 relative overflow-hidden"
-        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
-        <div className="absolute -right-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative space-y-3">
-          {/* Session mode selector — shown when a float is already set */}
-          <div className="flex gap-3 items-stretch">
-            <button
-              onClick={() => { setFloatInput(""); setShowSetFloat(true); }}
-              className="shrink-0 w-24 rounded-2xl font-black text-[11px] leading-tight active:scale-95 transition flex items-center justify-center text-center px-2 py-3"
-              style={{ background: "oklch(0.20 0.04 60)", color: "#fbbf24", border: "1.5px solid oklch(0.35 0.10 60)" }}>
-              {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
-            </button>
-            <div className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2"
-              style={{ background: "oklch(0.18 0.02 60)", border: cashierFloat > 0 ? "1px solid oklch(0.38 0.12 60)" : "1px solid oklch(0.28 0.04 60)" }}>
-              {cashierFloat > 0 ? (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Set</span>
-                    <span className="font-black text-sm sm:text-base" style={{ color: "#fbbf24" }}>${fmt(cashierFloat)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] sm:text-xs font-semibold" style={{ color: "rgba(255,255,255,0.45)" }}>Remain</span>
-                    <span className="font-black text-sm sm:text-base" style={{ color: floatRemaining > 0 ? "#86efac" : "#fca5a5" }}>${fmt(floatRemaining)}</span>
-                  </div>
-                </>
-              ) : (
-                <span className="font-black text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <div className="flex rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
         <button

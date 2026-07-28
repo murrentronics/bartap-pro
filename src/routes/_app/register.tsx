@@ -693,7 +693,7 @@ export default function RegisterPage() {
     for (const { variation, qty } of shotBuffer) {
       const isExtra = isAtCapacity;
       const itemName = isExtra
-        ? `Shot (extras): ${bottle.product_name}`
+        ? `Drink (extras): ${bottle.product_name}`
         : `${variation.label}: ${bottle.product_name}`;
       setCart((c) => [...c, {
         id: `shot-${bottle.id}-${variation.key}-${Date.now()}-${Math.random()}`,
@@ -982,7 +982,7 @@ export default function RegisterPage() {
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
                   style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
                 >
-                  {t("shot_from_bottle", "🥃 Shot from Opened Bottle")}
+                  {t("shot_from_bottle", "🥃 Drink from Opened Bottle")}
                   {openedBottles.length > 0 && (
                     <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
                       style={{ background: "var(--gradient-hero)" }}>
@@ -1538,7 +1538,7 @@ export default function RegisterPage() {
                       </span>
                     </div>
                   )}
-                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold">Only extra shots allowed</p>}
+                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold">Only extra drinks allowed</p>}
                 </div>
                 <button type="button" onClick={cancelShotBuffer}
                   className="shrink-0 h-8 px-3 rounded-lg bg-muted text-xs font-bold text-muted-foreground flex items-center gap-1">
@@ -1653,7 +1653,7 @@ export default function RegisterPage() {
                               for (const { variation, qty } of shotBuffer) {
                                 const isExtra = isAtCap;
                                 const itemName = isExtra
-                                  ? `Shot (extras): ${currentBottle?.product_name}`
+                                  ? `Drink (extras): ${currentBottle?.product_name}`
                                   : `${variation.label}: ${currentBottle?.product_name}`;
                                 setCart((c) => [...c, {
                                   id: `shot-${shotBottleId}-${variation.key}-${Date.now()}-${Math.random()}`,
@@ -1685,7 +1685,7 @@ export default function RegisterPage() {
                     <span className="text-3xl">🔒</span>
                     <p className="font-black text-sm text-foreground">Shots not set up</p>
                     <p className="text-xs text-muted-foreground leading-snug">
-                      The owner hasn't configured shot prices for this product. Ask the owner to add shot pricing in Product Settings.
+                      The owner hasn't configured drink prices for this product. Ask the owner to add drink pricing in Product Settings.
                     </p>
                   </div>
                 )}

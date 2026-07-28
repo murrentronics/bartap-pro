@@ -568,8 +568,8 @@ export default function SummaryPage() {
       if (items.length > 0) {
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
         doc.text("ITEMS SOLD", LM, y);
-        doc.text("COST", LM + 80, y, { align: "right" });
-        doc.text("INCOME", LM + 120, y, { align: "right" });
+        doc.text("INCOME", LM + 80, y, { align: "right" });
+        doc.text("COST", LM + 120, y, { align: "right" });
         doc.text("PROFIT", RM, y, { align: "right" }); y += 3;
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
@@ -578,10 +578,10 @@ export default function SummaryPage() {
           if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
           const rowProfit = it.revenue - it.costTotal;
           doc.text(it.name + " ×" + it.qty, LM, y);
-          doc.setTextColor(180, 40, 40);
-          doc.text("$" + fmt(it.costTotal), LM + 80, y, { align: "right" });
           doc.setTextColor(40, 140, 40);
-          doc.text("$" + fmt(it.revenue), LM + 120, y, { align: "right" });
+          doc.text("$" + fmt(it.revenue), LM + 80, y, { align: "right" });
+          doc.setTextColor(180, 40, 40);
+          doc.text("$" + fmt(it.costTotal), LM + 120, y, { align: "right" });
           doc.setFont("helvetica", "bold");
           doc.setTextColor(rowProfit >= 0 ? 40 : 180, rowProfit >= 0 ? 140 : 40, 40);
           doc.text((rowProfit >= 0 ? "+" : "") + "$" + fmt(rowProfit), RM, y, { align: "right" });
@@ -595,10 +595,10 @@ export default function SummaryPage() {
         doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4); doc.line(LM, y, RM, y); y += 4;
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 70, 10);
         doc.text("SUBTOTALS", LM, y);
-        doc.setTextColor(180, 40, 40);
-        doc.text("$" + fmt(items.reduce((s,i)=>s+i.costTotal,0)), LM + 80, y, { align: "right" });
         doc.setTextColor(40, 140, 40);
-        doc.text("$" + fmt(totalIncome), LM + 120, y, { align: "right" });
+        doc.text("$" + fmt(totalIncome), LM + 80, y, { align: "right" });
+        doc.setTextColor(180, 40, 40);
+        doc.text("$" + fmt(items.reduce((s,i)=>s+i.costTotal,0)), LM + 120, y, { align: "right" });
         doc.setTextColor(totalProfit >= 0 ? 40 : 180, totalProfit >= 0 ? 140 : 40, 40);
         doc.text((totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit), RM, y, { align: "right" });
         doc.setTextColor(0, 0, 0); y += 8;
@@ -896,17 +896,6 @@ export default function SummaryPage() {
         <>
           {/* ── Header stat cards ── */}
           <div className="grid grid-cols-3 gap-2">
-            {/* Cost Price */}
-            <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
-              style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
-              <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground">
-                <TrendingDown className="h-3 w-3" /> Cost
-              </div>
-              <div className="font-black text-sm" style={{ color: totalCostPrice > 0 ? "#fca5a5" : "var(--muted-foreground)" }}>
-                {totalCostPrice > 0 ? `$${fmt(totalCostPrice)}` : "—"}
-              </div>
-            </div>
-
             {/* Income */}
             <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
               style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
@@ -915,6 +904,17 @@ export default function SummaryPage() {
               </div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>
                 {totalIncome > 0 ? `$${fmt(totalIncome)}` : "—"}
+              </div>
+            </div>
+
+            {/* Cost Price */}
+            <div className="rounded-2xl p-3 flex flex-col gap-1 text-center"
+              style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                <TrendingDown className="h-3 w-3" /> Cost
+              </div>
+              <div className="font-black text-sm" style={{ color: totalCostPrice > 0 ? "#fca5a5" : "var(--muted-foreground)" }}>
+                {totalCostPrice > 0 ? `$${fmt(totalCostPrice)}` : "—"}
               </div>
             </div>
 
@@ -965,16 +965,16 @@ export default function SummaryPage() {
                         <p className="font-bold text-sm leading-tight flex-1">{it.name}</p>
                         <p className="text-xs text-muted-foreground shrink-0">{it.qty} sold</p>
                       </div>
-                      {/* Line 2: Cost | Income | Profit — equal 3-column grid */}
+                      {/* Line 2: Income | Cost | Profit — equal 3-column grid */}
                       <div className="grid grid-cols-3 gap-2 w-full">
-                        <div className="text-right">
-                          <p className="font-semibold text-sm" style={{ color: "#fca5a5" }}>
-                            {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
-                          </p>
-                        </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm" style={{ color: "#86efac" }}>
                             ${fmt(it.revenue)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-sm" style={{ color: "#fca5a5" }}>
+                            {it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}
                           </p>
                         </div>
                         <div className="text-right">
@@ -994,17 +994,17 @@ export default function SummaryPage() {
                   style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
                   <div className="grid grid-cols-3 gap-2 w-full">
                     <div className="text-right">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Income</p>
+                      <span className="font-black text-sm" style={{ color: "#86efac" }}>
+                        ${fmt(totalIncome)}
+                      </span>
+                    </div>
+                    <div className="text-right">
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Cost</p>
                       <span className="font-black text-sm" style={{ color: "#fca5a5" }}>
                         {items.reduce((s,i)=>s+i.costTotal,0) > 0
                           ? `$${fmt(items.reduce((s,i)=>s+i.costTotal,0))}`
                           : "—"}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Income</p>
-                      <span className="font-black text-sm" style={{ color: "#86efac" }}>
-                        ${fmt(totalIncome)}
                       </span>
                     </div>
                     <div className="text-right">

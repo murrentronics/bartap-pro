@@ -1329,7 +1329,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const isCashier = profile.role === "cashier";
   const isOwner = profile.role === "owner";
-  const isManager = (profile.role as string) === "manager";
+  const isManager = profile.role === "manager";
 
 
   const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");
@@ -1421,12 +1421,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
 
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
+  const [confirmDeleteLogId, setConfirmDeleteLogId] = useState<string | null>(null);
   const handleDeleteLog = async (id: string) => {
     setDeletingLogId(id);
     await sb.from("machine_monitor_logs").delete().eq("id", id);
     setMonitorLogs(prev => prev.filter(l => l.id !== id));
     setOpenLogId(null);
     setDeletingLogId(null);
+    setConfirmDeleteLogId(null);
     toast.success("Log deleted");
   };
 
@@ -2728,6 +2730,25 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
 
 
+          {/* Float Set / Remaining — top */}
+          <div className="relative grid grid-cols-2 gap-2">
+
+
+            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+
+
+            <SmallStat label={t("remaining", "Remaining")}
+
+
+              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+
+
+              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
+
+
+          </div>
+
+
           {/* Lifetime totals — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
@@ -2752,7 +2773,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           )}
 
 
-          {/* Session stats — reset to 0 on every float update */}
+          {/* Session stats */}
 
 
           <div className="relative grid grid-cols-3 gap-2">
@@ -2783,24 +2804,6 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
               color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
-          </div>
-
-
-          <div className="relative grid grid-cols-2 gap-2">
-
-
-            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
-
-
-            <SmallStat label={t("remaining", "Remaining")}
-
-
-              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
-
-
-              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
 
 
           </div>
@@ -3468,6 +3471,28 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             {/* ── Logs sub-tab ── */}
             {monitorSubTab === "logs" && (
               <div className="space-y-2">
+
+                {/* Delete confirm modal */}
+                {confirmDeleteLogId && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+                    <div className="w-full max-w-sm rounded-3xl border border-red-500/40 shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                      <div className="px-6 pt-7 pb-4 text-center space-y-2">
+                        <div className="text-4xl">🗑️</div>
+                        <h2 className="font-black text-lg">Delete Log Entry?</h2>
+                        <p className="text-sm text-muted-foreground leading-snug">This record will be permanently removed. This cannot be undone.</p>
+                      </div>
+                      <div className="grid grid-cols-2 border-t border-border">
+                        <button onClick={() => setConfirmDeleteLogId(null)}
+                          className="h-14 font-black text-sm border-r border-border transition active:bg-muted/60">Cancel</button>
+                        <button onClick={() => handleDeleteLog(confirmDeleteLogId)} disabled={deletingLogId === confirmDeleteLogId}
+                          className="h-14 font-black text-sm transition active:opacity-80 disabled:opacity-50 flex items-center justify-center gap-2"
+                          style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
+                          {deletingLogId === confirmDeleteLogId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {logsLoading ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : monitorLogs.length === 0 ? (
@@ -3516,7 +3541,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                           {isEditing ? (
                             /* Edit mode — only in_present and out_present are editable */
                             <div className="space-y-3">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
+                                <button onClick={() => setConfirmDeleteLogId(log.id)} disabled={deletingLogId === log.id}
+                                  className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40"
+                                  style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
+                                  {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                </button>
+                              </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
                                   <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN Present</label>
@@ -3540,15 +3572,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                                   {savingLogEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save & Recalculate"}
                                 </button>
                               </div>
-                              {/* Delete record button */}
-                              <button onClick={() => handleDeleteLog(log.id)} disabled={deletingLogId === log.id}
-                                className="w-full h-10 rounded-xl font-black text-xs border border-red-500/40 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
-                                {deletingLogId === log.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Trash2 className="h-3.5 w-3.5" /> Delete Record</>}
-                              </button>
                             </div>
                           ) : (
                             /* View mode — same card layout as the monitor */
+                            <div className="space-y-3">
                             <div className="grid grid-cols-2 gap-4">
                               {/* IN */}
                               <div className="space-y-2">
@@ -3578,6 +3605,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                                   </div>
                                 ))}
                               </div>
+                            </div>
                             </div>
                           )}
                         </div>
@@ -4430,53 +4458,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
 
-
-
-        {/* Lifetime totals — owner only */}
-
-
-        {isOwner && (
-        <div className="relative grid grid-cols-3 gap-2">
-
-
-          <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-
-
-          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-
-
-          <StatCard label={t("all_time_profit", "Total Profit")}
-            value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
-            color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
-        </div>
-        )}
-        {/* Session stats — resets when float is updated to New Session */}
-
-
-        <div className="relative grid grid-cols-3 gap-2">
-
-
-          <StatCard label={t("session_payout", "Session Expense")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
-
-
-          <StatCard label={t("session_income", "Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
-
-
-          <StatCard label={t("session_profit", "Session Profit")}
-
-
-            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
-
-
-            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
-        </div>
-
-
-        {/* Float row — 2 cards only */}
+        {/* Float row — top */}
 
 
         {isOwner && (
@@ -4587,6 +4569,52 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
           )}
+
+
+        </div>
+
+
+        {/* Lifetime totals — owner only */}
+
+
+        {isOwner && (
+        <div className="relative grid grid-cols-3 gap-2">
+
+
+          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+
+
+          <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+
+
+          <StatCard label={t("all_time_profit", "Total Profit")}
+            value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
+            color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
+
+
+        </div>
+        )}
+
+
+        {/* Session stats */}
+
+
+        <div className="relative grid grid-cols-3 gap-2">
+
+
+          <StatCard label={t("session_income", "Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+
+
+          <StatCard label={t("session_payout", "Session Expense")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+
+
+          <StatCard label={t("session_profit", "Session Profit")}
+
+
+            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+
+
+            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
         </div>

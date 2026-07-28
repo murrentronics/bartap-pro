@@ -7,7 +7,7 @@ export type UserStatus = "pending" | "approved" | "suspended" | "expelled";
 export type Profile = {
   id: string;
   username: string;
-  role: "owner" | "cashier" | "admin";
+  role: "owner" | "cashier" | "admin" | "manager";
   parent_id: string | null;
   wallet_balance: number;
   status: UserStatus;

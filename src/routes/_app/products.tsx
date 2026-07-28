@@ -875,17 +875,17 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         <SaveBar />
 
         {/* Scrollable table */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-          <table className="min-w-[680px] w-full border-collapse text-sm">
+        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+          <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background border-b border-border">
               <tr>
                 <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-10 sm:w-14"></th>
-                <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground min-w-[110px]">Name</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Cost $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Sell $</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[56px]">Units</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px] sm:w-[60px]">Qty</th>
-                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px] sm:w-[96px]" style={{ color: "var(--primary)" }}>+ Add</th>
+                <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground">Name</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell $</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[52px]">Units</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[44px]">Qty</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[72px]" style={{ color: "var(--primary)" }}>+ Add</th>
               </tr>
             </thead>
             <tbody>
@@ -1139,7 +1139,7 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     const p = profileRef.current;
     if (!p) return;
-    const ownerIdForQuery = effectiveOwnerId(p.id);
+    const ownerIdForQuery = effectiveOwnerId(p.role === "manager" ? (p.parent_id ?? p.id) : p.id);
     const { data } = await supabase
       .from("products")
       .select("*")
@@ -1152,7 +1152,7 @@ export default function ProductsPage() {
   useEffect(() => {
     if (!profile?.id) return;
     load();
-    const ownerIdForQuery = effectiveOwnerId(profile.id);
+    const ownerIdForQuery = effectiveOwnerId(profile.role === "manager" ? (profile.parent_id ?? profile.id) : profile.id);
     const ch = supabase
       .channel(`products-mgmt-${ownerIdForQuery}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `owner_id=eq.${ownerIdForQuery}` }, () => load())

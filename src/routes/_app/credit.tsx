@@ -356,7 +356,7 @@ function CreditPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
-        {(["credit", "cleared", ...((profile?.role as string) !== "manager" ? ["create"] : [])] as ("credit" | "cleared" | "create")[]).map((tabKey) => (
+        {(["credit", "cleared", ...(profile?.role !== "manager" ? ["create"] : [])] as ("credit" | "cleared" | "create")[]).map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}

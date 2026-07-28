@@ -38,7 +38,7 @@ export default function AppLayout() {
       nav("/register", { replace: true });
     }
     // Manager landing page — redirect away from bar/wallet to items
-    if (!loading && (profile?.role as string) === "manager" && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
+    if (!loading && profile?.role === "manager" && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
       nav("/products", { replace: true });
     }
     if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
@@ -150,7 +150,7 @@ export default function AppLayout() {
       if (!profile?.id) return;
       const ownerId = isChainOwner && activeBarId
         ? activeBarId
-        : (profile.role === "cashier" || (profile.role as string) === "manager") ? profile.parent_id : profile.id;
+        : (profile.role === "cashier" || profile.role === "manager") ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
         .select("plan_type, machines_addon_active, bar_addon_active").eq("id", ownerId).single();
@@ -197,7 +197,7 @@ export default function AppLayout() {
   const isOwner    = profile.role === "owner";
   const isAdmin    = profile.role === "admin";
   const isCashier  = profile.role === "cashier";
-  const isManager  = (profile.role as string) === "manager";
+  const isManager  = profile.role === "manager";
   const isPending  = !isAdmin && !isCashier && !isManager && profile.status === "pending";
   const isSuspended = !isAdmin && !isCashier && !isManager && profile.status === "suspended";
   const hasMusic   = isOwner || isCashier || isManager;
