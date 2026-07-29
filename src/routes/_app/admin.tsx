@@ -874,6 +874,9 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
 
 // ─── Add Template Modal ───────────────────────────────────────────────────────
 function AddTemplateModal({ onDone }: { onDone: () => void }) {
+  const [mode, setMode]         = useState<"single" | "bulk">("single");
+
+  // ── Single mode state ──
   const [name, setName]         = useState("");
   const [category, setCategory] = useState<string>("beers");
   const [file, setFile]         = useState<File | null>(null);
@@ -881,6 +884,14 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const [busy, setBusy]         = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef  = useRef<HTMLInputElement>(null);
+
+  // ── Bulk mode state ──
+  type BulkItem = { file: File; previewUrl: string; name: string };
+  const [bulkItems, setBulkItems]   = useState<BulkItem[]>([]);
+  const [bulkCat, setBulkCat]       = useState<string>("beers");
+  const [bulkBusy, setBulkBusy]     = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const bulkFileRef = useRef<HTMLInputElement>(null);
 
   const onPick = (f: File | undefined | null) => {
     if (!f) return;
@@ -890,6 +901,31 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
 
   const clearImage = () => { setFile(null); setPreview(null); };
 
+  // Derive a clean name from filename
+  const nameFromFile = (f: File) =>
+    f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+
+  const onBulkPick = (files: FileList | null) => {
+    if (!files) return;
+    const incoming: BulkItem[] = Array.from(files).map(f => ({
+      file: f,
+      previewUrl: URL.createObjectURL(f),
+      name: nameFromFile(f),
+    }));
+    setBulkItems(prev => [...prev, ...incoming]);
+  };
+
+  const removeBulkItem = (idx: number) => {
+    setBulkItems(prev => {
+      URL.revokeObjectURL(prev[idx].previewUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const updateBulkName = (idx: number, val: string) =>
+    setBulkItems(prev => prev.map((it, i) => i === idx ? { ...it, name: val } : it));
+
+  // ── Single submit ──
   const submit = async () => {
     if (!name.trim()) { toast.error("Enter a title"); return; }
     setBusy(true);
@@ -915,6 +951,58 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     onDone();
   };
 
+  // ── Bulk submit ──
+  const submitBulk = async () => {
+    if (bulkItems.length === 0) { toast.error("No images selected"); return; }
+    if (bulkItems.some(it => !it.name.trim())) { toast.error("All items need a name"); return; }
+    setBulkBusy(true);
+    setBulkProgress(0);
+    let saved = 0;
+    for (let i = 0; i < bulkItems.length; i++) {
+      const it = bulkItems[i];
+      const ext  = it.file.name.split(".").pop() || "jpg";
+      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("product-images")
+        .upload(path, it.file, { upsert: false });
+      if (upErr) { toast.error(`${it.name}: ${upErr.message}`); continue; }
+      const url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("template_images").insert({
+        url,
+        label: it.name.trim(),
+        category: bulkCat,
+      });
+      if (error) { toast.error(`${it.name}: ${error.message}`); continue; }
+      saved++;
+      setBulkProgress(Math.round(((i + 1) / bulkItems.length) * 100));
+    }
+    setBulkBusy(false);
+    if (saved > 0) {
+      toast.success(`${saved} template${saved !== 1 ? "s" : ""} saved`);
+      onDone();
+    }
+  };
+
+  const CategoryPicker = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <div>
+      <Label className="text-xs mb-1.5 block">Category</Label>
+      <div className="grid grid-cols-5 gap-2">
+        {CATEGORIES.filter((cat) => cat.value !== "miscellaneous" && cat.value !== "food").map((cat) => (
+          <button key={cat.value} type="button"
+            onClick={() => onChange(cat.value)}
+            className={`h-14 rounded-xl font-bold text-2xl transition ${
+              value === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+            style={value === cat.value ? { background: "var(--gradient-hero)" } : {}}
+            title={cat.label}>
+            {cat.icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
       onClick={onDone}>
@@ -933,76 +1021,137 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
           </button>
         </div>
 
-        <div className="px-5 pb-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        {/* Mode toggle */}
+        <div className="px-5 pb-3">
+          <div className="flex rounded-xl overflow-hidden border border-border">
+            <button type="button"
+              onClick={() => setMode("single")}
+              className="flex-1 h-9 text-xs font-black transition"
+              style={mode === "single" ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "transparent", color: "rgba(255,255,255,0.4)" }}>
+              Single
+            </button>
+            <button type="button"
+              onClick={() => setMode("bulk")}
+              className="flex-1 h-9 text-xs font-black transition"
+              style={mode === "bulk" ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "transparent", color: "rgba(255,255,255,0.4)" }}>
+              Bulk Upload
+            </button>
+          </div>
+        </div>
 
-          {/* Image area */}
-          <div className="flex gap-3 items-stretch">
-            {/* Preview box */}
-            <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
-              style={{ background: "var(--gradient-card)" }}>
-              {preview
-                ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
-                : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
-              }
-              {preview && (
-                <button onClick={clearImage}
-                  className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1">
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              )}
-              <input ref={camRef} type="file" accept="image/*" capture="environment" hidden
-                onChange={(e) => onPick(e.target.files?.[0])} />
-              <input ref={fileRef} type="file" accept="image/*" hidden
-                onChange={(e) => onPick(e.target.files?.[0])} />
+        <div className="px-5 pb-6 space-y-4 max-h-[75vh] overflow-y-auto">
+
+          {/* ── SINGLE MODE ── */}
+          {mode === "single" && (<>
+            {/* Image area */}
+            <div className="flex gap-3 items-stretch">
+              <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
+                style={{ background: "var(--gradient-card)" }}>
+                {preview
+                  ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                  : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
+                }
+                {preview && (
+                  <button onClick={clearImage}
+                    className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+                <input ref={camRef} type="file" accept="image/*" capture="environment" hidden
+                  onChange={(e) => onPick(e.target.files?.[0])} />
+                <input ref={fileRef} type="file" accept="image/*" hidden
+                  onChange={(e) => onPick(e.target.files?.[0])} />
+              </div>
+              <div className="flex flex-col gap-2 flex-1 justify-center">
+                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
+                  onClick={() => camRef.current?.click()}>
+                  <Camera className="h-5 w-5 mr-2" /> Take Photo
+                </Button>
+                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
+                  onClick={() => fileRef.current?.click()}>
+                  <ImagePlus className="h-5 w-5 mr-2" /> Upload Photo
+                </Button>
+              </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-col gap-2 flex-1 justify-center">
-              <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
-                onClick={() => camRef.current?.click()}>
-                <Camera className="h-5 w-5 mr-2" /> Take Photo
-              </Button>
-              <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
-                onClick={() => fileRef.current?.click()}>
-                <ImagePlus className="h-5 w-5 mr-2" /> Upload Photo
-              </Button>
+            <CategoryPicker value={category} onChange={setCategory} />
+
+            <div>
+              <Label className="text-xs mb-1.5 block">Title</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Heineken 330ml" className="h-11" />
             </div>
-          </div>
 
-          {/* Category */}
-          <div>
-            <Label className="text-xs mb-1.5 block">Category</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {CATEGORIES.filter((cat) => cat.value !== "miscellaneous").map((cat) => (
-                <button key={cat.value} type="button"
-                  onClick={() => setCategory(cat.value)}
-                  className={`h-14 rounded-xl font-bold text-2xl transition ${
-                    category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                  }`}
-                  style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
-                  title={cat.label}>
-                  {cat.icon}
-                </button>
-              ))}
-            </div>
-          </div>
+            <Button className="w-full h-12 font-black text-base"
+              disabled={!name.trim() || busy}
+              onClick={submit}
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Template"}
+            </Button>
+          </>)}
 
-          {/* Title */}
-          <div>
-            <Label className="text-xs mb-1.5 block">Title</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Heineken 330ml"
-              className="h-11" />
-          </div>
+          {/* ── BULK MODE ── */}
+          {mode === "bulk" && (<>
+            <CategoryPicker value={bulkCat} onChange={setBulkCat} />
 
-          {/* Save */}
-          <Button
-            className="w-full h-12 font-black text-base"
-            disabled={!name.trim() || busy}
-            onClick={submit}
-            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Template"}
-          </Button>
+            {/* Pick images button */}
+            <input ref={bulkFileRef} type="file" accept="image/*" multiple hidden
+              onChange={(e) => onBulkPick(e.target.files)} />
+            <Button type="button" variant="secondary" className="w-full h-12 font-bold text-sm"
+              onClick={() => bulkFileRef.current?.click()}>
+              <ImagePlus className="h-5 w-5 mr-2" />
+              {bulkItems.length === 0 ? "Select Images" : `Add More Images (${bulkItems.length} selected)`}
+            </Button>
+
+            {/* Preview list */}
+            {bulkItems.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-wider">
+                  {bulkItems.length} image{bulkItems.length !== 1 ? "s" : ""} · edit names before saving
+                </p>
+                {bulkItems.map((it, idx) => (
+                  <div key={idx} className="flex items-center gap-2 rounded-xl border border-border p-2"
+                    style={{ background: "oklch(0.18 0.015 60)" }}>
+                    <img src={it.previewUrl} alt={it.name}
+                      className="h-14 w-10 rounded-lg object-cover shrink-0 border border-border" />
+                    <input
+                      value={it.name}
+                      onChange={(e) => updateBulkName(idx, e.target.value)}
+                      className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm font-bold outline-none min-w-0"
+                      placeholder="Template name" />
+                    <button type="button" onClick={() => removeBulkItem(idx)}
+                      className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition active:scale-90"
+                      style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {bulkBusy && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Uploading…</span><span>{bulkProgress}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${bulkProgress}%`, background: "var(--gradient-hero)" }} />
+                </div>
+              </div>
+            )}
+
+            <Button className="w-full h-12 font-black text-base"
+              disabled={bulkItems.length === 0 || bulkBusy}
+              onClick={submitBulk}
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              {bulkBusy
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : `Save ${bulkItems.length > 0 ? bulkItems.length : ""} Template${bulkItems.length !== 1 ? "s" : ""}`}
+            </Button>
+          </>)}
+
         </div>
       </div>
     </div>
