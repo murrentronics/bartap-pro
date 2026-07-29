@@ -49,7 +49,8 @@ function AppLayout() {
   }, [loading, profile, loc.pathname, nav]);
 
   useEffect(() => {
-    if (!loading && profile?.role === "manager" && loc.pathname === "/register") {
+    const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+    if (!loading && isMgr && loc.pathname === "/register") {
       nav({ to: "/manager" as "/" });
     }
   }, [loading, profile, loc.pathname, nav]);
@@ -206,7 +207,7 @@ function AppLayout() {
 
   const isOwner   = profile.role === "owner";
   const isAdmin   = profile.role === "admin";
-  const isManager = profile.role === "manager";
+  const isManager = profile.role === "manager" || (profile as any).job_title === "manager";
 
   if (!isAdmin) {
     if (profile.status === "expelled") {

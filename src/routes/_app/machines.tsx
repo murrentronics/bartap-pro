@@ -4121,7 +4121,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, monitorRefreshKey }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, monitorRefreshKey }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -4146,6 +4146,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
   isOwner: boolean;
+
+
+  isManager: boolean;
 
 
   onSetFloat: () => void;
@@ -4637,7 +4640,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Float row — top */}
 
 
-        {isOwner && (
+        {(isOwner || isManager) && (
         <div className="relative grid grid-cols-2 gap-2">
 
 
@@ -4753,7 +4756,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       </section>
 
       {/* Hero 2 — Stats (owner only) */}
-      {isOwner && (
+      {(isOwner || isManager) && (
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
@@ -6501,6 +6504,7 @@ export default function MachinesPage() {
 
 
   const isOwner = profile?.role === "owner";
+  const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
 
 
   // Bar session state — used by ScreensTab for session stats anchor
@@ -7692,7 +7696,7 @@ export default function MachinesPage() {
           ownerId={ownerId}
 
 
-          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined }}
+          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined, job_title: (profile as any).job_title ?? undefined }}
 
 
           floatSession={floatSession}
@@ -7876,6 +7880,9 @@ export default function MachinesPage() {
 
 
               isOwner={isOwner}
+
+
+              isManager={isManager}
 
 
               barSessionStart={barSessionStart}
