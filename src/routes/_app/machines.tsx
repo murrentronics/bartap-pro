@@ -1284,7 +1284,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
 
 
 
-function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted, barSessionStart, barClosedAt }: {
+function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, remainingFloat, initialTab, onBack, onDeleted, barSessionStart, barClosedAt, onMonitorLogChange }: {
 
 
   machine: Machine; screenNumber: number; ownerId: string;
@@ -1309,6 +1309,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
   barClosedAt: string | null;
+
+
+  onMonitorLogChange?: () => void;
 
 
 }) {
@@ -1347,6 +1350,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorUpdateDone, setMonitorUpdateDone] = useState(false); // blocks re-click after save
   const [showConfirmUpdate, setShowConfirmUpdate] = useState(false); // confirm modal before saving log
   const [monitorInputsLocked, setMonitorInputsLocked] = useState(false); // locked after update until New Entry
+  // Stat cards: only show values after Update is clicked; zero out on New Entry
+  const [monitorCardIn,  setMonitorCardIn]  = useState<number | null>(null);
+  const [monitorCardOut, setMonitorCardOut] = useState<number | null>(null);
 
   // Reset the "already saved" lock whenever the owner changes an input
   useEffect(() => { setMonitorUpdateDone(false); }, [monitorIn, monitorOut]);
@@ -1445,6 +1451,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         out_entry: outEntryStr, out_total: outTotalStr, out_diff: outDiffStr,
       });
     }
+    onMonitorLogChange?.(); // refresh all-screens totals
   };
 
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -1492,6 +1499,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         out_entry: "", out_total: "", out_diff: "",
       });
     }
+    onMonitorLogChange?.(); // refresh all-screens totals
   };
 
   // Load monitor row from Supabase on mount
@@ -1511,6 +1519,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         setMonitorOutTotal(data.out_total  ? String(data.out_total)  : "");
         setMonitorInDiff(data.in_diff    ? String(data.in_diff)    : "");
         setMonitorOutDiff(data.out_diff   ? String(data.out_diff)   : "");
+        // If Update was previously clicked (in_entry and in_diff both exist), restore card values
+        if (data.in_entry && data.in_diff) {
+          setMonitorCardIn(parseFloat(data.in_entry) || 0);
+          setMonitorCardOut(parseFloat(data.out_entry) || 0);
+          setMonitorInputsLocked(true);
+          setMonitorUpdateDone(true);
+        }
         setMonitorLoading(false);
       });
     return () => { cancelled = true; };
@@ -1568,6 +1583,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setMonitorUpdateDone(true); // block re-click until inputs change
     setMonitorInputsLocked(true); // lock Present inputs until New Entry is clicked
     setMonitorFocus(null); // close numpad
+    setMonitorCardIn(inVal);   // show PRESENT IN value in Total Income card
+    setMonitorCardOut(outVal); // show PRESENT OUT value in Total Expense card
+    onMonitorLogChange?.(); // refresh all-screens totals
   };
 
   const handleNewEntry = async () => {
@@ -1582,6 +1600,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setMonitorFocus("in");
     setMonitorInputsLocked(false);
     setMonitorUpdateDone(false);
+    // Keep card values from the latest log — they don't drop when awaiting new entry
+    // monitorCardIn/Out stay as-is (don't null them)
     await saveMonitor({
       in_entry: "", in_total: newInTotal, in_diff: "",
       out_entry: "", out_total: newOutTotal, out_diff: "",
@@ -1865,13 +1885,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   // ── Machine Totals (from monitor log + manual expenses) ─────────────────────
   const latestLog = monitorLogs[0];
-  const monitorInVal  = latestLog ? latestLog.in_diff  : (parseFloat(monitorInDiff) || 0);
-  const monitorOutVal = latestLog ? latestLog.out_diff : (parseFloat(monitorOutDiff) || 0);
   const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
-  const totalIncome = monitorInVal;
-  const totalPayout = monitorOutVal + manualPayouts;
-  const totalProfit = monitorInVal - monitorOutVal;
+  // Stat cards: use latest log's in_present/out_present (stable, never wiped by New Entry)
+  const cardIn  = latestLog ? latestLog.in_present  : (monitorCardIn  ?? 0);
+  const cardOut = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
+  const totalIncome = cardIn;
+  const totalPayout = cardOut + manualPayouts;
+  // Profit = in_diff - out_diff (difference between readings, not raw present values)
+  const totalProfit = latestLog
+    ? (latestLog.in_diff - latestLog.out_diff)
+    : (cardIn - cardOut);
 
   // ── Today's totals (bar_session_start → now) ─────────────────────────────────
   const todayPayouts = barSessionStart
@@ -4097,7 +4121,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, monitorRefreshKey }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -4136,31 +4160,62 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   barSessionStart: string | null;
 
 
+  monitorRefreshKey: number;
+
+
 }) {
 
 
   const { t } = useTranslation();
 
   const [monitorTotals, setMonitorTotals] = useState<{ totalIn: number; totalOut: number }>({ totalIn: 0, totalOut: 0 });
+  const [monitorPerMachine, setMonitorPerMachine] = useState<Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }>>({});
 
   useEffect(() => {
     if (!ownerId) return;
-    sb.from("machine_monitor")
-      .select("in_diff, out_diff")
+    // Pull the latest log per machine — in_present/out_present never get wiped by New Entry
+    sb.from("machine_monitor_logs")
+      .select("machine_id, in_present, out_present, in_diff, out_diff, seq")
       .eq("owner_id", ownerId)
+      .order("seq", { ascending: false })
       .then(({ data }: any) => {
         if (data) {
-          const inSum = data.reduce((s: number, m: any) => s + Number(m.in_diff || 0), 0);
-          const outSum = data.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
+          // Keep only the most recent log per machine
+          const seen = new Set<string>();
+          const latest: any[] = [];
+          for (const row of data) {
+            if (!seen.has(row.machine_id)) {
+              seen.add(row.machine_id);
+              latest.push(row);
+            }
+          }
+          const inSum  = latest.reduce((s: number, m: any) => s + Number(m.in_present  || 0), 0);
+          const outSum = latest.reduce((s: number, m: any) => s + Number(m.out_present || 0), 0);
           setMonitorTotals({ totalIn: inSum, totalOut: outSum });
+          // Store per-machine for individual card TP
+          const perMachine: Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }> = {};
+          for (const row of latest) {
+            perMachine[row.machine_id] = {
+              in_present:  Number(row.in_present  || 0),
+              out_present: Number(row.out_present || 0),
+              in_diff:     Number(row.in_diff     || 0),
+              out_diff:    Number(row.out_diff    || 0),
+            };
+          }
+          setMonitorPerMachine(perMachine);
         }
       });
-  }, [ownerId]);
+  }, [ownerId, monitorRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
+  // Manual cashier expenses only (Add Expense button) — added to Total Expense
+  const manualExpenses = entries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = monitorTotals.totalIn;
-  const totalPayout = monitorTotals.totalOut + manualPayouts;
-  const totalProfit = monitorTotals.totalIn - monitorTotals.totalOut;
+  const totalExpenseOut = monitorTotals.totalOut;
+  const totalPayout = totalExpenseOut + manualExpenses;  // Total Expense = machine OUT + manual expenses
+  // Profit = sum of (in_diff - out_diff) per machine = total difference IN minus total difference OUT
+  const totalInDiffSum  = Object.values(monitorPerMachine).reduce((s, m) => s + m.in_diff,  0);
+  const totalOutDiffSum = Object.values(monitorPerMachine).reduce((s, m) => s + m.out_diff, 0);
+  const totalProfit = totalInDiffSum - totalOutDiffSum;
 
   // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
   const todayPayouts = barSessionStart
@@ -4838,7 +4893,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           const mExpense = entries.filter(e => e.machine_id === m.id && e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
 
 
-          const mProfit = mIncome - mPayout - mExpense;
+          // TP: use latest monitor log (in_diff - out_diff) = difference between readings
+          const mLog = monitorPerMachine[m.id];
+          const mProfit = mLog ? (mLog.in_diff - mLog.out_diff - mExpense) : (mIncome - mPayout - mExpense);
 
 
           // Session profit — since last float update, resets to 0 on every float update
@@ -6447,6 +6504,8 @@ export default function MachinesPage() {
   // Bar session state — used by ScreensTab for session stats anchor
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAtMachines, setBarClosedAtMachines] = useState<string | null>(null);
+  // Increment to force ScreensTab to re-query monitor logs after a log edit/delete
+  const [monitorRefreshKey, setMonitorRefreshKey] = useState(0);
   const [barSessionLoadingMachines, setBarSessionLoadingMachines] = useState(true);
   const [barOverlayReadyMachines, setBarOverlayReadyMachines] = useState(false);
   const barIsOpenMachines = !!barSessionStart && !barClosedAtMachines;
@@ -7655,6 +7714,9 @@ export default function MachinesPage() {
           onDeleted={() => { setSelected(null); load(); }}
 
 
+          onMonitorLogChange={() => setMonitorRefreshKey(k => k + 1)}
+
+
         />,
 
 
@@ -7815,6 +7877,9 @@ export default function MachinesPage() {
 
 
               barSessionStart={barSessionStart}
+
+
+              monitorRefreshKey={monitorRefreshKey}
 
 
               onSetFloat={() => { setFloatAmount(""); setShowSetFloat(true); }}
