@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -2508,6 +2508,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 );
               }
 
+              const isReset = tx.type === "wallet_reset";
               return (
                 <div key={tx.id}
                   className={`rounded-xl p-4 border flex items-center gap-3 ${isReset ? "border-orange-500/30" : "border-green-500/30"}`}
@@ -2951,7 +2952,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-3">
 
       {/* ── Hero 1: Today’s stats ──────────────────────────────────────────────────────────── */}
       {/* ── Hero 3: Float ─────────────────────────────────────── */}
@@ -3010,13 +3011,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session In</div>
-                  <div className="font-black text-xl" style={{ color: barIsOpenWallet && sessionIncome > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+                  <div className="font-black text-xl" style={{ color: barIsOpenWallet ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Out</div>
-                  <div className="font-black text-xl" style={{ color: barIsOpenWallet && (sessionStockCost + sessionExpense) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  <div className="font-black text-xl" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionStockCost + sessionExpense)}` : "—"}
                   </div>
                 </div>
@@ -3025,14 +3026,14 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Stock Cost</div>
-                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionStockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {barIsOpenWallet ? (sessionStockCost > 0 ? `$${fmt(sessionStockCost)}` : "$0.00") : "—"}
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? `$${fmt(sessionStockCost)}` : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Expense</div>
-                  <div className="font-black text-xs" style={{ color: barIsOpenWallet && sessionExpense > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {barIsOpenWallet ? (sessionExpense > 0 ? `$${fmt(sessionExpense)}` : "$0.00") : "—"}
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {barIsOpenWallet ? `$${fmt(sessionExpense)}` : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -3077,8 +3078,14 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
               </div>
-              {/* Row 2 — Today's Stock Cost + Today's Expenses + Today's Profit (3 cards) */}
+              {/* Row 2 — Today's Profit + Today's Stock Cost + Today's Expenses (3 cards) */}
               <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Profit</div>
+                  <div className="font-black text-xs" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                    {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
+                  </div>
+                </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Stock Cost</div>
                   <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
@@ -3089,12 +3096,6 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Expenses</div>
                   <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
                     {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "$0.00"}
-                  </div>
-                </div>
-                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Profit</div>
-                  <div className="font-black text-xs" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                    {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
                   </div>
                 </div>
               </div>

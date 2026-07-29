@@ -1703,7 +1703,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       if (error) { toast.error(error.message); return; }
       toast.success("Item updated");
       onDone();
-      onSaved(updated);
+      onSaved({ ...updated, units_per_item: updated.units_per_item ?? 0, bottle_variations: (updated.bottle_variations ?? null) as any });
     } else {
       // ── INSERT new product ───────────────────────────────────────────────
       const { data: inserted, error } = await supabase.from("products").insert({
@@ -1715,7 +1715,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
       toast.success("Item added");
       setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setShotPricePerUnit(""); setCigSpecialQty(""); setCigSpecialPrice(""); setCigRetailPrice(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
-      onSaved(inserted);
+      onSaved({ ...inserted, units_per_item: inserted.units_per_item ?? 0, bottle_variations: (inserted.bottle_variations ?? null) as any });
     }
   };
 

@@ -1509,6 +1509,24 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setMonitorFocus(null); // close numpad
   };
 
+  const handleNewEntry = async () => {
+    const newInTotal  = monitorIn  !== "" ? monitorIn  : monitorInTotal;
+    const newOutTotal = monitorOut !== "" ? monitorOut : monitorOutTotal;
+    setMonitorInTotal(newInTotal);
+    setMonitorOutTotal(newOutTotal);
+    setMonitorIn("");
+    setMonitorOut("");
+    setMonitorInDiff("");
+    setMonitorOutDiff("");
+    setMonitorFocus("in");
+    setMonitorInputsLocked(false);
+    setMonitorUpdateDone(false);
+    await saveMonitor({
+      in_entry: "", in_total: newInTotal, in_diff: "",
+      out_entry: "", out_total: newOutTotal, out_diff: "",
+    });
+  };
+
   // When bar opens — move box1 into box2 (running total), clear box1 and diffs
   const handleMonitorSessionReset = async () => {
     const newInTotal  = ((parseFloat(monitorInTotal)  || 0) + (parseFloat(monitorIn)  || 0)).toFixed(2);
@@ -3285,16 +3303,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   Machine Monitor
                 </h2>
                 <button
-                  onClick={() => {
-                    // Clear inputs and unlock for a fresh entry
-                    setMonitorIn("");
-                    setMonitorOut("");
-                    setMonitorInDiff("");
-                    setMonitorOutDiff("");
-                    setMonitorFocus("in");
-                    setMonitorInputsLocked(false);
-                    setMonitorUpdateDone(false);
-                  }}
+                  onClick={handleNewEntry}
                   disabled={monitorSaving}
                   className="h-8 px-3 rounded-xl font-black text-[11px] uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                   style={{ background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" }}
@@ -3387,6 +3396,26 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   </div>
                 </div>
               </div>
+
+              {/* ── Profit card (centered below IN & OUT totals) ── */}
+              {(() => {
+                const calcInDiff  = monitorIn  !== "" ? (parseFloat(monitorIn)  || 0) - (parseFloat(monitorInTotal)  || 0) : (monitorInDiff  !== "" ? parseFloat(monitorInDiff)  : null);
+                const calcOutDiff = monitorOut !== "" ? (parseFloat(monitorOut) || 0) - (parseFloat(monitorOutTotal) || 0) : (monitorOutDiff !== "" ? parseFloat(monitorOutDiff) : null);
+                const profitVal   = (calcInDiff !== null || calcOutDiff !== null)
+                  ? (calcInDiff ?? 0) - (calcOutDiff ?? 0)
+                  : null;
+                return (
+                  <div className="mt-3 flex justify-center">
+                    <div className="w-full max-w-[200px] space-y-1 text-center">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Profit</label>
+                      <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                        style={{ color: profitVal === null ? "var(--muted-foreground)" : profitVal >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                        {profitVal === null ? "—" : `${profitVal >= 0 ? "+" : ""}${profitVal.toFixed(2)}`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ── Inline numpad — shown when a field is focused and not locked ── */}
               {monitorFocus && !monitorInputsLocked && (
@@ -3526,9 +3555,19 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                             <div className="font-black text-sm">{dateStr}</div>
                             <div className="text-xs text-muted-foreground">{timeStr}</div>
                           </div>
-                          <div className="ml-auto flex gap-3 items-center pr-2">
-                            <span className="text-xs font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {log.in_diff >= 0 ? "+" : ""}{log.in_diff.toFixed(2)}</span>
-                            <span className="text-xs font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {log.out_diff >= 0 ? "+" : ""}{log.out_diff.toFixed(2)}</span>
+                          <div className="ml-auto flex flex-col items-end pr-2 gap-0.5">
+                            <div className="flex gap-2.5 items-center">
+                              <span className="text-xs font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {log.in_diff >= 0 ? "+" : ""}{log.in_diff.toFixed(2)}</span>
+                              <span className="text-xs font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {log.out_diff >= 0 ? "+" : ""}{log.out_diff.toFixed(2)}</span>
+                            </div>
+                            {(() => {
+                              const logProfit = log.in_diff - log.out_diff;
+                              return (
+                                <div className="text-[11px] font-black" style={{ color: logProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                                  PROFIT {logProfit >= 0 ? "+" : ""}{logProfit.toFixed(2)}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </button>
                         {/* Edit pencil */}
