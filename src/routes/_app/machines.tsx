@@ -1418,7 +1418,33 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setSavingLogEdit(false);
     setEditingLogId(null);
     toast.success("Log updated");
-    loadLogs();
+    await loadLogs();
+
+    // Sync latest log to machine_monitor
+    const { data: latestLogs } = await sb.from("machine_monitor_logs")
+      .select("*").eq("machine_id", machine.id)
+      .order("seq", { ascending: false }).limit(1);
+    const latest = (latestLogs ?? [])[0] as MonitorLog | undefined;
+    if (latest) {
+      const inEntryStr  = String(latest.in_present);
+      const outEntryStr = String(latest.out_present);
+      const inTotalStr  = String(latest.in_last);
+      const outTotalStr = String(latest.out_last);
+      const inDiffStr   = String(latest.in_diff);
+      const outDiffStr  = String(latest.out_diff);
+
+      setMonitorIn(inEntryStr);
+      setMonitorOut(outEntryStr);
+      setMonitorInTotal(inTotalStr);
+      setMonitorOutTotal(outTotalStr);
+      setMonitorInDiff(inDiffStr);
+      setMonitorOutDiff(outDiffStr);
+
+      await saveMonitor({
+        in_entry: inEntryStr, in_total: inTotalStr, in_diff: inDiffStr,
+        out_entry: outEntryStr, out_total: outTotalStr, out_diff: outDiffStr,
+      });
+    }
   };
 
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -1426,11 +1452,46 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDeleteLog = async (id: string) => {
     setDeletingLogId(id);
     await sb.from("machine_monitor_logs").delete().eq("id", id);
-    setMonitorLogs(prev => prev.filter(l => l.id !== id));
+    const remaining = monitorLogs.filter(l => l.id !== id);
+    setMonitorLogs(remaining);
     setOpenLogId(null);
     setDeletingLogId(null);
     setConfirmDeleteLogId(null);
     toast.success("Log deleted");
+
+    const latest = remaining[0];
+    if (latest) {
+      const inEntryStr  = String(latest.in_present);
+      const outEntryStr = String(latest.out_present);
+      const inTotalStr  = String(latest.in_last);
+      const outTotalStr = String(latest.out_last);
+      const inDiffStr   = String(latest.in_diff);
+      const outDiffStr  = String(latest.out_diff);
+
+      setMonitorIn(inEntryStr);
+      setMonitorOut(outEntryStr);
+      setMonitorInTotal(inTotalStr);
+      setMonitorOutTotal(outTotalStr);
+      setMonitorInDiff(inDiffStr);
+      setMonitorOutDiff(outDiffStr);
+
+      await saveMonitor({
+        in_entry: inEntryStr, in_total: inTotalStr, in_diff: inDiffStr,
+        out_entry: outEntryStr, out_total: outTotalStr, out_diff: outDiffStr,
+      });
+    } else {
+      setMonitorIn("");
+      setMonitorOut("");
+      setMonitorInTotal("");
+      setMonitorOutTotal("");
+      setMonitorInDiff("");
+      setMonitorOutDiff("");
+
+      await saveMonitor({
+        in_entry: "", in_total: "", in_diff: "",
+        out_entry: "", out_total: "", out_diff: "",
+      });
+    }
   };
 
   // Load monitor row from Supabase on mount
@@ -1792,6 +1853,56 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
     setEntries(rows);
+
+
+  // ── Machine Totals (from monitor log + manual expenses) ─────────────────────
+
+
+  const latestLog = monitorLogs[0];
+
+
+  const monitorInVal  = latestLog ? latestLog.in_diff  : (parseFloat(monitorInDiff) || 0);
+
+
+  const monitorOutVal = latestLog ? latestLog.out_diff : (parseFloat(monitorOutDiff) || 0);
+
+
+  const manualPayouts = rows.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
+
+
+
+  const totalIncome = monitorInVal;
+
+
+  const totalPayout = monitorOutVal + manualPayouts;
+
+
+  const totalProfit = monitorInVal - monitorOutVal;
+
+
+
+  // ── Today's totals (bar_session_start → now) ─────────────────────────────────
+
+
+  const todayPayouts = barSessionStart
+
+
+    ? rows.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+
+
+    : rows.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+
+
+  const todayIncome = barSessionStart
+
+
+    ? rows.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+
+
+    : rows.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+
+
+  const todayProfit = todayIncome - todayPayouts;
 
 
     // Auto-set session anchor to the most recent income entry's created_at.
@@ -2793,6 +2904,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
           )}
 
+          {/* Today's stats — bar open to bar close session */}
+          {!isCashier && profile.role === "owner" && (
+          <div className="relative grid grid-cols-3 gap-2">
+            <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+            <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+            <StatCard label={t("today_profit", "Today's Profit")}
+              value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
+              color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
+          </div>
+          )}
+
 
           {/* Session stats */}
 
@@ -3596,11 +3718,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
-                                <button onClick={() => setConfirmDeleteLogId(log.id)} disabled={deletingLogId === log.id}
-                                  className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40"
-                                  style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
-                                  {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                                </button>
+                                {log.id === monitorLogs[0]?.id && (
+                                  <button onClick={() => setConfirmDeleteLogId(log.id)} disabled={deletingLogId === log.id}
+                                    className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40"
+                                    style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
+                                    {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                  </button>
+                                )}
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
@@ -4076,31 +4200,34 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   const { t } = useTranslation();
 
+  const [monitorTotals, setMonitorTotals] = useState<{ totalIn: number; totalOut: number }>({ totalIn: 0, totalOut: 0 });
 
-  const totalPayout = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
+  useEffect(() => {
+    if (!ownerId) return;
+    sb.from("machine_monitor")
+      .select("in_diff, out_diff")
+      .eq("owner_id", ownerId)
+      .then(({ data }) => {
+        if (data) {
+          const inSum = data.reduce((s: number, m: any) => s + Number(m.in_diff || 0), 0);
+          const outSum = data.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
+          setMonitorTotals({ totalIn: inSum, totalOut: outSum });
+        }
+      });
+  }, [ownerId]);
 
+  const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
+  const totalIncome = monitorTotals.totalIn;
+  const totalPayout = monitorTotals.totalOut + manualPayouts;
+  const totalProfit = monitorTotals.totalIn - monitorTotals.totalOut;
 
-  const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const totalProfit = totalIncome - totalPayout;
-
-
-
-
-
-  // Today's sessions — payouts/income entries from today only (TT timezone)
-
-
-  const todayStr = todayTT();
-
-
-  const todayPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense") && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const todayIncome = entries.filter(e => e.type === "income" && e.entry_date === todayStr).reduce((s, e) => s + Number(e.amount), 0);
-
-
+  // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
+  const todayPayouts = barSessionStart
+    ? entries.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => (e.type === "payout" || e.type === "expense") && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
+  const todayIncome = barSessionStart
+    ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => e.type === "income" && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
   const todayProfit = todayIncome - todayPayouts;
 
 
@@ -4650,6 +4777,15 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
 
 
+        </div>
+
+        {/* Today's stats — bar open to bar close session */}
+        <div className="relative grid grid-cols-3 gap-2">
+          <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+          <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("today_profit", "Today's Profit")}
+            value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
+            color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
 
         {/* Session stats */}

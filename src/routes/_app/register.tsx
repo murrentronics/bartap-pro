@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -2392,7 +2392,14 @@ function CashOverlay({
   };
 
   const submit = async () => {
-    if (!enough || !profile) return;
+    if (payMode === "credit") {
+      if (!selectedCustomer || !profile) {
+        if (!selectedCustomer) toast.error("Please select a customer");
+        return;
+      }
+    } else {
+      if (!enough || !profile) return;
+    }
     setBusy(true);
     const paidNum = Number(paid);
     const changeNum = change;
