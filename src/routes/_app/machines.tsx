@@ -4218,7 +4218,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   // Profit = sum of (in_diff - out_diff) per machine = total difference IN minus total difference OUT
   const totalInDiffSum  = Object.values(monitorPerMachine).reduce((s, m) => s + m.in_diff,  0);
   const totalOutDiffSum = Object.values(monitorPerMachine).reduce((s, m) => s + m.out_diff, 0);
-  const totalProfit = totalInDiffSum - totalOutDiffSum;
+  // Subtract manually added expenses so Total Profit reflects real net after all machine expenses
+  const totalProfit = totalInDiffSum - totalOutDiffSum - manualExpenses;
 
   // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
   const todayPayouts = barSessionStart
