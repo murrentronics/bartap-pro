@@ -8,6 +8,7 @@ import {
   adminDeleteUser,
 } from "@/lib/admin.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, type CategoryValue } from "@/lib/categories";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +19,21 @@ import {
   Check, X, Ban, UserMinus, RotateCw, RotateCcw, Trash2, Loader2,
   ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
   Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus, GitBranch,
+  DollarSign, TrendingUp, Calendar, History,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
+
+// ─── Shareholder Config ───────────────────────────────────────────────────────
+const SHAREHOLDERS = [
+  { name: "Renard Sankersingh", share: 0.8, color: "text-emerald-400", bg: "border-emerald-500/30", gradient: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" },
+  { name: "Theron Murren",      share: 0.2, color: "text-blue-400",    bg: "border-blue-500/30",    gradient: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04))" },
+] as const;
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+type MonthlyRecord = { year: number; month: number; total: number };
+type ShareholderMonthly = { year: number; month: number; total: number; shares: number[] };
 
 type Row = {
   id: string;
@@ -1147,6 +1160,13 @@ export default function AdminPage() {
   const [nearExpiryCount, setNearExpiryCount] = useState(0);
   const [pendingBillingCount, setPendingBillingCount] = useState(0);
   const [outerTab, setOuterTab] = useState("panel");
+  const [panelSubTab, setPanelSubTab] = useState("dashboard");
+
+  // ── Shareholder income state ────────────────────────────────────────────────
+  const [currentMonthIncome, setCurrentMonthIncome] = useState(0);
+  const [lastMonthIncome, setLastMonthIncome] = useState(0);
+  const [monthlyHistory, setMonthlyHistory] = useState<ShareholderMonthly[]>([]);
+  const [incomeLoading, setIncomeLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && profile && profile.role !== "admin") {
@@ -1200,9 +1220,83 @@ export default function AdminPage() {
     }
   }, [rows]);
 
+  // ── Load shareholder income from billing_payments ──────────────────────────
+  const loadShareholderIncome = useCallback(async () => {
+    setIncomeLoading(true);
+    try {
+      // Exclude demo account from income calculations
+      const { data: demoProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", "isabel@gmail.com")
+        .maybeSingle();
+      const demoId = demoProfile?.id;
+
+      let query = supabase
+        .from("billing_payments")
+        .select("amount, approved_at")
+        .eq("status", "paid")
+        .not("approved_at", "is", null);
+
+      if (demoId) query = query.neq("owner_id", demoId);
+
+      const { data } = await query;
+      const payments = (data ?? []) as { amount: number; approved_at: string }[];
+
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth(); // 0-indexed
+
+      // Previous month
+      const lastMonthDate = new Date(curYear, curMonth - 1, 1);
+      const lastYear = lastMonthDate.getFullYear();
+      const lastMonth = lastMonthDate.getMonth();
+
+      let curTotal = 0;
+      let lastTotal = 0;
+      const monthMap = new Map<string, number>(); // "YYYY-MM" -> total
+
+      for (const p of payments) {
+        const d = new Date(p.approved_at);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const amt = Number(p.amount);
+
+        if (y === curYear && m === curMonth) curTotal += amt;
+        if (y === lastYear && m === lastMonth) lastTotal += amt;
+
+        const key = `${y}-${String(m).padStart(2, "0")}`;
+        monthMap.set(key, (monthMap.get(key) ?? 0) + amt);
+      }
+
+      setCurrentMonthIncome(curTotal);
+      setLastMonthIncome(lastTotal);
+
+      // Build sorted history with shareholder splits
+      const history: ShareholderMonthly[] = Array.from(monthMap.entries())
+        .map(([key, total]) => {
+          const [y, m] = key.split("-").map(Number);
+          return {
+            year: y,
+            month: m,
+            total,
+            shares: SHAREHOLDERS.map(s => Math.round(total * s.share * 100) / 100),
+          };
+        })
+        .sort((a, b) => b.year - a.year || b.month - a.month);
+
+      setMonthlyHistory(history);
+    } catch {
+      // silent — non-critical
+    } finally {
+      setIncomeLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (profile?.role !== "admin") return;
     refresh();
+    loadShareholderIncome();
 
     const ch = supabase
       .channel("admin-profiles")
@@ -1210,6 +1304,7 @@ export default function AdminPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "billing_payments" }, () => {
         supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
           .then(({ count }) => setPendingBillingCount(count ?? 0));
+        loadShareholderIncome();
       })
       .subscribe();
 
@@ -1288,40 +1383,187 @@ export default function AdminPage() {
           ))}
         </TabsList>
 
-        {/* ── Panel (Dashboard) ── */}
-        <TabsContent value="panel" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Pending Users</p>
-              <p className="text-3xl font-black">{buckets.pending.length}</p>
-              <p className="text-xs text-muted-foreground">awaiting billing approval</p>
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Approved Users</p>
-              <p className="text-3xl font-black text-green-400">{buckets.approved.length}</p>
-              <p className="text-xs text-muted-foreground">active accounts</p>
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Pending Payments</p>
-              <p className="text-3xl font-black text-yellow-400">{pendingBillingCount}</p>
-              <p className="text-xs text-muted-foreground">waiting review</p>
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Due Soon</p>
-              <p className="text-3xl font-black text-orange-400">{nearExpiryCount}</p>
-              <p className="text-xs text-muted-foreground">within 7 days</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Suspended</p>
-              <p className="text-2xl font-black text-red-400">{buckets.suspended.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
-              <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
-              <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account).length}</p>
-            </div>
-          </div>
+        {/* ── Panel (Dashboard + History sub-tabs) ── */}
+        <TabsContent value="panel" className="mt-4">
+          <Tabs value={panelSubTab} onValueChange={setPanelSubTab}>
+            <TabsList className="grid grid-cols-2 w-full mb-4">
+              <TabsTrigger value="dashboard" className="gap-1.5 font-bold"
+                style={panelSubTab === "dashboard"
+                  ? { background: "var(--gradient-hero)", color: "#fff" }
+                  : { background: "transparent", color: "var(--muted-foreground)" }
+                }>
+                <BarChart3 className="h-3.5 w-3.5" /> Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-1.5 font-bold"
+                style={panelSubTab === "history"
+                  ? { background: "var(--gradient-hero)", color: "#fff" }
+                  : { background: "transparent", color: "var(--muted-foreground)" }
+                }>
+                <History className="h-3.5 w-3.5" /> History
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ── Dashboard Sub-tab ── */}
+            <TabsContent value="dashboard" className="space-y-5 mt-0">
+              {/* Stat cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Pending Users</p>
+                  <p className="text-3xl font-black">{buckets.pending.length}</p>
+                  <p className="text-xs text-muted-foreground">awaiting billing approval</p>
+                </div>
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Approved Users</p>
+                  <p className="text-3xl font-black text-green-400">{buckets.approved.length}</p>
+                  <p className="text-xs text-muted-foreground">active accounts</p>
+                </div>
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Pending Payments</p>
+                  <p className="text-3xl font-black text-yellow-400">{pendingBillingCount}</p>
+                  <p className="text-xs text-muted-foreground">waiting review</p>
+                </div>
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Due Soon</p>
+                  <p className="text-3xl font-black text-orange-400">{nearExpiryCount}</p>
+                  <p className="text-xs text-muted-foreground">within 7 days</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Suspended</p>
+                  <p className="text-2xl font-black text-red-400">{buckets.suspended.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                  <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
+                  <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account).length}</p>
+                </div>
+              </div>
+
+              {/* ── Shareholder Income Split ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest">Shareholder Income</h2>
+                </div>
+
+                {/* Total revenue row */}
+                <div className="rounded-2xl border border-primary/30 p-4" style={{ background: "linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03))" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Total Revenue This Month</p>
+                      <p className="text-3xl font-black text-primary">
+                        {incomeLoading ? "…" : `$${currentMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground font-medium">Last Month</p>
+                      <p className="text-xl font-black text-muted-foreground">
+                        {incomeLoading ? "…" : `$${lastMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-shareholder cards */}
+                {SHAREHOLDERS.map((sh, idx) => (
+                  <div key={sh.name} className="space-y-2">
+                    <p className={`text-xs font-black uppercase tracking-widest ${sh.color}`}>
+                      {sh.name} · {Math.round(sh.share * 100)}%
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`rounded-2xl border ${sh.bg} p-4 space-y-1`} style={{ background: sh.gradient }}>
+                        <div className="flex items-center gap-1.5">
+                          <TrendingUp className={`h-3.5 w-3.5 ${sh.color}`} />
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">This Month</p>
+                        </div>
+                        <p className={`text-2xl font-black ${sh.color}`}>
+                          {incomeLoading ? "…" : `$${Math.round(currentMonthIncome * sh.share).toLocaleString()}`}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date().toLocaleString("en", { month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                      <div className={`rounded-2xl border ${sh.bg} p-4 space-y-1`} style={{ background: sh.gradient }}>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className={`h-3.5 w-3.5 ${sh.color} opacity-60`} />
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Last Month</p>
+                        </div>
+                        <p className={`text-2xl font-black ${sh.color} opacity-70`}>
+                          {incomeLoading ? "…" : `$${Math.round(lastMonthIncome * sh.share).toLocaleString()}`}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toLocaleString("en", { month: "long", year: "numeric" }); })()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            {/* ── History Sub-tab ── */}
+            <TabsContent value="history" className="mt-0">
+              {incomeLoading ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : monthlyHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                  <DollarSign className="h-10 w-10 opacity-30" />
+                  <p className="text-sm">No payment history yet.</p>
+                </div>
+              ) : (
+                <Accordion type="multiple" className="space-y-2">
+                  {/* Group by year */}
+                  {Array.from(new Set(monthlyHistory.map(h => h.year)))
+                    .sort((a, b) => b - a)
+                    .map(year => {
+                      const yearRecords = monthlyHistory.filter(h => h.year === year);
+                      const yearTotal = yearRecords.reduce((s, r) => s + r.total, 0);
+                      return (
+                        <AccordionItem key={year} value={String(year)} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className="text-lg font-black">{year}</span>
+                              <Badge variant="secondary" className="font-black text-xs">
+                                {yearRecords.length} month{yearRecords.length !== 1 ? "s" : ""}
+                              </Badge>
+                              <span className="ml-auto text-sm font-black text-primary mr-2">
+                                ${yearTotal.toLocaleString("en", { minimumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-0 pb-0">
+                            <div className="divide-y divide-border">
+                              {yearRecords
+                                .sort((a, b) => b.month - a.month)
+                                .map(rec => (
+                                  <div key={`${rec.year}-${rec.month}`} className="px-4 py-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-black text-sm">{MONTH_NAMES[rec.month]}</span>
+                                      <span className="font-black text-primary">${rec.total.toLocaleString("en", { minimumFractionDigits: 0 })}</span>
+                                    </div>
+                                    {SHAREHOLDERS.map((sh, idx) => (
+                                      <div key={sh.name} className="flex items-center justify-between text-xs">
+                                        <span className={`font-bold ${sh.color}`}>
+                                          {sh.name.split(" ")[0]} ({Math.round(sh.share * 100)}%)
+                                        </span>
+                                        <span className={`font-black ${sh.color}`}>
+                                          ${rec.shares[idx].toLocaleString("en", { minimumFractionDigits: 0 })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                </Accordion>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* ── Billing ── */}
@@ -1580,7 +1822,7 @@ function YouTubeAdminPanel() {
           .limit(20),
       ]);
       if (keysRes.data)    setKeys(keysRes.data as YtKeySlot[]);
-      if (statsRes.data)   setStats(statsRes.data as YtStats);
+      if ((statsRes as any).data) setStats((statsRes as any).data as YtStats);
       if (recentRes.data)  setRecent(recentRes.data as YtRecentSearch[]);
     } catch (e) {
       toast.error("Failed to load YouTube stats");

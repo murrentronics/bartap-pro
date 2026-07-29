@@ -10,6 +10,8 @@ import { useTranslation } from "@/lib/i18n";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const DEMO_EMAILS = ["isabel@gmail.com"];
+
 export default function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
   const { isChainOwner, activeBarId, activeBar } = useChain();
@@ -41,7 +43,7 @@ export default function AppLayout() {
     if (!loading && (profile?.role === "manager" || profile?.job_title === "manager") && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
       nav("/products", { replace: true });
     }
-    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing") {
+    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing" && !DEMO_EMAILS.includes(ownerEmail)) {
       nav("/billing", { replace: true });
     }
     // Approved owner on /register or /machines → redirect to correct landing page based on plan
@@ -198,8 +200,9 @@ export default function AppLayout() {
   const isAdmin    = profile.role === "admin";
   const isCashier  = profile.role === "cashier";
   const isManager  = profile.role === "manager" || (profile as any).job_title === "manager";
-  const isPending  = !isAdmin && !isCashier && !isManager && profile.status === "pending";
-  const isSuspended = !isAdmin && !isCashier && !isManager && profile.status === "suspended";
+  const isDemo     = DEMO_EMAILS.includes(ownerEmail);
+  const isPending  = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "pending";
+  const isSuspended = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "suspended";
   const hasMusic   = isOwner || isCashier || isManager;
   const isOnMusic  = loc.pathname === "/music";
 
