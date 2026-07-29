@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
 import {
   listAllProfiles,
   setUserStatus,
@@ -1124,6 +1125,18 @@ function TemplateGalleryPanel() {
   );
 }
 
+// ─── AdminBillingInline ───────────────────────────────────────────────────────
+// Wraps AdminBillingManagementPage for embedding in the admin panel billing tab.
+// Keeps the pending count in sync with the parent AdminPage for the badge.
+function AdminBillingInline({ onCountChange }: { onCountChange: (n: number) => void }) {
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }: { count: number | null }) => onCountChange(count ?? 0));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <AdminBillingManagementPage />;
+}
+
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { profile, loading, signOut } = useAuth();
@@ -1132,7 +1145,8 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [nearExpiryCount, setNearExpiryCount] = useState(0);
-  const [outerTab, setOuterTab] = useState("users");
+  const [pendingBillingCount, setPendingBillingCount] = useState(0);
+  const [outerTab, setOuterTab] = useState("panel");
 
   useEffect(() => {
     if (!loading && profile && profile.role !== "admin") {
@@ -1193,7 +1207,15 @@ export default function AdminPage() {
     const ch = supabase
       .channel("admin-profiles")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "billing_payments" }, () => {
+        supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+          .then(({ count }) => setPendingBillingCount(count ?? 0));
+      })
       .subscribe();
+
+    // Load initial pending billing count
+    supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }) => setPendingBillingCount(count ?? 0));
 
     const poll = setInterval(refresh, 10_000);
     return () => { supabase.removeChannel(ch); clearInterval(poll); };
@@ -1240,22 +1262,74 @@ export default function AdminPage() {
       </div>
 
       <Tabs value={outerTab} onValueChange={setOuterTab}>
-        <TabsList className="grid grid-cols-4 w-full">
-          {(["users","import","templates","youtube"] as const).map((tab) => (
+        <TabsList className="grid grid-cols-6 w-full">
+          {(["panel","billing","users","import","templates","youtube"] as const).map((key) => (
             <TabsTrigger
-              key={tab}
-              value={tab}
-              className="gap-1"
-              style={outerTab === tab
+              key={key}
+              value={key}
+              className="gap-1 relative text-[10px] sm:text-xs"
+              style={outerTab === key
                 ? { background: "var(--gradient-hero)", color: "#fff", boxShadow: "0 2px 8px rgba(251,146,60,0.4)" }
                 : { background: "transparent", boxShadow: "none", color: "var(--muted-foreground)" }
               }
             >
-              {tab === "youtube" ? <><Youtube className="h-3.5 w-3.5" /><span className="hidden sm:inline">YouTube</span></> : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {key === "youtube" ? <Youtube className="h-3.5 w-3.5" /> : key.charAt(0).toUpperCase() + key.slice(1)}
+              {key === "billing" && pendingBillingCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {pendingBillingCount > 9 ? "9+" : pendingBillingCount}
+                </span>
+              )}
+              {key === "users" && buckets.pending.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {buckets.pending.length > 9 ? "9+" : buckets.pending.length}
+                </span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
 
+        {/* ── Panel (Dashboard) ── */}
+        <TabsContent value="panel" className="space-y-4 mt-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Pending Users</p>
+              <p className="text-3xl font-black">{buckets.pending.length}</p>
+              <p className="text-xs text-muted-foreground">awaiting billing approval</p>
+            </div>
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Approved Users</p>
+              <p className="text-3xl font-black text-green-400">{buckets.approved.length}</p>
+              <p className="text-xs text-muted-foreground">active accounts</p>
+            </div>
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Pending Payments</p>
+              <p className="text-3xl font-black text-yellow-400">{pendingBillingCount}</p>
+              <p className="text-xs text-muted-foreground">waiting review</p>
+            </div>
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Due Soon</p>
+              <p className="text-3xl font-black text-orange-400">{nearExpiryCount}</p>
+              <p className="text-xs text-muted-foreground">within 7 days</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Suspended</p>
+              <p className="text-2xl font-black text-red-400">{buckets.suspended.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+              <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
+              <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account).length}</p>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Billing ── */}
+        <TabsContent value="billing" className="mt-4">
+          <AdminBillingInline onCountChange={setPendingBillingCount} />
+        </TabsContent>
+
+        {/* ── Users ── */}
         <TabsContent value="users" className="space-y-4 mt-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

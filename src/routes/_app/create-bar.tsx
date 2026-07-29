@@ -82,8 +82,7 @@ export default function CreateBarPage() {
       if (data.bar_id) {
         setActiveBarId(data.bar_id);
         toast.success(`"${barName.trim()}" created — switched to this bar`);
-        nav({ to: "/register" });
-      } else {
+        nav({ to: "/register" as "/" });
         toast.success("Bar created");
         nav({ to: "/switch-bar" as "/" });
       }

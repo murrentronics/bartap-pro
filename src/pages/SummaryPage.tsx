@@ -485,7 +485,7 @@ export default function SummaryPage() {
       const generated   = new Date().toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" });
       let y = await drawHeader(doc, profile.username ?? "Owner", "Summary Report", periodLabel, generated);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-      doc.text(`Sessions shown: ${filteredSessions.length}`, LM, y); y += 8;
+      doc.text(`Sessions shown: ${filteredSessions.length}`, 14, y); y += 8;
       addFootersToAllPages(doc);
       await downloadPdf(`summary-${periodLabel.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`, doc.output("datauristring"));
       toast.success("PDF saved to Downloads folder");

@@ -1329,7 +1329,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const isCashier = profile.role === "cashier";
   const isOwner = profile.role === "owner";
-  const isManager = profile.role === "manager" || profile.job_title === "manager";
+  const isManager = profile.role === "manager" || (profile as any).job_title === "manager";
 
 
   const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");
@@ -2061,10 +2061,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       created_at: now.toISOString(),
 
 
-      cashier_id: profile.id,
+      cashier_id: profile!.id,
 
 
-      cashier_name: profile.username ?? null,
+      cashier_name: profile!.username ?? null,
 
 
       proof_image_url,
@@ -6869,10 +6869,10 @@ export default function MachinesPage() {
       created_at: now.toISOString(),
 
 
-      cashier_id: profile.id,
+      cashier_id: profile!.id,
 
 
-      cashier_name: profile.username ?? null,
+      cashier_name: profile!.username ?? null,
 
 
       proof_image_url: null,

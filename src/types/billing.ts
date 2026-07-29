@@ -4,7 +4,7 @@ export type BillingPlan = {
   amount: number;
   duration_months: number;
   currency: string;
-  plan_type: "basic" | "machines_addon" | "premium";
+  plan_type: "basic" | "machines_addon" | "premium" | "chain" | "machines_only" | "bar_addon" | string;
   created_at: string;
 };
 
@@ -23,6 +23,7 @@ export type BillingPayment = {
   approved_by: string | null;
   approved_at: string | null;
   notes: string | null;
+  payment_method: string | null;
   created_at: string;
   updated_at: string;
 };

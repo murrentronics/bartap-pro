@@ -818,7 +818,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       if (spChanged) updatePayload.price = newSp;
       if (unitsChanged) updatePayload.units_per_item = newUnits;
       if (anyVarChanged) updatePayload.bottle_variations = varUpdates.map(({ changed: _c, ...rest }) => rest);
-      const { error } = await supabase.from("products").update(updatePayload).eq("id", p.id);
+      const { error } = await (supabase as any).from("products").update(updatePayload).eq("id", p.id);
       if (!error) {
         patches.push({
           id: p.id,

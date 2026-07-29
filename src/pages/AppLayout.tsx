@@ -280,8 +280,7 @@ export default function AppLayout() {
     ? [] // pending users get no nav items — only Billing + Logout shown separately below
     : isAdmin
     ? [
-        { to: "/admin",          label: "Users",   icon: Users },
-        { to: "/admin/billing",  label: t("billing", "Billing"), icon: DollarSign },
+        { to: "/admin",          label: "Panel",   icon: Users },
         { to: "/admin/banking",  label: "Banking", icon: Building2 },
       ]
     : isMachinesOnlyUser ? [

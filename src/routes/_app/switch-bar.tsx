@@ -31,7 +31,7 @@ export default function SwitchBarPage() {
 
   const handleSelect = (barId: string) => {
     setActiveBarId(barId);
-    nav({ to: "/register" });
+    nav({ to: "/register" as "/" });
   };
 
   const handleDeleteConfirm = async () => {

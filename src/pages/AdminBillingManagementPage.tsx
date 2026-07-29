@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,7 +92,7 @@ export default function AdminBillingManagementPage() {
       return;
     }
 
-    setPayments(data || []);
+    setPayments((data || []) as PaymentWithOwner[]);
   };
 
   const loadStats = async () => {
@@ -142,7 +141,7 @@ export default function AdminBillingManagementPage() {
         .from("billing_payments").select("amount")
         .eq("owner_id", p.id).eq("status", "paid")
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      const dueDate = new Date(p.subscription_end_date);
+      const dueDate = new Date(p.subscription_end_date!);
       const daysLeft = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
       list.push({
         username: ownerProfile?.username ?? "Unknown",
@@ -389,39 +388,17 @@ export default function AdminBillingManagementPage() {
 
   const totalPending = stats.pending;
   const totalPaid    = stats.paid;
-  const totalRevenue = stats.revenue;
 
   return (
-    <div className="min-h-screen p-6 pb-24">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <DollarSign className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-black">Billing Management</h1>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Pending Payments</p>
-            <p className="text-3xl font-black text-yellow-500">{totalPending}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Approved Payments</p>
-            <p className="text-3xl font-black text-green-500">{totalPaid}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-            <p className="text-xl font-black text-primary">${totalRevenue.toFixed(0)}</p>
-          </Card>
-          <Card className="p-4 border-orange-500/40 bg-orange-500/5 cursor-pointer active:scale-[0.98] transition" onClick={() => setFilter("due")}>
-            <p className="text-sm text-muted-foreground mb-1">Due Within 7 Days</p>
-            <p className="text-3xl font-black text-orange-400">{stats.dueSoonCount}</p>
-            <p className="text-xs text-orange-400 font-bold mt-1">${stats.dueSoonTotal.toFixed(0)} TT due</p>
-          </Card>
+    <div className="pb-24">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <DollarSign className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest">Billing</h2>
         </div>
 
         {/* Filters */}
-        <Card className="p-4">
+        <div className="rounded-xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
           {/* Search — full width row */}
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -453,10 +430,10 @@ export default function AdminBillingManagementPage() {
                 </Button>
               ))}
           </div>
-        </Card>
+        </div>
 
         {/* Payments List */}
-        <Card className="p-6">
+        <div className="rounded-xl border border-border p-4" style={{ background: "var(--gradient-card)" }}>
           {filter === "due" ? (
             dueSoonList.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No payments due within 7 days</p>
@@ -542,7 +519,7 @@ export default function AdminBillingManagementPage() {
             )}
           </>
           )}
-        </Card>
+        </div>
 
         {/* Payment Details Dialog */}
         <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
