@@ -20,7 +20,7 @@ function LoginPage() {
   const nav = useNavigate();
   useEffect(() => {
     if (!loading && session && profile) {
-      nav({ to: profile.role === "admin" ? "/admin" : "/register" });
+      nav({ to: (profile.role === "admin" ? "/admin" : "/register") as any });
     }
   }, [session, profile, loading, nav]);
 

@@ -1850,89 +1850,39 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
     const rows = (data ?? []) as MachineEntry[];
-
-
     setEntries(rows);
 
+    // Auto-set session anchor to the most recent income entry's created_at.
+    // This means session stats always start fresh after the last machine clear.
+    const lastIncome = rows.find(e => e.type === "income");
+    setSessionAnchor(prev => {
+      // Only auto-set on first load; after that it's driven by handleSave resets.
+      if (prev !== null) return prev;
+      return lastIncome?.created_at ?? null;
+    });
+    setLoading(false);
+  }, [machine.id]);
 
   // ── Machine Totals (from monitor log + manual expenses) ─────────────────────
-
-
   const latestLog = monitorLogs[0];
-
-
   const monitorInVal  = latestLog ? latestLog.in_diff  : (parseFloat(monitorInDiff) || 0);
-
-
   const monitorOutVal = latestLog ? latestLog.out_diff : (parseFloat(monitorOutDiff) || 0);
-
-
-  const manualPayouts = rows.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
-
-
+  const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
   const totalIncome = monitorInVal;
-
-
   const totalPayout = monitorOutVal + manualPayouts;
-
-
   const totalProfit = monitorInVal - monitorOutVal;
 
-
-
   // ── Today's totals (bar_session_start → now) ─────────────────────────────────
-
-
   const todayPayouts = barSessionStart
-
-
-    ? rows.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-
-
-    : rows.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
-
+    ? entries.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
 
   const todayIncome = barSessionStart
-
-
-    ? rows.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-
-
-    : rows.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-
+    ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
   const todayProfit = todayIncome - todayPayouts;
-
-
-    // Auto-set session anchor to the most recent income entry's created_at.
-
-
-    // This means session stats always start fresh after the last machine clear.
-
-
-    const lastIncome = rows.find(e => e.type === "income");
-
-
-    setSessionAnchor(prev => {
-
-
-      // Only auto-set on first load; after that it's driven by handleSave resets.
-
-
-      if (prev !== null) return prev;
-
-
-      return lastIncome?.created_at ?? null;
-
-
-    });
-
-
-    setLoading(false);
-
-
-  }, [machine.id]);
 
 
 
@@ -1971,16 +1921,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-  // ── All-time totals ────────────────────────────────────────────────────────
 
-
-  const totalPayout = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const totalIncome = entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-
-
-  const totalProfit = totalIncome - totalPayout;
 
 
 
@@ -4207,7 +4148,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     sb.from("machine_monitor")
       .select("in_diff, out_diff")
       .eq("owner_id", ownerId)
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data) {
           const inSum = data.reduce((s: number, m: any) => s + Number(m.in_diff || 0), 0);
           const outSum = data.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);

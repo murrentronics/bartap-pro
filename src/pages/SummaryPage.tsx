@@ -110,8 +110,8 @@ function CalendarPopover({ value, onChange, minDate, maxDate, label }: {
 
 // ─── SubSessionAccordion ──────────────────────────────────────────────────────
 // Shows one cashier shift (sub-session) inside a bar session accordion
-function SubSessionAccordion({ sub, products, categoryFilter, isActive }: {
-  sub: SubSession; products: ProductCost[]; categoryFilter: string; isActive: boolean;
+function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId }: {
+  sub: SubSession; products: ProductCost[]; categoryFilter: string; isActive: boolean; ownerId: string;
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SessionData>({ orders: [], expenses: [], walletIncome: 0, loaded: false, loading: false });
@@ -125,22 +125,42 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive }: {
     if (loadedRef.current) return;
     loadedRef.current = true;
     setData(d => ({ ...d, loading: true }));
+
+    let ordQuery = supabase.from("orders").select("id, total, paid, change_given, items, created_at")
+      .eq("owner_id", ownerId)
+      .gte("created_at", startIso);
+    if (sub.closed_at) {
+      ordQuery = ordQuery.lte("created_at", sub.closed_at);
+    }
+
+    let expQuery = supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
+      .eq("owner_id", ownerId)
+      .gte("created_at", startIso);
+    if (sub.closed_at) {
+      expQuery = expQuery.lte("created_at", sub.closed_at);
+    }
+
+    let walletQuery = supabase.from("wallet_transactions").select("amount, type, created_at")
+      .eq("profile_id", ownerId)
+      .in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
+      .gte("created_at", startIso);
+    if (sub.closed_at) {
+      walletQuery = walletQuery.lte("created_at", sub.closed_at);
+    }
+
     const [ordRes, expRes, walletRes] = await Promise.all([
-      supabase.from("orders").select("id, total, paid, change_given, items, created_at")
-        .gte("created_at", startIso).lte("created_at", endIso).order("created_at", { ascending: false }),
-      supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
-        .gte("created_at", startIso).lte("created_at", endIso).order("created_at", { ascending: false }),
-      supabase.from("wallet_transactions").select("amount, type, created_at")
-        .in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
-        .gte("created_at", startIso).lte("created_at", endIso),
+      ordQuery.order("created_at", { ascending: false }),
+      expQuery.order("created_at", { ascending: false }),
+      walletQuery,
     ]);
+
     setData({
       orders: (ordRes.data ?? []) as Order[],
       expenses: (expRes.data ?? []) as Expense[],
       walletIncome: (walletRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0),
       loaded: true, loading: false,
     });
-  }, [startIso, endIso]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startIso, sub.closed_at, ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggle = () => { const next = !open; setOpen(next); if (next && !loadedRef.current) loadData(); };
 
@@ -303,8 +323,8 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive }: {
 
 // ─── BarSessionAccordion ──────────────────────────────────────────────────────
 // Outer accordion: one per bar_sessions row (Open Bar → Close Bar)
-function BarSessionAccordion({ session, subSessions, products, categoryFilter, activeSessionId }: {
-  session: BarSession; subSessions: SubSession[]; products: ProductCost[]; categoryFilter: string; activeSessionId: string | null;
+function BarSessionAccordion({ session, subSessions, products, categoryFilter, activeSessionId, ownerId }: {
+  session: BarSession; subSessions: SubSession[]; products: ProductCost[]; categoryFilter: string; activeSessionId: string | null; ownerId: string;
 }) {
   const [open, setOpen] = useState(false);
   const isActive = session.id === activeSessionId || (session.id === "active" && !session.closed_at);
@@ -312,6 +332,14 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
   const openedLabel = fmtTs(session.opened_at);
   const closedLabel = session.closed_at ? fmtTs(session.closed_at) : null;
   const mySubs = subSessions.filter(s => s.bar_session_id === session.id);
+
+  const fallbackSub: SubSession = {
+    id: `session-${session.id}`,
+    bar_session_id: session.id,
+    opened_at: session.opened_at,
+    closed_at: session.closed_at,
+    cashier_float: 0,
+  };
 
   return (
     <div className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
@@ -332,26 +360,36 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
             }
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {mySubs.length} cashier shift{mySubs.length !== 1 ? "s" : ""}
+            {mySubs.length > 0 ? `${mySubs.length} cashier shift${mySubs.length !== 1 ? "s" : ""}` : "Full Session"}
           </div>
         </div>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Sub-sessions */}
+      {/* Sub-sessions or session fallback */}
       {open && (
         <div className="border-t border-border/50 p-3 space-y-2">
-          {mySubs.length === 0
-            ? <p className="text-xs text-center text-muted-foreground py-4">No cashier shifts recorded for this session.</p>
-            : mySubs.map(sub => (
+          {mySubs.length > 0
+            ? mySubs.map(sub => (
                 <SubSessionAccordion
                   key={sub.id}
                   sub={sub}
                   products={products}
                   categoryFilter={categoryFilter}
                   isActive={!sub.closed_at && isActive}
+                  ownerId={ownerId}
                 />
               ))
+            : (
+                <SubSessionAccordion
+                  key={fallbackSub.id}
+                  sub={fallbackSub}
+                  products={products}
+                  categoryFilter={categoryFilter}
+                  isActive={isActive}
+                  ownerId={ownerId}
+                />
+              )
           }
         </div>
       )}
@@ -391,7 +429,7 @@ export default function SummaryPage() {
     setLoadingSessions(true);
     Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single(),
+      (supabase as any).from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).maybeSingle(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from("bar_sessions").select("id, opened_at, closed_at").eq("owner_id", ownerId).order("opened_at", { ascending: false }).limit(200),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -399,8 +437,13 @@ export default function SummaryPage() {
       supabase.from("products").select("id, name, cost_price, units_per_item, category").eq("owner_id", ownerId),
     ]).then(([profileRes, sessionsRes, subSessionsRes, productsRes]: any[]) => {
       const pData = profileRes.data;
-      setBarIsOpen(!!(pData?.bar_session_start) && !(pData?.bar_closed_at));
-      setAllSessions((sessionsRes.data ?? []).map((s: any) => ({ id: s.id, opened_at: s.opened_at, closed_at: s.closed_at })));
+      const isOpen = !!(pData?.bar_session_start) && !(pData?.bar_closed_at);
+      setBarIsOpen(isOpen);
+      let sessions: BarSession[] = (sessionsRes.data ?? []).map((s: any) => ({ id: s.id, opened_at: s.opened_at, closed_at: s.closed_at }));
+      if (isOpen && pData?.bar_session_start && !sessions.some((s: BarSession) => s.opened_at === pData.bar_session_start)) {
+        sessions = [{ id: "active-session", opened_at: pData.bar_session_start, closed_at: null }, ...sessions];
+      }
+      setAllSessions(sessions);
       setAllSubSessions((subSessionsRes.data ?? []).map((s: any) => ({ id: s.id, bar_session_id: s.bar_session_id, opened_at: s.opened_at, closed_at: s.closed_at, cashier_float: Number(s.cashier_float ?? 0) })));
       setProducts((productsRes.data ?? []) as ProductCost[]);
       setLoadingSessions(false);
@@ -461,8 +504,18 @@ export default function SummaryPage() {
 
   // Filter bar sessions by opened_at date
   const filteredSessions: BarSession[] = (() => {
-    if (filter === "session") return allSessions.filter(s => isoDateTT(s.opened_at) === fromDate);
-    return allSessions.filter(s => { const d = isoDateTT(s.opened_at); return d >= fromDate && d <= toDate; });
+    const res = allSessions.filter(s => {
+      const d = isoDateTT(s.opened_at);
+      return filter === "session" ? d === fromDate : (d >= fromDate && d <= toDate);
+    });
+    if (res.length === 0) {
+      return [{
+        id: `day-${fromDate}`,
+        opened_at: `${fromDate}T00:00:00.000Z`,
+        closed_at: `${toDate}T23:59:59.999Z`,
+      }];
+    }
+    return res;
   })();
 
   const activeSessionId = allSessions.find(s => !s.closed_at)?.id ?? null;
@@ -623,6 +676,7 @@ export default function SummaryPage() {
               products={products}
               categoryFilter={categoryFilter}
               activeSessionId={activeSessionId}
+              ownerId={ownerId}
             />
           ))}
         </div>

@@ -261,15 +261,15 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
     if (clearData) { setDeletableOrderId(null); return; }
 
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("cashier_last_delete")
       .select("deleted_at")
       .eq("cashier_id", profile.id)
       .maybeSingle();
 
-    if (data?.deleted_at) {
+    if ((data as any)?.deleted_at) {
       const orderTime   = new Date(newestOrder.created_at).getTime();
-      const deletedTime = new Date(data.deleted_at).getTime();
+      const deletedTime = new Date((data as any).deleted_at).getTime();
       // Hide button if order is older than 2 seconds before the last delete
       if (orderTime < deletedTime - 2000) { setDeletableOrderId(null); return; }
     }
@@ -340,7 +340,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
 
     const hasShotOrPack = items.some((i: any) => i.id?.startsWith("shot-") || i.id?.startsWith("pack-"));
     if (hasShotOrPack) {
-      await supabase.rpc("reverse_order_shot_pack", { p_items: items });
+      await (supabase as any).rpc("reverse_order_shot_pack", { p_items: items });
     }
 
     const restorableItems = items.filter((i: any) => !i.id?.startsWith("shot-") && !i.id?.startsWith("pack-"));
@@ -359,7 +359,7 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
     if (error) { toast.error(error.message); return; }
 
     // Persist delete timestamp in DB — survives refresh, prevents button jumping
-    await supabase.from("cashier_last_delete").upsert(
+    await (supabase as any).from("cashier_last_delete").upsert(
       { cashier_id: profile.id, deleted_at: new Date().toISOString() },
       { onConflict: "cashier_id" }
     );
@@ -2116,15 +2116,15 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       setDeletableOrderId(null); return;
     }
 
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("cashier_last_delete")
       .select("deleted_at")
       .eq("cashier_id", profile.id)
       .maybeSingle();
 
-    if (data?.deleted_at) {
+    if ((data as any)?.deleted_at) {
       const orderTime   = new Date(newest.created_at).getTime();
-      const deletedTime = new Date(data.deleted_at).getTime();
+      const deletedTime = new Date((data as any).deleted_at).getTime();
       // Hide button if order is older than 2 seconds before the last delete
       if (orderTime < deletedTime - 2000) { setDeletableOrderId(null); return; }
     }
@@ -2209,18 +2209,18 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
   const deleteLatestOrder = async (order: Order) => {
     setDeletingOrderId(order.id);
 
-    const items = Array.isArray(order.items) ? order.items as { id: string; qty: number; price?: number }[] : [];
+    const items = Array.isArray(order.items) ? (order.items as any[]) as { id: string; qty: number; price?: number }[] : [];
 
     // 1. Reverse shots_sold / units_sold / revenue on any opened bottles or packs.
     //    Also reopens any bottle/pack that was subsequently marked empty (finished),
     //    removing the bottle_finished / pack_finished wallet entry in the process.
-    const hasShotOrPack = items.some(i => i.id.startsWith("shot-") || i.id.startsWith("pack-"));
+    const hasShotOrPack = items.some(i => i.id?.startsWith("shot-") || i.id?.startsWith("pack-"));
     if (hasShotOrPack) {
-      await supabase.rpc("reverse_order_shot_pack", { p_items: items });
+      await (supabase as any).rpc("reverse_order_shot_pack", { p_items: items });
     }
 
     // 2. Restore stock for every real product in the order (skip shot-xxx and pack-xxx)
-    const restorableItems = items.filter(i => !i.id.startsWith("shot-") && !i.id.startsWith("pack-"));
+    const restorableItems = items.filter(i => !i.id?.startsWith("shot-") && !i.id?.startsWith("pack-"));
     if (restorableItems.length > 0) {
       await supabase.rpc("restore_stock_item", {
         p_items: restorableItems.map(i => ({ id: i.id, qty: i.qty })),
@@ -2239,7 +2239,7 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
     setDeletableOrderId(null);
 
     // Persist delete timestamp so button never reappears on refresh
-    await supabase.from("cashier_last_delete").upsert(
+    await (supabase as any).from("cashier_last_delete").upsert(
       { cashier_id: profile.id, deleted_at: new Date().toISOString() },
       { onConflict: "cashier_id" }
     );
@@ -2378,8 +2378,8 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
               const isTransferIn = tx.type === "transfer_in";
               if (isTransferIn) {
                 // Check if this is a chain bar owner's direct sale (has order_id)
-                const linkedOrder = tx.order_id
-                  ? allOrders.find((o: any) => o.id === tx.order_id)
+                const linkedOrder = (tx as any).order_id
+                  ? allOrders.find((o: any) => o.id === (tx as any).order_id)
                   : null;
                 if (linkedOrder) {
                   // Render exactly like a cash sale order card
@@ -2743,7 +2743,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
       supabase.from("orders").select("total").eq("owner_id", profile.id).eq("cashier_id", profile.id),
       supabase.from("orders").select("total").eq("owner_id", profile.id).neq("cashier_id", profile.id),
       supabase.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "credit_payment").gt("amount", 0),
-      supabase.from("products").select("id, price, cost_price, units_per_item, stock_qty").eq("owner_id", profile.id),
+      supabase.from("products").select("id, name, price, cost_price, units_per_item, stock_qty").eq("owner_id", profile.id),
       sb.from("opened_bottles").select("revenue, product_id, products(price)").eq("owner_id", profile.id).eq("status", "open"),
       // Today's orders: from bar_session_start → now (resets only on bar close+reopen, not midnight)
       todayAnchor
@@ -2804,13 +2804,13 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     // Build product cost map: id → effective cost per unit (cost_price ÷ units_per_item if set)
     const prodCostById = new Map<string, number>(
-      ((productsRes.data ?? []) as { id: string; name: string; cost_price: number; units_per_item: number }[])
-        .map((p) => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price])
+      ((productsRes.data ?? []) as any[])
+        .map((p) => [p.id, Number(p.units_per_item) > 0 ? Number(p.cost_price) / Number(p.units_per_item) : Number(p.cost_price)])
     );
     // Name-based fallback for shots with synthetic IDs (e.g. "shot-<bottleId>-<variationKey>-...")
     const prodCostByName = new Map<string, number>(
-      ((productsRes.data ?? []) as { id: string; name: string; cost_price: number; units_per_item: number }[])
-        .map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price])
+      ((productsRes.data ?? []) as any[])
+        .map((p) => [p.name, Number(p.units_per_item) > 0 ? Number(p.cost_price) / Number(p.units_per_item) : Number(p.cost_price)])
     );
 
     // Resolve cost for an order item — handles exact ID, name fallback, and shot synthetic IDs
@@ -2834,7 +2834,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     // Today's cost = sum of (qty × cost_price) across all today's order items
     type OrderItemRaw = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
-    const todayCostFromItems = (todayItemOrdersRes.data ?? []).reduce((s: number, o: { items: OrderItemRaw[] }) => {
+    const todayCostFromItems = ((todayItemOrdersRes.data ?? []) as any[]).reduce((s: number, o: { items: any }) => {
       const items: OrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
       return s + items.reduce((cs, it) => {
         const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
@@ -2865,7 +2865,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
     // Session stock cost: cost of items sold since current bar_session_start
     type SessionOrderItem = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
     const sessionStockCost = barSessionStart
-      ? (sessionItemOrdersRes.data ?? []).reduce((s: number, o: { items: SessionOrderItem[] }) => {
+      ? ((sessionItemOrdersRes.data ?? []) as any[]).reduce((s: number, o: { items: any }) => {
           const items: SessionOrderItem[] = Array.isArray(o.items) ? o.items : [];
           return s + items.reduce((cs, it) => {
             const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
@@ -2876,7 +2876,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
 
     // All-time stock sold cost = sum of (qty × cost_price) across ALL order items ever
     type AllOrderItemRaw = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
-    const totalStockSoldCost = (allItemOrdersRes.data ?? []).reduce((s: number, o: { items: AllOrderItemRaw[] }) => {
+    const totalStockSoldCost = ((allItemOrdersRes.data ?? []) as any[]).reduce((s: number, o: { items: any }) => {
       const items: AllOrderItemRaw[] = Array.isArray(o.items) ? o.items : [];
       return s + items.reduce((cs, it) => {
         const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
