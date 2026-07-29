@@ -6276,24 +6276,26 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           ) : filteredSessions.length === 0 ? (
             <p className="text-[10px] text-white/30 text-center py-2">No sessions for this period</p>
           ) : (
-            <div className="space-y-1 max-h-44 overflow-y-auto">
-              {filteredSessions.map(s => {
-                const isSelected = selectedSessionId === s.id;
-                const fmtd = new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
-                return (
-                  <button key={s.id}
-                    onClick={() => setSelectedSessionId(isSelected ? null : s.id)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]"
-                    style={isSelected
-                      ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                      : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
-                    <span className="text-[10px] font-bold truncate">{fmtd}</span>
-                    <span className="text-[9px] shrink-0 ml-2" style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)" }}>
-                      Float ${fmtWhole(Number(s.amount))}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="rounded-xl border border-border/40 p-1" style={{ background: "oklch(0.18 0.015 60)" }}>
+              <div className="space-y-1 max-h-44 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--primary) transparent" }}>
+                {filteredSessions.map(s => {
+                  const isSelected = selectedSessionId === s.id;
+                  const fmtd = new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+                  return (
+                    <button key={s.id}
+                      onClick={() => setSelectedSessionId(isSelected ? null : s.id)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]"
+                      style={isSelected
+                        ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                        : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
+                      <span className="text-[10px] font-bold truncate">{fmtd}</span>
+                      <span className="text-[9px] shrink-0 ml-2" style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)" }}>
+                        Float ${fmtWhole(Number(s.amount))}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

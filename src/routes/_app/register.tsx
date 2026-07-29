@@ -15,7 +15,7 @@ import { useTranslation } from "@/lib/i18n";
 
 type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
 type Product = { id: string; name: string; price: number; cost_price?: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
-type CartItem = Product & { qty: number };
+type CartItem = Product & { qty: number; _discount?: number; _originalPrice?: number };
 type OpenedBottle = {
   id: string; owner_id: string; product_id: string; product_name: string;
   shot_price: number; shots_sold: number; revenue: number;
@@ -1292,7 +1292,12 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onDiscount={(id, newPrice) => setCart(c => c.map(i => i.id === id ? { ...i, price: newPrice } : i))}
+          onDiscount={(id, discountAmt) => setCart(c => c.map(i => {
+            if (i.id !== id) return i;
+            const orig = i._originalPrice ?? i.price;
+            const newPrice = Math.max(0, orig - discountAmt);
+            return { ...i, price: newPrice, _originalPrice: orig, _discount: discountAmt > 0 ? discountAmt : undefined };
+          }))}
           onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
@@ -1603,7 +1608,7 @@ export default function RegisterPage() {
                               onClick={() => addShotToBuffer(v)}
                               className="w-full p-3 flex flex-col items-center gap-0.5 active:bg-white/5 transition">
                               <span className="font-black text-sm">
-                                {v.label}
+                                {isShot ? "Drink" : v.label}
                                 {isShot && atCapacity && <span className="text-amber-400 text-[10px] ml-1">extras</span>}
                               </span>
                               <span className="font-black text-lg" style={{ color: isDisabled ? "var(--muted-foreground)" : "#86efac" }}>
@@ -2225,15 +2230,19 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, newPrice: number) => void;
+  onDiscount: (id: string, discountAmt: number) => void;
 }) {
   const [discountOpen, setDiscountOpen] = useState(false);
   const [discountVal, setDiscountVal] = useState("");
 
+  const originalPrice = item._originalPrice ?? item.price;
+  const discountAmt = parseFloat(discountVal) || 0;
+  const previewPrice = Math.max(0, originalPrice - discountAmt);
+
   const applyDiscount = () => {
-    const newPrice = parseFloat(discountVal);
-    if (isNaN(newPrice) || newPrice < 0) return;
-    onDiscount(item.id, newPrice);
+    const amt = parseFloat(discountVal);
+    if (isNaN(amt) || amt < 0) return;
+    onDiscount(item.id, amt);
     setDiscountOpen(false);
     setDiscountVal("");
   };
@@ -2241,20 +2250,25 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
   if (discountOpen) {
     return (
       <div className="space-y-2">
-        {/* Display */}
+        {/* Header + display */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground shrink-0">New price $</span>
-          <div className="flex-1 h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold flex items-center"
-            style={{ color: discountVal ? "#fff" : "rgba(255,255,255,0.3)" }}>
-            {discountVal || "0"}
+          <div className="flex-1">
+            <p className="text-[10px] text-muted-foreground mb-1">Discount $ off <span className="text-white/40">(was ${originalPrice.toFixed(2)})</span></p>
+            <div className="h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold flex items-center justify-between"
+              style={{ color: discountVal ? "#fff" : "rgba(255,255,255,0.3)" }}>
+              <span>{discountVal || "0"}</span>
+              {discountVal && discountAmt > 0 && (
+                <span className="text-[10px] font-semibold" style={{ color: "#86efac" }}>→ ${previewPrice.toFixed(2)}</span>
+              )}
+            </div>
           </div>
           <button onClick={applyDiscount}
-            className="h-10 px-3 rounded-xl font-black text-xs active:scale-95 transition shrink-0"
+            className="h-[46px] px-3 rounded-xl font-black text-xs active:scale-95 transition shrink-0 self-end"
             style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}>
             OK
           </button>
           <button onClick={() => { setDiscountOpen(false); setDiscountVal(""); }}
-            className="h-10 w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center shrink-0"
+            className="h-[46px] w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center shrink-0 self-end"
             style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
             <X className="h-4 w-4" />
           </button>
@@ -2301,10 +2315,17 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
       {/* D — discount */}
       <button
         onClick={() => { setDiscountOpen(true); setDiscountVal(""); }}
-        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
-        style={{ background: "rgba(34,197,94,0.18)", border: "2px solid rgba(34,197,94,0.45)" }}
+        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0 relative"
+        style={{
+          background: item._discount ? "rgba(251,191,36,0.18)" : "rgba(34,197,94,0.18)",
+          border: item._discount ? "2px solid rgba(251,191,36,0.55)" : "2px solid rgba(34,197,94,0.45)"
+        }}
         title="Discount">
-        <span className="font-black text-sm text-white">D</span>
+        <span className="font-black text-sm" style={{ color: item._discount ? "#fbbf24" : "#fff" }}>D</span>
+        {item._discount ? (
+          <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black px-1 rounded-full leading-tight"
+            style={{ background: "#fbbf24", color: "#1a1a1a" }}>-${item._discount % 1 === 0 ? item._discount.toFixed(0) : item._discount.toFixed(2)}</span>
+        ) : null}
       </button>
       {/* − */}
       <button
@@ -2341,7 +2362,7 @@ function CashOverlay({
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
-  onRemove: (id: string) => void; onDiscount: (id: string, newPrice: number) => void;
+  onRemove: (id: string) => void; onDiscount: (id: string, discountAmt: number) => void;
   onClearCart: () => void;
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
   ownerId: string;
@@ -2425,7 +2446,7 @@ function CashOverlay({
     // ── Cash order (guest or customer) ────────────────────────────────
     const { error } = await supabase.from("orders").insert({
       owner_id: ownerId, cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
       total, paid: paidNum, change_given: changeNum,
     });
     if (error) { setBusy(false); toast.error(error.message); return; }
@@ -2703,7 +2724,7 @@ function CashCustomerOverlay({
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, newPrice: number) => void;
+  onDiscount: (id: string, discountAmt: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: (paid: number, change: number) => void;
@@ -2766,7 +2787,7 @@ function CashCustomerOverlay({
     const { error: orderErr } = await supabase.from("orders").insert({
       owner_id: ownerId,
       cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
+      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
       total,
       paid: paidNum,
       change_given: changeNum,
@@ -2977,7 +2998,7 @@ function CreditSaleOverlay({
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, newPrice: number) => void;
+  onDiscount: (id: string, discountAmt: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: () => void;

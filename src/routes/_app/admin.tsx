@@ -186,7 +186,7 @@ type ImportedImage = {
   duplicate: boolean;
 };
 
-const TEMPLATE_CATEGORIES = CATEGORIES.filter(c => c.value !== "miscellaneous").map(c => c.value) as CategoryValue[];
+const TEMPLATE_CATEGORIES = CATEGORIES.filter(c => c.value !== "miscellaneous" && c.value !== "food").map(c => c.value) as CategoryValue[];
 type TemplateCategory = CategoryValue;
 
 // ─── Shared label cleaner (used by import panel + fix-all) ───────────────────

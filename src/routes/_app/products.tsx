@@ -809,7 +809,13 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       // Check variation price changes
       const varUpdates = (p.bottle_variations ?? []).map((bv) => {
         const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
-        return { ...bv, price: !isNaN(nv) && nv !== Number(bv.price ?? 0) ? nv : bv.price, changed: !isNaN(nv) && nv !== Number(bv.price ?? 0) };
+        const priceChanged = !isNaN(nv) && nv !== Number(bv.price ?? 0);
+        const newPrice = priceChanged ? nv : bv.price;
+        // Regenerate the label for "special" variations so "3 for $5" stays in sync
+        const newLabel = bv.key === "special" && priceChanged
+          ? `${bv.units_consumed} for $${newPrice.toFixed(2)}`
+          : bv.label;
+        return { ...bv, price: newPrice, label: newLabel, changed: priceChanged };
       });
       const anyVarChanged = varUpdates.some((v) => v.changed);
       if (!cpChanged && !spChanged && !unitsChanged && !anyVarChanged) continue;
@@ -834,7 +840,13 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
     for (const p of updates) {
       const varUpdates = (p.bottle_variations ?? []).map((bv) => {
         const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
-        return { ...bv, price: !isNaN(nv) && nv !== Number(bv.price ?? 0) ? nv : bv.price, changed: !isNaN(nv) && nv !== Number(bv.price ?? 0) };
+        const priceChanged = !isNaN(nv) && nv !== Number(bv.price ?? 0);
+        const newPrice = priceChanged ? nv : bv.price;
+        // Regenerate the label for "special" variations so "3 for $5" stays in sync
+        const newLabel = bv.key === "special" && priceChanged
+          ? `${bv.units_consumed} for $${newPrice.toFixed(2)}`
+          : bv.label;
+        return { ...bv, price: newPrice, label: newLabel, changed: priceChanged };
       });
       if (!varUpdates.some((v) => v.changed)) continue;
       await supabase.from("products").update({ bottle_variations: varUpdates.map(({ changed: _c, ...rest }) => rest) }).eq("id", p.id);

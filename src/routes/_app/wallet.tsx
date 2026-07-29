@@ -25,7 +25,7 @@ type Order = {
   total: number;
   paid: number;
   change_given: number;
-  items: { name: string; qty: number; price: number }[];
+  items: { name: string; qty: number; price: number; discount?: number; original_price?: number }[];
   created_at: string;
 };
 
@@ -820,7 +820,17 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                     <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                     <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                     <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
-                      {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                      {(o.items || []).map((i, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                          <span>{i.qty}× {i.name}</span>
+                          {i.discount && Number(i.discount) > 0 ? (
+                            <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                              style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                              -{fmt(Number(i.discount))} off
+                            </span>
+                          ) : null}
+                        </span>
+                      ))}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
@@ -1120,7 +1130,10 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           doc.text(new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" }), LM, y);
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" }); y += 5;
           doc.setFont("helvetica", "normal");
-          const items = (o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => i.qty + "x " + i.name).join(", ");
+          const items = (o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => {
+            const discountNote = i.discount && Number(i.discount) > 0 ? ` [-$${Number(i.discount).toFixed(2)} off]` : "";
+            return i.qty + "x " + i.name + discountNote;
+          }).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
           doc.text(wrapped, LM, y); y += wrapped.length * 4.5 + 1;
           doc.setTextColor(100, 100, 100);
@@ -1353,7 +1366,17 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                                 <span className="font-black text-primary text-sm ml-2">${fmt(Number(o.total))}</span>
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground break-words whitespace-normal">
-                                {(o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => `${i.qty}× ${i.name}`).join(" · ")}
+                                {(o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i, idx) => (
+                                  <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                                    <span>{i.qty}× {i.name}</span>
+                                    {i.discount && Number(i.discount) > 0 ? (
+                                      <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                        style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                        -{fmt(Number(i.discount))} off
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                ))}
                               </div>
                               <div className="mt-0.5 text-xs text-muted-foreground">
                                 Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
@@ -2393,7 +2416,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                         <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                         <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
-                          {(o.items || []).map((i: any) => `${i.qty}× ${i.name}`).join(", ")}
+                          {(o.items || []).map((i: any, idx: number) => (
+                            <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                              <span>{i.qty}× {i.name}</span>
+                              {i.discount && Number(i.discount) > 0 ? (
+                                <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                  style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                  -{fmt(Number(i.discount))} off
+                                </span>
+                              ) : null}
+                            </span>
+                          ))}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                           Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
@@ -2540,7 +2573,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                   <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}</div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {(o.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                    {(o.items || []).map((i, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                        <span>{i.qty}× {i.name}</span>
+                        {i.discount && Number(i.discount) > 0 ? (
+                          <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                            style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                            -{fmt(Number(i.discount))} off
+                          </span>
+                        ) : null}
+                      </span>
+                    ))}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
