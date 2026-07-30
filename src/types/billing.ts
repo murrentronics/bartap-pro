@@ -4,7 +4,7 @@ export type BillingPlan = {
   amount: number;
   duration_months: number;
   currency: string;
-  plan_type: "basic" | "machines_addon" | "premium" | "chain" | "machines_only" | "bar_addon" | string;
+  plan_type: "basic" | "machines_addon" | "premium" | "chain" | "machines_only" | "bar_addon" | "bar_only_addon" | "machines_bar_addon" | "premium_addon" | "machines_only_20" | "machines_bar_addon_20" | "premium_20" | "premium_addon_20" | string;
   created_at: string;
 };
 

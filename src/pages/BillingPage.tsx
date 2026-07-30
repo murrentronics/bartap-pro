@@ -24,7 +24,7 @@ import {
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
-const PREMIUM_ADDON_FEE = 1500; // per extra bar for premium owners
+const PREMIUM_ADDON_FEE = 2000; // per extra bar + 10-screen for premium owners
 
 type Step = "status" | "choose" | "addons" | "addon-bars" | "payment" | "confirm";
 
@@ -215,15 +215,22 @@ export default function BillingPage() {
   const hasMachinesAddon = !!profile?.machines_addon_active;
   const hasBarAddon     = !!profile?.bar_addon_active;
 
-  const basicPlan         = plans.find(p => p.plan_type === "basic");
-  const machinesAddonPlan = plans.find(p => p.plan_type === "machines_addon");
-  const premiumPlan       = plans.find(p => p.plan_type === "premium");
-  const machinesOnlyPlan  = plans.find(p => p.plan_type === "machines_only");
-  const barAddonPlan      = plans.find(p => p.plan_type === "bar_addon");
+  const basicPlan             = plans.find(p => p.plan_type === "basic");
+  const machinesAddonPlan     = plans.find(p => p.plan_type === "machines_addon");
+  const premiumPlan           = plans.find(p => p.plan_type === "premium");
+  const premiumPlan20         = plans.find(p => p.plan_type === "premium_20");
+  const machinesOnlyPlan      = plans.find(p => p.plan_type === "machines_only");
+  const machinesOnlyPlan20    = plans.find(p => p.plan_type === "machines_only_20");
+  const barAddonPlan          = plans.find(p => p.plan_type === "bar_addon");
   // Multi-bar addon plans
-  const barOnlyAddonPlan      = plans.find(p => p.plan_type === "bar_only_addon");
-  const machinesBarAddonPlan  = plans.find(p => p.plan_type === "machines_bar_addon");
-  const premiumAddonPlan      = plans.find(p => p.plan_type === "premium_addon");
+  const barOnlyAddonPlan         = plans.find(p => p.plan_type === "bar_only_addon");
+  const machinesBarAddonPlan     = plans.find(p => p.plan_type === "machines_bar_addon");
+  const machinesBarAddonPlan20   = plans.find(p => p.plan_type === "machines_bar_addon_20");
+  const premiumAddonPlan         = plans.find(p => p.plan_type === "premium_addon");
+  const premiumAddonPlan20       = plans.find(p => p.plan_type === "premium_addon_20");
+
+  // Detect 20-screen variant for current machines-only owner (stored as plan_type = "machines_only_20" in future)
+  const isMachinesOnly20 = profile?.plan_type === "machines_only_20";
 
   // Current bar count for capacity checks
   const currentBarCount = (profile?.addon_bar_count ?? 0) + 1;
@@ -253,21 +260,22 @@ export default function BillingPage() {
   const isNewSignup    = !pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired";
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
 
-  const isAddonPlanSelected = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan?.plan_type ?? "");
+  const isAddonPlanSelected = ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan?.plan_type ?? "");
 
   // ── Total renewal amount (base plan + all active addons at full annual price) ──
   // Pro-rata only applies at the time of purchasing a new addon — never at renewal.
   const addonBarQty = profile?.addon_bar_count ?? 0;
 
-  const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 2400)
+  const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 1200)
                       : isPremium      ? (premiumPlan?.amount      ?? 3000)
                       : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 2400)
                       : 0;
 
   const machinesAddonPrice = (isBasic && hasMachinesAddon) ? (machinesAddonPlan?.amount ?? 600) : 0;
 
-  const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 1200)
-                        : isPremium      ? (premiumAddonPlan?.amount     ?? 1500)
+  // Bar Only extra bars renew at $800 each; Premium addon at $2,000 each; Machines addon at $1,200 each
+  const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 800)
+                        : isPremium      ? (premiumAddonPlan?.amount     ?? 2000)
                         : isMachinesOnly ? (machinesBarAddonPlan?.amount ?? 1200)
                         : 0;
   const extraBarPrice = addonBarQty * perBarFullPrice;
@@ -291,7 +299,7 @@ export default function BillingPage() {
   // the fraction of the year remaining on the current plan.
   const planEndDate: Date | null = (() => {
     if (!isAddonPlanSelected) return null;
-    if (profile?.plan_type === "premium" && profile?.premium_subscription_end_date)
+    if ((profile?.plan_type === "premium" || profile?.plan_type === "premium_20") && profile?.premium_subscription_end_date)
       return new Date(profile.premium_subscription_end_date);
     if (profile?.plan_type === "machines_only" && profile?.machines_addon_end_date)
       return new Date(profile.machines_addon_end_date);
@@ -389,7 +397,7 @@ export default function BillingPage() {
           <div className="flex items-center gap-1.5 mt-2 ml-10">
             {(["choose","addons","addon-bars","payment","confirm"] as Step[])
               .filter(s => {
-                const isAddonFlow = ["bar_only_addon","machines_bar_addon","premium_addon"].includes(selectedPlan?.plan_type ?? "");
+                const isAddonFlow = ["bar_only_addon","machines_bar_addon","machines_bar_addon_20","premium_addon","premium_addon_20"].includes(selectedPlan?.plan_type ?? "");
                 if (selectedPlan?.plan_type === "machines_addon" || renewMode) {
                   return s !== "addons" && s !== "choose" && s !== "addon-bars";
                 }
@@ -627,9 +635,6 @@ export default function BillingPage() {
                     {renewalBreakdown && (
                       <p className="text-xs text-gray-400 mb-2">{renewalBreakdown}</p>
                     )}
-                    {renewalBreakdown && (
-                      <p className="text-xs text-gray-400 mb-2">{renewalBreakdown}</p>
-                    )}
                     <div className="flex items-center justify-between text-sm mb-3">
                       <span className="text-gray-500">Renews</span>
                       <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
@@ -688,7 +693,7 @@ export default function BillingPage() {
                     </div>
                   )}
 
-                  {/* ── Add More Bars (Machines Only owners) ── */}
+                  {/* ── Add More Machine Accounts (Machines Only owners) — 10 or 20 screen ── */}
                   {isMachinesOnly && machinesBarAddonPlan && (
                     <div className="rounded-2xl border-2 border-orange-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
@@ -697,28 +702,44 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add More Machine Accounts</p>
-                          <p className="text-xs text-gray-500">${machinesBarAddonPlan.amount.toFixed(0)} TT per extra account / year · Max 20 screens per account</p>
+                          <p className="text-xs text-gray-500">10 screens ${machinesBarAddonPlan.amount.toFixed(0)} · 20 screens ${machinesBarAddonPlan20?.amount.toFixed(0) ?? "1500"} TT/yr each</p>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own screens, up to 20 screens per account.
+                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own set of screens.
                       </p>
-                      <button
-                        onClick={() => {
-                          setSelectedPlan(machinesBarAddonPlan);
-                          setAddonBarCount(1);
-                          setAddonBars([{ name: "", location: "", type: "machines_only" }]);
-                          setStep("addon-bars");
-                        }}
-                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
-                        style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
-                      >
-                        Add Extra Account — ${machinesBarAddonPlan.amount.toFixed(0)} TT/yr each
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedPlan(machinesBarAddonPlan);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "machines_only" }]);
+                            setStep("addon-bars");
+                          }}
+                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
+                        >
+                          + 10 Screens<br />${machinesBarAddonPlan.amount.toFixed(0)} TT/yr
+                        </button>
+                        {machinesBarAddonPlan20 && (
+                          <button
+                            onClick={() => {
+                              setSelectedPlan(machinesBarAddonPlan20);
+                              setAddonBarCount(1);
+                              setAddonBars([{ name: "", location: "", type: "machines_only" }]);
+                              setStep("addon-bars");
+                            }}
+                            className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                            style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
+                          >
+                            + 20 Screens<br />${machinesBarAddonPlan20.amount.toFixed(0)} TT/yr
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {/* ── Add More Bars (Premium owners → upgrades to Chain, $1,500/bar) ── */}
+                  {/* ── Add More Bars (Premium owners → upgrades to Chain, $2,000/bar 10-screen or $2,500/bar 20-screen) ── */}
                   {isPremium && premiumAddonPlan && (
                     <div className="rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
@@ -727,24 +748,40 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add More Bars</p>
-                          <p className="text-xs text-gray-500">${premiumAddonPlan.amount.toFixed(0)} TT per extra bar / year — Bar Only or Bar + Machines</p>
+                          <p className="text-xs text-gray-500">Bar + 10 screens ${premiumAddonPlan.amount.toFixed(0)} · Bar + 20 screens ${premiumAddonPlan20?.amount.toFixed(0) ?? "2500"} TT/yr each</p>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        Your plan switches to Chain of Bars. New annual total = $3,000 + ({addonBarCount} × $1,500) = <span className="font-black text-amber-800">${(3000 + addonBarCount * 1500).toLocaleString()} TT/yr</span>
+                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own bar POS + machine screens. Your plan switches to Chain.
                       </p>
-                      <button
-                        onClick={() => {
-                          setSelectedPlan(premiumAddonPlan);
-                          setAddonBarCount(1);
-                          setAddonBars([{ name: "", location: "", type: "bar" }]);
-                          setStep("addon-bars");
-                        }}
-                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
-                        style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
-                      >
-                        Add Extra Bar — ${premiumAddonPlan.amount.toFixed(0)} TT/yr each
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedPlan(premiumAddonPlan);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
+                            setStep("addon-bars");
+                          }}
+                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
+                        >
+                          + Bar + 10 Screens<br />${premiumAddonPlan.amount.toFixed(0)} TT/yr
+                        </button>
+                        {premiumAddonPlan20 && (
+                          <button
+                            onClick={() => {
+                              setSelectedPlan(premiumAddonPlan20);
+                              setAddonBarCount(1);
+                              setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
+                              setStep("addon-bars");
+                            }}
+                            className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                            style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
+                          >
+                            + Bar + 20 Screens<br />${premiumAddonPlan20.amount.toFixed(0)} TT/yr
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -897,7 +934,7 @@ export default function BillingPage() {
             </div>
           )}
 
-          {/* ── Card 2: Machines Only ── */}
+          {/* ── Card 2: Machines Only — 10 and 20 screen ── */}
           {machinesOnlyPlan && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white shadow-md overflow-hidden relative">
               <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -911,8 +948,7 @@ export default function BillingPage() {
                   </div>
                   <h3 className="font-black text-gray-900 text-lg">Machines Only</h3>
                 </div>
-                <p className="text-3xl font-black text-orange-700 mt-2">${machinesOnlyPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
-                <p className="text-xs text-gray-400 mt-0.5 mb-4">Payout & income tracking for gaming machines</p>
+                <p className="text-xs text-gray-400 mt-1 mb-4">Payout & income tracking for gaming machines</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
                   {[
                     "Machines payout tracker",
@@ -928,18 +964,31 @@ export default function BillingPage() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("payment"); }}
-                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
-                  style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
-                >
-                  Select Machines Only
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("payment"); }}
+                    className="flex-1 h-12 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                    style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                  >
+                    10 Screens<br />
+                    <span className="text-base font-black">${machinesOnlyPlan.amount.toFixed(0)}</span> <span className="text-xs font-normal">TT/yr</span>
+                  </button>
+                  {machinesOnlyPlan20 && (
+                    <button
+                      onClick={() => { setSelectedPlan(machinesOnlyPlan20); setStep("payment"); }}
+                      className="flex-1 h-12 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                      style={{ background: "linear-gradient(135deg, #c2410c, #ea580c)" }}
+                    >
+                      20 Screens<br />
+                      <span className="text-base font-black">${machinesOnlyPlan20.amount.toFixed(0)}</span> <span className="text-xs font-normal">TT/yr</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* ── Card 3: Bar with Machines ── */}
+          {/* ── Card 3: Bar with Machines — 10 and 20 screen ── */}
           {premiumPlan && (
             <div className="rounded-2xl border-2 border-amber-300 bg-white shadow-md overflow-hidden relative">
               <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -953,7 +1002,6 @@ export default function BillingPage() {
                   </div>
                   <h3 className="font-black text-gray-900 text-lg">Bar with Machines</h3>
                 </div>
-                <p className="text-3xl font-black text-amber-800 mt-2">${premiumPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
                 <p className="text-xs text-gray-400 mt-0.5 mb-4">Complete bar & machines management in one plan</p>
 
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
@@ -974,11 +1022,22 @@ export default function BillingPage() {
                   ))}
                 </div>
 
-                <button onClick={() => { setSelectedPlan(premiumPlan); setStep("payment"); }}
-                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
-                  style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}>
-                  Select Bar with Machines
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => { setSelectedPlan(premiumPlan); setStep("payment"); }}
+                    className="flex-1 h-12 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                    style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}>
+                    10 Screens<br />
+                    <span className="text-base font-black">${premiumPlan.amount.toFixed(0)}</span> <span className="text-xs font-normal">TT/yr</span>
+                  </button>
+                  {premiumPlan20 && (
+                    <button onClick={() => { setSelectedPlan(premiumPlan20); setStep("payment"); }}
+                      className="flex-1 h-12 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                      style={{ background: "linear-gradient(135deg, #d97706, #c2410c)" }}>
+                      20 Screens<br />
+                      <span className="text-base font-black">${premiumPlan20.amount.toFixed(0)}</span> <span className="text-xs font-normal">TT/yr</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

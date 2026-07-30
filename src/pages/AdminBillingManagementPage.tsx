@@ -188,14 +188,14 @@ export default function AdminBillingManagementPage() {
           .single();
         
         const startDate = new Date();
-        const isPremium = (plan as any).plan_type === "premium";
+        const isPremium = (plan as any).plan_type === "premium" || (plan as any).plan_type === "premium_20";
         const isMachinesAddon = (plan as any).plan_type === "machines_addon";
         const isChainPlan = (plan as any).plan_type === "chain";
-        const isMachinesOnly = (plan as any).plan_type === "machines_only";
+        const isMachinesOnly = (plan as any).plan_type === "machines_only" || (plan as any).plan_type === "machines_only_20";
         const isBarAddon = (plan as any).plan_type === "bar_addon";
         const isBarOnlyAddon     = (plan as any).plan_type === "bar_only_addon";
-        const isMachinesBarAddon = (plan as any).plan_type === "machines_bar_addon";
-        const isPremiumAddon     = (plan as any).plan_type === "premium_addon";
+        const isMachinesBarAddon = (plan as any).plan_type === "machines_bar_addon" || (plan as any).plan_type === "machines_bar_addon_20";
+        const isPremiumAddon     = (plan as any).plan_type === "premium_addon" || (plan as any).plan_type === "premium_addon_20";
         const isAnyBarAddon      = isBarOnlyAddon || isMachinesBarAddon || isPremiumAddon;
         if (isChainPlan) {
           // Chain plan: set plan_type = "chain", chain_addon_active = true,
@@ -417,14 +417,18 @@ export default function AdminBillingManagementPage() {
 
     const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
     toast.success(
-      planType === "chain"             ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
-      planType === "basic"             ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
-      planType === "machines_only"     ? `${selectedPayment.profiles?.username} machines plan revoked — reset to pending` :
-      planType === "premium"           ? `${selectedPayment.profiles?.username} downgraded to Basic` :
-      planType === "machines_addon"    ? `Machines add-on removed` :
-      planType === "bar_only_addon"    ? `Bar addon revoked` :
-      planType === "machines_bar_addon"? `Machines bar addon revoked` :
-      planType === "premium_addon"     ? `${selectedPayment.profiles?.username} extra bars revoked — reset to Premium` :
+      planType === "chain"                ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
+      planType === "basic"                ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
+      planType === "machines_only"        ? `${selectedPayment.profiles?.username} machines plan revoked — reset to pending` :
+      planType === "machines_only_20"     ? `${selectedPayment.profiles?.username} machines (20-screen) plan revoked — reset to pending` :
+      planType === "premium"              ? `${selectedPayment.profiles?.username} downgraded to Basic` :
+      planType === "premium_20"           ? `${selectedPayment.profiles?.username} Bar+Machines 20-screen plan revoked` :
+      planType === "machines_addon"       ? `Machines add-on removed` :
+      planType === "bar_only_addon"       ? `Bar addon revoked` :
+      planType === "machines_bar_addon"   ? `Machines bar addon revoked` :
+      planType === "machines_bar_addon_20"? `Machines 20-screen addon revoked` :
+      planType === "premium_addon"        ? `${selectedPayment.profiles?.username} extra bars (10-screen) revoked` :
+      planType === "premium_addon_20"     ? `${selectedPayment.profiles?.username} extra bars (20-screen) revoked` :
       "Subscription revoked"
     );
     setSelectedPayment(null);
