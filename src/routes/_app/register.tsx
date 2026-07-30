@@ -2411,7 +2411,7 @@ function CashOverlay({
                   )}
                   <div className="text-5xl font-black text-primary-foreground">${discountedTotal.toFixed(2)}</div>
                   {orderDiscount > 0 && (
-                    <div className="text-xs font-semibold text-green-300 mt-0.5">-${orderDiscount.toFixed(2)} discount</div>
+                    <div className="text-xs font-semibold text-white/90 mt-0.5">-${orderDiscount.toFixed(2)} discount</div>
                   )}
                   {selectedCustomer && (
                     <div className="mt-2 text-xs font-black text-primary-foreground/70">

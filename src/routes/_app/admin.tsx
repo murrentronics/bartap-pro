@@ -1472,6 +1472,7 @@ export default function AdminPage() {
 
   const buckets = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const MASTER_ACCOUNT_EMAILS = ["renard.sankersingh@gmail.com"];
     const filtered = needle
       ? rows.filter((r) =>
           r.username.toLowerCase().includes(needle) ||
@@ -1481,10 +1482,12 @@ export default function AdminPage() {
         )
       : rows;
     return {
-      pending: filtered.filter((r) => r.status === "pending"),
+      // Never show master account in pending — treat as approved regardless of DB status
+      pending: filtered.filter((r) => r.status === "pending" && !MASTER_ACCOUNT_EMAILS.includes(r.email)),
       // Approved: hide bar sub-accounts (chain bars) — only show real account owners
-      approved: filtered.filter((r) => r.status === "approved" && !r.is_bar_account),
-      suspended: filtered.filter((r) => r.status === "suspended" && !r.is_bar_account),
+      // Master account always appears in approved list
+      approved: filtered.filter((r) => (r.status === "approved" || MASTER_ACCOUNT_EMAILS.includes(r.email)) && !r.is_bar_account),
+      suspended: filtered.filter((r) => r.status === "suspended" && !r.is_bar_account && !MASTER_ACCOUNT_EMAILS.includes(r.email)),
       expelled: filtered.filter((r) => r.status === "expelled"),
     };
   }, [rows, q]);
