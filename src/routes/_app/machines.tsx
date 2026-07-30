@@ -1497,6 +1497,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       setMonitorOutTotal("");
       setMonitorInDiff("");
       setMonitorOutDiff("");
+      // No logs left — reset the hero stat cards to zero
+      setMonitorCardIn(null);
+      setMonitorCardOut(null);
 
       await saveMonitor({
         in_entry: "", in_total: "", in_diff: "",
@@ -1898,10 +1901,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const totalPayout = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
   const totalProfit = latestLog ? (latestLog.in_diff - latestLog.out_diff) : (totalIncome - totalPayout);
 
-  // ── Today's totals (bar_session_start → now) ─────────────────────────────────
+  // ── Today's totals (bar_session_start → now) — machine payouts only, not manual expenses ──
   const todayPayouts = barSessionStart
-    ? entries.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+    ? entries.filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
 
   const todayIncome = barSessionStart
     ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
@@ -1952,18 +1955,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-  // ── Session totals — payouts/income since bar was opened (barSessionStart).
-
-
-  // If bar has never been opened, counts everything (anchor = null = all time).
-
-
+  // ── Session totals — machine payouts only since float was last set, NOT manual expenses.
+  // Manual expenses only count in the all-screens hero totals.
   const sessionPayouts = entries
-
-
-    .filter(e => (e.type === "payout" || e.type === "expense") && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at)))
-
-
+    .filter(e => e.type === "payout" && (!floatSession || new Date(e.created_at) >= new Date(floatSession.set_at)))
     .reduce((s, e) => s + Number(e.amount), 0);
 
 
@@ -7126,22 +7121,11 @@ export default function MachinesPage() {
 
 
   // Session payouts = all payouts + expenses across ALL machines since float was last set
-
-
   const sessionPayouts = floatSession
-
-
     ? entries
-
-
         .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(floatSession.set_at))
-
-
         .reduce((s, e) => s + Number(e.amount), 0)
-
-
     : 0;
-
 
   const remainingFloat = floatSession ? Number(floatSession.amount) - sessionPayouts : null;
 
