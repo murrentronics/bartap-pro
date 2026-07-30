@@ -4708,8 +4708,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
       </section>
 
-      {/* Hero 2 — Stats (owner only) */}
-      {(isOwner || isManager) && (
+      {/* Hero 2 — Stats */}
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
@@ -4744,7 +4743,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
         )}
 
-        {/* Session stats */}
+        {/* Session stats — visible to all roles */}
 
 
         <div className="relative grid grid-cols-3 gap-2">
@@ -4769,7 +4768,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
       </section>
-      )}
 
 
 

@@ -573,9 +573,13 @@ export default function RegisterPage() {
       image_url: null, category: "cigarettes", qty: qtyToSell,
       _pack_id: pack.id,
     } as CartItem & { _pack_id: string }]);
-    // Keep modal open so cashier can continue tapping — reset qty only
+    // Close modal after adding so cashier can see the cash order button
     setPackQty(1);
     setPackSellMode("retail");
+    setPackStep("select");
+    setPackPackId("");
+    setPackPrice("");
+    setPackModalOpen(false);
   };
 
   const handleFinishPack = async (packId: string) => {
@@ -594,6 +598,8 @@ export default function RegisterPage() {
     const { error } = await supabase.rpc("cancel_pack", { p_pack_id: packId });
     setPackBusy(false);
     if (error) { toast.error(error.message); return; }
+    // Remove any retail cart items that were staged from this pack
+    setCart((c) => c.filter((item) => (item as any)._pack_id !== packId));
     toast.success("Pack cancelled — stock restored");
     await fetchOpenedPacks();
     await fetchProducts();
@@ -2164,13 +2170,6 @@ export default function RegisterPage() {
                 );
               })()}
 
-              {/* Done — always visible so cashier can close when finished */}
-              <button
-                onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(false); setPackSellMode("retail"); }}
-                className="w-full h-10 rounded-xl font-black text-sm transition active:scale-[0.98]"
-                style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
-                Done
-              </button>
             </div>
           </div>
         </div>
