@@ -4854,9 +4854,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           const mExpense = entries.filter(e => e.machine_id === m.id && e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
 
 
-          // TP: use latest monitor log (in_diff - out_diff) = difference between readings
+          // TP: use latest monitor log (in_diff - out_diff) = difference between readings only.
+          // Manual expenses are NOT subtracted here — they show in the all-screens hero totals only.
           const mLog = monitorPerMachine[m.id];
-          const mProfit = mLog ? (mLog.in_diff - mLog.out_diff - mExpense) : (mIncome - mPayout - mExpense);
+          const mProfit = mLog ? (mLog.in_diff - mLog.out_diff) : (mIncome - mPayout);
 
 
           // Session profit — since last float update, resets to 0 on every float update

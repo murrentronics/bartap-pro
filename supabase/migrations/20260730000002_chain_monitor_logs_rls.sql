@@ -1,4 +1,4 @@
--- ── machine_monitor_logs: add chain owner RLS policy ─────────────────────────
+ -- ── machine_monitor_logs: add chain owner RLS policy ─────────────────────────
 -- machine_entries and machines already have chain policies from 20260708000002
 -- but machine_monitor_logs was never given one, so chain owners see empty logs
 -- when viewing sub-bar accounts.
