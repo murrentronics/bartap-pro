@@ -242,7 +242,7 @@ export default function BillingPage() {
 
   // ── Demo account — permanent free access, no billing ─────────────────────
   const DEMO_EMAILS = ["isabel@gmail.com"];
-  const MASTER_EMAILS = ["renardsankersingh@gmail.com"];
+  const MASTER_EMAILS = ["renard.sankersingh@gmail.com"];
   if (DEMO_EMAILS.includes(userEmail)) {
     return (
       <div className="pb-24 max-w-2xl mx-auto">

@@ -6403,18 +6403,13 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
 
 
-/** Returns true if this owner has premium access (premium plan OR special-access account) */
+const MASTER_EMAILS = ["renard.sankersingh@gmail.com"];
 
-
-function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
-
-
+/** Returns true if this owner has premium access (premium plan OR master account) */
+function hasPremiumAccess(profile: { plan_type?: string } | null, email?: string | null): boolean {
   if (!profile) return false;
-
-
+  if (email && MASTER_EMAILS.includes(email)) return true;
   return profile.plan_type === "premium";
-
-
 }
 
 
@@ -6424,7 +6419,7 @@ function hasPremiumAccess(profile: { plan_type?: string } | null): boolean {
 export default function MachinesPage() {
 
 
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
 
   const { effectiveOwnerId, isChainOwner, activeBarId, setActiveBarId } = useChain();
@@ -6769,7 +6764,7 @@ export default function MachinesPage() {
 
 
 
-  const isPremium = ownerPlanType === "premium";
+  const isPremium = ownerPlanType === "premium" || MASTER_EMAILS.includes(user?.email ?? "");
 
 
 

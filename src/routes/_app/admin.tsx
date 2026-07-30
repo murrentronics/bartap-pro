@@ -1381,13 +1381,8 @@ export default function AdminPage() {
         .maybeSingle();
       const demoId = demoProfile?.id;
 
-      // Also exclude master account from income calculations
-      const { data: masterProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", "renardsankersingh@gmail.com")
-        .maybeSingle();
-      const masterId = masterProfile?.id;
+      // Master account (renard.sankersingh@gmail.com) has no billing payments — no filtering needed
+      const masterId: string | undefined = undefined;
 
       let query = supabase
         .from("billing_payments")

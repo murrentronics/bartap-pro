@@ -10,7 +10,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DEMO_EMAILS = ["isabel@gmail.com"];
+const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
 
 export default function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
@@ -161,8 +161,9 @@ export default function AppLayout() {
       const barAddonActive = data?.bar_addon_active ?? false;
       const machinesOnly = planType === "machines_only";
       setIsMachinesOnlyUser(machinesOnly);
-      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || user?.email === "renard.sankersingh@gmail.com");
-      setOwnerHasBar(!machinesOnly || barAddonActive || user?.email === "renard.sankersingh@gmail.com");
+      const isMasterAccount = user?.email === "renard.sankersingh@gmail.com";
+      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
+      setOwnerHasBar(!machinesOnly || barAddonActive || isMasterAccount);
     };
     load();
   }, [profile?.id, profile?.status, profile?.plan_type, profile?.machines_addon_active, profile?.bar_addon_active, isChainOwner, activeBarId]);
