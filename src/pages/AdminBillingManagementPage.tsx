@@ -92,7 +92,16 @@ export default function AdminBillingManagementPage() {
       return;
     }
 
-    setPayments((data || []) as PaymentWithOwner[]);
+    // Exclude master account (renardsankersingh@gmail.com) from billing records
+    const { data: masterProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", "renardsankersingh@gmail.com")
+      .maybeSingle();
+    const masterId = masterProfile?.id;
+    const filtered = (data || []).filter((p: any) => !masterId || p.owner_id !== masterId);
+
+    setPayments(filtered as PaymentWithOwner[]);
   };
 
   const loadStats = async () => {

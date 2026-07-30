@@ -4623,9 +4623,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     <div className="space-y-4">
 
 
-      {/* All-machines hero */}
-
-
+      {/* All-machines hero — owner and manager only (cashiers get no float row) */}
+      {(isOwner || isManager) && (
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
 
 
@@ -4703,6 +4702,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
       </section>
+      )}
 
       {/* Hero 2 — Stats */}
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"

@@ -1381,6 +1381,14 @@ export default function AdminPage() {
         .maybeSingle();
       const demoId = demoProfile?.id;
 
+      // Also exclude master account from income calculations
+      const { data: masterProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", "renardsankersingh@gmail.com")
+        .maybeSingle();
+      const masterId = masterProfile?.id;
+
       let query = supabase
         .from("billing_payments")
         .select("amount, approved_at")
@@ -1388,6 +1396,7 @@ export default function AdminPage() {
         .not("approved_at", "is", null);
 
       if (demoId) query = query.neq("owner_id", demoId);
+      if (masterId) query = query.neq("owner_id", masterId);
 
       const { data } = await query;
       const payments = (data ?? []) as { amount: number; approved_at: string }[];

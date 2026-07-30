@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { removeBackground } from "@/lib/removeBackground";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -1032,7 +1031,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           <tr key={varKey} className="border-t border-border/20" style={{ background: "rgba(255,255,255,0.02)" }}>
                             <td className="pl-3 pr-2 py-1" />
                             <td className="px-2 py-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground pl-3">↳ {bv.label}</span>
+                              <span className="text-[10px] font-semibold text-muted-foreground pl-3">↳ {bv.key === "shot" ? "Drink" : bv.label}</span>
                               <span className="text-[9px] text-muted-foreground/50 ml-1">({bv.units_consumed}u)</span>
                             </td>
                             <td className="px-2 py-1" colSpan={2}>
@@ -1557,7 +1556,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   const [preview, setPreview] = useState<string | null>(editProduct?.image_url ?? null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(editProduct?.image_url ?? null);
   const [busy, setBusy] = useState(false);
-  const [bgRemoving, setBgRemoving] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   // which field the numpad is for: "selling" | "cost" | "units" | "shotprice" | "var_{i}_shots" | "var_{i}_price" | null
   const [activeNumpad, setActiveNumpad] = useState<string | null>(null);
@@ -1593,24 +1591,11 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
     );
   };
 
-  const onPick = async (f: File | undefined | null) => {
+  const onPick = (f: File | undefined | null) => {
     if (!f) return;
-    // Show the original immediately so the user sees something right away
     setFile(f);
     setTemplateUrl(null);
     setPreview(URL.createObjectURL(f));
-    // Run background removal — show a spinner overlay while it processes
-    setBgRemoving(true);
-    try {
-      const stripped = await removeBackground(f);
-      setFile(stripped);
-      setPreview(URL.createObjectURL(stripped));
-    } catch (err) {
-      // If removal fails for any reason, keep the original — don't block the user
-      console.warn("Background removal failed, using original:", err);
-    } finally {
-      setBgRemoving(false);
-    }
   };
 
   const onTemplateSelect = (url: string, label: string, templateCategory: string) => {
@@ -1822,15 +1807,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
                   : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
                 }
-                {/* Background removal in-progress overlay */}
-                {bgRemoving && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-xl"
-                    style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}>
-                    <Loader2 className="h-7 w-7 animate-spin text-primary" />
-                    <span className="text-[10px] font-bold text-white/80 tracking-wide">Removing BG…</span>
-                  </div>
-                )}
-                {preview && !bgRemoving && (
+                {preview && (
                   <button onClick={clearImage} className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1">
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -1850,6 +1827,9 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                 </Button>
               </div>
             </div>
+            <p className="text-[10px] text-muted-foreground/70 leading-snug">
+              💡 For best results, upload a <span className="font-bold text-amber-400">transparent background PNG</span> image.
+            </p>
 
             {/* Name */}
             <div>
@@ -2090,7 +2070,6 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
             onClick={submit}
             disabled={
               busy ||
-              bgRemoving ||
               !name ||
               !price ||
               // Require cost price on new items, and on edits where cost price was never set (0 or null)
@@ -2099,7 +2078,7 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
             }
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : bgRemoving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Removing BG…</> : "Next →"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
           </Button>
         </div>
       )}
