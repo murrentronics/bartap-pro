@@ -23,8 +23,6 @@ import {
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
-const SETUP_FEE  = 200;
-const TABLET_FEE = 600;
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
 const PREMIUM_ADDON_FEE = 1500; // per extra bar for premium owners
 
@@ -47,8 +45,6 @@ export default function BillingPage() {
   const [step, setStep]               = useState<Step>("status");
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
   const [renewMode, setRenewMode]     = useState<"basic" | "premium" | null>(null);
-  const [includeSetup, setIncludeSetup]   = useState(false);
-  const [includeTablet, setIncludeTablet] = useState(false);
   const [payMethod, setPayMethod]     = useState<"cash" | "bank" | null>(null);
   const [submitting, setSubmitting]   = useState(false);
 
@@ -135,7 +131,7 @@ export default function BillingPage() {
 
   const reset = () => {
     setStep("status"); setSelectedPlan(null); setRenewMode(null);
-    setIncludeSetup(false); setIncludeTablet(false); setPayMethod(null);
+    setPayMethod(null);
     setAddonBarCount(1); setAddonBars([{ name: "", location: "", type: "bar" }]);
   };
 
@@ -157,17 +153,14 @@ export default function BillingPage() {
 
     const isRenewal = !!renewMode;
     const isFirst   = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
-    const addons    = (isFirst && includeSetup ? SETUP_FEE : 0) + (!isRenewal && includeTablet ? TABLET_FEE : 0);
 
     // For addon plans, amount = unit price × number of bars
     const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan.plan_type ?? "");
     const amount = isAddonPlan
       ? selectedPlan.amount * addonBarCount
-      : selectedPlan.amount + addons;
+      : selectedPlan.amount;
 
     const notesParts: string[] = [];
-    if (isFirst && includeSetup)  notesParts.push("Includes $200 agent setup & training visit");
-    if (!isRenewal && includeTablet) notesParts.push("Includes $600 Android tablet pre-installed");
     if (isAddonPlan) notesParts.push(`${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${selectedPlan.amount} TT each`);
 
     let dueDate = new Date();
@@ -251,8 +244,10 @@ export default function BillingPage() {
   const isNewSignup    = !pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired";
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
 
-  const addonsTotal = (includeSetup ? SETUP_FEE : 0) + (includeTablet ? TABLET_FEE : 0);
-  const totalDue    = (selectedPlan?.amount ?? 0) + (renewMode ? 0 : addonsTotal);
+  const isAddonPlanSelected = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan?.plan_type ?? "");
+  const totalDue    = isAddonPlanSelected
+    ? (selectedPlan?.amount ?? 0) * addonBarCount
+    : selectedPlan?.amount ?? 0;
   const histPages   = Math.max(1, Math.ceil(historyTotal / HIST_SIZE));
 
 
@@ -739,7 +734,7 @@ export default function BillingPage() {
                       <button
                         onClick={() => {
                           setSelectedPlan(premiumPlan);
-                          setStep("addons");
+                          setStep("payment");
                         }}
                         className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
                         style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}
@@ -851,7 +846,7 @@ export default function BillingPage() {
                   ))}
                 </ul>
 
-                <button onClick={() => { setSelectedPlan(basicPlan); setStep("addons"); }}
+                <button onClick={() => { setSelectedPlan(basicPlan); setStep("payment"); }}
                   className="w-full h-12 rounded-xl font-black text-base text-white bg-blue-600 active:scale-[0.98] transition hover:bg-blue-700">
                   Select Bar Only
                 </button>
@@ -891,7 +886,7 @@ export default function BillingPage() {
                   ))}
                 </div>
                 <button
-                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("addons"); }}
+                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("payment"); }}
                   className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
                   style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
                 >
@@ -936,7 +931,7 @@ export default function BillingPage() {
                   ))}
                 </div>
 
-                <button onClick={() => { setSelectedPlan(premiumPlan); setStep("addons"); }}
+                <button onClick={() => { setSelectedPlan(premiumPlan); setStep("payment"); }}
                   className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
                   style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}>
                   Select Bar with Machines
@@ -979,7 +974,7 @@ export default function BillingPage() {
                   });
                 }}
                 className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-xl active:scale-90 transition"
-              ><Minus className="h-4 w-4" /></button>
+              ><Minus className="h-4 w-4 text-black" /></button>
               <span className="text-3xl font-black text-gray-900 w-10 text-center">{addonBarCount}</span>
               <button
                 onClick={() => {
@@ -993,7 +988,7 @@ export default function BillingPage() {
                   });
                 }}
                 className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-xl active:scale-90 transition"
-              ><Plus className="h-4 w-4" /></button>
+              ><Plus className="h-4 w-4 text-black" /></button>
             </div>
           </div>
 
@@ -1029,60 +1024,6 @@ export default function BillingPage() {
             className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}
           >
-            Continue <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          STEP 2: ADD-ONS (skipped for renewals)
-          ═══════════════════════════════════════════════════════════════════ */}
-      {step === "addons" && selectedPlan && (
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm">
-            <h3 className="font-black text-gray-900 mb-1">
-              {selectedPlan.plan_type === "premium" ? "⭐ " : ""}{selectedPlan.name}
-            </h3>
-            <p className="text-2xl font-black text-orange-700">${selectedPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT/yr</span></p>
-          </div>
-
-          <p className="text-sm font-bold text-gray-700">Optional add-ons for your first payment only:</p>
-
-          {/* Setup add-on */}
-          <label className="flex items-start gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 cursor-pointer hover:border-orange-300 transition has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50">
-            <input type="checkbox" className="mt-1 h-5 w-5 accent-orange-500 shrink-0" checked={includeSetup} onChange={e => setIncludeSetup(e.target.checked)} />
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <p className="font-black text-gray-900 text-sm">Agent Setup &amp; Training Visit</p>
-                <span className="font-black text-orange-700 text-sm">+$200 TT</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">An agent visits your venue to install, configure and train your team on-site.</p>
-            </div>
-          </label>
-
-          {/* Tablet add-on */}
-          <label className="flex items-start gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 cursor-pointer hover:border-orange-300 transition has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50">
-            <input type="checkbox" className="mt-1 h-5 w-5 accent-orange-500 shrink-0" checked={includeTablet} onChange={e => setIncludeTablet(e.target.checked)} />
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <p className="font-black text-gray-900 text-sm">Android Tablet (Pre-installed)</p>
-                <span className="font-black text-orange-700 text-sm">+$600 TT</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Receive a ready-to-use Android tablet with Bartendaz Pro pre-configured.</p>
-            </div>
-          </label>
-
-          {/* Total */}
-          <div className="rounded-2xl bg-white border border-gray-200 p-4 space-y-2 shadow-sm">
-            <div className="flex justify-between text-sm text-gray-600"><span>{selectedPlan.name}</span><span className="font-bold">${selectedPlan.amount.toFixed(0)} TT</span></div>
-            {includeSetup   && <div className="flex justify-between text-sm text-gray-600"><span>Agent setup &amp; training</span><span className="font-bold">$200 TT</span></div>}
-            {includeTablet  && <div className="flex justify-between text-sm text-gray-600"><span>Android tablet</span><span className="font-bold">$600 TT</span></div>}
-            <div className="flex justify-between font-black text-base border-t border-gray-100 pt-2 text-orange-700"><span>Total due now</span><span>${totalDue.toFixed(0)} TT</span></div>
-          </div>
-
-          <button onClick={() => setStep("payment")}
-            className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}>
             Continue <ChevronRight className="h-5 w-5" />
           </button>
         </div>
@@ -1136,9 +1077,14 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-5 space-y-3 shadow-sm">
             <h3 className="font-black text-gray-900">Order Summary</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="font-black text-gray-900">{selectedPlan.name}</span><span className="font-bold text-gray-900">${selectedPlan.amount.toFixed(0)} TT</span></div>
-              {includeSetup  && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Agent setup &amp; training</span><span className="font-bold text-gray-900">$200 TT</span></div>}
-              {includeTablet && !renewMode && <div className="flex justify-between"><span className="font-black text-gray-900">Android tablet</span><span className="font-bold text-gray-900">$600 TT</span></div>}
+              <div className="flex justify-between">
+                <span className="font-black text-gray-900">{selectedPlan.name}</span>
+                <span className="font-bold text-gray-900">
+                  {isAddonPlanSelected
+                    ? `$${selectedPlan.amount.toFixed(0)} × ${addonBarCount}`
+                    : `$${selectedPlan.amount.toFixed(0)} TT`}
+                </span>
+              </div>
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
                 <span className="text-gray-900">Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
               </div>
