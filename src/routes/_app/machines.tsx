@@ -4623,8 +4623,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     <div className="space-y-4">
 
 
-      {/* All-machines hero — owner and manager only (cashiers get no float row) */}
-      {(isOwner || isManager) && (
+      {/* All-machines hero — float set + remaining (all roles), update float button (owner/manager only) */}
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"
 
 
@@ -4637,8 +4636,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Float row — top */}
 
 
-        {(isOwner || isManager) && (
-        <div className="relative grid gap-2" style={{ gridTemplateColumns: !isCashier ? "1fr 1fr 1fr" : "1fr 1fr" }}>
+        <div className="relative grid gap-2" style={{ gridTemplateColumns: isOwner ? "1fr 1fr 1fr" : "1fr 1fr" }}>
 
 
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
@@ -4686,7 +4684,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           </div>
 
 
-          {!isCashier && (
+          {isOwner && (
           <div className="flex justify-center">
             <button onClick={onSetFloat}
               className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
@@ -4698,11 +4696,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
-        )}
 
 
       </section>
-      )}
 
       {/* Hero 2 — Stats */}
       <section className="rounded-3xl p-5 relative overflow-hidden space-y-3"

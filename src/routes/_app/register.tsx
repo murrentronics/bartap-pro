@@ -2311,9 +2311,16 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
 
   return (
     <div className="flex items-center justify-between gap-2">
-      {/* D — discount */}
+      {/* D — discount: tap to open numpad, tap again when yellow to clear discount */}
       <button
-        onClick={() => { setDiscountOpen(true); setDiscountVal(""); }}
+        onClick={() => {
+          if (item._discount) {
+            onDiscount(item.id, 0);
+          } else {
+            setDiscountOpen(true);
+            setDiscountVal("");
+          }
+        }}
         className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0 relative"
         style={{
           background: item._discount ? "rgba(251,191,36,0.18)" : "rgba(34,197,94,0.18)",
@@ -2345,7 +2352,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
         style={{ background: "var(--gradient-hero)" }}>
         <Plus className="h-5 w-5 text-black" />
       </button>
-      {/* X */}
+      {/* X — removes item */}
       <button
         onClick={() => onRemove(item.id)}
         className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
@@ -2649,12 +2656,12 @@ function CashOverlay({
                       style={selectedCustomer?.id === c.id
                         ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                         : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }}>
-                      <span className="text-sm font-black leading-tight flex-1 pr-3">{c.full_name}</span>
+                      <span className={`text-sm font-black leading-tight flex-1 pr-3 ${selectedCustomer?.id === c.id ? "text-black" : ""}`}>{c.full_name}</span>
                       <span className={`text-xs font-black shrink-0 ${
-                        Number(c.balance_owed) > 0
-                          ? "text-red-400"
-                          : selectedCustomer?.id === c.id
-                            ? "text-primary-foreground/80"
+                        selectedCustomer?.id === c.id
+                          ? "text-black"
+                          : Number(c.balance_owed) > 0
+                            ? "text-red-400"
                             : "text-amber-700"
                       }`}>
                         {Number(c.balance_owed) > 0 ? `-$${Number(c.balance_owed).toFixed(2)}` : "$0.00"}
