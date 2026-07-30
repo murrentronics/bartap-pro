@@ -1298,12 +1298,6 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onDiscount={(id, discountAmt) => setCart(c => c.map(i => {
-            if (i.id !== id) return i;
-            const orig = i._originalPrice ?? i.price;
-            const newPrice = Math.max(0, orig - discountAmt);
-            return { ...i, price: newPrice, _originalPrice: orig, _discount: discountAmt > 0 ? discountAmt : undefined };
-          }))}
           onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
@@ -2224,115 +2218,14 @@ export default function RegisterPage() {
 
 // ΓöÇΓöÇΓöÇ Cash Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // ── CashItemActions — shared action bar for cash & credit order item rows ──────
-function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
+function CashItemActions({ item, onDec, onAdd, onRemove }: {
   item: CartItem;
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, discountAmt: number) => void;
 }) {
-  const [discountOpen, setDiscountOpen] = useState(false);
-  const [discountVal, setDiscountVal] = useState("");
-
-  const originalPrice = item._originalPrice ?? item.price;
-  const discountAmt = parseFloat(discountVal) || 0;
-  const previewPrice = Math.max(0, originalPrice - discountAmt);
-
-  const applyDiscount = () => {
-    const amt = parseFloat(discountVal);
-    if (isNaN(amt) || amt < 0) return;
-    onDiscount(item.id, amt);
-    setDiscountOpen(false);
-    setDiscountVal("");
-  };
-
-  if (discountOpen) {
-    return (
-      <div className="space-y-2">
-        {/* Header + display */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex-1">
-            <p className="text-[10px] text-muted-foreground mb-1">Discount $ off <span className="text-white/40">(was ${originalPrice.toFixed(2)})</span></p>
-            <div className="h-10 rounded-xl border border-green-500/50 bg-background px-3 text-sm font-bold flex items-center justify-between"
-              style={{ color: discountVal ? "#fff" : "rgba(255,255,255,0.3)" }}>
-              <span>{discountVal || "0"}</span>
-              {discountVal && discountAmt > 0 && (
-                <span className="text-[10px] font-semibold" style={{ color: "#86efac" }}>→ ${previewPrice.toFixed(2)}</span>
-              )}
-            </div>
-          </div>
-          <button onClick={applyDiscount}
-            className="h-[46px] px-3 rounded-xl font-black text-xs active:scale-95 transition shrink-0 self-end"
-            style={{ background: "rgba(34,197,94,0.2)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.4)" }}>
-            OK
-          </button>
-          <button onClick={() => { setDiscountOpen(false); setDiscountVal(""); }}
-            className="h-[46px] w-10 rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center shrink-0 self-end"
-            style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {/* Custom numpad */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {["7","8","9","4","5","6","1","2","3"].map(k => (
-            <button key={k} type="button"
-              onClick={() => {
-                const parts = discountVal.split(".");
-                if (parts[1] !== undefined && parts[1].length >= 2) return;
-                setDiscountVal(v => v + k);
-              }}
-              className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
-              {k}
-            </button>
-          ))}
-          <button type="button"
-            onClick={() => { if (!discountVal.includes(".")) setDiscountVal(v => v + "."); }}
-            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
-            .
-          </button>
-          <button type="button"
-            onClick={() => {
-              const parts = discountVal.split(".");
-              if (parts[1] !== undefined && parts[1].length >= 2) return;
-              setDiscountVal(v => v + "0");
-            }}
-            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-muted text-foreground">
-            0
-          </button>
-          <button type="button"
-            onClick={() => setDiscountVal(v => v.slice(0, -1))}
-            className="h-11 rounded-xl font-black text-base active:scale-95 transition bg-destructive/20 text-destructive">
-            ⌫
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-center justify-between gap-2">
-      {/* D — discount: tap to open numpad, tap again when yellow to clear discount */}
-      <button
-        onClick={() => {
-          if (item._discount) {
-            onDiscount(item.id, 0);
-          } else {
-            setDiscountOpen(true);
-            setDiscountVal("");
-          }
-        }}
-        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0 relative"
-        style={{
-          background: item._discount ? "rgba(251,191,36,0.18)" : "rgba(34,197,94,0.18)",
-          border: item._discount ? "2px solid rgba(251,191,36,0.55)" : "2px solid rgba(34,197,94,0.45)"
-        }}
-        title="Discount">
-        <span className="font-black text-sm" style={{ color: item._discount ? "#fbbf24" : "#fff" }}>D</span>
-        {item._discount ? (
-          <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black px-1 rounded-full leading-tight"
-            style={{ background: "#fbbf24", color: "#1a1a1a" }}>-${item._discount % 1 === 0 ? item._discount.toFixed(0) : item._discount.toFixed(2)}</span>
-        ) : null}
-      </button>
       {/* − */}
       <button
         onClick={() => onDec(item.id)}
@@ -2364,11 +2257,11 @@ function CashItemActions({ item, onDec, onAdd, onRemove, onDiscount }: {
 }
 
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
-  onRemove: (id: string) => void; onDiscount: (id: string, discountAmt: number) => void;
+  onRemove: (id: string) => void;
   onClearCart: () => void;
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
   ownerId: string;
@@ -2378,6 +2271,12 @@ function CashOverlay({
   const [step, setStep] = useState<1 | 2>(1);
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Order-level discount
+  const [orderDiscount, setOrderDiscount] = useState(0);
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [discountVal, setDiscountVal] = useState("");
+  const discountedTotal = Math.max(0, total - orderDiscount);
 
   // Customer / payment mode selection
   const [payMode, setPayMode] = useState<null | "cash" | "credit">(null);
@@ -2403,8 +2302,8 @@ function CashOverlay({
     if (step === 2) setPaid("");
   }, [step]);
 
-  const change = Math.max(0, (Number(paid) || 0) - total);
-  const enough = (Number(paid) || 0) >= total;
+  const change = Math.max(0, (Number(paid) || 0) - discountedTotal);
+  const enough = (Number(paid) || 0) >= discountedTotal;
 
   // Shared stock/shot/pack helpers
   const doStockAndShots = async () => {
@@ -2437,14 +2336,14 @@ function CashOverlay({
       const { error } = await supabase.rpc("record_credit_charge", {
         p_credit_account_id: selectedCustomer.id,
         p_cashier_id: profile.id,
-        p_amount: total,
+        p_amount: discountedTotal,
         p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
         p_note: itemsDesc,
       });
       if (error) { setBusy(false); toast.error(error.message); return; }
       await doStockAndShots();
       setBusy(false);
-      toast.success(`Charged $${total.toFixed(2)} to ${selectedCustomer.full_name}`);
+      toast.success(`Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`);
       onSuccess(paidNum, changeNum);
       return;
     }
@@ -2453,7 +2352,7 @@ function CashOverlay({
     const { error } = await supabase.from("orders").insert({
       owner_id: ownerId, cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
-      total, paid: paidNum, change_given: changeNum,
+      total: discountedTotal, paid: paidNum, change_given: changeNum,
     });
     if (error) { setBusy(false); toast.error(error.message); return; }
     await doStockAndShots();
@@ -2466,7 +2365,7 @@ function CashOverlay({
         owner_id: ownerId,
         cashier_id: profile.id,
         type: "charge",
-        amount: total,
+        amount: discountedTotal,
         items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
         note: "[CASH] " + itemsDesc,
       });
@@ -2507,7 +2406,13 @@ function CashOverlay({
               <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
                 <div className="rounded-2xl p-5 text-center" style={{ background: "var(--gradient-hero)" }}>
                   <div className="text-sm font-medium text-primary-foreground/80">Total Due</div>
-                  <div className="text-5xl font-black text-primary-foreground">${total.toFixed(2)}</div>
+                  {orderDiscount > 0 && (
+                    <div className="text-xs line-through text-primary-foreground/50 mb-0.5">${total.toFixed(2)}</div>
+                  )}
+                  <div className="text-5xl font-black text-primary-foreground">${discountedTotal.toFixed(2)}</div>
+                  {orderDiscount > 0 && (
+                    <div className="text-xs font-semibold text-green-300 mt-0.5">-${orderDiscount.toFixed(2)} discount</div>
+                  )}
                   {selectedCustomer && (
                     <div className="mt-2 text-xs font-black text-primary-foreground/70">
                       {payMode === "credit" ? "🧾 Credit" : "💵 Cash"} · {selectedCustomer.full_name}
@@ -2518,10 +2423,47 @@ function CashOverlay({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
-                    <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                      <Trash2 className="h-4 w-4" /> Clear all
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { if (orderDiscount > 0) { setOrderDiscount(0); setDiscountVal(""); setDiscountOpen(false); } else { setDiscountOpen(v => !v); } }}
+                        className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black transition active:scale-95"
+                        style={orderDiscount > 0
+                          ? { background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80" }
+                          : { background: "rgba(250,204,21,0.1)", border: "1px solid rgba(250,204,21,0.25)", color: "#facc15" }}>
+                        {orderDiscount > 0 ? `✕ -$${orderDiscount.toFixed(2)}` : "Discount"}
+                      </button>
+                      <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                        <Trash2 className="h-4 w-4" /> Clear all
+                      </button>
+                    </div>
                   </div>
+                  {discountOpen && orderDiscount === 0 && (
+                    <div className="rounded-xl border border-yellow-500/30 p-3 space-y-2" style={{ background: "oklch(0.18 0.04 80 / 0.5)" }}>
+                      <div className="text-xs font-semibold text-yellow-300/70 uppercase tracking-widest text-center">Order Discount ($)</div>
+                      <div className="rounded-lg border border-yellow-500/20 px-3 py-2 text-center text-xl font-black text-yellow-100" style={{ background: "oklch(0.12 0.02 80)" }}>
+                        {discountVal || "0"}
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
+                          <button key={k} type="button"
+                            onClick={() => {
+                              if (k === "⌫") setDiscountVal(v => v.slice(0, -1));
+                              else if (k === ".") { if (!discountVal.includes(".")) setDiscountVal(v => v + "."); }
+                              else { const dot = discountVal.indexOf("."); if (dot !== -1 && discountVal.length - dot > 2) return; setDiscountVal(v => v === "0" ? k : v + k); }
+                            }}
+                            className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}>
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        className="w-full h-10 rounded-xl font-black text-sm transition active:scale-95"
+                        style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                        onClick={() => { const d = Math.min(parseFloat(discountVal) || 0, total); setOrderDiscount(d); setDiscountOpen(false); }}>
+                        Apply Discount
+                      </button>
+                    </div>
+                  )}
                   {cart.map((i) => (
                     <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
                       <div className="h-20 w-14 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
@@ -2537,7 +2479,7 @@ function CashOverlay({
                             <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
                           </div>
                         </div>
-                        <CashItemActions item={i} onDec={onDec} onAdd={onAdd} onRemove={onRemove} onDiscount={onDiscount} />
+                        <CashItemActions item={i} onDec={onDec} onAdd={onAdd} onRemove={onRemove} />
                       </div>
                     </div>
                   ))}
@@ -2558,7 +2500,10 @@ function CashOverlay({
                   <div className="rounded-2xl p-6 text-center space-y-2" style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}>
                     <div className="text-sm font-semibold" style={{ color: "var(--primary)" }}>Charging to</div>
                     <div className="text-2xl font-black" style={{ color: "var(--primary)" }}>{selectedCustomer.full_name}</div>
-                    <div className="text-4xl font-black" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</div>
+                    <div className="text-4xl font-black" style={{ color: "var(--primary)" }}>${discountedTotal.toFixed(2)}</div>
+                    {orderDiscount > 0 && (
+                      <div className="text-xs text-green-400 font-semibold">-${orderDiscount.toFixed(2)} discount applied</div>
+                    )}
                     {Number(selectedCustomer.balance_owed) > 0 && (
                       <div className="text-sm text-red-400 font-semibold">Current balance: ${Number(selectedCustomer.balance_owed).toFixed(2)}</div>
                     )}
@@ -2572,7 +2517,7 @@ function CashOverlay({
                     <div className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}>
                       <div className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}>{enough ? "Change to Give" : "Short by"}</div>
                       <div className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}>
-                        ${Number(paid) === 0 ? "0.00" : (enough ? change : total - Number(paid)).toFixed(2)}
+                        ${Number(paid) === 0 ? "0.00" : (enough ? change : discountedTotal - Number(paid)).toFixed(2)}
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -2723,14 +2668,13 @@ type CreditAccount = {
 // Records a credit_charge + immediate credit_payment so the transaction history
 // shows the purchase while balance stays at $0 (cleared).
 function CashCustomerOverlay({
-  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number;
   cart: CartItem[];
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, discountAmt: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: (paid: number, change: number) => void;
@@ -2997,14 +2941,13 @@ function CashCustomerOverlay({
 }
 
 function CreditSaleOverlay({
-  total, cart, onDec, onAdd, onRemove, onDiscount, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
 }: {
   total: number;
   cart: CartItem[];
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
-  onDiscount: (id: string, discountAmt: number) => void;
   onClearCart: () => void;
   onClose: () => void;
   onSuccess: () => void;
@@ -3174,13 +3117,12 @@ function CreditSaleOverlay({
                           <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
                         </div>
                       </div>
-                      {/* Action bar: D − qty + X */}
+                      {/* Action bar: − qty + X */}
                       <CashItemActions
                         item={i}
                         onDec={onDec}
                         onAdd={onAdd}
                         onRemove={onRemove}
-                        onDiscount={onDiscount}
                       />
                     </div>
                   </div>
