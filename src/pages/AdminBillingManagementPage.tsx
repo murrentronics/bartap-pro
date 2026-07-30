@@ -197,7 +197,6 @@ export default function AdminBillingManagementPage() {
         const isMachinesBarAddon = (plan as any).plan_type === "machines_bar_addon";
         const isPremiumAddon     = (plan as any).plan_type === "premium_addon";
         const isAnyBarAddon      = isBarOnlyAddon || isMachinesBarAddon || isPremiumAddon;
-
         if (isChainPlan) {
           // Chain plan: set plan_type = "chain", chain_addon_active = true,
           // subscription_end_date = now + duration_months, chain_bar_count = 0
@@ -399,7 +398,7 @@ export default function AdminBillingManagementPage() {
       planType === "machines_addon"    ? `Machines add-on removed` :
       planType === "bar_only_addon"    ? `Bar addon revoked` :
       planType === "machines_bar_addon"? `Machines bar addon revoked` :
-      planType === "premium_addon"     ? `Premium bar addon revoked` :
+      planType === "premium_addon"     ? `${selectedPayment.profiles?.username} extra bars revoked — reset to Premium` :
       "Subscription revoked"
     );
     setSelectedPayment(null);

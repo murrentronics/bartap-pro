@@ -38,6 +38,7 @@ COMMENT ON COLUMN public.billing_payments.addon_bar_data
   IS 'JSON array of {name, location, type} for each bar to be created on approval';
 
 -- 3. Drop and recreate plan_type check constraint
+--    Must include ALL plan_type values that exist in the table, including archived rows.
 ALTER TABLE public.billing_plans DROP CONSTRAINT IF EXISTS billing_plans_plan_type_check;
 DO $$
 DECLARE r RECORD;
@@ -52,13 +53,24 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Normalize: any row whose plan_type is NULL or unrecognised gets set to 'basic'
+-- so the new constraint won't fail on stale data.
+UPDATE public.billing_plans
+SET plan_type = 'basic'
+WHERE plan_type IS NULL
+   OR plan_type NOT IN (
+      'basic', 'machines_addon', 'premium', 'chain',
+      'machines_only', 'bar_addon',
+      'bar_only_addon', 'machines_bar_addon'
+   );
+
 ALTER TABLE public.billing_plans
   ADD CONSTRAINT billing_plans_plan_type_check
   CHECK (plan_type IN (
     'basic', 'machines_addon', 'premium', 'chain',
     'machines_only', 'bar_addon',
-    'bar_only_addon', 'machines_bar_addon', 'premium_addon',
-    'premium_upgrade'
+    'bar_only_addon', 'machines_bar_addon',
+    'premium_addon'
   ));
 
 -- 4. Seed addon plans (idempotent)
@@ -68,16 +80,14 @@ INSERT INTO public.billing_plans (name, amount, duration_months, currency, plan_
 SELECT 'Bar Only — Extra Bar', 1200.00, 12, 'TT', 'bar_only_addon'
 WHERE NOT EXISTS (SELECT 1 FROM public.billing_plans WHERE plan_type = 'bar_only_addon');
 
--- Machines Only → extra bar at $1,200/yr each
+-- Machines Only → extra machines account at $1,200/yr each
 INSERT INTO public.billing_plans (name, amount, duration_months, currency, plan_type)
-SELECT 'Machines Only — Extra Bar', 1200.00, 12, 'TT', 'machines_bar_addon'
+SELECT 'Machines Only — Extra Account', 1200.00, 12, 'TT', 'machines_bar_addon'
 WHERE NOT EXISTS (SELECT 1 FROM public.billing_plans WHERE plan_type = 'machines_bar_addon');
 
--- Premium → extra bar at $1,500/yr each
+-- Note: Premium (Bar with Machines) owners adding more bars upgrades them to Chain.
+-- plan_type flips to 'chain' on approval. Each extra bar = $1,500.
+-- Total new annual cost = $3,000 (premium base) + (N × $1,500).
 INSERT INTO public.billing_plans (name, amount, duration_months, currency, plan_type)
 SELECT 'Bar with Machines — Extra Bar', 1500.00, 12, 'TT', 'premium_addon'
 WHERE NOT EXISTS (SELECT 1 FROM public.billing_plans WHERE plan_type = 'premium_addon');
-
--- Upgrade: Bar Only or Machines Only → Premium (price = premium plan price, paid in full)
--- No separate row needed — the existing premium plan row is used for the upgrade payment.
--- The admin approval logic detects the owner's current plan_type and handles accordingly.

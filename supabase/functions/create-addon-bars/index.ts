@@ -106,7 +106,7 @@ serve(async (req) => {
 
       // Derive plan_type for the sub-account based on the owner's plan
       const subPlanType =
-        ownerProfile.plan_type === "premium"     ? "premium"     :
+        (ownerProfile.plan_type === "premium" || planType === "premium_addon") ? "chain" :
         ownerProfile.plan_type === "machines_only" ? "machines_only" :
         "basic"; // bar_only_addon owners are basic
 
@@ -153,7 +153,12 @@ serve(async (req) => {
       status:          "approved",
     };
 
-    if (ownerProfile.plan_type === "premium") {
+    if (planType === "premium_addon") {
+      // Premium owner adding bars → flip to chain, update subscription_end_date
+      profileUpdates.plan_type         = "chain";
+      profileUpdates.chain_addon_active = true;
+      profileUpdates.subscription_end_date = newEndISO;
+    } else if (ownerProfile.plan_type === "premium") {
       profileUpdates.premium_subscription_end_date = newEndISO;
     } else if (ownerProfile.plan_type === "machines_only") {
       profileUpdates.machines_addon_end_date = newEndISO;
