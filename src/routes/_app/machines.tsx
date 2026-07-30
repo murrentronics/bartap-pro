@@ -1385,6 +1385,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setLogsLoading(false);
   }, [machine.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Always load logs on mount so the hero stat cards have the latest log immediately,
+  // regardless of which tab the user opens first.
+  useEffect(() => { loadLogs(); }, [loadLogs]);
+
   useEffect(() => {
     if (monitorSubTab === "logs") loadLogs();
   }, [monitorSubTab, loadLogs]);
@@ -1887,15 +1891,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const latestLog = monitorLogs[0];
   const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
-  // Stat cards: use latest log's in_present/out_present (stable, never wiped by New Entry)
+  // Total Income  = latest log's Present IN  (the raw counter reading)
+  // Total Expense = latest log's Present OUT + any manually added expenses
+  // Total Profit  = Present IN − Present OUT − manual expenses (no diff arithmetic)
   const cardIn  = latestLog ? latestLog.in_present  : (monitorCardIn  ?? 0);
   const cardOut = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
   const totalIncome = cardIn;
   const totalPayout = cardOut + manualPayouts;
-  // Profit = in_diff - out_diff (difference between readings, not raw present values)
-  const totalProfit = latestLog
-    ? (latestLog.in_diff - latestLog.out_diff)
-    : (cardIn - cardOut);
+  const totalProfit = cardIn - cardOut - manualPayouts;
 
   // ── Today's totals (bar_session_start → now) ─────────────────────────────────
   const todayPayouts = barSessionStart
@@ -2869,7 +2872,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
           )}
 
-          {/* Today's stats — bar open to bar close session */}
+          {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
@@ -4215,11 +4218,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const totalIncome = monitorTotals.totalIn;
   const totalExpenseOut = monitorTotals.totalOut;
   const totalPayout = totalExpenseOut + manualExpenses;  // Total Expense = machine OUT + manual expenses
-  // Profit = sum of (in_diff - out_diff) per machine = total difference IN minus total difference OUT
-  const totalInDiffSum  = Object.values(monitorPerMachine).reduce((s, m) => s + m.in_diff,  0);
-  const totalOutDiffSum = Object.values(monitorPerMachine).reduce((s, m) => s + m.out_diff, 0);
-  // Subtract manually added expenses so Total Profit reflects real net after all machine expenses
-  const totalProfit = totalInDiffSum - totalOutDiffSum - manualExpenses;
+  // Profit = sum(in_present) − sum(out_present) − manual expenses
+  // Uses the same Present values shown in the stat cards, no diff arithmetic
+  const totalProfit = monitorTotals.totalIn - monitorTotals.totalOut - manualExpenses;
 
   // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
   const todayPayouts = barSessionStart
@@ -4642,7 +4643,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         {(isOwner || isManager) && (
-        <div className="relative grid grid-cols-2 gap-2">
+        <div className="relative grid gap-2" style={{ gridTemplateColumns: !isCashier ? "1fr 1fr 1fr" : "1fr 1fr" }}>
 
 
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
@@ -4690,68 +4691,19 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           </div>
 
 
+          {!isCashier && (
+          <div className="flex justify-center">
+            <button onClick={onSetFloat}
+              className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", width: "70%" }}>
+              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
+            </button>
+          </div>
+          )}
+
+
         </div>
         )}
-
-
-        {/* Float + Expense buttons */}
-
-
-        <div className="grid gap-2" style={{ gridTemplateColumns: !isCashier ? "1fr 1fr" : "1fr" }}>
-
-
-          {!isCashier && (
-
-
-            <button onClick={onSetFloat}
-
-
-              className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center"
-
-
-              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
-
-
-              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
-
-
-            </button>
-
-
-          )}
-
-
-          {/* Expense button — available to all users including cashier */}
-
-
-          {orderedMachines.length > 0 && (
-
-
-            <button
-
-
-              onClick={() => onAddExpense()}
-
-
-              className="h-14 rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
-
-
-              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
-
-
-              <Receipt className="h-4 w-4" />
-
-
-              Add Expense
-
-
-            </button>
-
-
-          )}
-
-
-        </div>
 
 
       </section>
@@ -4762,7 +4714,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
-        {/* Lifetime totals */}
+        {/* Lifetime totals — owner only */}
+        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
 
 
@@ -4778,8 +4731,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
         </div>
+        )}
 
-        {/* Today's stats — bar open to bar close session */}
+        {/* Today's stats — owner only */}
+        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
           <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
           <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
@@ -4787,6 +4742,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
             color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
+        )}
 
         {/* Session stats */}
 
@@ -4818,6 +4774,19 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
 
+
+      {/* Expense button — below Hero 2, one column width */}
+      {orderedMachines.length > 0 && (
+        <div className="flex justify-start">
+          <button
+            onClick={() => onAddExpense()}
+            className="h-14 w-full max-w-xs rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
+            style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
+            <Receipt className="h-4 w-4" />
+            Add Expense
+          </button>
+        </div>
+      )}
 
       {/* Edit mode toolbar */}
 
