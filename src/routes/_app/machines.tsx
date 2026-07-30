@@ -1887,18 +1887,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setLoading(false);
   }, [machine.id]);
 
-  // ── Machine Totals (from monitor log + manual expenses) ─────────────────────
+  // ── Machine Totals (directly from latest log header — no calculations) ──────
   const latestLog = monitorLogs[0];
   const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
-  // Total Income  = latest log's Present IN  (the raw counter reading)
-  // Total Expense = latest log's Present OUT + any manually added expenses
-  // Total Profit  = Present IN − Present OUT − manual expenses (no diff arithmetic)
-  const cardIn  = latestLog ? latestLog.in_present  : (monitorCardIn  ?? 0);
-  const cardOut = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
-  const totalIncome = cardIn;
-  const totalPayout = cardOut + manualPayouts;
-  const totalProfit = cardIn - cardOut - manualPayouts;
+  // Total Income  = latest log's PRESENT IN  (exactly as shown in log)
+  // Total Expense = latest log's PRESENT OUT (exactly as shown in log)
+  // Total Profit  = latest log header PROFIT (in_diff − out_diff, exactly as shown in log header)
+  const totalIncome = latestLog ? latestLog.in_present  : (monitorCardIn  ?? 0);
+  const totalPayout = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
+  const totalProfit = latestLog ? (latestLog.in_diff - latestLog.out_diff) : (totalIncome - totalPayout);
 
   // ── Today's totals (bar_session_start → now) ─────────────────────────────────
   const todayPayouts = barSessionStart
@@ -4174,7 +4172,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   const { t } = useTranslation();
 
-  const [monitorTotals, setMonitorTotals] = useState<{ totalIn: number; totalOut: number }>({ totalIn: 0, totalOut: 0 });
+  const [monitorTotals, setMonitorTotals] = useState<{ totalIn: number; totalOut: number; totalProfit: number }>({ totalIn: 0, totalOut: 0, totalProfit: 0 });
   const [monitorPerMachine, setMonitorPerMachine] = useState<Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }>>({});
 
   useEffect(() => {
@@ -4195,9 +4193,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               latest.push(row);
             }
           }
-          const inSum  = latest.reduce((s: number, m: any) => s + Number(m.in_present  || 0), 0);
-          const outSum = latest.reduce((s: number, m: any) => s + Number(m.out_present || 0), 0);
-          setMonitorTotals({ totalIn: inSum, totalOut: outSum });
+          const inSum     = latest.reduce((s: number, m: any) => s + Number(m.in_present  || 0), 0);
+          const outSum    = latest.reduce((s: number, m: any) => s + Number(m.out_present || 0), 0);
+          const profitSum = latest.reduce((s: number, m: any) => s + (Number(m.in_diff || 0) - Number(m.out_diff || 0)), 0);
+          setMonitorTotals({ totalIn: inSum, totalOut: outSum, totalProfit: profitSum });
           // Store per-machine for individual card TP
           const perMachine: Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }> = {};
           for (const row of latest) {
@@ -4215,12 +4214,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   // Manual cashier expenses only (Add Expense button) — added to Total Expense
   const manualExpenses = entries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
-  const totalIncome = monitorTotals.totalIn;
-  const totalExpenseOut = monitorTotals.totalOut;
-  const totalPayout = totalExpenseOut + manualExpenses;  // Total Expense = machine OUT + manual expenses
-  // Profit = sum(in_present) − sum(out_present) − manual expenses
-  // Uses the same Present values shown in the stat cards, no diff arithmetic
-  const totalProfit = monitorTotals.totalIn - monitorTotals.totalOut - manualExpenses;
+  const totalIncome = monitorTotals.totalIn;                      // sum of in_present from latest logs
+  const totalPayout = monitorTotals.totalOut + manualExpenses;    // sum of out_present + manual expenses
+  const totalProfit = (monitorTotals.totalProfit ?? 0) - manualExpenses;  // sum of (in_diff - out_diff) - manual expenses
 
   // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
   const todayPayouts = barSessionStart
@@ -4767,24 +4763,27 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         </div>
 
 
+        {/* Add Expense — full width on mobile, one column on tablet+ */}
+        {orderedMachines.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => onAddExpense()}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition"
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
+              <Receipt className="h-4 w-4" />
+              Add Expense
+            </button>
+          </div>
+        )}
+
+
       </section>
 
 
 
 
 
-      {/* Expense button — below Hero 2, one column width */}
-      {orderedMachines.length > 0 && (
-        <div className="flex justify-start">
-          <button
-            onClick={() => onAddExpense()}
-            className="h-14 w-full max-w-xs rounded-xl font-black text-sm active:scale-95 transition flex items-center justify-center gap-2"
-            style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)" }}>
-            <Receipt className="h-4 w-4" />
-            Add Expense
-          </button>
-        </div>
-      )}
+
 
       {/* Edit mode toolbar */}
 
