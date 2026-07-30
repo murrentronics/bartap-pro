@@ -50,23 +50,27 @@ export default function SwitchBarPage() {
     }
   };
 
-  const canAddBar = chainBars.length < 10;
+  const isMachinesOnlyOwner = profile?.plan_type === "machines_only";
 
   return (
     <div className="px-1 py-4 space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-black">Your Bars</h1>
+        <h1 className="text-2xl font-black">
+          {isMachinesOnlyOwner ? "Your Machine Accounts" : "Your Bars"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Select a bar to manage, or add a new one.
+          {isMachinesOnlyOwner
+            ? "Select an account to manage, or add a new one."
+            : "Select a bar to manage, or add a new one."}
         </p>
       </div>
 
-      {/* Bar count badge */}
+      {/* Bar count badge — shows current count only, no cap */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 text-primary"
           style={{ background: "rgba(251,146,60,0.08)" }}>
-          {chainBars.length} / 10 bars
+          {chainBars.length} {isMachinesOnlyOwner ? "account" : "bar"}{chainBars.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -84,10 +88,17 @@ export default function SwitchBarPage() {
             <div className="text-center py-16 space-y-3">
               <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-border"
                 style={{ background: "var(--gradient-card)" }}>
-                <Wine className="h-8 w-8 text-muted-foreground" />
+                {isMachinesOnlyOwner
+                  ? <Gamepad2 className="h-8 w-8 text-muted-foreground" />
+                  : <Wine className="h-8 w-8 text-muted-foreground" />
+                }
               </div>
-              <p className="text-muted-foreground text-sm font-semibold">No bars yet</p>
-              <p className="text-xs text-muted-foreground">Add your first bar to get started.</p>
+              <p className="text-muted-foreground text-sm font-semibold">
+                {isMachinesOnlyOwner ? "No machine accounts yet" : "No bars yet"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isMachinesOnlyOwner ? "Add your first account to get started." : "Add your first bar to get started."}
+              </p>
             </div>
           )}
 
@@ -130,9 +141,11 @@ export default function SwitchBarPage() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground truncate">{bar.bar_location}</span>
                       <span className="shrink-0">
-                        {bar.has_machines
-                          ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Machines</span>
-                          : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Bar only</span>
+                        {isMachinesOnlyOwner
+                          ? <span className="flex items-center gap-1 text-xs font-bold text-orange-400"><Gamepad2 className="h-3 w-3" />Machines Only</span>
+                          : bar.has_machines
+                            ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Machines</span>
+                            : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Bar only</span>
                         }
                       </span>
                     </div>
@@ -178,22 +191,16 @@ export default function SwitchBarPage() {
         <div className="pt-2">
           <Button
             onClick={() => nav("/create-bar")}
-            disabled={!canAddBar}
             className="w-full h-12 font-black text-sm gap-2"
-            style={{ background: canAddBar ? "var(--gradient-hero)" : undefined }}
+            style={{ background: "var(--gradient-hero)" }}
           >
             <Plus className="h-4 w-4" />
-            {canAddBar ? "Add New Bar" : "Maximum 10 bars reached"}
+            {isMachinesOnlyOwner ? "Add New Machine Account" : "Add New Bar"}
           </Button>
-          {!canAddBar && (
-            <p className="text-center text-xs text-muted-foreground mt-2">
-              You've reached the maximum of 10 bars on your Chain plan.
-            </p>
-          )}
         </div>
       )}
 
-      {/* Addon owners — go to Billing to add more bars */}
+      {/* Addon owners — go to Billing to add more */}
       {!barsLoading && isMultiBarOwner && (
         <div className="pt-2">
           <Button
@@ -202,10 +209,12 @@ export default function SwitchBarPage() {
             style={{ background: "var(--gradient-hero)" }}
           >
             <Plus className="h-4 w-4" />
-            Add More Bars via Billing
+            {isMachinesOnlyOwner ? "Add More Machines via Billing" : "Add More Bars via Billing"}
           </Button>
           <p className="text-center text-xs text-muted-foreground mt-2">
-            Additional bars are added through your billing plan.
+            {isMachinesOnlyOwner
+              ? "Additional machine accounts are added through your billing plan."
+              : "Additional bars are added through your billing plan."}
           </p>
         </div>
       )}

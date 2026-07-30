@@ -65,7 +65,6 @@ serve(async (req) => {
     const ownerId: string = payment.owner_id;
     const barData: BarEntry[] = payment.addon_bar_data ?? [];
     const planType: string = (payment.billing_plans as any)?.plan_type ?? "";
-    const durationMonths: number = (payment.billing_plans as any)?.duration_months ?? 12;
 
     // Load owner profile
     const { data: ownerProfile } = await supabase
@@ -139,10 +138,11 @@ serve(async (req) => {
       createdIds.push(barId);
     }
 
-    // New subscription end date = now + 12 months (fresh renewal for entire plan)
-    const newEndDate = new Date();
-    newEndDate.setMonth(newEndDate.getMonth() + durationMonths);
-    const newEndISO = newEndDate.toISOString();
+    // ── DO NOT reset subscription_end_date when approving an addon ──────────
+    // Addon bars are pro-rated to the remaining time on the owner's current plan.
+    // The end date stays as-is so that at renewal time the owner pays full price
+    // for all bars (base plan + all addons) in one bulk annual payment.
+    // We only update the bar counts and status flags.
 
     // Determine which date column(s) to update based on owner plan
     const profileUpdates: Record<string, unknown> = {
@@ -154,18 +154,13 @@ serve(async (req) => {
     };
 
     if (planType === "premium_addon") {
-      // Premium owner adding bars → flip to chain, update subscription_end_date
+      // Premium owner adding bars → flip to chain, but keep existing subscription_end_date
       profileUpdates.plan_type         = "chain";
       profileUpdates.chain_addon_active = true;
-      profileUpdates.subscription_end_date = newEndISO;
-    } else if (ownerProfile.plan_type === "premium") {
-      profileUpdates.premium_subscription_end_date = newEndISO;
-    } else if (ownerProfile.plan_type === "machines_only") {
-      profileUpdates.machines_addon_end_date = newEndISO;
-    } else {
-      // basic (bar_only_addon)
-      profileUpdates.subscription_end_date = newEndISO;
+      // Note: subscription_end_date intentionally NOT updated here — it aligns to the existing plan expiry
     }
+    // For bar_only_addon and machines_bar_addon, no date changes at all —
+    // they already have a subscription_end_date / machines_addon_end_date in place.
 
     await supabase.from("profiles").update(profileUpdates).eq("id", ownerId);
 

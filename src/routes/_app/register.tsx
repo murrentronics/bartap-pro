@@ -76,6 +76,7 @@ export default function RegisterPage() {
   const [floatBarAmount, setFloatBarAmount] = useState("");
   const [floatMachineAmount, setFloatMachineAmount] = useState("");
   const [hasMachinesAddon, setHasMachinesAddon] = useState(false);
+  const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
 
   const handleOpenBar = async () => {
@@ -83,19 +84,21 @@ export default function RegisterPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: ownerRow } = await (supabase as any)
       .from("profiles")
-      .select("machines_addon_active, plan_type")
+      .select("machines_addon_active, plan_type, is_machines_account")
       .eq("id", ownerId)
       .single();
     const machinesActive = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
+    const machinesOnly = !!(ownerRow?.is_machines_account);
     setHasMachinesAddon(machinesActive);
+    setIsMachinesAccount(machinesOnly);
     setFloatBarAmount("");
     setFloatMachineAmount("");
     setShowFloatModal(true);
   };
 
   const confirmOpenBarWithFloat = async () => {
-    const barFloatVal = parseFloat(floatBarAmount);
-    if (isNaN(barFloatVal) || barFloatVal < 0) { toast.error("Enter a valid bar float amount"); return; }
+    const barFloatVal = isMachinesAccount ? 0 : parseFloat(floatBarAmount);
+    if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachinesAddon) {
       const machineFloatVal = parseFloat(floatMachineAmount);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
@@ -808,15 +811,18 @@ export default function RegisterPage() {
               <p className="text-xs text-muted-foreground mt-1">Set floats before starting the session</p>
             </div>
             <div className="px-6 pb-6 pt-4 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
-                <input
-                  type="number" min="0" step="0.01" placeholder="e.g. 500.00"
-                  value={floatBarAmount} onChange={e => setFloatBarAmount(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                  autoFocus
-                />
-              </div>
+              {/* Bar Float — hidden for machines-only accounts */}
+              {!isMachinesAccount && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
+                  <input
+                    type="number" min="0" step="0.01" placeholder="e.g. 500.00"
+                    value={floatBarAmount} onChange={e => setFloatBarAmount(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
+                  />
+                </div>
+              )}
               {hasMachinesAddon && (
                 <div className="space-y-1">
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
@@ -833,7 +839,7 @@ export default function RegisterPage() {
                   Cancel
                 </button>
                 <button onClick={confirmOpenBarWithFloat}
-                  disabled={barToggleBusy || !floatBarAmount || (hasMachinesAddon && !floatMachineAmount)}
+                  disabled={barToggleBusy || (!isMachinesAccount && !floatBarAmount) || (hasMachinesAddon && !floatMachineAmount)}
                   className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
                   {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bar"}

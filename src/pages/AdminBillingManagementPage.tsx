@@ -289,15 +289,32 @@ export default function AdminBillingManagementPage() {
           const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
           const { data: { session: adminSession } } = await supabase.auth.getSession();
 
-          const res = await fetch(`${supabaseUrl}/functions/v1/create-addon-bars`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${adminSession?.access_token}`,
-              "apikey": supabaseKey,
-            },
-            body: JSON.stringify({ payment_id: selectedPayment.id }),
-          });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30s timeout
+
+          let res: Response;
+          try {
+            res = await fetch(`${supabaseUrl}/functions/v1/create-addon-bars`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${adminSession?.access_token}`,
+                "apikey": supabaseKey,
+              },
+              body: JSON.stringify({ payment_id: selectedPayment.id }),
+              signal: controller.signal,
+            });
+          } catch (fetchErr: unknown) {
+            clearTimeout(timeoutId);
+            const msg = fetchErr instanceof Error && fetchErr.name === "AbortError"
+              ? "Request timed out — please try again"
+              : "Network error reaching bar creation service";
+            toast.error(msg);
+            setLoading(false);
+            return;
+          }
+          clearTimeout(timeoutId);
+
           const json = await res.json();
           if (!res.ok) {
             toast.error("Bar creation failed: " + (json.error ?? "unknown error"));
@@ -305,9 +322,18 @@ export default function AdminBillingManagementPage() {
             return;
           }
 
-          // next_due_date = now + 12 months (edge fn already updated profile dates)
-          const addonEnd = new Date();
-          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
+          // next_due_date = owner's existing plan end date (NOT now + 12 months)
+          // Addon bars are pro-rated to the remaining time on the base plan.
+          // The edge function does NOT move the subscription_end_date, so the
+          // owner's renewal date stays intact and they pay full price at renewal.
+          const existingEnd = ownerProfile?.subscription_end_date
+            ?? ownerProfile?.premium_subscription_end_date
+            ?? ownerProfile?.machines_addon_end_date;
+          const addonEnd = existingEnd ? new Date(existingEnd) : (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + plan.duration_months);
+            return d;
+          })();
           updates.next_due_date = addonEnd.toISOString();
 
         } else {

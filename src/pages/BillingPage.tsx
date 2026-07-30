@@ -154,14 +154,23 @@ export default function BillingPage() {
     const isRenewal = !!renewMode;
     const isFirst   = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
 
-    // For addon plans, amount = unit price × number of bars
+    // For addon plans, amount = pro-rated unit price × number of bars
     const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan.plan_type ?? "");
     const amount = isAddonPlan
-      ? selectedPlan.amount * addonBarCount
+      ? totalDue   // already pro-rated in derived state above
       : selectedPlan.amount;
 
     const notesParts: string[] = [];
-    if (isAddonPlan) notesParts.push(`${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${selectedPlan.amount} TT each`);
+    if (isAddonPlan) {
+      if (planEndDate && daysRemaining < 365) {
+        notesParts.push(
+          `${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${proRataUnitPrice} TT each ` +
+          `(pro-rated: ${daysRemaining}d remaining of 365d, full price $${selectedPlan.amount} TT/yr)`
+        );
+      } else {
+        notesParts.push(`${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${selectedPlan.amount} TT each`);
+      }
+    }
 
     let dueDate = new Date();
     if (isRenewal) {
@@ -245,9 +254,69 @@ export default function BillingPage() {
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
 
   const isAddonPlanSelected = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan?.plan_type ?? "");
-  const totalDue    = isAddonPlanSelected
-    ? (selectedPlan?.amount ?? 0) * addonBarCount
+
+  // ── Total renewal amount (base plan + all active addons at full annual price) ──
+  // Pro-rata only applies at the time of purchasing a new addon — never at renewal.
+  const addonBarQty = profile?.addon_bar_count ?? 0;
+
+  const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 2400)
+                      : isPremium      ? (premiumPlan?.amount      ?? 3000)
+                      : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 2400)
+                      : 0;
+
+  const machinesAddonPrice = (isBasic && hasMachinesAddon) ? (machinesAddonPlan?.amount ?? 600) : 0;
+
+  const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 1200)
+                        : isPremium      ? (premiumAddonPlan?.amount     ?? 1500)
+                        : isMachinesOnly ? (machinesBarAddonPlan?.amount ?? 1200)
+                        : 0;
+  const extraBarPrice = addonBarQty * perBarFullPrice;
+
+  const totalRenewalAmount = basePlanPrice + machinesAddonPrice + extraBarPrice;
+
+  // Breakdown shown only when addons exist
+  const renewalBreakdown = (() => {
+    const parts: string[] = [];
+    if (machinesAddonPrice > 0) parts.push(`$${machinesAddonPrice.toLocaleString()} machines addon`);
+    if (addonBarQty > 0) parts.push(`${addonBarQty}×$${perBarFullPrice.toLocaleString()} extra bar${addonBarQty > 1 ? "s" : ""}`);
+    if (parts.length === 0) return "";
+    return `$${basePlanPrice.toLocaleString()} plan + ${parts.join(" + ")}`;
+  })();
+
+
+
+  // ── Pro-rata calculation for addon plans ────────────────────────────────
+  // Addons must align to the owner's existing plan expiry so that at renewal
+  // time everything is paid together in one bulk payment. We charge only for
+  // the fraction of the year remaining on the current plan.
+  const planEndDate: Date | null = (() => {
+    if (!isAddonPlanSelected) return null;
+    if (profile?.plan_type === "premium" && profile?.premium_subscription_end_date)
+      return new Date(profile.premium_subscription_end_date);
+    if (profile?.plan_type === "machines_only" && profile?.machines_addon_end_date)
+      return new Date(profile.machines_addon_end_date);
+    if (profile?.subscription_end_date)
+      return new Date(profile.subscription_end_date);
+    return null;
+  })();
+
+  // days remaining on the plan (capped between 0 and 365)
+  const daysRemaining: number = planEndDate
+    ? Math.min(365, Math.max(0, Math.ceil((planEndDate.getTime() - Date.now()) / 86400000)))
+    : 365;
+
+  // pro-rata fraction: days_remaining / 365
+  const proRataFraction: number = planEndDate ? daysRemaining / 365 : 1;
+
+  // unit price after pro-rating (round to nearest dollar)
+  const proRataUnitPrice: number = isAddonPlanSelected
+    ? Math.round((selectedPlan?.amount ?? 0) * proRataFraction)
+    : (selectedPlan?.amount ?? 0);
+
+  const totalDue: number = isAddonPlanSelected
+    ? proRataUnitPrice * addonBarCount
     : selectedPlan?.amount ?? 0;
+
   const histPages   = Math.max(1, Math.ceil(historyTotal / HIST_SIZE));
 
 
@@ -404,13 +473,16 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Bar Only</p>
-                          <p className="text-xs text-gray-500">${basicPlan?.amount.toFixed(0) ?? "2400"} TT / year</p>
+                          <p className="text-xs text-gray-500">${totalRenewalAmount.toLocaleString()} TT / year</p>
                         </div>
                       </div>
                       <span className={`text-xs font-black px-2.5 py-1 rounded-full ${basicOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
                         {basicOverdue ? "OVERDUE" : "ACTIVE"}
                       </span>
                     </div>
+                    {renewalBreakdown && (
+                      <p className="text-xs text-gray-400">{renewalBreakdown}</p>
+                    )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Renews</span>
                       <span className={`font-bold ${basicOverdue ? "text-red-500" : basicDaysLeft !== null && basicDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
@@ -422,7 +494,7 @@ export default function BillingPage() {
                       basicCanRenew ? (
                         <button onClick={() => { setSelectedPlan(basicPlan!); setRenewMode("basic"); setStep("payment"); }}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${basicOverdue ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>
-                          {basicOverdue ? "⚠️ Renew Now — $" + (basicPlan?.amount.toFixed(0) ?? "2400") + " TT" : "Renew Bar Only — $" + (basicPlan?.amount.toFixed(0) ?? "2400") + " TT"}
+                          {basicOverdue ? "⚠️ Renew Now — $" + totalRenewalAmount.toLocaleString() + " TT" : "Renew Bar Only — $" + totalRenewalAmount.toLocaleString() + " TT"}
                         </button>
                       ) : (
                         <p className="text-xs text-center text-gray-400">Renewal opens {basicDaysLeft !== null ? basicDaysLeft - 7 : 0} days before due date</p>
@@ -441,16 +513,20 @@ export default function BillingPage() {
                           </div>
                           <div>
                             <p className="font-black text-gray-900 text-sm">Bar with Machines</p>
-                            <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "3000"} TT / year</p>
+                            <p className="text-xs text-gray-500">${totalRenewalAmount.toLocaleString()} TT / year</p>
                           </div>
                         </div>
                         <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-800"}`}>
                           {premOverdue ? "OVERDUE" : "ACTIVE"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-amber-800 mb-3">
+                      <div className="flex items-center gap-1 text-xs text-amber-800 mb-1">
                         <Gamepad2 className="h-3 w-3" /> Machines Tracker included
                       </div>
+                      {renewalBreakdown && (
+                        <p className="text-xs text-amber-700/70 mb-3">{renewalBreakdown}</p>
+                      )}
+                      {!renewalBreakdown && <div className="mb-3" />}
                       <div className="flex items-center justify-between text-sm mb-3">
                         <span className="text-gray-500">Renews</span>
                         <span className={`font-bold ${premOverdue ? "text-red-500" : premDaysLeft !== null && premDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
@@ -462,7 +538,7 @@ export default function BillingPage() {
                         premCanRenew ? (
                           <button onClick={() => { setSelectedPlan(premiumPlan!); setRenewMode("premium"); setStep("payment"); }}
                             className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${premOverdue ? "bg-red-500 text-white" : "bg-amber-500 text-white"}`}>
-                            {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "3000") + " TT" : "Renew Bar with Machines — $" + (premiumPlan?.amount.toFixed(0) ?? "3000") + " TT"}
+                            {premOverdue ? "⚠️ Renew Now — $" + totalRenewalAmount.toLocaleString() + " TT" : "Renew Bar with Machines — $" + totalRenewalAmount.toLocaleString() + " TT"}
                           </button>
                         ) : (
                           <p className="text-xs text-center text-amber-800/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
@@ -541,13 +617,19 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Machines Only Plan</p>
-                          <p className="text-xs text-gray-500">${machinesOnlyPlan?.amount.toFixed(0) ?? "2400"} TT / year</p>
+                          <p className="text-xs text-gray-500">${totalRenewalAmount.toLocaleString()} TT / year</p>
                         </div>
                       </div>
                       <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
                         {addonOverdue ? "OVERDUE" : "ACTIVE"}
                       </span>
                     </div>
+                    {renewalBreakdown && (
+                      <p className="text-xs text-gray-400 mb-2">{renewalBreakdown}</p>
+                    )}
+                    {renewalBreakdown && (
+                      <p className="text-xs text-gray-400 mb-2">{renewalBreakdown}</p>
+                    )}
                     <div className="flex items-center justify-between text-sm mb-3">
                       <span className="text-gray-500">Renews</span>
                       <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
@@ -561,7 +643,7 @@ export default function BillingPage() {
                           disabled={!machinesOnlyPlan}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50 ${addonOverdue ? "bg-red-500" : ""}`}
                           style={!addonOverdue ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}>
-                          {addonOverdue ? "⚠️ Renew Now — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "2400") + " TT" : "Renew Machines Only — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "2400") + " TT"}
+                          {addonOverdue ? "⚠️ Renew Now — $" + totalRenewalAmount.toLocaleString() + " TT" : "Renew Machines Only — $" + totalRenewalAmount.toLocaleString() + " TT"}
                         </button>
                       ) : (
                         <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
@@ -569,45 +651,6 @@ export default function BillingPage() {
                     )}
                   </div>
 
-                  {/* Bar Add-on card */}
-                  {!pendingPayment && (
-                    hasBarAddon ? (
-                      <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                              <Wine className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-black text-gray-900 text-sm">Bar Add-on</p>
-                              <p className="text-xs text-gray-500">${barAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-black px-2.5 py-1 rounded-full bg-green-100 text-green-600">ACTIVE</span>
-                        </div>
-                        <button onClick={() => { setSelectedPlan(barAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
-                          disabled={!barAddonPlan}
-                          className="w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition bg-blue-600 text-white disabled:opacity-50">
-                          Renew Bar Add-on — ${barAddonPlan?.amount.toFixed(0) ?? "600"} TT
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setSelectedPlan(barAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
-                        disabled={!barAddonPlan}
-                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Wine className="h-5 w-5 text-blue-600" />
-                            <div>
-                              <p className="font-black text-gray-900 text-sm">Add Bar POS</p>
-                              <p className="text-xs text-gray-500 mt-0.5">Add full bar register & credit — $600 TT/yr</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="h-5 w-5 text-gray-400" />
-                        </div>
-                      </button>
-                    )
-                  )}
                 </>
               )} {/* end isMachinesOnly */}
                 </>
@@ -951,9 +994,20 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm">
             <h3 className="font-black text-gray-900 mb-1">{selectedPlan.name}</h3>
             <p className="text-2xl font-black text-orange-700">
-              ${(selectedPlan.amount * addonBarCount).toFixed(0)} <span className="text-sm font-normal text-gray-400">TT/yr total</span>
+              ${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT due now</span>
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">${selectedPlan.amount.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""}</p>
+            {planEndDate && daysRemaining < 365 ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-gray-400">
+                  ${proRataUnitPrice.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""} — pro-rated for {daysRemaining} days remaining
+                </p>
+                <p className="text-xs text-orange-600 font-bold">
+                  At renewal ({planEndDate.toLocaleDateString("en-GB")}) you'll pay full price: ${selectedPlan.amount.toFixed(0)} TT/yr per bar
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 mt-0.5">${selectedPlan.amount.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""}</p>
+            )}
           </div>
 
           {/* How many bars */}
@@ -1038,7 +1092,12 @@ export default function BillingPage() {
           <div className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-1">{renewMode ? "Renewing" : "Subscribing to"}</p>
             <p className="font-black text-gray-900">{selectedPlan.name}</p>
-            <p className="text-2xl font-black text-orange-700 mt-1">${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT</span></p>
+            <p className="text-2xl font-black text-orange-700 mt-1">${totalDue.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT due now</span></p>
+            {isAddonPlanSelected && planEndDate && daysRemaining < 365 && (
+              <p className="text-xs text-orange-600 font-bold mt-1">
+                Pro-rated for {daysRemaining} days — aligns to your plan renewal on {planEndDate.toLocaleDateString("en-GB")}
+              </p>
+            )}
           </div>
 
           <p className="text-sm font-black text-gray-900">How would you like to pay?</p>
@@ -1081,12 +1140,18 @@ export default function BillingPage() {
                 <span className="font-black text-gray-900">{selectedPlan.name}</span>
                 <span className="font-bold text-gray-900">
                   {isAddonPlanSelected
-                    ? `$${selectedPlan.amount.toFixed(0)} × ${addonBarCount}`
+                    ? `$${proRataUnitPrice.toFixed(0)} × ${addonBarCount}`
                     : `$${selectedPlan.amount.toFixed(0)} TT`}
                 </span>
               </div>
+              {isAddonPlanSelected && planEndDate && daysRemaining < 365 && (
+                <div className="text-xs text-orange-600 font-bold bg-orange-50 rounded-lg px-3 py-2">
+                  Pro-rated for {daysRemaining} of 365 days ({Math.round(proRataFraction * 100)}%).
+                  Full price is ${selectedPlan.amount.toFixed(0)} TT/yr per bar. At renewal on {planEndDate.toLocaleDateString("en-GB")} you'll pay full price for all bars together.
+                </div>
+              )}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
-                <span className="text-gray-900">Total</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
+                <span className="text-gray-900">Total due now</span><span className="text-orange-700">${totalDue.toFixed(0)} TT</span>
               </div>
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-sm">

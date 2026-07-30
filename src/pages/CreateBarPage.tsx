@@ -14,10 +14,13 @@ export default function CreateBarPage() {
   const { isChainOwner, chainBars, refreshBars, setActiveBarId } = useChain();
   const nav = useNavigate();
 
+  const isMachinesOnlyOwner = profile?.plan_type === "machines_only";
+
   const [barName, setBarName] = useState("");
   const [barLocation, setBarLocation] = useState("");
-  const [hasMachines, setHasMachines] = useState(false);
-  const [accountType, setAccountType] = useState<"bar" | "bar_machines" | "machines_only">("bar");
+  const [accountType, setAccountType] = useState<"bar" | "bar_machines" | "machines_only">(
+    isMachinesOnlyOwner ? "machines_only" : "bar"
+  );
   const [copyItems, setCopyItems] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,27 +28,13 @@ export default function CreateBarPage() {
   if (!isChainOwner && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        This page is only available for Chain of Bars plan owners.
+        This page is only available for multi-bar plan owners.
       </div>
     );
   }
 
-  // Enforce max 10 bars
-  if (chainBars.length >= 10) {
-    return (
-      <div className="text-center py-20 space-y-4 px-6">
-        <p className="text-lg font-black">Maximum 10 bars reached</p>
-        <p className="text-sm text-muted-foreground">
-          Your Chain plan supports up to 10 bars. Remove an existing bar to add a new one.
-        </p>
-        <Button variant="outline" onClick={() => nav("/switch-bar")}>
-          Back to My Bars
-        </Button>
-      </div>
-    );
-  }
-
-  // If this is the first bar (chainBars.length === 0), skip the copyItems question
+  // For bar accounts: only ask about copying items when there's already at least one bar
+  // and account type is a bar type (not machines-only)
   const needsCopyAnswer = chainBars.length > 0 && accountType !== "machines_only";
   const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2 && (!needsCopyAnswer || copyItems !== null);
 
@@ -130,7 +119,9 @@ export default function CreateBarPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-black">Add New Account</h1>
+        <h1 className="text-2xl font-black">
+          {isMachinesOnlyOwner ? "Add New Machine Account" : "Add New Account"}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Each account is fully independent — its own wallet, cashiers, and records.
         </p>
@@ -168,15 +159,16 @@ export default function CreateBarPage() {
           />
         </div>
 
-        {/* Account type toggle */}
+        {/* Account type toggle — hidden for machines-only owners (always machines_only) */}
+        {!isMachinesOnlyOwner && (
         <div className="space-y-2">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Account Type
           </Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setAccountType("bar")}
+              onClick={() => { setAccountType("bar"); setCopyItems(null); }}
               className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
               style={{
                 background: accountType === "bar" ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
@@ -190,7 +182,7 @@ export default function CreateBarPage() {
             </button>
             <button
               type="button"
-              onClick={() => setAccountType("bar_machines")}
+              onClick={() => { setAccountType("bar_machines"); setCopyItems(null); }}
               className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
               style={{
                 background: accountType === "bar_machines" ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
@@ -202,22 +194,9 @@ export default function CreateBarPage() {
                 Bar + Machines
               </span>
             </button>
-            <button
-              type="button"
-              onClick={() => setAccountType("machines_only")}
-              className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]"
-              style={{
-                background: accountType === "machines_only" ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
-                borderColor: accountType === "machines_only" ? "#7c3aed" : "var(--border)",
-              }}
-            >
-              <Gamepad2 className={`h-5 w-5 ${accountType === "machines_only" ? "text-purple-500" : "text-muted-foreground"}`} />
-              <span className={`text-xs font-black ${accountType === "machines_only" ? "text-purple-500" : "text-muted-foreground"}`}>
-                Machines only
-              </span>
-            </button>
           </div>
         </div>
+        )}
 
         {/* Copy items — only shown for bar types when there's at least one existing bar */}
         {accountType !== "machines_only" && chainBars.length > 0 && (
@@ -271,7 +250,7 @@ export default function CreateBarPage() {
       >
         {busy ? (
           <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
-        ) : accountType === "machines_only" ? (
+        ) : isMachinesOnlyOwner || accountType === "machines_only" ? (
           "Create Machines Account"
         ) : (
           "Create Bar"
@@ -279,7 +258,9 @@ export default function CreateBarPage() {
       </Button>
 
       <p className="text-center text-xs text-muted-foreground">
-        Bar {chainBars.length + 1} of 10
+        {isMachinesOnlyOwner
+          ? `Account ${chainBars.length + 1}`
+          : `Bar ${chainBars.length + 1}`}
       </p>
     </div>
   );

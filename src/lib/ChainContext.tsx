@@ -163,13 +163,13 @@ export function ChainProvider({ children }: { children: ReactNode }) {
 
   /**
    * Returns the correct owner id for data queries.
-   * Chain owner with active bar → activeBarId
+   * Chain owner OR multi-bar addon owner with active bar → activeBarId
    * Everyone else → profileId (their own id)
    */
   const effectiveOwnerId = useCallback((profileId: string): string => {
-    if (isChainOwner && activeBarId) return activeBarId;
+    if ((isChainOwner || isMultiBarOwner) && activeBarId) return activeBarId;
     return profileId;
-  }, [isChainOwner, activeBarId]);
+  }, [isChainOwner, isMultiBarOwner, activeBarId]);
 
   return (
     <ChainCtx.Provider value={{

@@ -30,6 +30,7 @@ function AppLayout() {
   const [openBarFloat, setOpenBarFloat] = useState("");
   const [openMachineFloat, setOpenMachineFloat] = useState("");
   const [hasMachines, setHasMachines] = useState(false);
+  const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = useState(false);
 
   useEffect(() => {
@@ -101,9 +102,11 @@ function AppLayout() {
     const ownerId = effectiveOwnerId(profile.id);
     // Check if owner has machines enabled
     const { data: ownerProfile } = await (supabase as any)
-      .from("profiles").select("machines_addon_active, plan_type").eq("id", ownerId).single();
+      .from("profiles").select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
     const machinesEnabled = !!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium";
+    const machinesOnly = !!(ownerProfile?.is_machines_account);
     setHasMachines(machinesEnabled);
+    setIsMachinesAccount(machinesOnly);
     setOpenBarFloat("");
     setOpenMachineFloat("");
     setShowOpenBarModal(true);
@@ -112,8 +115,8 @@ function AppLayout() {
   const confirmOpenBar = async () => {
     if (!profile || profile.role !== "owner") return;
     const ownerId = effectiveOwnerId(profile.id);
-    const barFloatVal = parseFloat(openBarFloat);
-    if (isNaN(barFloatVal) || barFloatVal < 0) { toast.error("Enter a valid bar float amount"); return; }
+    const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
+    if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachines) {
       const machineFloatVal = parseFloat(openMachineFloat);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
@@ -375,19 +378,21 @@ function AppLayout() {
             </div>
 
             <div className="px-6 pb-6 pt-4 space-y-4">
-              {/* Bar Float */}
-              <div className="space-y-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="e.g. 500.00"
-                  value={openBarFloat}
-                  onChange={e => setOpenBarFloat(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
+              {/* Bar Float — hidden for machines-only accounts */}
+              {!isMachinesAccount && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 500.00"
+                    value={openBarFloat}
+                    onChange={e => setOpenBarFloat(e.target.value)}
+                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              )}
 
               {/* Machine Float — only if machines enabled */}
               {hasMachines && (
@@ -413,7 +418,7 @@ function AppLayout() {
                 </button>
                 <button
                   onClick={confirmOpenBar}
-                  disabled={!openBarFloat || (hasMachines && !openMachineFloat)}
+                  disabled={(!isMachinesAccount && !openBarFloat) || (hasMachines && !openMachineFloat)}
                   className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
                   style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
                   Open Bar
