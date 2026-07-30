@@ -4003,7 +4003,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 // ── Create Tab ─────────────────────────────────────────────────────────────────
 
 
-function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Machine) => void }) {
+function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; machineCount: number; onCreated: (m: Machine) => void }) {
 
 
   const { t } = useTranslation();
@@ -4025,6 +4025,9 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (m: Mac
 
 
     if (!name.trim()) return;
+
+
+    if (machineCount >= 20) { toast.error("Maximum 20 screens reached for this account"); return; }
 
 
     setBusy(true);
@@ -7867,7 +7870,7 @@ export default function MachinesPage() {
           {tab === "create" && (
 
 
-            <CreateTab ownerId={ownerId} onCreated={(m) => {
+            <CreateTab ownerId={ownerId} machineCount={machines.length} onCreated={(m) => {
 
 
               setMachines(p => [...p, m].sort((a, b) => a.name.localeCompare(b.name)));

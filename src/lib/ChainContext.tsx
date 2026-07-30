@@ -32,6 +32,8 @@ export type ChainBar = {
 type ChainCtxType = {
   /** True when the logged-in owner has plan_type = 'chain' */
   isChainOwner:    boolean;
+  /** True when this is a non-chain multi-bar owner (bar_only/machines/premium with addon bars) */
+  isMultiBarOwner: boolean;
   /** The bar sub-account currently being managed. Null for non-chain owners. */
   activeBarId:     string | null;
   /** The active bar's full record, or null */
@@ -58,6 +60,7 @@ const ChainCtx = createContext<ChainCtxType | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function ChainProvider({ children }: { children: ReactNode }) {
   const [isChainOwner, setIsChainOwner] = useState(false);
+  const [isMultiBarOwner, setIsMultiBarOwner] = useState(false);
   const [chainBars,    setChainBars]    = useState<ChainBar[]>([]);
   const [activeBarId,  setActiveBarIdRaw] = useState<string | null>(
     () => localStorage.getItem(LS_ACTIVE_BAR)
@@ -86,16 +89,18 @@ export function ChainProvider({ children }: { children: ReactNode }) {
     // Check if this user is a chain owner
     const { data: profile } = await supabase
       .from("profiles")
-      .select("plan_type, chain_addon_active, id")
+      .select("plan_type, chain_addon_active, id, is_multi_bar, addon_bar_count")
       .eq("id", user.id)
       .maybeSingle();
 
-    // isChainOwner = plan_type is 'chain' — chain_addon_active is a belt-and-suspenders flag
-    // but if admin forgot to set it we still want chain features to work
+    // isChainOwner = plan_type is 'chain'
     const isChain = profile?.plan_type === "chain";
+    // isMultiBarOwner = non-chain owner with extra bars paid via addon system
+    const isMulti = !isChain && !!profile?.is_multi_bar && (profile?.addon_bar_count ?? 0) > 0;
     setIsChainOwner(isChain);
+    setIsMultiBarOwner(isMulti);
 
-    if (!isChain) {
+    if (!isChain && !isMulti) {
       setChainBars([]);
       setActiveBarId(null);
       return;
@@ -126,6 +131,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       } else {
         // Signed out — clear everything
         setIsChainOwner(false);
+        setIsMultiBarOwner(false);
         setChainBars([]);
         setActiveBarId(null);
       }
@@ -168,6 +174,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
   return (
     <ChainCtx.Provider value={{
       isChainOwner,
+      isMultiBarOwner,
       activeBarId,
       activeBar,
       chainBars,

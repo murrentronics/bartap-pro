@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import {
   CreditCard, CheckCircle, Clock, AlertCircle, Copy,
   Star, Gamepad2, ChevronRight, ArrowLeft, Check, GitBranch, Wine,
+  Plus, Minus, ArrowUpCircle,
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
@@ -38,7 +39,7 @@ const CHAIN_FALLBACK: BillingPlan = {
   duration_months: 12,
 } as unknown as BillingPlan;
 
-type Step = "status" | "choose" | "addons" | "payment" | "confirm";
+type Step = "status" | "choose" | "addons" | "addon-bars" | "payment" | "confirm";
 
 export default function BillingPage() {
   const { profile, refreshProfile } = useAuth();
@@ -61,6 +62,11 @@ export default function BillingPage() {
   const [includeTablet, setIncludeTablet] = useState(false);
   const [payMethod, setPayMethod]     = useState<"cash" | "bank" | null>(null);
   const [submitting, setSubmitting]   = useState(false);
+
+  // ── Addon bar state ──────────────────────────────────────────────────────
+  type BarEntry = { name: string; location: string; type: "bar" | "bar_machines" | "machines_only" };
+  const [addonBarCount, setAddonBarCount] = useState(1);
+  const [addonBars, setAddonBars]         = useState<BarEntry[]>([{ name: "", location: "", type: "bar" }]);
 
   useEffect(() => { loadAll(); }, [profile?.id]);
   useEffect(() => { if (profile?.id) loadPayments(); }, [historyPage]);
@@ -141,6 +147,7 @@ export default function BillingPage() {
   const reset = () => {
     setStep("status"); setSelectedPlan(null); setRenewMode(null);
     setIncludeSetup(false); setIncludeTablet(false); setPayMethod(null);
+    setAddonBarCount(1); setAddonBars([{ name: "", location: "", type: "bar" }]);
   };
 
   const cancelPending = async () => {
@@ -162,11 +169,17 @@ export default function BillingPage() {
     const isRenewal = !!renewMode;
     const isFirst   = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
     const addons    = (isFirst && includeSetup ? SETUP_FEE : 0) + (!isRenewal && includeTablet ? TABLET_FEE : 0);
-    const amount    = selectedPlan.amount + addons;
+
+    // For addon plans, amount = unit price × number of bars
+    const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan.plan_type ?? "");
+    const amount = isAddonPlan
+      ? selectedPlan.amount * addonBarCount
+      : selectedPlan.amount + addons;
 
     const notesParts: string[] = [];
     if (isFirst && includeSetup)  notesParts.push("Includes $200 agent setup & training visit");
     if (!isRenewal && includeTablet) notesParts.push("Includes $600 Android tablet pre-installed");
+    if (isAddonPlan) notesParts.push(`${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${selectedPlan.amount} TT each`);
 
     let dueDate = new Date();
     if (isRenewal) {
@@ -177,13 +190,21 @@ export default function BillingPage() {
     }
     dueDate.setMonth(dueDate.getMonth() + selectedPlan.duration_months);
 
-    const { error } = await supabase.from("billing_payments").insert({
+    const insertData: Record<string, unknown> = {
       owner_id: profile.id, plan_id: selectedPlan.id,
       reference_number: ref, amount,
       due_date: dueDate.toISOString(), status: "pending",
       payment_method: payMethod,
       notes: notesParts.join(" • ") || null,
-    });
+    };
+
+    // Attach bar names/locations for addon plans so admin approval can auto-create them
+    if (isAddonPlan && addonBars.length > 0) {
+      insertData.addon_bar_count = addonBarCount;
+      insertData.addon_bar_data  = addonBars.slice(0, addonBarCount);
+    }
+
+    const { error } = await supabase.from("billing_payments").insert(insertData);
     setSubmitting(false);
     if (error) { toast.error("Failed to submit payment"); return; }
     toast.success("Payment submitted — awaiting admin confirmation");
@@ -210,6 +231,13 @@ export default function BillingPage() {
   const chainPlan         = plans.find(p => p.plan_type === "chain") ?? CHAIN_FALLBACK;
   const machinesOnlyPlan  = plans.find(p => p.plan_type === "machines_only");
   const barAddonPlan      = plans.find(p => p.plan_type === "bar_addon");
+  // Multi-bar addon plans
+  const barOnlyAddonPlan      = plans.find(p => p.plan_type === "bar_only_addon");
+  const machinesBarAddonPlan  = plans.find(p => p.plan_type === "machines_bar_addon");
+  const premiumAddonPlan      = plans.find(p => p.plan_type === "premium_addon");
+
+  // Current bar count for capacity checks
+  const currentBarCount = (profile?.addon_bar_count ?? 0) + 1; // +1 for bar 1 (owner themselves)
 
   const basicEnd      = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
   const basicDaysLeft = basicEnd ? Math.ceil((basicEnd.getTime() - Date.now()) / 86400000) : null;
@@ -307,12 +335,16 @@ export default function BillingPage() {
         {/* Step dots for wizard */}
         {step !== "status" && (
           <div className="flex items-center gap-1.5 mt-2 ml-10">
-            {(["choose","addons","payment","confirm"] as Step[])
+            {(["choose","addons","addon-bars","payment","confirm"] as Step[])
               .filter(s => {
+                const isAddonFlow = ["bar_only_addon","machines_bar_addon","premium_addon"].includes(selectedPlan?.plan_type ?? "");
                 if (selectedPlan?.plan_type === "machines_addon" || renewMode) {
+                  return s !== "addons" && s !== "choose" && s !== "addon-bars";
+                }
+                if (isAddonFlow) {
                   return s !== "addons" && s !== "choose";
                 }
-                return true;
+                return s !== "addon-bars";
               })
               .map((s, i, arr) => (
               <div key={s} className="flex items-center gap-1.5">
@@ -439,8 +471,8 @@ export default function BillingPage() {
                           <CreditCard className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-black text-gray-900 text-sm">Basic Plan</p>
-                          <p className="text-xs text-gray-500">${basicPlan?.amount.toFixed(0) ?? "750"} TT / year</p>
+                          <p className="font-black text-gray-900 text-sm">Bar Only</p>
+                          <p className="text-xs text-gray-500">${basicPlan?.amount.toFixed(0) ?? "2400"} TT / year</p>
                         </div>
                       </div>
                       <span className={`text-xs font-black px-2.5 py-1 rounded-full ${basicOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
@@ -458,7 +490,7 @@ export default function BillingPage() {
                       basicCanRenew ? (
                         <button onClick={() => { setSelectedPlan(basicPlan!); setRenewMode("basic"); setStep("payment"); }}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${basicOverdue ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>
-                          {basicOverdue ? "⚠️ Renew Now — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT" : "Renew Basic — $" + (basicPlan?.amount.toFixed(0) ?? "750") + " TT"}
+                          {basicOverdue ? "⚠️ Renew Now — $" + (basicPlan?.amount.toFixed(0) ?? "2400") + " TT" : "Renew Bar Only — $" + (basicPlan?.amount.toFixed(0) ?? "2400") + " TT"}
                         </button>
                       ) : (
                         <p className="text-xs text-center text-gray-400">Renewal opens {basicDaysLeft !== null ? basicDaysLeft - 7 : 0} days before due date</p>
@@ -476,8 +508,8 @@ export default function BillingPage() {
                             <Star className="h-4 w-4 text-amber-800" />
                           </div>
                           <div>
-                            <p className="font-black text-gray-900 text-sm">Premium Plan</p>
-                            <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "1300"} TT / year</p>
+                            <p className="font-black text-gray-900 text-sm">Bar with Machines</p>
+                            <p className="text-xs text-gray-500">${premiumPlan?.amount.toFixed(0) ?? "3000"} TT / year</p>
                           </div>
                         </div>
                         <span className={`text-xs font-black px-2.5 py-1 rounded-full ${premOverdue ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-800"}`}>
@@ -498,7 +530,7 @@ export default function BillingPage() {
                         premCanRenew ? (
                           <button onClick={() => { setSelectedPlan(premiumPlan!); setRenewMode("premium"); setStep("payment"); }}
                             className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${premOverdue ? "bg-red-500 text-white" : "bg-amber-500 text-white"}`}>
-                            {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT" : "Renew Premium — $" + (premiumPlan?.amount.toFixed(0) ?? "1300") + " TT"}
+                            {premOverdue ? "⚠️ Renew Now — $" + (premiumPlan?.amount.toFixed(0) ?? "3000") + " TT" : "Renew Bar with Machines — $" + (premiumPlan?.amount.toFixed(0) ?? "3000") + " TT"}
                           </button>
                         ) : (
                           <p className="text-xs text-center text-amber-800/60">Renewal opens {premDaysLeft !== null ? premDaysLeft - 7 : 0} days before due date</p>
@@ -575,7 +607,7 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Machines Only Plan</p>
-                          <p className="text-xs text-gray-500">${machinesOnlyPlan?.amount.toFixed(0) ?? "800"} TT / year</p>
+                          <p className="text-xs text-gray-500">${machinesOnlyPlan?.amount.toFixed(0) ?? "2400"} TT / year</p>
                         </div>
                       </div>
                       <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
@@ -595,7 +627,7 @@ export default function BillingPage() {
                           disabled={!machinesOnlyPlan}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50 ${addonOverdue ? "bg-red-500" : ""}`}
                           style={!addonOverdue ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}>
-                          {addonOverdue ? "⚠️ Renew Now — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "800") + " TT" : "Renew Machines Only — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "800") + " TT"}
+                          {addonOverdue ? "⚠️ Renew Now — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "2400") + " TT" : "Renew Machines Only — $" + (machinesOnlyPlan?.amount.toFixed(0) ?? "2400") + " TT"}
                         </button>
                       ) : (
                         <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
@@ -647,49 +679,178 @@ export default function BillingPage() {
 
               {/* ── Upgrade to Chain — shown to all active non-chain owners (special pricing for renard) ── */}
               {!isChain && !pendingPayment && (
-                <div
-                  className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative bg-white"
-                >
-                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Upgrade
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                      <GitBranch className="h-4 w-4 text-orange-700" />
+                <>
+                  {/* ── Add More Bars (Bar Only owners) ── */}
+                  {isBasic && barOnlyAddonPlan && (
+                    <div className="rounded-2xl border-2 border-blue-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                          <Plus className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Add More Bars</p>
+                          <p className="text-xs text-gray-500">${barOnlyAddonPlan.amount.toFixed(0)} TT per extra bar / year</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own wallet, cashiers and items.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSelectedPlan(barOnlyAddonPlan);
+                          setAddonBarCount(1);
+                          setAddonBars([{ name: "", location: "", type: "bar" }]);
+                          setStep("addon-bars");
+                        }}
+                        className="w-full h-11 rounded-xl font-black text-sm text-white bg-blue-600 active:scale-[0.98] transition"
+                      >
+                        Add Extra Bar — ${barOnlyAddonPlan.amount.toFixed(0)} TT/yr each
+                      </button>
                     </div>
-                    <div>
-                      <p className="font-black text-gray-900 text-sm">Chain of Bars Plan</p>
-                      <p className="text-xs text-gray-500">Manage up to 10 bars from one login</p>
-                    </div>
-                  </div>
-                  <p className="text-2xl font-black text-orange-700 mb-1">
-                    ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT {isSpecial ? "(first year)" : "/ year"}</span>
-                  </p>
-                  {isSpecial && (
-                    <p className="text-xs text-gray-500 mb-2">Annual renewal from year 2: ${SPECIAL_CHAIN_RENEWAL.toFixed(0)} TT/yr</p>
                   )}
-                  <ul className="space-y-1 mb-4">
-                    {["Up to 10 fully independent bars", "Per-bar items, wallet & cashiers", "One-click bar switching"].map(f => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
-                        <CheckCircle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => {
-                      const plan = isSpecial
-                        ? { ...chainPlan, amount: SPECIAL_CHAIN_UPGRADE }
-                        : chainPlan;
-                      setSelectedPlan(plan as BillingPlan);
-                      setStep("addons");
-                    }}
-                    className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
-                    style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
-                  >
-                    Upgrade to Chain — ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} TT
-                  </button>
-                </div>
+
+                  {/* ── Add More Bars (Machines Only owners) ── */}
+                  {isMachinesOnly && machinesBarAddonPlan && (
+                    <div className="rounded-2xl border-2 border-orange-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                          <Plus className="h-4 w-4 text-orange-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Add More Machine Accounts</p>
+                          <p className="text-xs text-gray-500">${machinesBarAddonPlan.amount.toFixed(0)} TT per extra account / year · Max 20 screens per account</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own screens, up to 20 screens per account.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSelectedPlan(machinesBarAddonPlan);
+                          setAddonBarCount(1);
+                          setAddonBars([{ name: "", location: "", type: "machines_only" }]);
+                          setStep("addon-bars");
+                        }}
+                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                        style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
+                      >
+                        Add Extra Account — ${machinesBarAddonPlan.amount.toFixed(0)} TT/yr each
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Add More Bars (Premium / Bar with Machines owners) ── */}
+                  {isPremium && premiumAddonPlan && (
+                    <div className="rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                          <Plus className="h-4 w-4 text-amber-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Add More Bars</p>
+                          <p className="text-xs text-gray-500">${premiumAddonPlan.amount.toFixed(0)} TT per extra bar / year</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar includes full Bar + Machines access.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSelectedPlan(premiumAddonPlan);
+                          setAddonBarCount(1);
+                          setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
+                          setStep("addon-bars");
+                        }}
+                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                        style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
+                      >
+                        Add Extra Bar — ${premiumAddonPlan.amount.toFixed(0)} TT/yr each
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Upgrade to Bar with Machines (Basic or Machines Only owners) ── */}
+                  {(isBasic || isMachinesOnly) && premiumPlan && !isSpecial && (
+                    <div className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm overflow-hidden relative">
+                      <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Upgrade
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                          <ArrowUpCircle className="h-4 w-4 text-amber-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-900 text-sm">Upgrade to Bar with Machines</p>
+                          <p className="text-xs text-gray-500">Full bar + machines in one plan</p>
+                        </div>
+                      </div>
+                      <p className="text-2xl font-black text-amber-800 mb-1">
+                        ${premiumPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT / year</span>
+                      </p>
+                      <ul className="space-y-1 mb-4">
+                        {["Full Bar POS + Machines tracker", "Per-screen profit reports", "Float sessions & PDF export"].map(f => (
+                          <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                            <CheckCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        onClick={() => {
+                          setSelectedPlan(premiumPlan);
+                          setStep("addons");
+                        }}
+                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                        style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}
+                      >
+                        Upgrade to Bar with Machines — ${premiumPlan.amount.toFixed(0)} TT
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Upgrade to Chain ── */}
+                  <div className="rounded-2xl border-2 border-orange-400/60 p-5 shadow-sm overflow-hidden relative bg-white">
+                    <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Multi-Bar
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                        <GitBranch className="h-4 w-4 text-orange-700" />
+                      </div>
+                      <div>
+                        <p className="font-black text-gray-900 text-sm">Chain of Bars Plan</p>
+                        <p className="text-xs text-gray-500">Manage up to 10 bars from one login</p>
+                      </div>
+                    </div>
+                    <p className="text-2xl font-black text-orange-700 mb-1">
+                      ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT {isSpecial ? "(first year)" : "/ year"}</span>
+                    </p>
+                    {isSpecial && (
+                      <p className="text-xs text-gray-500 mb-2">Annual renewal from year 2: ${SPECIAL_CHAIN_RENEWAL.toFixed(0)} TT/yr</p>
+                    )}
+                    <ul className="space-y-1 mb-4">
+                      {["Up to 10 fully independent bars", "Per-bar items, wallet & cashiers", "One-click bar switching"].map(f => (
+                        <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                          <CheckCircle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={() => {
+                        const plan = isSpecial
+                          ? { ...chainPlan, amount: SPECIAL_CHAIN_UPGRADE }
+                          : chainPlan;
+                        setSelectedPlan(plan as BillingPlan);
+                        setStep("addons");
+                      }}
+                      className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                      style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                    >
+                      Upgrade to Chain — ${isSpecial ? SPECIAL_CHAIN_UPGRADE.toFixed(0) : chainPlan.amount.toFixed(0)} TT
+                    </button>
+                  </div>
+                </>
               )}
 
             </div>
@@ -768,77 +929,124 @@ export default function BillingPage() {
         <div className="space-y-6">
           <p className="text-center text-gray-500 text-sm">Select the plan that works best for your business. All plans renew annually.</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Basic plan card */}
-            {basicPlan && (
-              <div className="rounded-2xl border-2 border-blue-200 bg-white shadow-sm overflow-hidden flex flex-col">
-                {/* Color band */}
-                <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-400" />
-                <div className="p-5 flex-1 flex flex-col">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <h3 className="font-black text-gray-900 text-lg">Basic</h3>
+          {/* ── Card 1: Bar Only ── */}
+          {basicPlan && (
+            <div className="rounded-2xl border-2 border-blue-200 bg-white shadow-sm overflow-hidden">
+              <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-400" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                    <Wine className="h-4 w-4 text-blue-600" />
                   </div>
-                  <p className="text-3xl font-black text-blue-600 mt-2">${basicPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
-                  <p className="text-xs text-gray-400 mt-0.5 mb-4">Billed annually</p>
-
-                  <ul className="space-y-2 flex-1 mb-5">
-                    {["Register / POS system", "Credit account management", "Cashier management", "Wallet & sales history", "Music player", "Annual renewal $800 TT"].map(f => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                        <Check className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button onClick={() => { setSelectedPlan(basicPlan); setStep("addons"); }}
-                    className="w-full h-12 rounded-xl font-black text-base text-white bg-blue-600 active:scale-[0.98] transition hover:bg-blue-700">
-                    Select Basic
-                  </button>
+                  <h3 className="font-black text-gray-900 text-lg">Bar Only</h3>
                 </div>
+                <p className="text-3xl font-black text-blue-600 mt-2">${basicPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-4">Billed annually</p>
+
+                <ul className="space-y-2 mb-5">
+                  {["Register / POS system", "Credit account management", "Cashier management", "Wallet & sales history", "Music player"].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button onClick={() => { setSelectedPlan(basicPlan); setStep("addons"); }}
+                  className="w-full h-12 rounded-xl font-black text-base text-white bg-blue-600 active:scale-[0.98] transition hover:bg-blue-700">
+                  Select Bar Only
+                </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Premium plan card */}
-            {premiumPlan && (
-              <div className="rounded-2xl border-2 border-amber-300 bg-white shadow-md overflow-hidden flex flex-col relative">
-                {/* Popular badge */}
-                <div className="absolute top-3 right-3 bg-amber-400 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Full Access
-                </div>
-                <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-400" />
-                <div className="p-5 flex-1 flex flex-col">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                      <Star className="h-4 w-4 text-amber-800" />
-                    </div>
-                    <h3 className="font-black text-gray-900 text-lg">Premium</h3>
+          {/* ── Card 2: Machines Only ── */}
+          {machinesOnlyPlan && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white shadow-md overflow-hidden relative">
+              <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Machines
+              </div>
+              <div className="h-2 bg-gradient-to-r from-orange-600 to-amber-400" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                    <Gamepad2 className="h-4 w-4 text-orange-700" />
                   </div>
-                  <p className="text-3xl font-black text-amber-800 mt-2">${premiumPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
-                  <p className="text-xs text-gray-400 mt-0.5 mb-4">Billed annually</p>
-
-                  <ul className="space-y-2 flex-1 mb-5">
-                    {["Everything in Basic", "Machines payout tracker", "Per-screen profit reports", "Float session management", "Full history PDF export", "Annual renewal $1,300 TT"].map(f => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                        <Check className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button onClick={() => { setSelectedPlan(premiumPlan); setStep("addons"); }}
-                    className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
-                    style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}>
-                    Select Premium
-                  </button>
+                  <h3 className="font-black text-gray-900 text-lg">Machines Only</h3>
                 </div>
+                <p className="text-3xl font-black text-orange-700 mt-2">${machinesOnlyPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-4">Payout & income tracking for gaming machines</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
+                  {[
+                    "Machines payout tracker",
+                    "Per-screen profit reports",
+                    "Float session management",
+                    "Full history PDF export",
+                    "Add Bar POS as add-on",
+                    "Upgrade to Chain anytime",
+                  ].map(f => (
+                    <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("addons"); }}
+                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
+                  style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
+                >
+                  Select Machines Only
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Chain of Bars plan card — full width, shown to all non-chain owners */}
+          {/* ── Card 3: Bar with Machines ── */}
+          {premiumPlan && (
+            <div className="rounded-2xl border-2 border-amber-300 bg-white shadow-md overflow-hidden relative">
+              <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Full Access
+              </div>
+              <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-400" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                    <Star className="h-4 w-4 text-amber-800" />
+                  </div>
+                  <h3 className="font-black text-gray-900 text-lg">Bar with Machines</h3>
+                </div>
+                <p className="text-3xl font-black text-amber-800 mt-2">${premiumPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
+                <p className="text-xs text-gray-400 mt-0.5 mb-4">Complete bar & machines management in one plan</p>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
+                  {[
+                    "Register / POS system",
+                    "Credit account management",
+                    "Cashier management",
+                    "Wallet & sales history",
+                    "Machines payout tracker",
+                    "Per-screen profit reports",
+                    "Float session management",
+                    "Full history PDF export",
+                  ].map(f => (
+                    <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={() => { setSelectedPlan(premiumPlan); setStep("addons"); }}
+                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
+                  style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}>
+                  Select Bar with Machines
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Card 4: Chain of Bars — full width, shown to all non-chain owners ── */}
           {!isChain && (
             <div className="rounded-2xl border-2 border-orange-400 bg-white shadow-md overflow-hidden relative">
               <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -881,48 +1089,92 @@ export default function BillingPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Machines Only plan card — full width */}
-          {machinesOnlyPlan && (
-            <div className="rounded-2xl border-2 border-orange-300 bg-white shadow-md overflow-hidden relative">
-              <div className="absolute top-3 right-3 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Machines
-              </div>
-              <div className="h-2 bg-gradient-to-r from-orange-600 to-amber-400" />
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                    <Gamepad2 className="h-4 w-4 text-orange-700" />
-                  </div>
-                  <h3 className="font-black text-gray-900 text-lg">Machines Only</h3>
-                </div>
-                <p className="text-3xl font-black text-orange-700 mt-2">${machinesOnlyPlan.amount.toFixed(0)}<span className="text-sm font-normal text-gray-400"> TT/yr</span></p>
-                <p className="text-xs text-gray-400 mt-0.5 mb-4">Payout & income tracking — add Bar POS for $600 TT/yr extra</p>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-5">
-                  {[
-                    "Machines payout tracker",
-                    "Per-screen profit reports",
-                    "Float session management",
-                    "Full history PDF export",
-                    "Add Bar POS as add-on",
-                    "Upgrade to Chain anytime",
-                  ].map(f => (
-                    <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                      <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                      {f}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => { setSelectedPlan(machinesOnlyPlan); setStep("addons"); }}
-                  className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition"
-                  style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)" }}
-                >
-                  Select Machines Only
-                </button>
-              </div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          STEP: ADDON-BARS — name/location for each extra bar
+          ═══════════════════════════════════════════════════════════════════ */}
+      {step === "addon-bars" && selectedPlan && (
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm">
+            <h3 className="font-black text-gray-900 mb-1">{selectedPlan.name}</h3>
+            <p className="text-2xl font-black text-orange-700">
+              ${(selectedPlan.amount * addonBarCount).toFixed(0)} <span className="text-sm font-normal text-gray-400">TT/yr total</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">${selectedPlan.amount.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""}</p>
+          </div>
+
+          {/* How many bars */}
+          <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm space-y-3">
+            <p className="font-black text-gray-900 text-sm">How many extra bars do you want?</p>
+            <p className="text-xs text-gray-500">You currently have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}.</p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  const n = Math.max(1, addonBarCount - 1);
+                  setAddonBarCount(n);
+                  setAddonBars(prev => {
+                    const type = prev[0]?.type ?? "bar";
+                    const next = [...prev];
+                    while (next.length > n) next.pop();
+                    while (next.length < n) next.push({ name: "", location: "", type });
+                    return next;
+                  });
+                }}
+                className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-xl active:scale-90 transition"
+              ><Minus className="h-4 w-4" /></button>
+              <span className="text-3xl font-black text-gray-900 w-10 text-center">{addonBarCount}</span>
+              <button
+                onClick={() => {
+                  const n = addonBarCount + 1;
+                  setAddonBarCount(n);
+                  setAddonBars(prev => {
+                    const type = prev[0]?.type ?? "bar";
+                    const next = [...prev];
+                    while (next.length < n) next.push({ name: "", location: "", type });
+                    return next;
+                  });
+                }}
+                className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-xl active:scale-90 transition"
+              ><Plus className="h-4 w-4" /></button>
             </div>
-          )}
+          </div>
+
+          {/* Name & location for each bar */}
+          <div className="space-y-3">
+            <p className="font-black text-gray-900 text-sm">Name and location for each bar</p>
+            {addonBars.slice(0, addonBarCount).map((bar, i) => (
+              <div key={i} className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm space-y-3">
+                <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Bar {i + 1}</p>
+                <input
+                  type="text"
+                  placeholder="Bar name (e.g. The Rusty Nail)"
+                  value={bar.name}
+                  maxLength={60}
+                  onChange={e => setAddonBars(prev => prev.map((b, idx) => idx === i ? { ...b, name: e.target.value } : b))}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-300"
+                />
+                <input
+                  type="text"
+                  placeholder="District / location (e.g. Port of Spain)"
+                  value={bar.location}
+                  maxLength={60}
+                  onChange={e => setAddonBars(prev => prev.map((b, idx) => idx === i ? { ...b, location: e.target.value } : b))}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-300"
+                />
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setStep("payment")}
+            disabled={addonBars.slice(0, addonBarCount).some(b => !b.name.trim() || !b.location.trim())}
+            className="w-full h-12 rounded-xl font-black text-base text-white active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}
+          >
+            Continue <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       )}
 

@@ -29,6 +29,9 @@ export type Profile = {
   is_bar_account?: boolean;
   is_machines_account?: boolean;
   bar_addon_active?: boolean;
+  // Multi-bar addon
+  addon_bar_count?: number;
+  is_multi_bar?: boolean;
   job_title?: string;
 };
 

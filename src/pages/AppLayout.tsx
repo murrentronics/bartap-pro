@@ -14,7 +14,8 @@ const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
 
 export default function AppLayout() {
   const { session, profile, loading, signOut } = useAuth();
-  const { isChainOwner, activeBarId, activeBar } = useChain();
+  const { isChainOwner, isMultiBarOwner, activeBarId, activeBar } = useChain();
+  const hasMultipleBars = isChainOwner || isMultiBarOwner;
   const nav = useNavigate();
   const loc = useLocation();
   const { t } = useTranslation();
@@ -54,7 +55,7 @@ export default function AppLayout() {
       // All plan types can freely visit /billing
     }
     // Chain owner with no bar selected → force them to pick a bar first
-    if (!loading && isChainOwner && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
+    if (!loading && hasMultipleBars && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar") {
       nav("/switch-bar", { replace: true });
     }
   }, [loading, profile, loc.pathname, nav, isChainOwner, activeBarId]);
@@ -429,6 +430,8 @@ export default function AppLayout() {
               <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
               {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
               {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
+              {!isChainOwner && isMultiBarOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
+              {!isChainOwner && isMultiBarOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
 
             </div>
 
@@ -483,7 +486,7 @@ export default function AppLayout() {
                   <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
                 </button>
                 )}
-                {isChainOwner && (
+                {hasMultipleBars && (
                   <button onClick={() => { setMenuOpen(false); nav("/switch-bar"); }}
                     className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                     style={{ background: loc.pathname === "/switch-bar" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/switch-bar" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/switch-bar" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>

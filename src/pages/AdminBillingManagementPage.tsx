@@ -193,6 +193,10 @@ export default function AdminBillingManagementPage() {
         const isChainPlan = (plan as any).plan_type === "chain";
         const isMachinesOnly = (plan as any).plan_type === "machines_only";
         const isBarAddon = (plan as any).plan_type === "bar_addon";
+        const isBarOnlyAddon     = (plan as any).plan_type === "bar_only_addon";
+        const isMachinesBarAddon = (plan as any).plan_type === "machines_bar_addon";
+        const isPremiumAddon     = (plan as any).plan_type === "premium_addon";
+        const isAnyBarAddon      = isBarOnlyAddon || isMachinesBarAddon || isPremiumAddon;
 
         if (isChainPlan) {
           // Chain plan: set plan_type = "chain", chain_addon_active = true,
@@ -279,6 +283,34 @@ export default function AdminBillingManagementPage() {
 
           updates.next_due_date = addonEnd.toISOString();
 
+        } else if (isAnyBarAddon) {
+          // Multi-bar addon: call create-addon-bars edge function to bulk-create bars
+          // and reset the subscription end date to now + 12 months
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+          const { data: { session: adminSession } } = await supabase.auth.getSession();
+
+          const res = await fetch(`${supabaseUrl}/functions/v1/create-addon-bars`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${adminSession?.access_token}`,
+              "apikey": supabaseKey,
+            },
+            body: JSON.stringify({ payment_id: selectedPayment.id }),
+          });
+          const json = await res.json();
+          if (!res.ok) {
+            toast.error("Bar creation failed: " + (json.error ?? "unknown error"));
+            setLoading(false);
+            return;
+          }
+
+          // next_due_date = now + 12 months (edge fn already updated profile dates)
+          const addonEnd = new Date();
+          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
+          updates.next_due_date = addonEnd.toISOString();
+
         } else {
           // Basic: extend the main subscription dates
           const isActiveRenewal =
@@ -360,11 +392,14 @@ export default function AdminBillingManagementPage() {
 
     const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
     toast.success(
-      planType === "chain"          ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
-      planType === "basic"          ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
-      planType === "machines_only"  ? `${selectedPayment.profiles?.username} machines plan revoked — reset to pending` :
-      planType === "premium"        ? `${selectedPayment.profiles?.username} downgraded to Basic` :
-      planType === "machines_addon" ? `Machines add-on removed` :
+      planType === "chain"             ? `${selectedPayment.profiles?.username} Chain plan revoked — reset to pending` :
+      planType === "basic"             ? `${selectedPayment.profiles?.username} reset to pending — subscription removed` :
+      planType === "machines_only"     ? `${selectedPayment.profiles?.username} machines plan revoked — reset to pending` :
+      planType === "premium"           ? `${selectedPayment.profiles?.username} downgraded to Basic` :
+      planType === "machines_addon"    ? `Machines add-on removed` :
+      planType === "bar_only_addon"    ? `Bar addon revoked` :
+      planType === "machines_bar_addon"? `Machines bar addon revoked` :
+      planType === "premium_addon"     ? `Premium bar addon revoked` :
       "Subscription revoked"
     );
     setSelectedPayment(null);

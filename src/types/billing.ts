@@ -24,6 +24,8 @@ export type BillingPayment = {
   approved_at: string | null;
   notes: string | null;
   payment_method: string | null;
+  addon_bar_count: number;
+  addon_bar_data: { name: string; location: string; type: string }[] | null;
   created_at: string;
   updated_at: string;
 };

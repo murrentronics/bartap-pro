@@ -9,18 +9,18 @@ import { toast } from "sonner";
 
 export default function SwitchBarPage() {
   const { profile } = useAuth();
-  const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, refreshBars } = useChain();
+  const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner, refreshBars } = useChain();
   const nav = useNavigate();
 
   // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Guard: only chain owners can access this page
-  if (!isChainOwner && profile) {
+  // Guard: only chain owners or multi-bar addon owners can access this page
+  if (!isChainOwner && !isMultiBarOwner && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        This page is only available for Chain of Bars plan owners.
+        This page is only available for multi-bar plan owners.
       </div>
     );
   }
@@ -173,8 +173,8 @@ export default function SwitchBarPage() {
         </div>
       )}
 
-      {/* Add new bar button */}
-      {!barsLoading && (
+      {/* Add new bar button — chain owners only; addon owners manage via Billing */}
+      {!barsLoading && isChainOwner && (
         <div className="pt-2">
           <Button
             onClick={() => nav("/create-bar")}
@@ -190,6 +190,23 @@ export default function SwitchBarPage() {
               You've reached the maximum of 10 bars on your Chain plan.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Addon owners — go to Billing to add more bars */}
+      {!barsLoading && isMultiBarOwner && (
+        <div className="pt-2">
+          <Button
+            onClick={() => nav("/billing")}
+            className="w-full h-12 font-black text-sm gap-2"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            <Plus className="h-4 w-4" />
+            Add More Bars via Billing
+          </Button>
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Additional bars are added through your billing plan.
+          </p>
         </div>
       )}
 
