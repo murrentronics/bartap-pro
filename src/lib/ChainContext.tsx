@@ -21,12 +21,13 @@ const LS_ACTIVE_BAR = "active_bar_id";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type ChainBar = {
-  id:           string;
-  bar_name:     string;
-  bar_location: string;
-  has_machines: boolean;
-  bar_number:   number;
-  created_at:   string;
+  id:                  string;
+  bar_name:            string;
+  bar_location:        string;
+  has_machines:        boolean;
+  is_machines_account: boolean;
+  bar_number:          number;
+  created_at:          string;
 };
 
 type ChainCtxType = {

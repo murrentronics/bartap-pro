@@ -135,7 +135,9 @@ export default function SwitchBarPage() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground truncate">{bar.bar_location}</span>
                       <span className="shrink-0">
-                        {bar.has_machines
+                        {bar.is_machines_account
+                          ? <span className="flex items-center gap-1 text-xs font-bold text-primary"><Gamepad2 className="h-3 w-3" />Machines only</span>
+                          : bar.has_machines
                           ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Machines</span>
                           : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Bar only</span>
                         }

@@ -295,12 +295,18 @@ export default function FactoryResetPage() {
 
           <div className="space-y-3">
             {([
-              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities.", machinesOnly: false, barOnly: true  },
-              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",  machinesOnly: false, barOnly: true  },
-              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Machines Reset",        desc: "Wipe machine entries, payouts and floats",                               machinesOnly: true,  barOnly: false },
-              { value: "both"           as ResetTarget, icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                  machinesOnly: true,  barOnly: false },
-            ] as { value: ResetTarget; icon: React.ElementType; label: string; desc: string; machinesOnly: boolean; barOnly: boolean }[])
-              .filter((opt) => (!opt.machinesOnly || hasMachines) && (!opt.barOnly || !isMachinesOnlyPlan))
+              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities.", showWhen: "bar"  },
+              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",  showWhen: "bar"  },
+              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Machines Reset",        desc: "Wipe machine entries, payouts and floats",                               showWhen: "machines" },
+              { value: "both"           as ResetTarget, icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                  showWhen: "both" },
+            ] as { value: ResetTarget; icon: React.ElementType; label: string; desc: string; showWhen: "bar" | "machines" | "both" }[])
+              .filter((opt) => {
+                const hasBar = !isMachinesOnlyPlan;
+                if (opt.showWhen === "bar")      return hasBar;
+                if (opt.showWhen === "machines") return hasMachines;
+                if (opt.showWhen === "both")     return hasBar && hasMachines;
+                return true;
+              })
               .map(({ value, icon: Icon, label, desc }) => (
                 <button
                   key={String(value)}

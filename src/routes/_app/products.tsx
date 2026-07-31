@@ -1921,18 +1921,15 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs">🚬 Units per Pack</Label>
-                  <div className="mt-1 grid grid-cols-2 gap-2">
-                    {[20, 10].map((n) => (
-                      <button key={n} type="button"
-                        onClick={() => setUnitsPerItem(String(n))}
-                        className="h-10 rounded-lg font-black text-sm transition active:scale-95"
-                        style={unitsPerItem === String(n)
-                          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                          : { border: "1px solid var(--border)", background: "var(--muted)", color: "var(--muted-foreground)" }}>
-                        {n} per pack
-                      </button>
-                    ))}
+                  <div
+                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
+                    onClick={() => setActiveNumpad(activeNumpad === "units" ? null : "units")}
+                  >
+                    <span className={`text-base font-black ${activeNumpad === "units" ? "text-primary" : "text-muted-foreground"}`}>
+                      {unitsPerItem || "0"} per pack
+                    </span>
                   </div>
+                  <InlineNumpad forField="units" />
                   {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
                     <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
                       Cost per unit: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}

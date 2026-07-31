@@ -2070,6 +2070,9 @@ export default function RegisterPage() {
                         <div className="px-2 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
                           <div className="font-bold text-[11px] truncate" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
                           <div className="font-black text-xs" style={{ color: "#86efac" }}>${unitPrice.toFixed(2)} each</div>
+                          {pkCap > 0 && (
+                            <div className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--muted-foreground)" }}>{pkCap} per pack</div>
+                          )}
                         </div>
                       </button>
                       {/* Qty banner — shown only when selected */}
