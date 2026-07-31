@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2, BarChart3 } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -237,8 +237,8 @@ function AppLayout() {
     ? [{ to: "/admin", label: "Users", icon: Users }]
     : isManager
     ? [
-        { to: "/products", label: "Items",   icon: Package  },
-        { to: "/manager",  label: "Manager", icon: BarChart3 },
+        { to: "/products", label: "Items",       icon: Package     },
+        { to: "/manager",  label: "Bar Expense", icon: TrendingDown },
       ]
     : [
         { to: "/register", label: "Cashier",  icon: Wine },
