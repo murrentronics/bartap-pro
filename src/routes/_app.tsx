@@ -238,7 +238,7 @@ function AppLayout() {
     : isManager
     ? [
         { to: "/products", label: "Items",       icon: Package     },
-        { to: "/manager",  label: "Bar Expense", icon: TrendingDown },
+        { to: "/manager",  label: "Manage",      icon: TrendingDown },
       ]
     : [
         { to: "/register", label: "Cashier",  icon: Wine },

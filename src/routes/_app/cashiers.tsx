@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   Trash2, Eraser, UserPlus, User, Loader2, FileText, ChevronDown,
   Receipt, ArrowDownLeft, ArrowLeft, X, Download, KeyRound, Eye, EyeOff, DollarSign, CheckCircle2,
+  Clock, LogIn, LogOut, CalendarDays, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -86,6 +87,323 @@ function computeNextPayAt(
   }
 
   return new Date(c.getTime() + 4 * 60 * 60 * 1000).toISOString();
+}
+
+// ─── Hours Tab helpers ────────────────────────────────────────────────────────
+type TimeCardRow = {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  clocked_in_at: string;
+  clocked_out_at: string | null;
+  work_date: string;
+};
+
+function fmtClockTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: "America/Port_of_Spain",
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
+
+function fmtWorkDuration(inIso: string, outIso: string | null) {
+  const end = outIso ? new Date(outIso) : new Date();
+  const totalMins = Math.max(0, Math.round((end.getTime() - new Date(inIso).getTime()) / 60000));
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function totalMinutesForDay(cards: TimeCardRow[]) {
+  return cards.reduce((sum, tc) => {
+    const out = tc.clocked_out_at ? new Date(tc.clocked_out_at) : new Date();
+    return sum + Math.max(0, Math.round((out.getTime() - new Date(tc.clocked_in_at).getTime()) / 60000));
+  }, 0);
+}
+
+function minutesToHM(mins: number) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+// Simple inline calendar — shows only worked days as selectable dots
+function WorkedCalendar({
+  workedDates,
+  selectedDate,
+  onSelect,
+}: {
+  workedDates: Set<string>; // YYYY-MM-DD
+  selectedDate: string | null;
+  onSelect: (d: string | null) => void;
+}) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-US", {
+    month: "long", year: "numeric",
+  });
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    <div className="rounded-2xl border border-border p-3" style={{ background: "var(--gradient-card)" }}>
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={prevMonth}
+          className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-90 hover:bg-muted/40">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="font-black text-sm">{monthLabel}</span>
+        <button onClick={nextMonth}
+          className="h-8 w-8 rounded-lg flex items-center justify-center transition active:scale-90 hover:bg-muted/40">
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {["S","M","T","W","T","F","S"].map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-black text-muted-foreground py-1">{d}</div>
+        ))}
+      </div>
+      {/* Date grid */}
+      <div className="grid grid-cols-7 gap-y-1">
+        {/* Empty leading cells */}
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
+          const isWorked = workedDates.has(dateStr);
+          const isSelected = selectedDate === dateStr;
+          const isToday = dateStr === today.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+          return (
+            <button
+              key={day}
+              disabled={!isWorked}
+              onClick={() => onSelect(isSelected ? null : dateStr)}
+              className="h-9 w-full rounded-xl flex items-center justify-center text-xs font-black transition active:scale-90 disabled:cursor-default"
+              style={
+                isSelected
+                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                  : isWorked
+                  ? { background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", color: "var(--primary)" }
+                  : isToday
+                  ? { color: "var(--primary)", opacity: 0.5 }
+                  : { color: "var(--muted-foreground)", opacity: 0.35 }
+              }
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      {selectedDate && (
+        <button onClick={() => onSelect(null)}
+          className="mt-2 w-full text-[11px] font-black text-muted-foreground hover:text-foreground transition text-center">
+          Clear filter ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── HoursTab ─────────────────────────────────────────────────────────────────
+function HoursTab({ ownerId }: { ownerId: string }) {
+  const sb = supabase as any;
+
+  const [timeCards, setTimeCards] = useState<TimeCardRow[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showCal, setShowCal]           = useState(false);
+
+  const loadCards = useCallback(async () => {
+    setLoading(true);
+    const { data } = await sb.from("time_cards")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("clocked_in_at", { ascending: false });
+    setTimeCards((data ?? []) as TimeCardRow[]);
+    setLoading(false);
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadCards(); }, [loadCards]);
+
+  useEffect(() => {
+    const ch = supabase.channel(`owner-timecards-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_cards", filter: `owner_id=eq.${ownerId}` },
+        () => loadCards())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, loadCards]);
+
+  // All worked dates across all staff — used to highlight the calendar
+  const workedDates = new Set(timeCards.map(tc => tc.work_date));
+
+  // When a date is selected show only that day's cards, otherwise show all
+  const visibleCards = selectedDate
+    ? timeCards.filter(tc => tc.work_date === selectedDate)
+    : timeCards;
+
+  // Group by work_date for the "all dates" accordion view
+  const byDate: Record<string, TimeCardRow[]> = {};
+  visibleCards.forEach(tc => {
+    if (!byDate[tc.work_date]) byDate[tc.work_date] = [];
+    byDate[tc.work_date].push(tc);
+  });
+  const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+
+  if (loading) return (
+    <div className="space-y-2 mt-4">
+      {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl h-16 bg-muted/30 animate-pulse" />)}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 mt-4">
+
+      {/* ── Date picker button ── */}
+      <button
+        onClick={() => setShowCal(v => !v)}
+        className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border transition active:scale-[0.98]"
+        style={selectedDate
+          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+          : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+        <CalendarDays className="h-4 w-4" />
+        {selectedDate
+          ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+          : "Pick a Date"}
+      </button>
+
+      {/* ── Calendar popup ── */}
+      {showCal && (
+        <WorkedCalendar
+          workedDates={workedDates}
+          selectedDate={selectedDate}
+          onSelect={(d) => { setSelectedDate(d); setShowCal(false); }}
+        />
+      )}
+
+      {/* ── Clear filter ── */}
+      {selectedDate && (
+        <button
+          onClick={() => setSelectedDate(null)}
+          className="w-full text-xs font-black text-muted-foreground hover:text-foreground transition text-center">
+          Show all dates ✕
+        </button>
+      )}
+
+      {/* ── Records ── */}
+      {sortedDates.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          {selectedDate ? "No records for this day." : "No time cards recorded yet."}
+        </div>
+      ) : (
+        sortedDates.map(d => {
+          const cards = byDate[d];
+          const dayTotalMins = totalMinutesForDay(cards);
+          const activeCount  = cards.filter(tc => !tc.clocked_out_at).length;
+          const dateLabel = new Date(d + "T12:00:00").toLocaleDateString("en-US", {
+            weekday: "long", month: "long", day: "numeric", year: "numeric",
+          });
+
+          return (
+            <div key={d} className="rounded-2xl border border-border overflow-hidden"
+              style={{ background: "var(--gradient-card)" }}>
+
+              {/* Date header */}
+              <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
+                <div>
+                  <p className="font-black text-sm">{dateLabel}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cards.length} staff member{cards.length !== 1 ? "s" : ""}
+                    {activeCount > 0 && <span className="text-green-400 ml-1.5">· {activeCount} active</span>}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total</p>
+                  <p className="font-black text-sm" style={{ color: "var(--primary)" }}>
+                    {minutesToHM(dayTotalMins)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Each employee row — flat, no accordion */}
+              <div className="divide-y divide-border/40">
+                {cards.map(tc => {
+                  const inTime  = fmtClockTime(tc.clocked_in_at);
+                  const outTime = tc.clocked_out_at ? fmtClockTime(tc.clocked_out_at) : null;
+                  const duration = fmtWorkDuration(tc.clocked_in_at, tc.clocked_out_at);
+                  const isActive = !tc.clocked_out_at;
+
+                  return (
+                    <div key={tc.id} className="px-4 py-3 flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 font-black text-sm"
+                        style={{
+                          background: isActive ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)",
+                          color: isActive ? "#86efac" : "var(--primary)",
+                        }}>
+                        {tc.employee_name.charAt(0).toUpperCase()}
+                      </div>
+
+                      {/* Name + times */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-sm truncate">{tc.employee_name}</p>
+                        {/* In → Out */}
+                        <div className="flex items-center gap-1.5 text-xs mt-0.5">
+                          <LogIn className="h-3 w-3 text-green-400 shrink-0" />
+                          <span className="font-bold text-green-400">{inTime}</span>
+                          {outTime ? (
+                            <>
+                              <span className="text-muted-foreground/40">→</span>
+                              <LogOut className="h-3 w-3 text-red-400 shrink-0" />
+                              <span className="font-bold text-red-400">{outTime}</span>
+                            </>
+                          ) : (
+                            <span className="text-green-400 font-semibold">· still on shift</span>
+                          )}
+                        </div>
+                        {/* Hours worked */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-xs font-black"
+                            style={{ color: isActive ? "#86efac" : "var(--foreground)" }}>
+                            {isActive ? `${duration} so far` : duration}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isActive && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
+                          style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>
+                          Active
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
 }
 
 // ─── Salary History ───────────────────────────────────────────────────────────
@@ -1490,10 +1808,11 @@ export default function CashiersPage() {
       </div>
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="add">Create</TabsTrigger>
           <TabsTrigger value="manage">{t("cashier_name", "Manage")} ({list.length})</TabsTrigger>
           <TabsTrigger value="salary">Salary</TabsTrigger>
+          <TabsTrigger value="hours">Hours</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
@@ -1693,6 +2012,10 @@ export default function CashiersPage() {
 
         <TabsContent value="salary">
           <SalaryTab cashiers={list} ownerId={effectiveOwnerId(profile.id)} />
+        </TabsContent>
+
+        <TabsContent value="hours">
+          <HoursTab ownerId={effectiveOwnerId(profile.id)} />
         </TabsContent>
       </Tabs>
 
