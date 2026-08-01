@@ -2494,7 +2494,7 @@ function CashOverlay({
                         style={orderDiscount > 0
                           ? { background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80" }
                           : { background: "rgba(250,204,21,0.1)", border: "1px solid rgba(250,204,21,0.25)", color: "#facc15" }}>
-                        {orderDiscount > 0 ? `✕ -$${orderDiscount.toFixed(2)}` : "Discount"}
+                        {orderDiscount > 0 ? `✕ -$${orderDiscount.toFixed(2)}` : <><span className="text-base font-black leading-none">+</span> Discount</>}
                       </button>
                       <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
                         <Trash2 className="h-4 w-4" /> Clear all
@@ -2614,12 +2614,12 @@ function CashOverlay({
         {/* ── Right panel: payment type + customer list ── */}
         {step === 1 && (
           <div className={`
-            w-full md:w-64 flex flex-col shrink-0 border-t md:border-t-0 border-border
+            w-full md:w-64 flex flex-col shrink-0
             md:static
             ${showRightPanel
               ? "absolute inset-0 z-[60] rounded-3xl"
               : "hidden md:flex"}
-          `} style={{ background: "oklch(0.15 0.02 60)" }}>
+          `} style={{ background: "oklch(0.15 0.02 60)", border: "3px solid #f97316", borderRadius: "1rem" }}>
             {/* Done button — mobile only, closes the panel */}
             <div className="md:hidden flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
               <span className="text-sm font-black text-white/60">Customer / Payment</span>

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Loader2, TrendingDown, X, Settings2, Pencil, Trash2,
-  AlertTriangle, Clock, LogIn, LogOut, ChevronDown,
+  AlertTriangle, Clock, LogIn, LogOut, ChevronDown, LayoutGrid,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,22 +43,16 @@ function monthKey(date: string) {
 }
 function monthLabel(key: string) {
   const [y, m] = key.split("-");
-  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-GB", {
-    year: "numeric", month: "long",
-  });
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-GB", { year: "numeric", month: "long" });
 }
-/** Format a UTC ISO string in Trinidad time (UTC-4) as "3:45 PM" */
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", {
-    timeZone: "America/Port_of_Spain",
-    hour: "numeric", minute: "2-digit", hour12: true,
+    timeZone: "America/Port_of_Spain", hour: "numeric", minute: "2-digit", hour12: true,
   });
 }
-/** Work-date string (YYYY-MM-DD) in Trinidad time */
 function trinidadDate() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
 }
-/** Duration string e.g. "4h 23m" */
 function fmtDuration(inIso: string, outIso: string | null) {
   const end = outIso ? new Date(outIso) : new Date();
   const mins = Math.round((end.getTime() - new Date(inIso).getTime()) / 60000);
@@ -70,21 +64,14 @@ function fmtDuration(inIso: string, outIso: string | null) {
 export default function ManagerPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
-
   if (!profile || (profile.role !== "manager" && (profile as any).job_title !== "manager")) {
-    return (
-      <div className="text-center text-muted-foreground py-20">
-        Manager access only.
-      </div>
-    );
+    return <div className="text-center text-muted-foreground py-20">Manager access only.</div>;
   }
-
   const ownerId = effectiveOwnerId((profile as any).parent_id ?? profile.id);
   return <ManagerMain profile={profile} ownerId={ownerId} />;
 }
 
-
-// ─── Main shell: tabs + bar toggle header ─────────────────────────────────────
+// ─── Main shell ───────────────────────────────────────────────────────────────
 function ManagerMain({
   profile,
   ownerId,
@@ -95,7 +82,6 @@ function ManagerMain({
   const sb = supabase as any;
   const managerName = profile.username ?? profile.id;
 
-  // ── Bar state ──────────────────────────────────────────────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAt, setBarClosedAt] = useState<string | null>(null);
   const [barStateLoading, setBarStateLoading] = useState(true);
@@ -111,33 +97,25 @@ function ManagerMain({
   useEffect(() => {
     if (!ownerId) return;
     setBarStateLoading(true);
-    sb.from("profiles")
-      .select("bar_session_start, bar_closed_at")
-      .eq("id", ownerId)
-      .single()
+    sb.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single()
       .then(({ data }: any) => {
         setBarSessionStart(data?.bar_session_start ?? null);
         setBarClosedAt(data?.bar_closed_at ?? null);
         setBarStateLoading(false);
       });
-    const ch = supabase
-      .channel(`mgr-bar-state-${ownerId}`)
+    const ch = supabase.channel(`mgr-bar-state-${ownerId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         (payload: any) => {
           const rec = payload.new as Record<string, unknown>;
           if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
           if ("bar_closed_at" in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
-        })
-      .subscribe();
+        }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-
-  // ── Open bar ──────────────────────────────────────────────────────────────
   const handleOpenBar = async () => {
-    const { data: ownerProfile } = await sb
-      .from("profiles").select("machines_addon_active, plan_type, is_machines_account")
-      .eq("id", ownerId).single();
+    const { data: ownerProfile } = await sb.from("profiles")
+      .select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
     setHasMachines(!!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium");
     setIsMachinesAccount(!!(ownerProfile?.is_machines_account));
     setOpenBarFloat(""); setOpenMachineFloat("");
@@ -183,18 +161,15 @@ function ManagerMain({
     setBarClosedAt(now); toast.success("🔴 Bar closed");
   };
 
-  // ── Active tab ─────────────────────────────────────────────────────────────
-  const [tab, setTab] = useState<"expenses" | "timecards">("expenses");
-
+  const [tab, setTab] = useState<"dashboard" | "timecards">("dashboard");
 
   return (
     <div className="py-3 space-y-4 pb-24">
 
-      {/* ── Page header ── */}
+      {/* Page header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: "var(--gradient-hero)" }}>
+          <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "var(--gradient-hero)" }}>
             <Settings2 className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
@@ -202,80 +177,52 @@ function ManagerMain({
             <p className="text-xs text-muted-foreground">{managerName}</p>
           </div>
         </div>
-
-        {/* Bar open/close toggle — inline with title */}
         {!barStateLoading && (
-          <button
-            type="button"
-            disabled={barToggleBusy}
+          <button type="button" disabled={barToggleBusy}
             onClick={barIsOpen ? () => setShowCloseBarConfirm(true) : handleOpenBar}
             className="h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 shrink-0"
             style={barIsOpen
               ? { background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac", color: "#86efac" }
-              : { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" }}
-          >
-            {barToggleBusy
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <span className="text-[11px]">{barIsOpen ? "🟢" : "🔴"}</span>}
+              : { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" }}>
+            {barToggleBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="text-[11px]">{barIsOpen ? "🟢" : "🔴"}</span>}
             {barIsOpen ? "Open" : "Closed"}
           </button>
         )}
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="grid grid-cols-2 gap-2 rounded-2xl p-1"
-        style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
-        {(["expenses", "timecards"] as const).map((t) => (
+      {/* Tabs */}
+      <div className="grid grid-cols-2 gap-2 rounded-2xl p-1" style={{ background: "var(--gradient-card)", border: "1px solid var(--border)" }}>
+        {(["dashboard", "timecards"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className="h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98]"
-            style={tab === t
-              ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-              : { color: "var(--muted-foreground)" }}>
-            {t === "expenses" ? <TrendingDown className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-            {t === "expenses" ? "Expenses" : "Time Cards"}
+            style={tab === t ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { color: "var(--muted-foreground)" }}>
+            {t === "dashboard" ? <LayoutGrid className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+            {t === "dashboard" ? "Dashboard" : "Time Cards"}
           </button>
         ))}
       </div>
 
-      {/* ── Tab content ── */}
-      {tab === "expenses" ? (
-        <ExpensesTab
-          profile={profile}
-          ownerId={ownerId}
-          managerName={managerName}
-          barIsOpen={barIsOpen}
-          barStateLoading={barStateLoading}
-          barSessionStart={barSessionStart}
-        />
+      {tab === "dashboard" ? (
+        <DashboardTab profile={profile} ownerId={ownerId} managerName={managerName}
+          barIsOpen={barIsOpen} barStateLoading={barStateLoading} barSessionStart={barSessionStart} />
       ) : (
-        <TimeCardsTab
-          profile={profile}
-          ownerId={ownerId}
-          managerName={managerName}
-        />
+        <TimeCardsTab profile={profile} ownerId={ownerId} managerName={managerName} />
       )}
 
-
-      {/* ── Close Bar Confirm Modal ── */}
+      {/* Close Bar Confirm */}
       {showCloseBarConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
             <div className="px-6 pt-6 pb-2 text-center">
-              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}>
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}>
                 <span className="text-2xl">🔴</span>
               </div>
               <h2 className="font-black text-xl">Close Bar?</h2>
               <p className="text-sm text-muted-foreground mt-2">This will end the current session.</p>
             </div>
             <div className="px-6 pb-6 pt-4 flex gap-3">
-              <button onClick={() => setShowCloseBarConfirm(false)}
-                className="flex-1 h-12 rounded-2xl font-black text-sm border border-border transition active:scale-95">
-                Cancel
-              </button>
-              <button onClick={() => { setShowCloseBarConfirm(false); handleCloseBar(); }}
-                disabled={barToggleBusy}
+              <button onClick={() => setShowCloseBarConfirm(false)} className="flex-1 h-12 rounded-2xl font-black text-sm border border-border transition active:scale-95">Cancel</button>
+              <button onClick={() => { setShowCloseBarConfirm(false); handleCloseBar(); }} disabled={barToggleBusy}
                 className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
                 style={{ background: "rgba(239,68,68,0.15)", border: "1.5px solid #f87171", color: "#f87171" }}>
                 {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Close Bar"}
@@ -285,14 +232,12 @@ function ManagerMain({
         </div>
       )}
 
-      {/* ── Open Bar Modal ── */}
+      {/* Open Bar Modal */}
       {showOpenBarModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
             <div className="px-6 pt-6 pb-2 text-center">
-              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}>
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}>
                 <span className="text-2xl">🟢</span>
               </div>
               <h2 className="font-black text-xl">Open Bar</h2>
@@ -302,24 +247,19 @@ function ManagerMain({
               {!isMachinesAccount && (
                 <div>
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Bar Float ($)</label>
-                  <input value={openBarFloat} onChange={(e) => setOpenBarFloat(e.target.value)}
-                    type="number" min="0" step="0.01" placeholder="0.00"
+                  <input value={openBarFloat} onChange={(e) => setOpenBarFloat(e.target.value)} type="number" min="0" step="0.01" placeholder="0.00"
                     className="w-full h-11 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 </div>
               )}
               {hasMachines && (
                 <div>
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Machine Float ($)</label>
-                  <input value={openMachineFloat} onChange={(e) => setOpenMachineFloat(e.target.value)}
-                    type="number" min="0" step="0.01" placeholder="0.00"
+                  <input value={openMachineFloat} onChange={(e) => setOpenMachineFloat(e.target.value)} type="number" min="0" step="0.01" placeholder="0.00"
                     className="w-full h-11 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 </div>
               )}
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setShowOpenBarModal(false)}
-                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border transition active:scale-95">
-                  Cancel
-                </button>
+                <button onClick={() => setShowOpenBarModal(false)} className="flex-1 h-12 rounded-2xl font-black text-sm border border-border transition active:scale-95">Cancel</button>
                 <button onClick={confirmOpenBar} disabled={barToggleBusy}
                   className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50"
                   style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
@@ -335,69 +275,155 @@ function ManagerMain({
   );
 }
 
-
-// ─── Expenses Tab (original view, unchanged logic) ────────────────────────────
-function ExpensesTab({
-  profile,
-  ownerId,
-  managerName,
-  barIsOpen,
-  barStateLoading,
-  barSessionStart,
+// ─── Dashboard Tab ────────────────────────────────────────────────────────────
+function DashboardTab({
+  profile, ownerId, managerName, barIsOpen, barStateLoading, barSessionStart,
 }: {
   profile: { id: string; username?: string | null; wallet_balance: number };
-  ownerId: string;
-  managerName: string;
-  barIsOpen: boolean;
-  barStateLoading: boolean;
-  barSessionStart: string | null;
+  ownerId: string; managerName: string;
+  barIsOpen: boolean; barStateLoading: boolean; barSessionStart: string | null;
 }) {
   const sb = supabase as any;
   const tag = `[Manager: ${managerName}]`;
 
-  // ── Float balance ──────────────────────────────────────────────────────────
+  // ── Bar float (live) ───────────────────────────────────────────────────────
   const [floatBalance, setFloatBalance] = useState<number>(0);
-
   const loadFloat = useCallback(async () => {
     const { data } = await sb.from("profiles").select("cashier_float").eq("id", ownerId).single();
     setFloatBalance(Number(data?.cashier_float ?? 0));
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => { loadFloat(); }, [loadFloat]);
-
-  // Realtime: keep float in sync when owner opens bar or any update
   useEffect(() => {
     const ch = supabase.channel(`mgr-float-${ownerId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         (payload: any) => {
           const rec = payload.new as Record<string, unknown>;
           if ("cashier_float" in rec) setFloatBalance(Number(rec.cashier_float ?? 0));
-        })
-      .subscribe();
+        }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId]);
 
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── Dashboard data (floats, sales, machine) ────────────────────────────────
+  const [barFloatSet,          setBarFloatSet]          = useState<number>(0);
+  const [machineFloatSet,      setMachineFloatSet]      = useState<number>(0);
+  const [machineFloatBal,      setMachineFloatBal]      = useState<number>(0);
+  const [machineFloatAnchor,   setMachineFloatAnchor]   = useState<string | null>(null);
+  const [sessionBarSales,      setSessionBarSales]      = useState<number>(0);
+  const [sessionMachineIn,     setSessionMachineIn]     = useState<number>(0);
+  const [sessionMachinePayout, setSessionMachinePayout] = useState<number>(0);
+  const [hasMachinesEnabled,   setHasMachinesEnabled]   = useState(false);
+
+  const loadDashboard = useCallback(async () => {
+    const { data: ownerRow } = await sb.from("profiles")
+      .select("cashier_float, machines_addon_active, plan_type, is_machines_account")
+      .eq("id", ownerId).single();
+    const barFloat = Number(ownerRow?.cashier_float ?? 0);
+    const hasMach = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
+    setBarFloatSet(barFloat);
+    setHasMachinesEnabled(hasMach);
+
+    if (barSessionStart) {
+      const { data: orders } = await sb.from("orders")
+        .select("total").eq("owner_id", ownerId).gte("created_at", barSessionStart);
+      setSessionBarSales((orders ?? []).reduce((s: number, o: { total: number }) => s + Number(o.total), 0));
+    } else { setSessionBarSales(0); }
+
+    if (hasMach) {
+      const { data: floatSess } = await sb.from("machine_float_sessions")
+        .select("amount, set_at").eq("owner_id", ownerId)
+        .order("set_at", { ascending: false }).limit(1).maybeSingle();
+      const mfAmt = Number(floatSess?.amount ?? 0);
+      const mfAnchor: string | null = floatSess?.set_at ?? null;
+      setMachineFloatSet(mfAmt); setMachineFloatAnchor(mfAnchor);
+      if (mfAnchor) {
+        const { data: entries } = await sb.from("machine_entries")
+          .select("type, amount").eq("owner_id", ownerId).gte("created_at", mfAnchor);
+        const rows = (entries ?? []) as { type: string; amount: number }[];
+        const mIn  = rows.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+        const mOut = rows.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+        setSessionMachineIn(mIn); setSessionMachinePayout(mOut);
+        setMachineFloatBal(Math.max(0, mfAmt - mOut));
+      } else { setSessionMachineIn(0); setSessionMachinePayout(0); setMachineFloatBal(0); }
+    }
+  }, [ownerId, barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => {
+    const ch = supabase.channel(`mgr-dash-${ownerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${ownerId}` }, () => loadDashboard())
+      .on("postgres_changes", { event: "*", schema: "public", table: "machine_entries", filter: `owner_id=eq.${ownerId}` }, () => loadDashboard())
+      .on("postgres_changes", { event: "*", schema: "public", table: "machine_float_sessions", filter: `owner_id=eq.${ownerId}` }, () => loadDashboard())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, loadDashboard]);
+
+  // ── Set float modal state ──────────────────────────────────────────────────
+  const [showSetBarFloat,  setShowSetBarFloat]  = useState(false);
+  const [showSetMachFloat, setShowSetMachFloat] = useState(false);
+  const [setFloatInput,    setSetFloatInput]    = useState("");
+  const [setFloatBusy,     setSetFloatBusy]     = useState(false);
+  const [barFloatMode,     setBarFloatMode]     = useState<"same" | "new">("new");
+
+  const handleSetBarFloat = async () => {
+    const val = parseFloat(setFloatInput);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSetFloatBusy(true);
+    const now = new Date().toISOString();
+    if (barFloatMode === "same") {
+      // Same session: add to current float, keep cashier_float_set_at unchanged
+      const newTotal = barFloatSet + val;
+      await sb.from("profiles").update({ cashier_float: newTotal }).eq("id", ownerId);
+      setFloatBalance(newTotal); setBarFloatSet(newTotal);
+      toast.success(`Float topped up by $${val.toFixed(2)} — total $${newTotal.toFixed(2)}`);
+    } else {
+      // New session: close current sub-session, open new one, reset float anchor
+      const { data: openBarSession } = await sb.from("bar_sessions")
+        .select("id").eq("owner_id", ownerId).is("closed_at", null)
+        .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+      if (openBarSession?.id) {
+        await sb.from("bar_sub_sessions").update({ closed_at: now })
+          .eq("owner_id", ownerId).eq("bar_session_id", openBarSession.id).is("closed_at", null);
+        await sb.from("bar_sub_sessions").insert({
+          owner_id: ownerId, bar_session_id: openBarSession.id, opened_at: now, cashier_float: val,
+        });
+      }
+      await sb.from("profiles").update({ cashier_float: val, cashier_float_set_at: now }).eq("id", ownerId);
+      setFloatBalance(val); setBarFloatSet(val);
+      toast.success(`New session started — float set to $${val.toFixed(2)}`);
+    }
+    setSetFloatBusy(false); setShowSetBarFloat(false); setSetFloatInput(""); setBarFloatMode("new");
+    loadDashboard();
+  };
+
+  const handleSetMachFloat = async () => {
+    const val = parseFloat(setFloatInput);
+    if (isNaN(val) || val < 0) { toast.error("Enter a valid amount"); return; }
+    setSetFloatBusy(true);
+    await sb.from("machine_float_sessions").insert({ owner_id: ownerId, amount: val, set_at: new Date().toISOString() });
+    setSetFloatBusy(false); setShowSetMachFloat(false); setSetFloatInput("");
+    toast.success(`Machine float set to $${val.toFixed(2)}`);
+    loadDashboard();
+  };
+
+  // ── Expenses state ─────────────────────────────────────────────────────────
+  const [expenses,  setExpenses]  = useState<Expense[]>([]);
+  const [loading,   setLoading]   = useState(true);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const loadExpenses = useCallback(async () => {
     setLoading(true);
     const { data } = await sb.from("owner_expenses").select("*")
-      .eq("owner_id", ownerId)
-      .ilike("description", `%[Manager: ${managerName}]%`)
+      .eq("owner_id", ownerId).ilike("description", `%[Manager: ${managerName}]%`)
       .order("created_at", { ascending: false });
     setExpenses((data ?? []) as Expense[]);
     setLoading(false);
   }, [ownerId, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadExpenses(); }, [loadExpenses]);
-
   useEffect(() => {
     const ch = supabase.channel(`mgr-expenses-${profile.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${ownerId}` },
-        () => loadExpenses())
-      .subscribe();
+        () => loadExpenses()).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, profile.id, loadExpenses]);
 
@@ -406,47 +432,42 @@ function ExpensesTab({
     .filter((e) => barSessionStart && new Date(e.created_at) >= new Date(barSessionStart))
     .reduce((s, e) => s + Number(e.amount), 0);
 
-  const [showForm, setShowForm] = useState(false);
-  const [lines, setLines] = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
-  const [saving, setSaving] = useState(false);
+  // ── Add expense form ───────────────────────────────────────────────────────
+  const [showForm,   setShowForm]   = useState(false);
+  const [lines,      setLines]      = useState<{ description: string; amount: string }[]>([{ description: "", amount: "" }]);
+  const [saving,     setSaving]     = useState(false);
   const [confirming, setConfirming] = useState(false);
   const lineTotal = lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-
 
   const handleSave = async () => {
     const valid = lines.filter((l) => l.description.trim() && parseFloat(l.amount) > 0);
     if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-    if (total > floatBalance) {
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
-      return;
-    }
+    if (total > floatBalance) { toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`); return; }
     setSaving(true);
     const today = trinidadDate();
-    const description =
-      valid.length === 1
-        ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
-        : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${tag}`;
+    const description = valid.length === 1
+      ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
+      : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${tag}`;
     try {
       const { error: expErr } = await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: total, description, expense_date: today });
       if (expErr) { toast.error(expErr.message); return; }
-      // Deduct from cashier_float (bar float), not wallet_balance
       const newFloat = Math.max(0, floatBalance - total);
       await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
       setFloatBalance(newFloat);
-      const expenseNote = valid.length === 1 ? `Expense: ${valid[0].description.trim()}` : `Bulk Expense (${valid.length} items)`;
-      await sb.from("wallet_transactions").insert({ profile_id: profile.id, amount: total, type: "cashier_expense", note: expenseNote });
+      const note = valid.length === 1 ? `Expense: ${valid[0].description.trim()}` : `Bulk Expense (${valid.length} items)`;
+      await sb.from("wallet_transactions").insert({ profile_id: profile.id, amount: total, type: "cashier_expense", note });
       toast.success("Expense saved");
       setLines([{ description: "", amount: "" }]); setShowForm(false); setConfirming(false);
       loadExpenses();
     } finally { setSaving(false); }
   };
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLines, setEditLines] = useState<{ description: string; amount: string }[]>([]);
-  const [editSaving, setEditSaving] = useState(false);
+  const [editingId,      setEditingId]      = useState<string | null>(null);
+  const [editLines,      setEditLines]      = useState<{ description: string; amount: string }[]>([]);
+  const [editSaving,     setEditSaving]     = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
   const lastExpenseId = expenses.length > 0 ? expenses[0].id : null;
 
   const startEdit = (e: Expense) => {
@@ -465,19 +486,15 @@ function ExpensesTab({
     if (!valid.length) { toast.error("Add at least one item with description and amount"); return; }
     setEditSaving(true);
     const newTotal = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-    const diff = newTotal - Number(e.amount); // positive = more spent, negative = refund
-    if (diff > 0 && diff > floatBalance) {
-      setEditSaving(false);
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
-      return;
-    }
-    const description =
-      valid.length === 1
-        ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
-        : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${tag}`;
+    const diff = newTotal - Number(e.amount);
+    if (diff > 0 && diff > floatBalance) { setEditSaving(false); toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`); return; }
+    const description = valid.length === 1
+      ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
+      : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${tag}`;
     try {
-      const { error: upErr } = await sb.from("owner_expenses").update({ amount: newTotal, description }).eq("id", e.id);
+      const { data: updated, error: upErr } = await sb.from("owner_expenses").update({ amount: newTotal, description }).eq("id", e.id).select("id");
       if (upErr) { toast.error(upErr.message); return; }
+      if (!updated || updated.length === 0) { toast.error("Could not update expense — permission denied"); return; }
       if (diff !== 0) {
         const newFloat = Math.max(0, floatBalance - diff);
         await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
@@ -490,9 +507,9 @@ function ExpensesTab({
   const handleDelete = async (e: Expense) => {
     setDeleting(true);
     try {
-      const { error: delErr } = await sb.from("owner_expenses").delete().eq("id", e.id);
+      const { data: deleted, error: delErr } = await sb.from("owner_expenses").delete().eq("id", e.id).select("id");
       if (delErr) { toast.error(delErr.message); return; }
-      // Refund amount back to float
+      if (!deleted || deleted.length === 0) { toast.error("Could not delete expense — permission denied"); return; }
       const newFloat = floatBalance + Number(e.amount);
       await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
       setFloatBalance(newFloat);
@@ -504,9 +521,9 @@ function ExpensesTab({
   expenses.forEach((e) => { const k = monthKey(e.expense_date); if (!byMonth[k]) byMonth[k] = []; byMonth[k].push(e); });
   const months = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
 
-
   return (
     <div className="space-y-4">
+
       {/* Bar closed banner */}
       {!barStateLoading && !barIsOpen && (
         <div className="rounded-2xl px-4 py-3 flex items-center gap-3"
@@ -516,26 +533,91 @@ function ExpensesTab({
         </div>
       )}
 
-      {/* Summary cards */}
+      {/* ── Hero 1: Floats ── */}
       <div className="rounded-3xl p-4 space-y-3 relative overflow-hidden"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <p className="text-xs font-black relative" style={{ color: "rgba(0,0,0,0.65)" }}>My Expense Summary</p>
-        <div className="grid grid-cols-3 gap-2 relative">
-          {[
-            { label: "Float\nBalance",   value: barIsOpen ? `$${fmt(floatBalance)}` : "—", highlight: floatBalance < 10 && barIsOpen },
-            { label: "Session\nExpense", value: barIsOpen ? `$${fmt(sessionExpenses)}` : "—" },
-            { label: "Total\nExpense",   value: totalAllTime > 0 ? `$${fmt(totalAllTime)}` : "$0.00" },
-          ].map((c) => (
-            <div key={c.label} className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center"
-              style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="text-[9px] font-semibold leading-tight whitespace-pre-line"
-                style={{ color: "rgba(255,255,255,0.5)" }}>{c.label}</div>
-              <div className="font-black text-xs"
-                style={{ color: (c as any).highlight ? "#fde68a" : "#fca5a5" }}>{c.value}</div>
+        <div className="relative space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Bar Float</p>
+            {barIsOpen && (
+              <button onClick={() => { setSetFloatInput(String(barFloatSet)); setShowSetBarFloat(true); }}
+                className="text-[10px] font-black px-2 py-0.5 rounded-lg transition active:scale-95"
+                style={{ background: "rgba(0,0,0,0.2)", color: "rgba(0,0,0,0.7)" }}>
+                Set Float
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
+              <div className="font-black text-sm" style={{ color: "#86efac" }}>{barIsOpen ? `$${fmt(barFloatSet)}` : "—"}</div>
             </div>
-          ))}
+            <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Balance Remaining</div>
+              <div className="font-black text-sm" style={{ color: barIsOpen && floatBalance < 10 ? "#fde68a" : "#86efac" }}>{barIsOpen ? `$${fmt(floatBalance)}` : "—"}</div>
+            </div>
+          </div>
         </div>
+        {hasMachinesEnabled && (
+          <div className="relative space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Machine Float</p>
+              {barIsOpen && (
+                <button onClick={() => { setSetFloatInput(String(machineFloatSet)); setShowSetMachFloat(true); }}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg transition active:scale-95"
+                  style={{ background: "rgba(0,0,0,0.2)", color: "rgba(0,0,0,0.7)" }}>
+                  Set Float
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatSet)}` : "—"}</div>
+              </div>
+              <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Balance Remaining</div>
+                <div className="font-black text-sm" style={{ color: machineFloatSet > 0 && machineFloatBal < 10 ? "#fde68a" : "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatBal)}` : "—"}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Hero 2: Session ── */}
+      <div className="rounded-3xl p-4 space-y-3 relative overflow-hidden"
+        style={{ background: "oklch(0.18 0.02 60)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
+        <p className="text-[10px] font-black uppercase tracking-widest relative" style={{ color: "rgba(255,255,255,0.4)" }}>Session</p>
+        <div className="relative space-y-1.5">
+          <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Bar</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Cash Sales</div>
+              <div className="font-black text-sm" style={{ color: "#86efac" }}>{barIsOpen ? `$${fmt(sessionBarSales)}` : "—"}</div>
+            </div>
+            <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Bar Expenses</div>
+              <div className="font-black text-sm" style={{ color: "#fca5a5" }}>{barIsOpen ? `$${fmt(sessionExpenses)}` : "—"}</div>
+            </div>
+          </div>
+        </div>
+        {hasMachinesEnabled && (
+          <div className="relative space-y-1.5">
+            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Machines</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Cash in Machine</div>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>{machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "—"}</div>
+              </div>
+              <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Machines Payout</div>
+                <div className="font-black text-sm" style={{ color: "#fca5a5" }}>{machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "—"}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Expense */}
@@ -548,7 +630,6 @@ function ExpensesTab({
               : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
             {showForm ? "✕ Cancel" : "+ Add Expense"}
           </button>
-
           {showForm && (
             <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
               <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Expense Lines</p>
@@ -591,8 +672,7 @@ function ExpensesTab({
                       Deduct ${lineTotal.toFixed(2)} from bar float? (Balance: ${fmt(floatBalance)})
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setConfirming(false)}
-                        className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95">Back</button>
+                      <button onClick={() => setConfirming(false)} className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95">Back</button>
                       <button onClick={handleSave} disabled={saving}
                         className="h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
                         style={{ background: "#dc2626" }}>
@@ -607,6 +687,100 @@ function ExpensesTab({
         </div>
       )}
 
+      {/* ── Set Bar Float Modal ── */}
+      {showSetBarFloat && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShowSetBarFloat(false); setSetFloatInput(""); setBarFloatMode("new"); }}>
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}
+            onClick={e => e.stopPropagation()}>
+            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
+              {barFloatSet > 0 ? "Update Bar Float" : "Set Bar Float"}
+            </p>
+            {/* Same / New session selector — only when a float is already set */}
+            {barFloatSet > 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["same", "new"] as const).map(mode => (
+                    <button key={mode} type="button" onClick={() => setBarFloatMode(mode)}
+                      className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+                      style={barFloatMode === mode
+                        ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                        : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                      {mode === "same" ? "Same Session" : "New Session"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
+                  {barFloatMode === "same"
+                    ? "Adds to current float — used amount unchanged"
+                    : "Starts fresh — used amount resets to $0"}
+                </p>
+              </>
+            )}
+            {/* Display */}
+            <div className="rounded-2xl px-5 py-4 text-right" style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+                ${setFloatInput === "" ? "0" : setFloatInput}
+              </span>
+            </div>
+            {/* Keys */}
+            <div className="grid grid-cols-3 gap-2">
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+                <button key={k} onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + k; })}
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>{k}</button>
+              ))}
+              <button onClick={() => setSetFloatInput(v => v.includes(".") ? v : v + ".")}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+              <button onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + "0"; })}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+              <button onClick={() => setSetFloatInput(v => v.slice(0, -1))}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+            </div>
+            <button onClick={handleSetBarFloat} disabled={setFloatBusy || !setFloatInput}
+              className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
+              style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Set Machine Float Modal ── */}
+      {showSetMachFloat && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShowSetMachFloat(false); setSetFloatInput(""); }}>
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}
+            onClick={e => e.stopPropagation()}>
+            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
+              {machineFloatSet > 0 ? "Update Machine Float" : "Set Machine Float"}
+            </p>
+            <div className="rounded-2xl px-5 py-4 text-right" style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+                ${setFloatInput === "" ? "0" : setFloatInput}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+                <button key={k} onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + k; })}
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>{k}</button>
+              ))}
+              <button onClick={() => setSetFloatInput(v => v.includes(".") ? v : v + ".")}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+              <button onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + "0"; })}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+              <button onClick={() => setSetFloatInput(v => v.slice(0, -1))}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+            </div>
+            <button onClick={handleSetMachFloat} disabled={setFloatBusy || !setFloatInput}
+              className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
+              style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Expense History */}
       <div className="space-y-2">
@@ -670,8 +844,7 @@ function ExpensesTab({
                                 + Add Line
                               </button>
                               <div className="grid grid-cols-2 gap-2 pt-1">
-                                <button onClick={() => { setEditingId(null); setEditLines([]); }}
-                                  className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                <button onClick={() => { setEditingId(null); setEditLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
                                 <button onClick={() => handleEditSave(e)} disabled={editSaving}
                                   className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50"
                                   style={{ background: "var(--gradient-hero)" }}>
@@ -683,8 +856,7 @@ function ExpensesTab({
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-center text-red-400">Delete ${fmt(Number(e.amount))} expense and refund to float?</p>
                               <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setDeleteConfirmId(null)}
-                                  className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                <button onClick={() => setDeleteConfirmId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
                                 <button onClick={() => handleDelete(e)} disabled={deleting}
                                   className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
                                   style={{ background: "#dc2626" }}>
@@ -733,395 +905,417 @@ function ExpensesTab({
           })
         )}
       </div>
+
+      {/* ── Set Bar Float Modal ── */}
+      {showSetBarFloat && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShowSetBarFloat(false); setSetFloatInput(""); setBarFloatMode("new"); }}>
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}
+            onClick={e => e.stopPropagation()}>
+            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
+              {barFloatSet > 0 ? "Update Bar Float" : "Set Bar Float"}
+            </p>
+            {barFloatSet > 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["same", "new"] as const).map(mode => (
+                    <button key={mode} type="button" onClick={() => setBarFloatMode(mode)}
+                      className="h-12 rounded-2xl font-black text-sm transition active:scale-95"
+                      style={barFloatMode === mode
+                        ? { background: "oklch(0.60 0.18 65)", color: "#000" }
+                        : { background: "oklch(0.20 0.05 60)", color: "oklch(0.65 0.15 65)", border: "1.5px solid oklch(0.35 0.10 60)" }}>
+                      {mode === "same" ? "Same Session" : "New Session"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
+                  {barFloatMode === "same"
+                    ? "Adds to current float — used amount unchanged"
+                    : "Starts fresh — used amount resets to $0"}
+                </p>
+              </>
+            )}
+            <div className="rounded-2xl px-5 py-4 text-right" style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+                ${setFloatInput === "" ? "0" : setFloatInput}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+                <button key={k} onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + k; })}
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>{k}</button>
+              ))}
+              <button onClick={() => setSetFloatInput(v => v.includes(".") ? v : v + ".")}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+              <button onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + "0"; })}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+              <button onClick={() => setSetFloatInput(v => v.slice(0, -1))}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+            </div>
+            <button onClick={handleSetBarFloat} disabled={setFloatBusy || !setFloatInput}
+              className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
+              style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Set Machine Float Modal ── */}
+      {showSetMachFloat && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => { setShowSetMachFloat(false); setSetFloatInput(""); }}>
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}
+            onClick={e => e.stopPropagation()}>
+            <p className="text-center text-xs font-semibold" style={{ color: "oklch(0.65 0.15 65)" }}>
+              {machineFloatSet > 0 ? "Update Machine Float" : "Set Machine Float"}
+            </p>
+            <div className="rounded-2xl px-5 py-4 text-right" style={{ background: "oklch(0.18 0.04 60)", border: "1px solid oklch(0.28 0.08 60)" }}>
+              <span className="font-black text-4xl" style={{ color: "oklch(0.82 0.18 65)" }}>
+                ${setFloatInput === "" ? "0" : setFloatInput}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["7","8","9","4","5","6","1","2","3"].map(k => (
+                <button key={k} onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + k; })}
+                  className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>{k}</button>
+              ))}
+              <button onClick={() => setSetFloatInput(v => v.includes(".") ? v : v + ".")}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>.</button>
+              <button onClick={() => setSetFloatInput(v => { const parts = v.split("."); if (parts[1] !== undefined && parts[1].length >= 2) return v; return v + "0"; })}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>0</button>
+              <button onClick={() => setSetFloatInput(v => v.slice(0, -1))}
+                className="rounded-2xl py-4 text-xl font-black active:scale-95 transition" style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>⌫</button>
+            </div>
+            <button onClick={handleSetMachFloat} disabled={setFloatBusy || !setFloatInput}
+              className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
+              style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}>
+              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+
+// ─── Mini calendar ────────────────────────────────────────────────────────────
+function MgrCalendar({ workedDates, selectedDate, onSelect }: {
+  workedDates: Set<string>; selectedDate: string | null; onSelect: (d: string | null) => void;
+}) {
+  const today = new Date();
+  const [vy, setVy] = useState(today.getFullYear());
+  const [vm, setVm] = useState(today.getMonth());
+  const firstDay = new Date(vy, vm, 1).getDay();
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const label = new Date(vy, vm, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const todayStr = today.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+  const prev = () => vm === 0 ? (setVm(11), setVy(y => y - 1)) : setVm(m => m - 1);
+  const next = () => vm === 11 ? (setVm(0), setVy(y => y + 1)) : setVm(m => m + 1);
+  return (
+    <div className="rounded-2xl border border-border p-3" style={{ background: "var(--gradient-card)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={prev} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted/40 transition active:scale-90">
+          <ChevronDown className="h-4 w-4 rotate-90" />
+        </button>
+        <span className="font-black text-sm">{label}</span>
+        <button onClick={next} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted/40 transition active:scale-90">
+          <ChevronDown className="h-4 w-4 -rotate-90" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 mb-1">
+        {["S","M","T","W","T","F","S"].map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-black text-muted-foreground py-1">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-1">
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const ds = `${vy}-${pad(vm + 1)}-${pad(day)}`;
+          const worked = workedDates.has(ds);
+          const sel = selectedDate === ds;
+          const isToday = ds === todayStr;
+          return (
+            <button key={day} disabled={!worked} onClick={() => onSelect(sel ? null : ds)}
+              className="h-9 w-full rounded-xl flex items-center justify-center text-xs font-black transition active:scale-90 disabled:cursor-default"
+              style={sel
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                : worked
+                ? { background: "rgba(251,146,60,0.12)", border: "1.5px solid rgba(251,146,60,0.4)", color: "var(--primary)" }
+                : isToday ? { color: "var(--primary)", opacity: 0.4 }
+                : { color: "var(--muted-foreground)", opacity: 0.22 }}>
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      {selectedDate && (
+        <button onClick={() => onSelect(null)} className="mt-2 w-full text-[11px] font-black text-muted-foreground hover:text-foreground transition text-center">
+          Show all dates ✕
+        </button>
+      )}
     </div>
   );
 }
 
 
 // ─── Time Cards Tab ───────────────────────────────────────────────────────────
-function TimeCardsTab({
-  profile,
-  ownerId,
-  managerName,
-}: {
+function TimeCardsTab({ profile, ownerId, managerName }: {
   profile: { id: string; username?: string | null; wallet_balance: number };
-  ownerId: string;
-  managerName: string;
+  ownerId: string; managerName: string;
 }) {
   const sb = supabase as any;
-
-  // ── Employees list (includes manager themselves) ───────────────────────────
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [empLoading, setEmpLoading] = useState(true);
 
   const loadEmployees = useCallback(async () => {
     setEmpLoading(true);
-    // Fetch all staff under this owner
     const { data: staff } = await sb.from("profiles")
-      .select("id, username, role, job_title")
-      .eq("parent_id", ownerId)
-      .in("role", ["cashier", "manager", "custom"])
-      .order("username", { ascending: true });
-    // Include the manager themselves
-    const self: Employee = { id: profile.id, username: managerName, role: "manager" };
+      .select("id, username, role, job_title").eq("parent_id", ownerId)
+      .in("role", ["cashier", "manager", "custom"]).order("username", { ascending: true });
     const staffList = (staff ?? []) as Employee[];
-    // Put self first if not already in list
-    const hasSelf = staffList.some((e) => e.id === profile.id);
+    const self: Employee = { id: profile.id, username: managerName, role: "manager" };
+    const hasSelf = staffList.some(e => e.id === profile.id);
     setEmployees(hasSelf ? staffList : [self, ...staffList]);
     setEmpLoading(false);
   }, [ownerId, profile.id, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
-  // ── Time cards ─────────────────────────────────────────────────────────────
   const [timeCards, setTimeCards] = useState<TimeCard[]>([]);
   const [tcLoading, setTcLoading] = useState(true);
 
   const loadTimeCards = useCallback(async () => {
     setTcLoading(true);
-    const { data } = await sb.from("time_cards")
-      .select("*")
-      .eq("owner_id", ownerId)
+    const { data } = await sb.from("time_cards").select("*").eq("owner_id", ownerId)
       .order("clocked_in_at", { ascending: false });
     setTimeCards((data ?? []) as TimeCard[]);
     setTcLoading(false);
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadTimeCards(); }, [loadTimeCards]);
-
   useEffect(() => {
-    const ch = supabase.channel(`mgr-timecards-${ownerId}`)
+    const ch = supabase.channel(`mgr-tc-${ownerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "time_cards", filter: `owner_id=eq.${ownerId}` },
-        () => loadTimeCards())
-      .subscribe();
+        () => loadTimeCards()).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, loadTimeCards]);
 
-  // ── Selected employee detail ───────────────────────────────────────────────
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [clockBusy, setClockBusy] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showCal, setShowCal] = useState(false);
+  const [openDate, setOpenDate] = useState<string | null>(null);
 
-  // Open card for this employee — the most recent open (not clocked out) entry
-  const openCard = selectedEmp
-    ? timeCards.find((tc) => tc.employee_id === selectedEmp.id && !tc.clocked_out_at) ?? null
-    : null;
-
+  const openCard = selectedEmp ? timeCards.find(tc => tc.employee_id === selectedEmp.id && !tc.clocked_out_at) ?? null : null;
   const isClockedIn = !!openCard;
+  const workedDates = new Set(timeCards.map(tc => tc.work_date));
 
   const handleClockIn = async () => {
     if (!selectedEmp) return;
     setClockBusy(true);
-    const now = new Date().toISOString();
     const { error } = await sb.from("time_cards").insert({
-      owner_id: ownerId,
-      employee_id: selectedEmp.id,
-      employee_name: selectedEmp.username,
-      clocked_in_at: now,
-      work_date: trinidadDate(),
+      owner_id: ownerId, employee_id: selectedEmp.id,
+      employee_name: selectedEmp.username, clocked_in_at: new Date().toISOString(), work_date: trinidadDate(),
     });
     setClockBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${selectedEmp.username} clocked in`);
-    loadTimeCards();
+    toast.success(`${selectedEmp.username} clocked in`); loadTimeCards();
   };
 
   const handleClockOut = async () => {
     if (!openCard) return;
     setClockBusy(true);
-    const now = new Date().toISOString();
-    const { error } = await sb.from("time_cards").update({ clocked_out_at: now }).eq("id", openCard.id);
+    const { error } = await sb.from("time_cards").update({ clocked_out_at: new Date().toISOString() }).eq("id", openCard.id);
     setClockBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${openCard.employee_name} clocked out`);
-    loadTimeCards();
+    toast.success(`${openCard.employee_name} clocked out`); loadTimeCards();
   };
 
-  // Cards for the selected employee (history, latest first)
-  const empCards = selectedEmp
-    ? timeCards.filter((tc) => tc.employee_id === selectedEmp.id)
-    : [];
-
-  // Group all cards by work_date for the history section
-  const byDate: Record<string, TimeCard[]> = {};
-  timeCards.forEach((tc) => {
-    if (!byDate[tc.work_date]) byDate[tc.work_date] = [];
-    byDate[tc.work_date].push(tc);
-  });
-  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
-
-  const [openDate, setOpenDate] = useState<string | null>(null);
-
-  function displayName(emp: Employee) {
-    return emp.username;
-  }
   function roleLabel(emp: Employee) {
     if (emp.role === "manager") return "Manager";
     if (emp.role === "custom" && emp.job_title) return emp.job_title;
-    if (emp.role === "cashier") return "Cashier";
-    return emp.role;
+    return "Cashier";
   }
 
+  const DatePicker = () => (
+    <div className="space-y-2">
+      <button onClick={() => setShowCal(v => !v)}
+        className="w-full h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 border transition active:scale-[0.98]"
+        style={selectedDate
+          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+          : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+        <Clock className="h-4 w-4" />
+        {selectedDate
+          ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+          : "Pick a Date"}
+      </button>
+      {showCal && <MgrCalendar workedDates={workedDates} selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setShowCal(false); }} />}
+    </div>
+  );
 
-  return (
-    <div className="space-y-4">
 
-      {/* ── Employee list or detail view ── */}
-      {!selectedEmp ? (
-        <>
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Select Employee</p>
-          {empLoading ? (
+  if (!selectedEmp) {
+    const filtered = selectedDate ? timeCards.filter(tc => tc.work_date === selectedDate) : timeCards;
+    const byDate: Record<string, TimeCard[]> = {};
+    filtered.forEach(tc => { if (!byDate[tc.work_date]) byDate[tc.work_date] = []; byDate[tc.work_date].push(tc); });
+    const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+    return (
+      <div className="space-y-4">
+        <DatePicker />
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Select Employee</p>
+        {empLoading
+          ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl h-16 bg-muted/30 animate-pulse" />)}</div>
+          : employees.length === 0
+          ? <div className="text-center py-10 text-muted-foreground text-sm">No staff found.</div>
+          : (
             <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-2xl h-16 bg-muted/30 animate-pulse" />
-              ))}
-            </div>
-          ) : employees.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No staff found.</div>
-          ) : (
-            <div className="space-y-2">
-              {employees.map((emp) => {
-                const empOpen = timeCards.find((tc) => tc.employee_id === emp.id && !tc.clocked_out_at);
+              {employees.map(emp => {
+                const empOpen = timeCards.find(tc => tc.employee_id === emp.id && !tc.clocked_out_at);
                 return (
                   <button key={emp.id} onClick={() => setSelectedEmp(emp)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] text-left"
                     style={{ background: "var(--gradient-card)", borderColor: empOpen ? "#86efac" : "var(--border)", boxShadow: empOpen ? "0 0 0 1px rgba(134,239,172,0.3)" : undefined }}>
                     <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
                       style={{ background: empOpen ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: empOpen ? "#86efac" : "var(--primary)" }}>
-                      {displayName(emp).charAt(0).toUpperCase()}
+                      {emp.username.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm truncate">{displayName(emp)}</p>
+                      <p className="font-black text-sm truncate">{emp.username}</p>
                       <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {empOpen ? (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>
-                          Clocked In
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                          Out
-                        </span>
-                      )}
-                    </div>
+                    {empOpen
+                      ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Clocked In</span>
+                      : <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Out</span>}
                   </button>
                 );
               })}
             </div>
           )}
-        </>
-      ) : (
-        /* ── Employee detail: clock in/out ── */
-        <div className="space-y-4">
-          {/* Back + employee header */}
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedEmp(null)}
-              className="h-9 w-9 rounded-xl flex items-center justify-center border border-border transition active:scale-95"
-              style={{ background: "var(--gradient-card)" }}>
-              <X className="h-4 w-4" />
-            </button>
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
-              style={{ background: isClockedIn ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: isClockedIn ? "#86efac" : "var(--primary)" }}>
-              {displayName(selectedEmp).charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-black text-base truncate">{displayName(selectedEmp)}</p>
-              <p className="text-xs text-muted-foreground">{roleLabel(selectedEmp)}</p>
-            </div>
-          </div>
-
-          {/* Status card */}
-          <div className="rounded-3xl p-5 relative overflow-hidden"
-            style={{
-              background: isClockedIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.08)",
-              border: isClockedIn ? "1.5px solid rgba(134,239,172,0.35)" : "1.5px solid rgba(239,68,68,0.25)",
-            }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest mb-1"
-                  style={{ color: isClockedIn ? "rgba(134,239,172,0.7)" : "rgba(239,68,68,0.6)" }}>
-                  {isClockedIn ? "Currently Clocked In" : "Currently Clocked Out"}
-                </p>
-                {isClockedIn && openCard && (
-                  <p className="font-black text-lg" style={{ color: "#86efac" }}>
-                    Since {fmtTime(openCard.clocked_in_at)}
-                  </p>
-                )}
-                {isClockedIn && openCard && (
-                  <p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.6)" }}>
-                    {fmtDuration(openCard.clocked_in_at, null)} on shift
-                  </p>
-                )}
-                {!isClockedIn && (
-                  <p className="font-black text-base text-muted-foreground">Not on shift</p>
-                )}
-              </div>
-              <div className="text-4xl">{isClockedIn ? "🟢" : "⚫"}</div>
-            </div>
-          </div>
-
-          {/* Clock In / Clock Out buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleClockIn}
-              disabled={isClockedIn || clockBusy}
-              className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={!isClockedIn
-                ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }
-                : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-              {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-              Clock In
-            </button>
-            <button
-              onClick={handleClockOut}
-              disabled={!isClockedIn || clockBusy}
-              className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={isClockedIn
-                ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" }
-                : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-              {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-              Clock Out
-            </button>
-          </div>
-
-
-          {/* This employee's time card history */}
-          <div className="space-y-2">
-            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              Time Card History
-            </p>
-            {tcLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}
-              </div>
-            ) : empCards.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">No time cards yet.</div>
-            ) : (
-              empCards.map((tc) => (
-                <div key={tc.id}
-                  className="rounded-2xl border px-4 py-3 flex items-center gap-3"
-                  style={{
-                    background: "var(--gradient-card)",
-                    borderColor: !tc.clocked_out_at ? "rgba(134,239,172,0.35)" : "var(--border)",
-                  }}>
-                  {/* Date badge */}
-                  <div className="rounded-xl px-2.5 py-1.5 text-center shrink-0"
-                    style={{ background: "rgba(255,255,255,0.06)", minWidth: 52 }}>
-                    <p className="text-[9px] font-black text-muted-foreground uppercase">
-                      {new Date(tc.work_date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}
-                    </p>
-                    <p className="font-black text-base leading-none">
-                      {new Date(tc.work_date + "T12:00:00").getDate()}
-                    </p>
-                  </div>
-                  {/* Times */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-sm font-bold">
-                      <LogIn className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                      <span className="text-green-400">{fmtTime(tc.clocked_in_at)}</span>
-                      {tc.clocked_out_at && (
-                        <>
-                          <span className="text-muted-foreground/50">→</span>
-                          <LogOut className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                          <span className="text-red-400">{fmtTime(tc.clocked_out_at)}</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {tc.clocked_out_at
-                        ? `Duration: ${fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}`
-                        : "Still on shift"}
-                    </p>
-                  </div>
-                  {!tc.clocked_out_at && (
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>
-                      Active
-                    </span>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-
-      {/* ── Full time card history (all staff, grouped by date) ── */}
-      {!selectedEmp && (
-        <div className="space-y-2 mt-2">
+        <div className="space-y-2 pt-2">
           <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">All Time Cards</p>
-          {tcLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}
-            </div>
-          ) : dates.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No time cards recorded yet.</div>
-          ) : (
-            dates.map((d) => {
-              const cards = byDate[d];
-              const isOpen = openDate === d;
-              const activeCount = cards.filter((c) => !c.clocked_out_at).length;
-              const dateLabel = new Date(d + "T12:00:00").toLocaleDateString("en-US", {
-                weekday: "short", month: "short", day: "numeric", year: "numeric",
-              });
-              return (
-                <div key={d} className="rounded-2xl border border-border overflow-hidden"
-                  style={{ background: "var(--gradient-card)" }}>
-                  <button type="button" onClick={() => setOpenDate(isOpen ? null : d)}
-                    className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-muted/20">
-                    <div className="text-left">
-                      <p className="font-black text-sm">{dateLabel}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {cards.length} record{cards.length !== 1 ? "s" : ""}
-                        {activeCount > 0 && <span className="text-green-400 ml-1">· {activeCount} active</span>}
-                      </p>
-                    </div>
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {isOpen && (
-                    <div className="border-t border-border divide-y divide-border/40">
-                      {cards.map((tc) => (
-                        <div key={tc.id} className="px-4 py-3 flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-black text-xs"
-                            style={{ background: "rgba(255,255,255,0.06)" }}>
-                            {tc.employee_name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-black text-sm truncate">{tc.employee_name}</p>
-                            <div className="flex items-center gap-1.5 text-xs mt-0.5">
-                              <span className="text-green-400 font-bold">{fmtTime(tc.clocked_in_at)}</span>
-                              {tc.clocked_out_at && (
-                                <>
-                                  <span className="text-muted-foreground/50">→</span>
-                                  <span className="text-red-400 font-bold">{fmtTime(tc.clocked_out_at)}</span>
-                                  <span className="text-muted-foreground">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span>
-                                </>
-                              )}
-                              {!tc.clocked_out_at && (
-                                <span className="text-green-400 font-semibold">· Still on shift</span>
-                              )}
+          {tcLoading
+            ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}</div>
+            : dates.length === 0
+            ? <div className="text-center py-8 text-muted-foreground text-sm">{selectedDate ? "No records for this day." : "No time cards recorded yet."}</div>
+            : dates.map(d => {
+                const cards = byDate[d];
+                const isOpen = openDate === d;
+                const active = cards.filter(c => !c.clocked_out_at).length;
+                const dl = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+                return (
+                  <div key={d} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                    <button type="button" onClick={() => setOpenDate(isOpen ? null : d)}
+                      className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-muted/20">
+                      <div className="text-left">
+                        <p className="font-black text-sm">{dl}</p>
+                        <p className="text-xs text-muted-foreground">{cards.length} record{cards.length !== 1 ? "s" : ""}{active > 0 && <span className="text-green-400 ml-1">· {active} active</span>}</p>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="border-t border-border divide-y divide-border/40">
+                        {cards.map(tc => (
+                          <div key={tc.id} className="px-4 py-3 flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-black text-xs" style={{ background: "rgba(255,255,255,0.06)" }}>
+                              {tc.employee_name.charAt(0).toUpperCase()}
                             </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-black text-sm truncate">{tc.employee_name}</p>
+                              <div className="flex items-center gap-1.5 text-xs mt-0.5 flex-wrap">
+                                <LogIn className="h-3 w-3 text-green-400 shrink-0" />
+                                <span className="text-green-400 font-bold">{fmtTime(tc.clocked_in_at)}</span>
+                                {tc.clocked_out_at
+                                  ? <><span className="text-muted-foreground/40">→</span><LogOut className="h-3 w-3 text-red-400 shrink-0" /><span className="text-red-400 font-bold">{fmtTime(tc.clocked_out_at)}</span><span className="text-muted-foreground">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span></>
+                                  : <span className="text-green-400 font-semibold">· Still on shift</span>}
+                              </div>
+                            </div>
+                            {!tc.clocked_out_at && <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>Active</span>}
                           </div>
-                          {!tc.clocked_out_at && (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
-                              style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>
-                              Active
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
         </div>
-      )}
+      </div>
+    );
+  }
 
+  const empCards = timeCards.filter(tc => tc.employee_id === selectedEmp.id && (!selectedDate || tc.work_date === selectedDate));
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setSelectedEmp(null)}
+          className="h-9 px-4 rounded-xl font-black text-xs border border-border transition active:scale-95" style={{ background: "var(--gradient-card)" }}>
+          ← Go Back
+        </button>
+        <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
+          style={{ background: isClockedIn ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: isClockedIn ? "#86efac" : "var(--primary)" }}>
+          {selectedEmp.username.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-base truncate">{selectedEmp.username}</p>
+          <p className="text-xs text-muted-foreground">{roleLabel(selectedEmp)}</p>
+        </div>
+      </div>
+      <div className="rounded-3xl p-5" style={{ background: isClockedIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.08)", border: isClockedIn ? "1.5px solid rgba(134,239,172,0.35)" : "1.5px solid rgba(239,68,68,0.25)" }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: isClockedIn ? "rgba(134,239,172,0.7)" : "rgba(239,68,68,0.6)" }}>
+              {isClockedIn ? "Currently Clocked In" : "Currently Clocked Out"}
+            </p>
+            {isClockedIn && openCard
+              ? <><p className="font-black text-lg" style={{ color: "#86efac" }}>Since {fmtTime(openCard.clocked_in_at)}</p><p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.6)" }}>{fmtDuration(openCard.clocked_in_at, null)} on shift</p></>
+              : <p className="font-black text-base text-muted-foreground">Not on shift</p>}
+          </div>
+          <div className="text-4xl">{isClockedIn ? "🟢" : "⚫"}</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
+          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+          {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
+        </button>
+        <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
+          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={isClockedIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+          {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
+        </button>
+      </div>
+      <DatePicker />
+      <div className="space-y-2">
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Time Card History</p>
+        {tcLoading
+          ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}</div>
+          : empCards.length === 0
+          ? <div className="text-center py-8 text-muted-foreground text-sm">{selectedDate ? "No records for this day." : "No time cards yet."}</div>
+          : empCards.map(tc => (
+            <div key={tc.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3"
+              style={{ background: "var(--gradient-card)", borderColor: !tc.clocked_out_at ? "rgba(134,239,172,0.35)" : "var(--border)" }}>
+              <div className="rounded-xl px-2.5 py-1.5 text-center shrink-0" style={{ background: "rgba(255,255,255,0.06)", minWidth: 52 }}>
+                <p className="text-[9px] font-black text-muted-foreground uppercase">{new Date(tc.work_date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}</p>
+                <p className="font-black text-base leading-none">{new Date(tc.work_date + "T12:00:00").getDate()}</p>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-bold">
+                  <LogIn className="h-3.5 w-3.5 text-green-400 shrink-0" /><span className="text-green-400">{fmtTime(tc.clocked_in_at)}</span>
+                  {tc.clocked_out_at && <><span className="text-muted-foreground/50">→</span><LogOut className="h-3.5 w-3.5 text-red-400 shrink-0" /><span className="text-red-400">{fmtTime(tc.clocked_out_at)}</span></>}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{tc.clocked_out_at ? `Duration: ${fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}` : "Still on shift"}</p>
+              </div>
+              {!tc.clocked_out_at && <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Active</span>}
+            </div>
+          ))}
+      </div>
     </div>
   );
 }
