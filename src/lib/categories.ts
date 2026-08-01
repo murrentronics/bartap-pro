@@ -19,3 +19,11 @@ export function categoryIcon(value: string): string {
 export function categoryLabel(value: string): string {
   return CATEGORIES.find((c) => c.value === value)?.label ?? value;
 }
+
+/**
+ * Returns the i18n translation key for a category value.
+ * Use with t(): t(categoryKey("beers"), "Beer")
+ */
+export function categoryKey(value: string): string {
+  return `cat_${value}`;
+}

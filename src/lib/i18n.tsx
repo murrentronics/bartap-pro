@@ -94,6 +94,15 @@ const ES: Record<string, string> = {
   "enter_password":   "Ingresa tu contraseña",
   "signing_in":       "Iniciando sesión…",
 
+  // ── Category tabs ─────────────────────────────────────────────────────────
+  "cat_beers":        "Cerveza",
+  "cat_liquor":       "Ron",
+  "cat_drinks":       "Refrescos",
+  "cat_cigarettes":   "Cigs",
+  "cat_snacks":       "Bocadillos",
+  "cat_food":         "Comida",
+  "cat_miscellaneous":"Varios",
+
   // ── Bar / Register ────────────────────────────────────────────────────────
   "cash_sale":        "Venta en efectivo",
   "credit_sale":      "Venta a crédito",

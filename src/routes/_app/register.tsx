@@ -10,7 +10,7 @@ import {
   Trash2, Minus, Plus, Loader2, X, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
+import { CATEGORIES, type CategoryValue, categoryIcon, categoryKey } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
 import { useNetworkStatus } from "@/lib/useNetworkStatus";
 import { enqueue } from "@/lib/offlineQueue";
@@ -941,7 +941,7 @@ export default function RegisterPage() {
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+              <span className="text-xs leading-none whitespace-nowrap">{t(categoryKey(cat.value), cat.label)}</span>
             </button>
           ))}
         </div>
@@ -961,9 +961,9 @@ export default function RegisterPage() {
                   : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
-              title={cat.label}
+              title={t(categoryKey(cat.value), cat.label)}
             >
-              <span className="text-xs lg:text-sm leading-none text-center">{cat.label}</span>
+              <span className="text-xs lg:text-sm leading-none text-center">{t(categoryKey(cat.value), cat.label)}</span>
             </button>
           ))}
         </div>
@@ -1057,7 +1057,7 @@ export default function RegisterPage() {
 
             {filtered.length === 0 && !loading ? (
               <div className="text-center py-20 text-muted-foreground">
-                {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${CATEGORIES.find(c=>c.value===category)?.label ?? category} found.`}
+                {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${t(categoryKey(CATEGORIES.find(c=>c.value===category)?.value ?? ""), CATEGORIES.find(c=>c.value===category)?.label ?? category)} found.`}
               </div>
             ) : (
           <div>

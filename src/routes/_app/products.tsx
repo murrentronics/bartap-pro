@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useImageCache } from "@/lib/useImageCache";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CATEGORIES, categoryIcon } from "@/lib/categories";
+import { CATEGORIES, categoryIcon, categoryKey } from "@/lib/categories";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -1520,7 +1520,7 @@ export default function ProductsPage() {
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+              <span className="text-xs leading-none whitespace-nowrap">{t(categoryKey(cat.value), cat.label)}</span>
             </button>
           ))}
         </div>
@@ -1534,7 +1534,7 @@ export default function ProductsPage() {
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+              <span className="text-xs leading-none whitespace-nowrap">{t(categoryKey(cat.value), cat.label)}</span>
             </button>
           ))}
         </div>
@@ -1544,7 +1544,7 @@ export default function ProductsPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">No {CATEGORIES.find(c=>c.value===category)?.label ?? category} yet — tap Add Item.</div>
+          <div className="text-center py-20 text-muted-foreground">No {t(categoryKey(CATEGORIES.find(c=>c.value===category)?.value ?? ""), CATEGORIES.find(c=>c.value===category)?.label ?? category)} yet — tap Add Item.</div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
             {filtered.map((p) => (
@@ -1763,6 +1763,7 @@ export default function ProductsPage() {
 // ─── Add Item Dialog ──────────────────────────────────────────────────────────
 function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: { onDone: () => void; onSaved: (product: Product) => void; onBulkSelect?: (templates: { url: string; label: string; category: string }[]) => void; ownerId: string; editProduct?: Product | null }) {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const isEdit = !!editProduct;
   const [name, setName] = useState(editProduct?.name ?? "");
   const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
@@ -2045,7 +2046,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                     }`}
                     style={templateCat === cat.value ? { background: "var(--gradient-hero)" } : {}}
                   >
-                    <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
+                    <span className="text-xs leading-none whitespace-nowrap">{t(categoryKey(cat.value), cat.label)}</span>
                   </button>
                 ))}
               </div>
@@ -2116,7 +2117,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                     className="mt-1 h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm font-bold outline-none cursor-pointer"
                   >
                     {CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
+                      <option key={cat.value} value={cat.value}>{cat.icon} {t(categoryKey(cat.value), cat.label)}</option>
                     ))}
                   </select>
                 </div>
