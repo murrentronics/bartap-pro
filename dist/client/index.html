@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -1982,30 +1982,33 @@
     async function downloadManualPdf() {
       const btn = document.getElementById('manualPdfBtn');
       btn.disabled = true;
-      btn.textContent = 'Generating…';
+      btn.textContent = 'Generating...';
 
       try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-        const gold   = [240, 160, 48];
-        const dark   = [15, 10, 4];
-        const white  = [245, 240, 232];
-        const muted  = [138, 122, 106];
-        const W      = 210;
-        const MARGIN = 18;
-        const CW     = W - MARGIN * 2;
-        let y        = 0;
+        const gold    = [192, 80, 20];   // dark orange — readable on white
+        const ink     = [20, 20, 20];    // near-black body text
+        const heading = [10, 10, 10];    // section titles
+        const sub     = [90, 70, 50];    // muted labels
+        const bgPage  = [255, 255, 255]; // white page
+        const bgTip   = [255, 248, 235]; // warm cream tip box
+        const W       = 210;
+        const MARGIN  = 18;
+        const CW      = W - MARGIN * 2;
+        let y         = 0;
 
         function newPage() {
           doc.addPage();
-          // subtle header line
+          doc.setFillColor(...bgPage);
+          doc.rect(0, 0, W, 297, 'F');
           doc.setDrawColor(...gold);
           doc.setLineWidth(0.4);
           doc.line(MARGIN, 8, W - MARGIN, 8);
           doc.setFontSize(7);
-          doc.setTextColor(...muted);
-          doc.text('Bartendaz Pro — User Manual', MARGIN, 6);
+          doc.setTextColor(...sub);
+          doc.text('Bartendaz Pro -- User Manual', MARGIN, 6);
           doc.text('bartendazpro.com', W - MARGIN, 6, { align: 'right' });
           y = 18;
         }
@@ -2014,19 +2017,18 @@
           if (y + need > 272) newPage();
         }
 
-        function sectionHeader(icon, title, sub) {
+        function sectionHeader(icon, title, sec) {
           checkY(24);
-          // gold accent line
           doc.setFillColor(...gold);
-          doc.rect(MARGIN, y, 2, 14, 'F');
+          doc.rect(MARGIN, y, 3, 14, 'F');
           doc.setFontSize(13);
-          doc.setTextColor(...white);
+          doc.setTextColor(...heading);
           doc.setFont('helvetica', 'bold');
-          doc.text(icon + '  ' + title, MARGIN + 6, y + 9);
+          doc.text(title, MARGIN + 8, y + 9);
           doc.setFontSize(7.5);
-          doc.setTextColor(...muted);
+          doc.setTextColor(...sub);
           doc.setFont('helvetica', 'normal');
-          doc.text(sub, MARGIN + 6, y + 14);
+          doc.text(sec, MARGIN + 8, y + 14);
           y += 20;
           doc.setDrawColor(...gold);
           doc.setLineWidth(0.3);
@@ -2036,21 +2038,18 @@
 
         function step(num, title, body) {
           checkY(18);
-          // Circle number
           doc.setFillColor(...gold);
           doc.circle(MARGIN + 4, y + 3, 3.5, 'F');
           doc.setFontSize(7.5);
-          doc.setTextColor(...dark);
+          doc.setTextColor(255, 255, 255);
           doc.setFont('helvetica', 'bold');
           doc.text(String(num), MARGIN + 4, y + 4.5, { align: 'center' });
-          // Title
           doc.setFontSize(9);
-          doc.setTextColor(...white);
+          doc.setTextColor(...heading);
           doc.setFont('helvetica', 'bold');
           doc.text(title, MARGIN + 12, y + 4);
-          // Body
           doc.setFontSize(8);
-          doc.setTextColor(...muted);
+          doc.setTextColor(...ink);
           doc.setFont('helvetica', 'normal');
           const lines = doc.splitTextToSize(body, CW - 14);
           doc.text(lines, MARGIN + 12, y + 9);
@@ -2060,26 +2059,28 @@
 
         function tip(text) {
           checkY(14);
-          doc.setFillColor(40, 28, 8);
-          doc.roundedRect(MARGIN, y, CW, 12 + Math.ceil(doc.splitTextToSize(text, CW - 14).length * 4.2), 2, 2, 'F');
+          const lines = doc.splitTextToSize(text, CW - 14);
+          const boxH = 14 + lines.length * 4.2;
+          doc.setFillColor(...bgTip);
+          doc.roundedRect(MARGIN, y, CW, boxH, 2, 2, 'F');
           doc.setDrawColor(...gold);
-          doc.setLineWidth(0.5);
-          doc.line(MARGIN, y, MARGIN, y + 12 + Math.ceil(doc.splitTextToSize(text, CW - 14).length * 4.2));
+          doc.setLineWidth(0.8);
+          doc.line(MARGIN + 0.4, y, MARGIN + 0.4, y + boxH);
+          doc.setLineWidth(0.3);
           doc.setFontSize(8);
           doc.setTextColor(...gold);
           doc.setFont('helvetica', 'bold');
-          doc.text('💡  Note:', MARGIN + 4, y + 5);
-          doc.setTextColor(...white);
+          doc.text('Note:', MARGIN + 5, y + 5);
+          doc.setTextColor(...ink);
           doc.setFont('helvetica', 'normal');
-          const lines = doc.splitTextToSize(text, CW - 14);
-          doc.text(lines, MARGIN + 4, y + 10);
-          y += 14 + lines.length * 4.2;
+          doc.text(lines, MARGIN + 5, y + 10);
+          y += boxH + 4;
         }
 
         function para(text) {
           checkY(12);
           doc.setFontSize(8.5);
-          doc.setTextColor(...muted);
+          doc.setTextColor(...ink);
           doc.setFont('helvetica', 'normal');
           const lines = doc.splitTextToSize(text, CW);
           doc.text(lines, MARGIN, y);
@@ -2087,50 +2088,46 @@
         }
 
         // ── COVER PAGE ──
-        // background
-        doc.setFillColor(...dark);
+        doc.setFillColor(...bgPage);
         doc.rect(0, 0, W, 297, 'F');
-        // gold gradient band
-        doc.setFillColor(40, 20, 5);
-        doc.rect(0, 0, W, 80, 'F');
-        doc.setDrawColor(...gold);
-        doc.setLineWidth(0.5);
-        doc.line(0, 80, W, 80);
+        // gold header band
+        doc.setFillColor(...gold);
+        doc.rect(0, 0, W, 72, 'F');
 
-        doc.setFontSize(42);
-        doc.setTextColor(...gold);
+        doc.setFontSize(38);
+        doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text('Bartendaz Pro', W / 2, 42, { align: 'center' });
+        doc.text('Bartendaz Pro', W / 2, 38, { align: 'center' });
         doc.setFontSize(16);
-        doc.setTextColor(...white);
+        doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'normal');
-        doc.text('User Manual', W / 2, 55, { align: 'center' });
+        doc.text('User Manual', W / 2, 52, { align: 'center' });
         doc.setFontSize(9);
-        doc.setTextColor(...muted);
-        doc.text('Complete guide to every feature', W / 2, 64, { align: 'center' });
+        doc.setTextColor(255, 240, 210);
+        doc.text('Complete guide to every feature', W / 2, 63, { align: 'center' });
 
         // TOC
-        y = 96;
+        y = 90;
         doc.setFontSize(9);
         doc.setTextColor(...gold);
         doc.setFont('helvetica', 'bold');
         doc.text('TABLE OF CONTENTS', MARGIN, y);
         y += 8;
         const toc = [
-          '1. Signing In & Account Roles',     '2. Opening & Closing Bar Session',
-          '3. Bar (POS) &mdash; Taking Orders',      '4. Cash Sales & Change',
-          '5. Credit Sales (Charge to Tab)',   '6. Opened Bottles & Drink Sales',
-          '7. Cigarette & Rolling Paper Packs','8. Specials & Bundle Deals',
-          '9. Items (Product Catalog)',        '10. Wallet & Financial Overview',
-          '11. Customers (Credit Accounts)',   '12. Staff (Cashiers & Managers)',
-          '13. Manager &mdash; Bar Expense',         '14. Machines Tracker',
-          '15. Music Player',                  '16. Summary Reports',
-          '17. Profile & Settings',            '18. Offline Mode & Sync',
+          '1. Signing In & Account Roles',      '2. Opening & Closing Bar Session',
+          '3. Bar (POS) - Taking Orders',        '4. Cash Sales & Change',
+          '5. Credit Sales (Charge to Tab)',     '6. Opened Bottles & Drink Sales',
+          '7. Cigarette & Rolling Paper Packs',  '8. Specials & Bundle Deals',
+          '9. Items (Product Catalog)',          '10. Wallet & Financial Overview',
+          '11. Customers (Credit Accounts)',     '12. Staff (Cashiers & Managers)',
+          '13. Manager - Bar Expense',           '14. Machines Tracker',
+          '15. Music Player',                   '16. Summary Reports',
+          '17. Profile & Settings',             '18. Offline Mode & Sync',
         ];
         doc.setFontSize(8.5);
-        doc.setTextColor(...white);
+        doc.setTextColor(...ink);
         doc.setFont('helvetica', 'normal');
-        toc.forEach((item, i) => {
+        toc.forEach(function(item, i) {
           const col = i % 2;
           const row = Math.floor(i / 2);
           doc.text(item, MARGIN + col * (CW / 2 + 2), y + row * 7);
@@ -2138,86 +2135,86 @@
 
         // footer
         doc.setFontSize(8);
-        doc.setTextColor(...muted);
-        doc.text('© 2026 Bartendaz Pro  ·  +1 868 385-0635  ·  +1 868 726-7313', W / 2, 285, { align: 'center' });
+        doc.setTextColor(...sub);
+        doc.text('(c) 2026 Bartendaz Pro  +1 868 385-0635  +1 868 726-7313', W / 2, 285, { align: 'center' });
 
         // ── SECTIONS ──
         newPage();
 
         // 1. Login
-        sectionHeader('🔐', 'Signing In & Account Roles', 'Section 1');
+        sectionHeader('', 'Signing In & Account Roles', 'Section 1');
         step(1,'Open the app','Launch Bartendaz Pro. You will land on the Sign In screen.');
-        step(2,'Enter credentials','Owners use their email address. Cashiers use the username set by the owner — no email needed.');
+        step(2,'Enter credentials','Owners use their email address. Cashiers use the username set by the owner -- no email needed.');
         step(3,'Tap Sign In','Owners land on Bar (POS). Cashiers on Bar. Managers on Items.');
         tip('Forgot your password? Tap "Forgot password?" on the login screen to receive a reset email.');
 
         // 2. Session
-        sectionHeader('🟢', 'Opening & Closing the Bar Session', 'Section 2');
+        sectionHeader('', 'Opening & Closing the Bar Session', 'Section 2');
         para('The bar session controls whether sales can be made. When closed, the POS is locked. Only owners can open/close sessions.');
         step(1,'Navigate to Bar','Go to the Bar page. If closed you will see a lock screen overlay.');
         step(2,'Tap "Open Bar Now"','A modal asks for the Bar Float amount (starting cash). If you have Machines add-on, set that float too.');
         step(3,'Enter float and confirm','Session starts. POS becomes active. Float tracking begins.');
         step(4,'Close at end of night','In Wallet, tap Close Bar to end the session. Sales are blocked until reopened.');
-        tip('Cashier change mid-session: In Wallet → Float section tap Update Float → New Session to swap cashiers without ending the night.');
+        tip('Cashier change mid-session: In Wallet -> Float section tap Update Float -> New Session to swap cashiers without ending the night.');
 
         // 3. POS
-        sectionHeader('🍺', 'Bar (POS) &mdash; Taking Orders', 'Section 3');
+        sectionHeader('', 'Bar (POS) - Taking Orders', 'Section 3');
         para('The Bar screen is the main selling interface. Products are displayed in a category grid. Tap to add to cart.');
         step(1,'Select a category tab','Tap Beer, Rum, Soft Drinks, etc. to filter. Swipe the tab bar horizontally on mobile.');
-        step(2,'Tap a product','Each tap adds 1 unit. Use +/− to adjust quantity. Tap ✕ on the product card to remove it.');
+        step(2,'Tap a product','Each tap adds 1 unit. Use +/- to adjust quantity. Tap X on the product card to remove it.');
         step(3,'Review the cart','Cart summary shows at the bottom with item count and total.');
-        step(4,'Apply a discount (optional)','Tap % Discount in the order review to apply a flat dollar discount to the order.');
+        step(4,'Apply a discount (optional)','Tap + Discount in the order review to apply a flat dollar discount to the order.');
         step(5,'Tap CASH or CREDIT','Choose the payment method to proceed to checkout.');
         tip('Long-press any product to enter reorder mode. Tap to select, tap another to swap positions. Tap Done when finished.');
 
         // 4. Cash
-        sectionHeader('💵', 'Cash Sales & Change', 'Section 4');
+        sectionHeader('', 'Cash Sales & Change', 'Section 4');
         step(1,'Tap CASH','The order review panel opens showing total due.');
-        step(2,'Select Guest or Customer','Guest for anonymous sales. Pick a customer to log the purchase in their history (no credit balance change).');
+        step(2,'Select Guest or Customer','Guest for anonymous sales. Pick a customer to log the purchase in their history.');
         step(3,'Enter amount tendered','Use the numpad. Change is calculated automatically and shown on screen.');
         step(4,'Tap Complete Sale','Order is recorded, stock decrements, cashier wallet is credited.');
-        tip('Delete last sale: In Wallet → Records, the most recent sale has a Delete button visible for up to 1 hour.');
+        tip('Delete last sale: In Wallet -> Records, the most recent sale has a Delete button visible for up to 1 hour.');
 
         // 5. Credit
-        sectionHeader('🧾', 'Credit Sales (Charge to Tab)', 'Section 5');
+        sectionHeader('', 'Credit Sales (Charge to Tab)', 'Section 5');
         para('Credit sales charge the order to a customer tab. Balance is owed until they make a payment.');
         step(1,'Tap CREDIT','The credit sale overlay opens.');
         step(2,'Tap Proceed','You are taken to customer selection.');
         step(3,'Select or create customer','Tap a name or tap + New Account to create one on the spot.');
         step(4,'Confirm the charge','Tap Yes, Charge. Balance is added to their tab immediately.');
-        tip('Cash with customer record: Choose CASH then select a customer to log the sale in their history as paid cash — no balance change.');
+        tip('Cash with customer record: Choose CASH then select a customer to log the sale in their history as paid cash -- no balance change.');
 
         newPage();
 
         // 6. Bottles
-        sectionHeader('🍾', 'Opened Bottles & Drink Sales', 'Section 6');
+        sectionHeader('', 'Opened Bottles & Drink Sales', 'Section 6');
         para('For liquor products, open a bottle and sell individual drinks instead of the full bottle at once.');
         step(1,'Tap a liquor product','A bottle/drink modal opens.');
         step(2,'Open a bottle','Tap Open New Bottle. 1 unit is deducted from stock.');
         step(3,'Select a variation','Tap a drink type (Single, Double, Neat etc.). Each has its own price set in Items.');
         step(4,'Tap + Add to Order','Drink is added to cart. Continue adding more or proceed to payment.');
-        step(5,'Finish or cancel bottle','Tap the 🍾 icon → Opened Bottles. Mark Bottle Empty to close and record revenue. Cancel if no shots sold restores stock.');
+        step(5,'Finish or cancel bottle','Tap the bottle icon then Opened Bottles. Mark Bottle Empty to close and record revenue. Cancel if no shots sold restores stock.');
         tip('When the bottle hits capacity an Open New Bottle button appears automatically. Tap it to continue without closing the order.');
 
         // 7. Packs
-        sectionHeader('🚬', 'Cigarette & Rolling Paper Packs', 'Section 7');
+        sectionHeader('', 'Cigarette & Rolling Paper Packs', 'Section 7');
         step(1,'Tap a cigarette product','Pack selection modal opens with open packs and option for a new one.');
         step(2,'Select or open a pack','Tap an existing open pack or tap + Open New Pack.');
         step(3,'Set unit price and add','Enter price per unit. Item added to cart. Units-sold tracks per pack.');
-        step(4,'Mark empty when done','Tap 🚬 icon → select pack → Mark Empty. Pack closed, revenue recorded.');
+        step(4,'Mark empty when done','Tap cigarette icon -> select pack -> Mark Empty. Pack closed, revenue recorded.');
 
         // 8. Specials
-        sectionHeader('🏷️', 'Specials & Bundle Deals', 'Section 8');
+        sectionHeader('', 'Specials & Bundle Deals', 'Section 8');
         para('Specials auto-apply bundle pricing when qualifying products are in the cart.');
-        step(1,'Go to Menu → Specials','Shows all active and inactive deals.');
+        step(1,'Go to Menu -> Specials','Shows all active and inactive deals.');
         step(2,'Tap + New Special','Set name, required item count, bundle price, and qualifying products.');
         step(3,'Set schedule','Optionally restrict to specific dates and days of the week.');
         step(4,'Toggle active/inactive','Enable or pause without deleting.');
-        tip('Specials are applied automatically at POS. No cashier action needed — the discount shows in the order total.');
+        tip('Specials are applied automatically at POS. No cashier action needed -- the discount shows in the order total.');
 
         // 9. Products
-        sectionHeader('📦', 'Items (Product Catalog)', 'Section 9');
-        para('Owners manage the full product menu here — add items, update prices, manage stock, set drink variations.');
+        sectionHeader('', 'Items (Product Catalog)', 'Section 9');
+        para('Owners manage the full product menu here -- add items, update prices, manage stock, set drink variations.');
         step(1,'Tap + Add Item','Enter product name, cost price, sell price, category. Upload or choose a template photo.');
         step(2,'Set stock quantity','Tap the stock number to open a numpad. Low stock shows a warning badge; zero blocks sales.');
         step(3,'Liquor: set bottle capacity and drink prices','Enter Units per Item (shots per bottle). Add drink variations with name, units consumed, and price.');
@@ -2226,49 +2223,49 @@
         tip('Missing cost price or sell price will block cashiers from adding the product to cart. Always set both before opening the bar.');
 
         // 10. Wallet
-        sectionHeader('💰', 'Wallet & Financial Overview', 'Section 10');
+        sectionHeader('', 'Wallet & Financial Overview', 'Section 10');
         para('Every user has a wallet. Cashier wallets track earnings and expenses. The owner wallet aggregates all bar finances.');
         step(1,'Cashier clears to owner','Tap Clear to Owner. Enter amount to transfer. Cashier balance decreases, owner receives funds.');
-        step(2,'Owner logs expenses','Wallet → Financials → Expenses. Record non-stock costs with description and amount.');
+        step(2,'Owner logs expenses','Wallet -> Financials -> Expenses. Record non-stock costs with description and amount.');
         step(3,'Download statement','Tap Statement in the wallet hero card to generate a PDF of all transactions.');
 
         newPage();
 
         // 11. Customers
-        sectionHeader('👤', 'Customers (Credit Accounts)', 'Section 11');
-        step(1,'Create account','Menu → Customers → + Create. Enter name, contact, ID type and number.');
+        sectionHeader('', 'Customers (Credit Accounts)', 'Section 11');
+        step(1,'Create account','Menu -> Customers -> + Create. Enter name, contact, ID type and number.');
         step(2,'Charge a customer','Via Credit Sale at POS (Section 5). Balance increases per charge.');
-        step(3,'Record a payment','Tap customer → Add Payment → enter amount. Balance decreases.');
+        step(3,'Record a payment','Tap customer -> Add Payment -> enter amount. Balance decreases.');
         step(4,'View full history','Tap Full History to see every charge and payment. Tap Bill to generate a PDF invoice.');
         step(5,'Close or reopen account','Toggle Open/Closed on the customer card to show/hide at POS.');
 
         // 12. Staff
-        sectionHeader('👥', 'Staff (Cashiers & Managers)', 'Section 12');
-        step(1,'Add a cashier','Menu → Staff → + Add Cashier. Set username and password. They can log in immediately.');
-        step(2,'Add a manager','Same as cashier — set Job Title to Manager after creation. Access: Items, Customers, Bar Expense only.');
+        sectionHeader('', 'Staff (Cashiers & Managers)', 'Section 12');
+        step(1,'Add a cashier','Menu -> Staff -> + Add Cashier. Set username and password. They can log in immediately.');
+        step(2,'Add a manager','Same as cashier -- set Job Title to Manager after creation. Access: Items, Customers, Bar Expense only.');
         step(3,'View cashier balances','Each card shows wallet balance. Tap to see full history or clear wallet.');
         step(4,'Suspend or delete','Suspend blocks login without deleting history. Delete is permanent.');
         tip('The owner sets the cashier float in Wallet before opening the bar. This float represents starting register cash for all cashiers.');
 
         // 13. Manager
-        sectionHeader('📋', 'Manager &mdash; Bar Expense', 'Section 13');
+        sectionHeader('', 'Manager - Bar Expense', 'Section 13');
         para('Managers log bar expenses during open sessions. Each expense is deducted from the owner wallet and recorded with the manager name tagged.');
-        step(1,'Go to Menu → Bar Expense','Shows float summary cards (Set / Used / Remaining) and session expense total.');
+        step(1,'Go to Menu -> Bar Expense','Shows float summary cards (Set / Used / Remaining) and session expense total.');
         step(2,'Tap + Add Expense','Enter description and amount. Add multiple lines for bulk expenses.');
         step(3,'Confirm','Confirm deduction from owner wallet. Amount is deducted and tagged with manager name.');
         step(4,'Edit or delete last entry','Pencil/trash icons appear on the most recent expense while bar is open.');
 
         // 14. Machines
-        sectionHeader('🎰', 'Machines Tracker', 'Section 14');
+        sectionHeader('', 'Machines Tracker', 'Section 14');
         para('Tracks payouts and income for gaming machines. Available on Premium or as a $600 TT/yr add-on.');
-        step(1,'Add a machine','Menu → Machines → + Create. Name it (e.g. Screen 1). Long-press to reorder.');
+        step(1,'Add a machine','Menu -> Machines -> + Create. Name it (e.g. Screen 1). Long-press to reorder.');
         step(2,'Set machine float at open','Entered alongside bar float when opening the bar session.');
-        step(3,'Record a payout','Tap machine → Payout → enter amount, optional proof photo → Save Payout.');
-        step(4,'Record income','Tap Income → enter amount → Save.');
+        step(3,'Record a payout','Tap machine -> Payout -> enter amount, optional proof photo -> Save Payout.');
+        step(4,'Record income','Tap Income -> enter amount -> Save.');
         step(5,'View per-screen profit','Each machine card shows session payout, income, and net profit.');
 
         // 15. Music
-        sectionHeader('🎵', 'Music Player', 'Section 15');
+        sectionHeader('', 'Music Player', 'Section 15');
         step(1,'Access Music','Tap the Music button in the top header.');
         step(2,'Search YouTube','Type and search. Tap any result to play.');
         step(3,'Save to playlist','Tap bookmark while a track plays to save it.');
@@ -2278,28 +2275,28 @@
         newPage();
 
         // 16. Summary
-        sectionHeader('📊', 'Summary Reports', 'Section 16');
-        step(1,'Go to Menu → Summary','Financial cards: Revenue, Stock Cost, Gross Profit, Expenses, Net Profit.');
-        step(2,'Filter by period','Session, today, this week, or this month.');
-        step(3,'Download PDF','Tap Download PDF to generate a formatted report saved to Documents.');
+        sectionHeader('', 'Summary Reports', 'Section 16');
+        step(1,'Go to Menu -> Summary','Financial cards: Bar Sales, Items Cost, Expenses, Profit.');
+        step(2,'Filter by period','Session, Day, Week, Month, or Year.');
+        step(3,'Download PDF','Tap Download PDF to generate a formatted report saved to Downloads.');
 
         // 17. Profile
-        sectionHeader('⚙️', 'Profile & Settings', 'Section 17');
-        step(1,'Change password','Menu → Profile → Change Password. Enter current and new passwords.');
-        step(2,'Change language','Menu → Language. Switch between English and Español instantly.');
-        step(3,'Factory Reset','Menu → Factory Reset. Choose scope. Type RESET to confirm. Irreversible.');
-        step(4,'Billing & Subscription','Menu → Billing shows plan, expiry, and renewal. Submit payment for admin activation.');
+        sectionHeader('', 'Profile & Settings', 'Section 17');
+        step(1,'Change password','Menu -> Profile -> Change Password. Enter current and new passwords.');
+        step(2,'Change language','Menu -> Language. Switch between English and Espanol instantly.');
+        step(3,'Factory Reset','Menu -> Factory Reset. Choose scope. Type RESET to confirm. Irreversible.');
+        step(4,'Billing & Subscription','Menu -> Billing shows plan, expiry, and renewal. Submit payment for admin activation.');
 
         // 18. Offline
-        sectionHeader('📴', 'Offline Mode & Sync', 'Section 18');
+        sectionHeader('', 'Offline Mode & Sync', 'Section 18');
         para('Bartendaz Pro works without internet. Orders save locally and upload automatically when connectivity returns.');
-        step(1,'Internet drops','Red banner: "No internet — orders will be saved locally". POS stays fully functional.');
-        step(2,'Process sales normally','Cash/credit sales, stock decrements, shots, packs — all queued locally.');
+        step(1,'Internet drops','Red banner: "No internet -- orders will be saved locally". POS stays fully functional.');
+        step(2,'Process sales normally','Cash/credit sales, stock decrements, shots, packs -- all queued locally.');
         step(3,'Internet restores','Within 1-2 seconds all queued operations sync silently. Green banner confirms.');
         step(4,'Realtime resumes','Live data (product changes, wallet updates) resumes automatically.');
         tip('Creating new credit accounts offline is not supported. Charging to existing accounts works offline.');
 
-        // ── final page footer ──
+        // final footer
         checkY(20);
         y += 10;
         doc.setDrawColor(...gold);
@@ -2309,10 +2306,10 @@
         doc.setFontSize(8.5);
         doc.setTextColor(...gold);
         doc.setFont('helvetica', 'bold');
-        doc.text('Bartendaz Pro © 2026', MARGIN, y);
-        doc.setTextColor(...muted);
+        doc.text('Bartendaz Pro (c) 2026', MARGIN, y);
+        doc.setTextColor(...sub);
         doc.setFont('helvetica', 'normal');
-        doc.text('Support: +1 868 385-0635  ·  +1 868 726-7313', W - MARGIN, y, { align: 'right' });
+        doc.text('Support: +1 868 385-0635  +1 868 726-7313', W - MARGIN, y, { align: 'right' });
 
         doc.save('bartendaz-pro-manual.pdf');
       } catch(err) {

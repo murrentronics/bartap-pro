@@ -39,16 +39,15 @@ import { Label } from "@/components/ui/label";
 
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 import {
 
 
   Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil, Receipt,
-
-
-  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3,
-
-
+  TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3, CalendarIcon,
 } from "lucide-react";
 
 
@@ -132,6 +131,46 @@ type FloatSession = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+
+// ── CalendarPopover — reusable date picker used in summary tabs ──────────────
+function isoToDateM(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function dateToIsoM(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function CalendarPopover({ value, onChange, minDate, maxDate, label }: {
+  value: string; onChange: (iso: string) => void; minDate?: string; maxDate?: string; label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = isoToDateM(value);
+  return (
+    <div className="w-full">
+      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">{label}</label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button type="button" className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary flex items-center justify-between gap-2 hover:bg-accent/40 transition-colors">
+            <span>{selected.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 z-[200]" align="start" sideOffset={4}>
+          <Calendar mode="single" selected={selected}
+            onSelect={(day) => { if (day) { onChange(dateToIsoM(day)); setOpen(false); } }}
+            defaultMonth={selected}
+            startMonth={minDate ? isoToDateM(minDate) : undefined}
+            endMonth={maxDate ? isoToDateM(maxDate) : undefined}
+            disabled={[
+              ...(minDate ? [{ before: isoToDateM(minDate) }] : []),
+              ...(maxDate ? [{ after:  isoToDateM(maxDate) }] : []),
+            ]}
+            captionLayout="dropdown" className="rounded-xl border-0" />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 function fmt(n: number) {
 
@@ -4663,6 +4702,17 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="relative grid gap-2" style={{ gridTemplateColumns: isOwner ? "1fr 1fr 1fr" : "1fr 1fr" }}>
 
 
+          {isOwner && (
+          <div className="flex justify-center">
+            <button onClick={onSetFloat}
+              className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
+              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", width: "70%" }}>
+              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
+            </button>
+          </div>
+          )}
+
+
           <div className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
 
 
@@ -4707,16 +4757,6 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
           </div>
 
-
-          {isOwner && (
-          <div className="flex justify-center">
-            <button onClick={onSetFloat}
-              className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
-              style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", width: "70%" }}>
-              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
-            </button>
-          </div>
-          )}
 
 
         </div>
@@ -6282,23 +6322,14 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <div className="relative">
-            <input type="date" value={pickerDate} max={today}
-              onChange={e => { if (e.target.value) { setPickerDate(e.target.value); setSelectedSessionId(null); } }}
-              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none opacity-0 absolute inset-0 z-10 cursor-pointer" />
-            <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
-              {new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
-            </div>
-          </div>
+          <CalendarPopover label="Select Day" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
         )}
         {summaryFilter === "week" && (
-          <div className="relative">
-            <input type="date" value={pickerDate} max={today}
-              onChange={e => { if (e.target.value) { setPickerDate(e.target.value); setSelectedSessionId(null); } }}
-              className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none opacity-0 absolute inset-0 z-10 cursor-pointer" />
-            <div className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold flex items-center justify-center pointer-events-none">
+          <div className="space-y-1">
+            <CalendarPopover label="Select Week Start" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+            <p className="text-xs text-muted-foreground pl-1">
               {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`; })()}
-            </div>
+            </p>
           </div>
         )}
         {summaryFilter === "month" && (

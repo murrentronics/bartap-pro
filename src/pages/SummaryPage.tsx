@@ -172,7 +172,9 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
   const nonStockExpenses = data.expenses.filter(e => { const d = e.description ?? ""; return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense"); });
   const totalNonStockExpenses = nonStockExpenses.filter(e => Number(e.amount) > 0).reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome    = items.reduce((s, it) => s + it.revenue, 0) + data.walletIncome;
-  const totalCostPrice = items.reduce((s, it) => s + it.costTotal, 0) + totalNonStockExpenses;
+  const totalItemsCost = items.reduce((s, it) => s + it.costTotal, 0);
+  const totalExpenses  = totalNonStockExpenses;
+  const totalCostPrice = totalItemsCost + totalNonStockExpenses;
   const totalProfit    = totalIncome - totalCostPrice;
 
   return (
@@ -210,10 +212,14 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
           {data.loaded && (
             <>
               {/* Mini stats */}
-              <div className="grid grid-cols-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                {[{ label: "Income", value: totalIncome, color: "#86efac" }, { label: "Cost", value: totalCostPrice, color: "#fca5a5" }, { label: "Profit", value: totalProfit, color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }]
-                  .map((s, i) => (
-                  <div key={i} className="px-3 py-2 text-center" style={i < 2 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
+              <div className="grid grid-cols-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                {[
+                  { label: "Bar Sales",   value: totalIncome,    color: "#86efac" },
+                  { label: "Items Cost",  value: totalItemsCost, color: "#fca5a5" },
+                  { label: "Expenses",    value: totalExpenses,  color: "#fdba74" },
+                  { label: "Profit",      value: totalProfit,    color: totalProfit >= 0 ? "#86efac" : "#fca5a5" },
+                ].map((s, i, arr) => (
+                  <div key={i} className="px-2 py-2 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
                     <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
                       {s.label === "Profit" && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
