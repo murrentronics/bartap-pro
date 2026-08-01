@@ -610,15 +610,14 @@ function TemplateImportPanel() {
                     setDefaultCategory(cat);
                     setImages((imgs) => imgs.map((i) => i.duplicate ? i : { ...i, category: cat }));
                   }}
-                  className={`h-11 rounded-xl font-bold text-xl transition border ${
+                  className={`h-10 rounded-xl font-bold text-xs transition border ${
                     defaultCategory === cat
                       ? "text-primary-foreground border-transparent"
                       : "bg-muted text-muted-foreground border-border hover:text-foreground"
                   }`}
                   style={defaultCategory === cat ? { background: "var(--gradient-hero)" } : {}}
-                  title={catDef?.label ?? cat}
                 >
-                  {CAT_EMOJI[cat]}
+                  {catDef?.label ?? cat}
                 </button>
               );
             })}
@@ -704,27 +703,29 @@ function TemplateImportPanel() {
                   />
                   {/* Per-image category selector */}
                   {!img.duplicate && (
-                    <div className="grid grid-cols-4 gap-0.5">
-                      {TEMPLATE_CATEGORIES.map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setImages((imgs) =>
-                              imgs.map((i, i2) => i2 === idx ? { ...i, category: cat } : i)
-                            );
-                          }}
-                          className={`h-6 rounded text-[10px] font-black transition ${
-                            img.category === cat
-                              ? "text-primary-foreground"
-                              : "bg-white/10 text-white/50 hover:text-white/80"
-                          }`}
-                          style={img.category === cat ? { background: "var(--gradient-hero)" } : {}}
-                          title={cat}
-                        >
-                          {CAT_EMOJI[cat]}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-5 gap-0.5">
+                      {TEMPLATE_CATEGORIES.map((cat) => {
+                        const catDef = CATEGORIES.find(c => c.value === cat);
+                        return (
+                          <button
+                            key={cat}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImages((imgs) =>
+                                imgs.map((i, i2) => i2 === idx ? { ...i, category: cat } : i)
+                              );
+                            }}
+                            className={`h-6 rounded text-[9px] font-black transition leading-none ${
+                              img.category === cat
+                                ? "text-primary-foreground"
+                                : "bg-white/10 text-white/50 hover:text-white/80"
+                            }`}
+                            style={img.category === cat ? { background: "var(--gradient-hero)" } : {}}
+                          >
+                            {catDef?.label ?? cat}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -846,26 +847,28 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
           title="Click to edit name"
         />
-        {/* Category — 4 emoji buttons */}
-        <div className="grid grid-cols-4 gap-0.5">
-          {TEMPLATE_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                setCategory(cat);
-                save(label, cat);
-              }}
-              className={`h-5 rounded text-[10px] font-black transition ${
-                category === cat
-                  ? "text-primary-foreground"
-                  : "bg-white/10 text-white/40 hover:text-white/70"
-              }`}
-              style={category === cat ? { background: "var(--gradient-hero)" } : {}}
-              title={cat}
-            >
-              {CAT_EMOJI[cat]}
-            </button>
-          ))}
+        {/* Category — text buttons */}
+        <div className="grid grid-cols-5 gap-0.5">
+          {TEMPLATE_CATEGORIES.map((cat) => {
+            const catDef = CATEGORIES.find(c => c.value === cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  setCategory(cat);
+                  save(label, cat);
+                }}
+                className={`h-5 rounded text-[9px] font-black transition leading-none ${
+                  category === cat
+                    ? "text-primary-foreground"
+                    : "bg-white/10 text-white/40 hover:text-white/70"
+                }`}
+                style={category === cat ? { background: "var(--gradient-hero)" } : {}}
+              >
+                {catDef?.label ?? cat}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -991,12 +994,11 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
         {CATEGORIES.filter((cat) => cat.value !== "miscellaneous" && cat.value !== "food").map((cat) => (
           <button key={cat.value} type="button"
             onClick={() => onChange(cat.value)}
-            className={`h-14 rounded-xl font-bold text-2xl transition ${
+            className={`h-10 rounded-xl font-bold text-xs transition ${
               value === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
-            style={value === cat.value ? { background: "var(--gradient-hero)" } : {}}
-            title={cat.label}>
-            {cat.icon}
+            style={value === cat.value ? { background: "var(--gradient-hero)" } : {}}>
+            {cat.label}
           </button>
         ))}
       </div>
@@ -1232,15 +1234,14 @@ function TemplateGalleryPanel() {
               <button
                 key={cat}
                 onClick={() => setFilterCat(cat)}
-                className={`h-14 rounded-xl font-bold text-2xl transition border ${
+                className={`h-10 rounded-xl font-bold text-xs transition border ${
                   filterCat === cat
                     ? "text-primary-foreground border-transparent"
                     : "bg-muted text-muted-foreground border-border hover:text-foreground"
                 }`}
                 style={filterCat === cat ? { background: "var(--gradient-hero)" } : {}}
-                title={`${catDef?.label ?? cat} (${counts[cat] ?? 0})`}
               >
-                {CAT_EMOJI[cat]}
+                {catDef?.label ?? cat}
               </button>
             );
           })}
