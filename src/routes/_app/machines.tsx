@@ -1597,16 +1597,27 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleMonitorUpdate = async () => {
     const inVal   = parseFloat(monitorIn)       || 0;
     const outVal  = parseFloat(monitorOut)      || 0;
-    const inDiff  = inVal  - (parseFloat(monitorInTotal)  || 0);
-    const outDiff = outVal - (parseFloat(monitorOutTotal) || 0);
+
+    // Always derive "last" from the most recent log in the DB — immune to stale state
+    const { data: prevLog } = await sb.from("machine_monitor_logs")
+      .select("in_present, out_present")
+      .eq("machine_id", machine.id)
+      .order("seq", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const inLast  = prevLog ? (prevLog.in_present  as number) : (parseFloat(monitorInTotal)  || 0);
+    const outLast = prevLog ? (prevLog.out_present as number) : (parseFloat(monitorOutTotal) || 0);
+
+    const inDiff  = inVal  - inLast;
+    const outDiff = outVal - outLast;
     const inDiffStr  = inDiff.toFixed(2);
     const outDiffStr = outDiff.toFixed(2);
     setMonitorInDiff(inDiffStr);
     setMonitorOutDiff(outDiffStr);
     setMonitorSaving(true);
     await saveMonitor({
-      in_entry: monitorIn, in_total: monitorInTotal, in_diff: inDiffStr,
-      out_entry: monitorOut, out_total: monitorOutTotal, out_diff: outDiffStr,
+      in_entry: monitorIn, in_total: String(inLast), in_diff: inDiffStr,
+      out_entry: monitorOut, out_total: String(outLast), out_diff: outDiffStr,
     });
     // Insert a log snapshot so the Logs tab records this moment
     const { data: seqData } = await sb.from("machine_monitor_logs")
@@ -1617,14 +1628,17 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       owner_id:    ownerId,
       in_present:  inVal,
       out_present: outVal,
-      in_last:     parseFloat(monitorInTotal)  || 0,
-      out_last:    parseFloat(monitorOutTotal) || 0,
+      in_last:     inLast,
+      out_last:    outLast,
       in_diff:     parseFloat(inDiffStr),
       out_diff:    parseFloat(outDiffStr),
       seq:         nextSeq,
       logged_at:   new Date().toISOString(),
     }).select().maybeSingle();
     if (newLog) setMonitorLogs(prev => [newLog as MonitorLog, ...prev]);
+    // Keep monitorInTotal / monitorOutTotal in sync with the last values
+    setMonitorInTotal(String(inLast));
+    setMonitorOutTotal(String(outLast));
     setMonitorSaving(false);
     setMonitorUpdateDone(true); // block re-click until inputs change
     setMonitorInputsLocked(true); // lock Present inputs until New Entry is clicked
@@ -1635,8 +1649,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
 
   const handleNewEntry = async () => {
-    const newInTotal  = monitorIn  !== "" ? monitorIn  : monitorInTotal;
-    const newOutTotal = monitorOut !== "" ? monitorOut : monitorOutTotal;
+    // The new "last" is always the present value from the most recent log
+    const { data: prevLog } = await sb.from("machine_monitor_logs")
+      .select("in_present, out_present")
+      .eq("machine_id", machine.id)
+      .order("seq", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const newInTotal  = prevLog ? String(prevLog.in_present)  : (monitorIn  !== "" ? monitorIn  : monitorInTotal);
+    const newOutTotal = prevLog ? String(prevLog.out_present) : (monitorOut !== "" ? monitorOut : monitorOutTotal);
     setMonitorInTotal(newInTotal);
     setMonitorOutTotal(newOutTotal);
     setMonitorIn("");
@@ -2906,27 +2927,18 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
           {/* Lifetime totals — owner only */}
-          {!isCashier && profile.role === "owner" && (
+          {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
-
-
-            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-
-
-            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-
-
-            <StatCard label={t("all_time_profit", "Total Profit")}
-
-
-              value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
-
-
-              color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
+            <SmallStat label={t("session_income", "Session Income")}
+              value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
+              color="#86efac" />
+            <SmallStat label={t("session_payout", "Session Expense")}
+              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+              color="#fca5a5" />
+            <SmallStat label={t("session_profit", "Session Profit")}
+              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+              color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
-          )}
 
           {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
@@ -2939,41 +2951,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           </div>
           )}
 
-
-          {/* Session stats */}
-
-
+          {/* Total / All-time stats — owner only */}
+          {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-
-
-            <SmallStat label={t("session_income", "Session Income")}
-
-
-              value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
-
-
-              color="#86efac" />
-
-
-            <SmallStat label={t("session_payout", "Session Expense")}
-
-
-              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
-
-
-              color="#fca5a5" />
-
-
-            <SmallStat label={t("session_profit", "Session Profit")}
-
-
-              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
-
-
-              color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
+            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+            <StatCard label={t("all_time_profit", "Total Profit")}
+              value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
+              color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
+          )}
 
 
         </section>

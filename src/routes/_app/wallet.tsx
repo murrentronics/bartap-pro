@@ -3098,12 +3098,12 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   })()}
                 </div>
               </div>
-              {/* Row 2 — Manual Expenses / Session Net Profit */}
+              {/* Row 2 — Session Expenses / Session Net Profit */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Manual{"\n"}Expenses</div>
-                  <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {barIsOpenWallet ? `$${fmt(sessionExpense)}` : "—"}
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Expenses</div>
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    {barIsOpenWallet ? `$${fmt(sessionExpense)}` : "$0.00"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -3160,10 +3160,10 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   })()}
                 </div>
               </div>
-              {/* Row 2 — Manual Expenses / Today's Net Profit */}
+              {/* Row 2 — Today's Expenses / Today's Net Profit */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Manual{"\n"}Expenses</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Expenses</div>
                   <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
                     {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "$0.00"}
                   </div>
@@ -3191,6 +3191,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3" style={{ color: "rgba(0,0,0,0.75)" }}>
+            <WalletIcon className="h-4 w-4" /> All Time
+          </div>
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
@@ -3202,9 +3205,9 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   <div className="font-black text-xs" style={{ color: "#86efac" }}>${fmt(totalIncome)}</div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Sales{"\n"}Stock Cost</div>
-                  <div className="font-black text-xs" style={{ color: totalStockSoldCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {totalStockSoldCost > 0 ? `$${fmt(totalStockSoldCost)}` : "—"}
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total{"\n"}Stock Cost</div>
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    ${fmt(totalStockSoldCost)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -3223,8 +3226,8 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total{"\n"}Expense</div>
-                  <div className="font-black text-xs" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    ${fmt(totalExpenses)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
@@ -3243,20 +3246,20 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Value</div>
-                  <div className="font-black text-xs" style={{ color: stockResaleValue > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
-                    {stockResaleValue > 0 ? `$${fmt(stockResaleValue)}` : "—"}
+                  <div className="font-black text-xs" style={{ color: "#86efac" }}>
+                    ${fmt(stockResaleValue)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Cost</div>
-                  <div className="font-black text-xs" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
+                  <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
+                    ${fmt(stockCost)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Profit</div>
                   <div className="font-black text-xs" style={{ color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                    {stockExpectedProfit !== 0 ? `${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(Math.abs(stockExpectedProfit))}` : "—"}
+                    {stockExpectedProfit >= 0 ? "+" : ""}${fmt(Math.abs(stockExpectedProfit))}
                   </div>
                 </div>
               </div>
