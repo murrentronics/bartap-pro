@@ -4210,11 +4210,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
       });
   }, [ownerId, monitorRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Manual cashier expenses only (Add Expense button) — added to Total Expense
+  // Manual cashier expenses only (Add Expense button)
   const manualExpenses = entries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = monitorTotals.totalIn;                      // sum of in_present from latest logs
-  const totalPayout = monitorTotals.totalOut + manualExpenses;    // sum of out_present + manual expenses
-  const totalProfit = (monitorTotals.totalProfit ?? 0) - manualExpenses;  // sum of (in_diff - out_diff) - manual expenses
+  const totalPayout = monitorTotals.totalOut;                     // All Machines Payout — machine payouts only, no manual expenses
+  const grossProfit = (monitorTotals.totalProfit ?? 0);           // Gross Profit = machine in_diff − out_diff
+  const netProfit = grossProfit - manualExpenses;                 // Net Profit = Gross Profit − manual expenses
+  const totalProfit = grossProfit;                                // keep alias for any other usages
 
   // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
   const todayPayouts = barSessionStart
@@ -4703,58 +4705,46 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
-        {/* Lifetime totals — owner only */}
-        {isOwner && (
+        {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-
-
-          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-
-
-          <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-
-
-          <StatCard label={t("all_time_profit", "Total Profit")}
-            value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
-            color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
+          <StatCard label={t("session_income", "All Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+          <StatCard label={t("session_payout", "All Session Payout")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("session_profit", "Session Profit")}
+            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
+            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
-        )}
 
-        {/* Today's stats — owner only */}
+        {/* Row 2 — Today's stats — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
           <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-          <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("today_payout", "Today's Payout")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
           <StatCard label={t("today_profit", "Today's Profit")}
             value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
             color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
         )}
 
-        {/* Session stats — visible to all roles */}
-
-
+        {/* Row 3 — Lifetime totals — owner only */}
+        {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-
-
-          <StatCard label={t("session_income", "Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
-
-
-          <StatCard label={t("session_payout", "Session Expense")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
-
-
-          <StatCard label={t("session_profit", "Session Profit")}
-
-
-            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
-
-
-            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
-
-
+          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+          <StatCard label={t("all_machines_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+          <StatCard label={t("all_time_gross_profit", "Gross Profit")}
+            value={(grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit)}
+            color={grossProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
+        )}
+
+        {/* Row 4 — Manual Expenses — owner only */}
+        {isOwner && (
+        <div className="relative grid grid-cols-2 gap-2">
+          <StatCard label={t("total_manual_expenses", "Total Expenses")} value={"$" + fmtWhole(manualExpenses)} color="#fca5a5" />
+          <StatCard label={t("net_profit", "Net Profit")}
+            value={(netProfit >= 0 ? "+" : "") + "$" + fmtWhole(netProfit)}
+            color={netProfit >= 0 ? "#86efac" : "#fca5a5"} />
+        </div>
+        )}
 
 
         {/* Add Expense — full width on mobile, one column on tablet+ */}
@@ -6147,11 +6137,12 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
       doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
       const cols = [
-        { label: "Total Expense", value: "-$" + fmtWhole(totalExpense), r: 180, g: 40, b: 40 },
-        { label: "Total Income",  value: "+$" + fmtWhole(totalIncome),  r: 40,  g: 140, b: 40 },
+        { label: "Cash In",       value: "+$" + fmtWhole(totalIncome),          r: 40,  g: 140, b: 40 },
+        { label: "Payout",        value: "-$" + fmtWhole(totalMachinePayout),   r: 180, g: 40,  b: 40 },
+        { label: "Expense",       value: "-$" + fmtWhole(totalSessionExpense),  r: 180, g: 140, b: 0 },
         { label: "Net Profit",    value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
       ];
-      const cw = bw / 3;
+      const cw = bw / 4;
       cols.forEach((c, i) => {
         const cx = LM + i * cw + cw / 2;
         doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
@@ -6308,14 +6299,18 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         {/* Stats — shown when session selected or on All tab */}
         {filteredEntries.length > 0 && (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Total Expense</div>
-                <div className="font-black text-xs text-red-400">${fmtWhole(totalExpense)}</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Cash In</div>
+                <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Income</div>
-                <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Payout</div>
+                <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
+              </div>
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Expense</div>
+                <div className="font-black text-xs text-yellow-400">${fmtWhole(totalSessionExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Net Profit</div>

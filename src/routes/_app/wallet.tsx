@@ -821,13 +821,18 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                     <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                     <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
                       {(o.items || []).map((i, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                        <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
                           <span>{i.qty}× {i.name}</span>
                           {i.discount && Number(i.discount) > 0 ? (
-                            <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
-                              style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
-                              -{fmt(Number(i.discount))} off
-                            </span>
+                            <>
+                              {i.original_price != null && (
+                                <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(i.original_price))}</span>
+                              )}
+                              <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                -{fmt(Number(i.discount))} off
+                              </span>
+                            </>
                           ) : null}
                         </span>
                       ))}
@@ -1131,7 +1136,9 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
           doc.text("$" + Number(o.total).toFixed(2), RM, y, { align: "right" }); y += 5;
           doc.setFont("helvetica", "normal");
           const items = (o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i) => {
-            const discountNote = i.discount && Number(i.discount) > 0 ? ` [-$${Number(i.discount).toFixed(2)} off]` : "";
+            const discountNote = i.discount && Number(i.discount) > 0
+              ? ` [was $${Number(i.original_price ?? i.price).toFixed(2)}, -$${Number(i.discount).toFixed(2)} off]`
+              : "";
             return i.qty + "x " + i.name + discountNote;
           }).join(", ");
           const wrapped = doc.splitTextToSize("  " + items, 155);
@@ -1367,13 +1374,18 @@ function OwnerStatement({ profile, onClose }: { profile: { id: string; username?
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground break-words whitespace-normal">
                                 {(o.items || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map((i, idx) => (
-                                  <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                                  <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
                                     <span>{i.qty}× {i.name}</span>
                                     {i.discount && Number(i.discount) > 0 ? (
-                                      <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
-                                        style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
-                                        -{fmt(Number(i.discount))} off
-                                      </span>
+                                      <>
+                                        {i.original_price != null && (
+                                          <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(i.original_price))}</span>
+                                        )}
+                                        <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                          style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                          -{fmt(Number(i.discount))} off
+                                        </span>
+                                      </>
                                     ) : null}
                                   </span>
                                 ))}
@@ -2417,13 +2429,18 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                         <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                         <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
                           {(o.items || []).map((i: any, idx: number) => (
-                            <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                            <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
                               <span>{i.qty}× {i.name}</span>
                               {i.discount && Number(i.discount) > 0 ? (
-                                <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
-                                  style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
-                                  -{fmt(Number(i.discount))} off
-                                </span>
+                                <>
+                                  {i.original_price != null && (
+                                    <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(i.original_price))}</span>
+                                  )}
+                                  <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                    style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                    -{fmt(Number(i.discount))} off
+                                  </span>
+                                </>
                               ) : null}
                             </span>
                           ))}
@@ -2574,13 +2591,18 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>Cash: Sale</div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {(o.items || []).map((i, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 mr-1.5">
+                      <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
                         <span>{i.qty}× {i.name}</span>
                         {i.discount && Number(i.discount) > 0 ? (
-                          <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
-                            style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
-                            -{fmt(Number(i.discount))} off
-                          </span>
+                          <>
+                            {i.original_price != null && (
+                              <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(i.original_price))}</span>
+                            )}
+                            <span className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                              style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                              -{fmt(Number(i.discount))} off
+                            </span>
+                          </>
                         ) : null}
                       </span>
                     ))}
@@ -3050,23 +3072,14 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="space-y-2">
-              {/* Row 1 — Session In / Session Out (stock cost + expense combined) */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session In</div>
-                  <div className="font-black text-xl" style={{ color: barIsOpenWallet ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+              {/* Row 1 — Session Sales / Session Stock Cost / Session Gross Profit */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Sales</div>
+                  <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionIncome)}` : "—"}
                   </div>
                 </div>
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Session Out</div>
-                  <div className="font-black text-xl" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    {barIsOpenWallet ? `$${fmt(sessionStockCost + sessionExpense)}` : "—"}
-                  </div>
-                </div>
-              </div>
-              {/* Row 2 — Session Stock Cost + Session Expense + Session Profit */}
-              <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Stock Cost</div>
                   <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
@@ -3074,18 +3087,33 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Expense</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session Gross{"\n"}Profit</div>
+                  {(() => {
+                    const sgp = sessionIncome - sessionStockCost;
+                    return (
+                      <div className="font-black text-xs" style={{ color: !barIsOpenWallet ? "rgba(255,255,255,0.3)" : sgp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {barIsOpenWallet ? `${sgp >= 0 ? "+" : ""}$${fmt(sgp)}` : "—"}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              {/* Row 2 — Manual Expenses / Session Net Profit */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Manual{"\n"}Expenses</div>
                   <div className="font-black text-xs" style={{ color: barIsOpenWallet ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                     {barIsOpenWallet ? `$${fmt(sessionExpense)}` : "—"}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session{"\n"}Profit</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Session Net{"\n"}Profit</div>
                   {(() => {
-                    const sp = sessionIncome - sessionStockCost - sessionExpense;
+                    const sgp = sessionIncome - sessionStockCost;
+                    const snp = sgp - sessionExpense;
                     return (
-                      <div className="font-black text-xs" style={{ color: !barIsOpenWallet ? "rgba(255,255,255,0.3)" : sp >= 0 ? "#86efac" : "#fca5a5" }}>
-                        {barIsOpenWallet ? `${sp >= 0 ? "+" : ""}$${fmt(sp)}` : "—"}
+                      <div className="font-black text-xs" style={{ color: !barIsOpenWallet ? "rgba(255,255,255,0.3)" : snp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {barIsOpenWallet ? `${snp >= 0 ? "+" : ""}$${fmt(snp)}` : "—"}
                       </div>
                     );
                   })()}
@@ -3108,26 +3136,11 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="space-y-2">
-              {/* Row 1 — Today's In / Today's Out */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's In</div>
-                  <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
-                </div>
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Out</div>
-                  <div className="font-black text-sm" style={{ color: (todayStockCost + todayExpenses) > 0 ? "#fca5a5" : "#fca5a5" }}>
-                    {(todayStockCost + todayExpenses) > 0 ? `$${fmt(todayStockCost + todayExpenses)}` : "$0.00"}
-                  </div>
-                </div>
-              </div>
-              {/* Row 2 — Today's Profit + Today's Stock Cost + Today's Expenses (3 cards) */}
+              {/* Row 1 — Today's Sales / Today's Stock Cost / Today's Gross Profit */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Profit</div>
-                  <div className="font-black text-xs" style={{ color: todayProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                    {todayProfit >= 0 ? "+" : ""}${fmt(todayProfit)}
-                  </div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Sales</div>
+                  <div className="font-black text-xs" style={{ color: "#86efac" }}>${fmt(todayIncome)}</div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Stock Cost</div>
@@ -3136,10 +3149,36 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's{"\n"}Expenses</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Gross{"\n"}Profit</div>
+                  {(() => {
+                    const tgp = todayIncome - todayStockCost;
+                    return (
+                      <div className="font-black text-xs" style={{ color: tgp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {tgp >= 0 ? "+" : ""}${fmt(tgp)}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              {/* Row 2 — Manual Expenses / Today's Net Profit */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Manual{"\n"}Expenses</div>
                   <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
                     {todayExpenses > 0 ? `$${fmt(todayExpenses)}` : "$0.00"}
                   </div>
+                </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Today's Net{"\n"}Profit</div>
+                  {(() => {
+                    const tgp = todayIncome - todayStockCost;
+                    const tnp = tgp - todayExpenses;
+                    return (
+                      <div className="font-black text-xs" style={{ color: tnp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {tnp >= 0 ? "+" : ""}${fmt(tnp)}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -3156,51 +3195,68 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="space-y-2">
-              {/* Row 1 — Est. Total In / Est. Total Out */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Total In</div>
-                  <div className="font-black text-sm" style={{ color: "#86efac" }}>${fmt(totalIncome)}</div>
+              {/* Row 1 — Total Cash Sales / Total Stock Cost / Gross Stock Profit */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total Cash{"\n"}Sales</div>
+                  <div className="font-black text-xs" style={{ color: "#86efac" }}>${fmt(totalIncome)}</div>
                 </div>
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Total Out</div>
-                  <div className="font-black text-sm" style={{ color: (totalExpenses + totalStockSoldCost) > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
-                    ${fmt(totalExpenses + totalStockSoldCost)}
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Sales{"\n"}Stock Cost</div>
+                  <div className="font-black text-xs" style={{ color: totalStockSoldCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {totalStockSoldCost > 0 ? `$${fmt(totalStockSoldCost)}` : "—"}
                   </div>
                 </div>
-              </div>
-              {/* Row 2 — Est. Total Profit / Est. Stock Profit */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Total Profit</div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Gross Stock{"\n"}Profit</div>
                   {(() => {
-                    const tp = totalIncome - totalExpenses - totalStockSoldCost;
+                    const gsp = totalIncome - totalStockSoldCost;
                     return (
-                      <div className="font-black text-sm" style={{ color: tp >= 0 ? "#86efac" : "#fca5a5" }}>
-                        {tp >= 0 ? "+" : ""}${fmt(tp)}
+                      <div className="font-black text-xs" style={{ color: gsp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {gsp >= 0 ? "+" : ""}${fmt(gsp)}
                       </div>
                     );
                   })()}
                 </div>
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Profit</div>
-                  <div className="font-black text-sm" style={{ color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5" }}>
-                    {stockExpectedProfit !== 0 ? `${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(Math.abs(stockExpectedProfit))}` : "—"}
+              </div>
+              {/* Row 2 — Total Expense / Total Net Profit */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total{"\n"}Expense</div>
+                  <div className="font-black text-xs" style={{ color: totalExpenses > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                    {totalExpenses > 0 ? `$${fmt(totalExpenses)}` : "—"}
                   </div>
                 </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total Net{"\n"}Profit</div>
+                  {(() => {
+                    const tnp = totalIncome - totalStockSoldCost - totalExpenses;
+                    return (
+                      <div className="font-black text-xs" style={{ color: tnp >= 0 ? "#86efac" : "#fca5a5" }}>
+                        {tnp >= 0 ? "+" : ""}${fmt(tnp)}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-              {/* Row 3 — Est. Stock Value / Est. Stock Cost */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Value</div>
-                  <div className="font-black text-sm" style={{ color: stockResaleValue > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
+              {/* Row 3 — Total Stock Value / Total Stock Cost / Total Stock Profit */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Value</div>
+                  <div className="font-black text-xs" style={{ color: stockResaleValue > 0 ? "#86efac" : "rgba(255,255,255,0.3)" }}>
                     {stockResaleValue > 0 ? `$${fmt(stockResaleValue)}` : "—"}
                   </div>
                 </div>
-                <div className="rounded-2xl p-3 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[10px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Est. Stock Cost</div>
-                  <div className="font-black text-sm" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Cost</div>
+                  <div className="font-black text-xs" style={{ color: stockCost > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
                     {stockCost > 0 ? `$${fmt(stockCost)}` : "—"}
+                  </div>
+                </div>
+                <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Current Stock{"\n"}Profit</div>
+                  <div className="font-black text-xs" style={{ color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                    {stockExpectedProfit !== 0 ? `${stockExpectedProfit >= 0 ? "+" : ""}$${fmt(Math.abs(stockExpectedProfit))}` : "—"}
                   </div>
                 </div>
               </div>

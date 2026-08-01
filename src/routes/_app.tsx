@@ -70,9 +70,9 @@ function AppLayout() {
   // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
 
-  // Load bar session state for owner toggle
+  // Load bar session state for owner/manager toggle
   useEffect(() => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
     const ownerId = effectiveOwnerId(profile.id);
     if (!ownerId) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,7 +98,7 @@ function AppLayout() {
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
     const ownerId = effectiveOwnerId(profile.id);
     // Check if owner has machines enabled
     const { data: ownerProfile } = await (supabase as any)
@@ -113,7 +113,7 @@ function AppLayout() {
   };
 
   const confirmOpenBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
     const ownerId = effectiveOwnerId(profile.id);
     const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
@@ -175,7 +175,7 @@ function AppLayout() {
   };
 
   const handleCloseBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
     const ownerId = effectiveOwnerId(profile.id);
     setBarToggleBusy(true);
     const now = new Date().toISOString();
@@ -266,8 +266,8 @@ function AppLayout() {
             <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
               {profile.username}
             </span>
-            {/* Bar open/close toggle — owner only, inline with username */}
-            {isOwner && (
+            {/* Bar open/close toggle — owner and manager, inline with username */}
+            {(isOwner || isManager) && (
               <button
                 type="button"
                 disabled={barToggleBusy}
