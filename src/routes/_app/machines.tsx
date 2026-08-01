@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -2062,6 +2062,30 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
         description: `Confirm saving an expense of $${val.toFixed(2)} for ${machine.name}.`,
+
+
+      });
+
+
+      if (!ok) return;
+
+
+    }
+
+
+    // Confirm before saving income
+
+
+    if (tab === "income") {
+
+
+      const ok = await confirm({
+
+
+        title: "Add Income?",
+
+
+        description: `Confirm recording income of $${val.toFixed(2)} for ${machine.name}.`,
 
 
       });

@@ -461,27 +461,27 @@ function OpenedTab({
               <span className="text-lg font-black text-red-400">${Number(a.balance_owed).toFixed(2)}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
                 disabled={printing === a.id}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-                style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
+                style={printed === a.id ? { background: "#16a34a", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
+                title="Print Bill"
               >
                 {printing === a.id
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
                   : printed === a.id
-                  ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  : <FileDown className="h-3 w-3" />}
-                {printed === a.id ? "Done" : "Bill"}
+                  ? <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  : <FileDown className="h-4 w-4" style={{ color: "var(--primary)" }} />}
               </button>
               <button
                 onClick={() => onEdit(a)}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
-                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition"
+                style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
+                title="Edit customer"
               >
-                <Pencil className="h-3 w-3" />
-                Edit
+                <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
               </button>
             </div>
           </div>
@@ -555,29 +555,29 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts
           {/* Footer row — cleared badge + conditional Bill + Edit */}
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">Cleared</span>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
               {hasCashPurchase && (
                 <button
                   onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
                   disabled={printing === a.id}
-                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50"
-                  style={printed === a.id ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                  className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
+                  style={printed === a.id ? { background: "#16a34a", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
+                  title="Print Bill"
                 >
                   {printing === a.id
-                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
                     : printed === a.id
-                    ? <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    : <FileDown className="h-3 w-3" />}
-                  {printed === a.id ? "Done" : "Bill"}
+                    ? <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    : <FileDown className="h-4 w-4" style={{ color: "var(--primary)" }} />}
                 </button>
               )}
               <button
                 onClick={() => onEdit(a)}
-                className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95"
-                style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.25)" }}
+                className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition"
+                style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
+                title="Edit customer"
               >
-                <Pencil className="h-3 w-3" />
-                Edit
+                <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
               </button>
             </div>
           </div>

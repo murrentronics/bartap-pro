@@ -1649,67 +1649,98 @@
     <h2 class="section-title">Simple <span>pricing</span></h2>
     <div class="divider"></div>
     <p class="pricing-intro">Choose the plan that fits your bar.</p>
-    <div class="pricing-grid" style="max-width:760px;margin:0 auto 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;">
 
-      <!-- Basic Plan -->
+    <div style="max-width:860px;margin:0 auto 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
+
+      <!-- Bar Only -->
       <div class="pricing-card featured" style="text-align:center;">
-        <div class="plan-badge popular">Basic Plan</div>
+        <div class="plan-badge popular">🍺 Bar Only</div>
         <div class="plan-price">
           <span class="currency">$</span>
-          <span class="amount">800</span>
+          <span class="amount">1,200</span>
           <span class="period">TT / year</span>
         </div>
-        <p class="plan-desc">Full access, renewed yearly</p>
+        <p class="plan-desc">Full bar management, renewed yearly</p>
         <ul class="plan-features">
-          <li>✓ Full POS system</li>
-          <li>✓ Unlimited products</li>
-          <li>✓ Unlimited cashiers</li>
+          <li>✓ Full POS / register system</li>
+          <li>✓ Unlimited products &amp; cashiers</li>
           <li>✓ Stock tracking</li>
           <li>✓ Credit tab management</li>
           <li>✓ Sales &amp; financial reports</li>
+          <li>✓ Music player</li>
           <li>✓ 12 months access</li>
         </ul>
       </div>
 
-      <!-- Premium Plan -->
-      <div class="pricing-card featured" style="text-align:center;border-color:rgba(240,160,48,0.5);background:linear-gradient(160deg,#1a0e03,#140d04);">
-        <div class="plan-badge popular" style="background:linear-gradient(135deg,#f59e0b,#ea580c);">⭐ Premium Plan</div>
-        <div class="plan-price">
-          <span class="currency">$</span>
-          <span class="amount">1300</span>
-          <span class="period">TT / year</span>
+      <!-- Machines Only -->
+      <div class="pricing-card" style="text-align:center;border-color:rgba(240,160,48,0.4);background:linear-gradient(160deg,#1a0e03,#140d04);">
+        <div class="plan-badge" style="background:linear-gradient(135deg,#ea580c,#f59e0b);color:#1a0a02;">🎰 Machines Only</div>
+        <div style="margin-bottom:16px;">
+          <div style="margin-bottom:8px;">
+            <span style="font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">10 Screens</span>
+            <div class="plan-price" style="margin-bottom:0;">
+              <span class="currency">$</span>
+              <span class="amount" style="font-size:3rem;">2,400</span>
+              <span class="period">TT / yr</span>
+            </div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">20 Screens</span>
+            <div class="plan-price" style="margin-bottom:0;">
+              <span class="currency">$</span>
+              <span class="amount" style="font-size:3rem;">3,000</span>
+              <span class="period">TT / yr</span>
+            </div>
+          </div>
         </div>
-        <p class="plan-desc">Everything in Basic, plus more</p>
+        <p class="plan-desc">Payout &amp; income tracking for gaming machines</p>
         <ul class="plan-features">
-          <li>✓ Everything in Basic</li>
           <li>✓ Machines payout tracker</li>
           <li>✓ Per-screen profit reports</li>
           <li>✓ Float session management</li>
           <li>✓ Full history PDF export</li>
+          <li>✓ Machine monitor (IN/OUT)</li>
           <li>✓ 12 months access</li>
         </ul>
       </div>
 
-      <!-- Machines Add-on -->
-      <div class="pricing-card" style="text-align:center;border-color:rgba(240,160,48,0.25);">
-        <div class="plan-badge" style="background:rgba(240,160,48,0.15);color:var(--gold);">🎰 Machines Add-on</div>
-        <div class="plan-price">
-          <span class="currency">$</span>
-          <span class="amount">600</span>
-          <span class="period">TT / year</span>
+      <!-- Bar with Machines -->
+      <div class="pricing-card featured" style="text-align:center;border-color:rgba(240,160,48,0.6);background:linear-gradient(160deg,#1c0f02,#140d04);box-shadow:0 8px 32px rgba(240,160,48,0.18);">
+        <div class="plan-badge popular" style="background:linear-gradient(135deg,#F0A030,#C0441A);">⭐ Bar with Machines</div>
+        <div style="margin-bottom:16px;">
+          <div style="margin-bottom:8px;">
+            <span style="font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">10 Screens</span>
+            <div class="plan-price" style="margin-bottom:0;">
+              <span class="currency">$</span>
+              <span class="amount" style="font-size:3rem;">3,000</span>
+              <span class="period">TT / yr</span>
+            </div>
+          </div>
+          <div>
+            <span style="font-size:0.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">20 Screens</span>
+            <div class="plan-price" style="margin-bottom:0;">
+              <span class="currency">$</span>
+              <span class="amount" style="font-size:3rem;">3,500</span>
+              <span class="period">TT / yr</span>
+            </div>
+          </div>
         </div>
-        <p class="plan-desc">For Basic subscribers only</p>
+        <p class="plan-desc">Complete bar &amp; machines management in one plan</p>
         <ul class="plan-features">
+          <li>✓ Everything in Bar Only</li>
           <li>✓ Machines payout tracker</li>
           <li>✓ Per-screen profit reports</li>
           <li>✓ Float session management</li>
-          <li>✓ Add to your Basic plan</li>
-          <li>✓ Separate annual renewal</li>
+          <li>✓ Full history PDF export</li>
+          <li>✓ Machine monitor (IN/OUT)</li>
+          <li>✓ 12 months access</li>
         </ul>
       </div>
 
     </div>
-    
+
+    <p class="pricing-note">All prices in Trinidad &amp; Tobago dollars (TT$). Plans renew annually. Contact us to get started.</p>
+
   </section>
 
   <!-- INSTALL STEPS -->
