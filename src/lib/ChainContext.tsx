@@ -88,11 +88,19 @@ export function ChainProvider({ children }: { children: ReactNode }) {
     }
 
     // Check if this user is a chain owner
-    const { data: profile } = await supabase
+    const { data: profileRaw } = await supabase
       .from("profiles")
       .select("plan_type, chain_addon_active, id, is_multi_bar, addon_bar_count")
       .eq("id", user.id)
       .maybeSingle();
+
+    const profile = profileRaw as {
+      plan_type?: string | null;
+      chain_addon_active?: boolean | null;
+      id?: string;
+      is_multi_bar?: boolean | null;
+      addon_bar_count?: number | null;
+    } | null;
 
     // isChainOwner = plan_type is 'chain'
     const isChain = profile?.plan_type === "chain";

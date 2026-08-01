@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -478,8 +478,264 @@
       font-size: 0.95rem;
     }
 
-    /* ── FOOTER ── */
-    footer {
+    /* ── MANUAL BUTTON (top-right of page) ── */
+    .manual-fab {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      border: 2px solid rgba(240,160,48,0.5);
+      color: var(--gold);
+      background: rgba(10,6,2,0.85);
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .manual-fab:hover {
+      background: rgba(240,160,48,0.12);
+      border-color: var(--gold);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(240,160,48,0.2);
+    }
+
+    /* ── MANUAL MODAL ── */
+    .manual-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(4px);
+      overflow-y: auto;
+    }
+    .manual-overlay.open { display: block; }
+
+    .manual-sheet {
+      max-width: 820px;
+      margin: 32px auto;
+      background: #0f0a04;
+      border: 1px solid rgba(240,160,48,0.2);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+    }
+
+    /* sticky header */
+    .manual-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0f0a04;
+      border-bottom: 1px solid rgba(240,160,48,0.15);
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .manual-header-title {
+      font-size: 1.2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .manual-header-actions { display: flex; align-items: center; gap: 10px; }
+    .manual-pdf-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      color: #1a0a02;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .manual-pdf-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .manual-pdf-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .manual-close-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 1px solid rgba(240,160,48,0.3);
+      background: transparent;
+      color: var(--gold);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .manual-close-btn:hover { background: rgba(240,160,48,0.1); }
+
+    /* manual body */
+    .manual-body { padding: 32px 28px 48px; }
+
+    /* cover */
+    .manual-cover {
+      text-align: center;
+      padding: 40px 0 48px;
+      border-bottom: 1px solid rgba(240,160,48,0.12);
+      margin-bottom: 48px;
+    }
+    .manual-cover-logo {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+    .manual-cover h2 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+    .manual-cover p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* toc */
+    .manual-toc {
+      background: rgba(240,160,48,0.04);
+      border: 1px solid rgba(240,160,48,0.12);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+    .manual-toc h3 { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.15em; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
+    .manual-toc ol { padding-left: 18px; }
+    .manual-toc li { font-size: 0.9rem; color: rgba(255,255,255,0.7); padding: 4px 0; line-height: 1.5; }
+    .manual-toc li a { color: rgba(240,160,48,0.8); text-decoration: none; }
+    .manual-toc li a:hover { color: var(--gold); text-decoration: underline; }
+
+    /* section */
+    .manual-section { margin-bottom: 56px; }
+    .manual-section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid rgba(240,160,48,0.15);
+    }
+    .manual-section-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: rgba(240,160,48,0.1);
+      border: 1px solid rgba(240,160,48,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .manual-section-header h3 {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--text);
+    }
+    .manual-section-header span {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* steps within manual */
+    .manual-steps { display: flex; flex-direction: column; gap: 14px; margin: 20px 0; }
+    .manual-step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+    .manual-step-num {
+      flex-shrink: 0;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F0A030, #C0441A);
+      color: #1a0a02;
+      font-size: 0.8rem;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .manual-step-body h4 { font-size: 0.9rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .manual-step-body p { font-size: 0.83rem; color: var(--muted); line-height: 1.55; }
+    .manual-step-body code {
+      background: rgba(240,160,48,0.1);
+      border: 1px solid rgba(240,160,48,0.2);
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-family: monospace;
+    }
+
+    /* tip/note callout */
+    .manual-tip {
+      display: flex;
+      gap: 12px;
+      background: rgba(240,160,48,0.06);
+      border-left: 3px solid rgba(240,160,48,0.5);
+      border-radius: 0 12px 12px 0;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .manual-tip-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .manual-tip p { font-size: 0.83rem; color: rgba(255,255,255,0.7); line-height: 1.55; margin: 0; }
+    .manual-tip strong { color: var(--gold); }
+
+    /* feature pill list */
+    .manual-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    .manual-pill {
+      background: rgba(240,160,48,0.08);
+      border: 1px solid rgba(240,160,48,0.2);
+      color: rgba(240,160,48,0.9);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+
+    /* two-col grid for role cards */
+    .manual-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 16px; margin: 20px 0; }
+    .manual-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 18px 16px;
+    }
+    .manual-card h4 { font-size: 0.9rem; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+    .manual-card ul { padding-left: 16px; }
+    .manual-card li { font-size: 0.8rem; color: var(--muted); padding: 3px 0; line-height: 1.5; }
+
+    @media (max-width: 600px) {
+      .manual-sheet { margin: 0; border-radius: 0; min-height: 100vh; }
+      .manual-body { padding: 20px 16px 48px; }
+      .manual-header { padding: 16px 18px; }
+    }
+  
       padding: 24px;
       text-align: center;
       font-size: 0.8rem;
@@ -1001,6 +1257,58 @@
 </head>
 <body>
 
+  <!-- MANUAL FAB BUTTON -->
+  <button class="manual-fab" onclick="document.getElementById('manualOverlay').classList.add('open');document.body.style.overflow='hidden'">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    Manual
+  </button>
+
+  <!-- MANUAL MODAL -->
+  <div id="manualOverlay" class="manual-overlay" onclick="if(event.target===this){closeManual()}">
+    <div class="manual-sheet" id="manualContent">
+      <div class="manual-header">
+        <div class="manual-header-title">&#128218; Bartendaz Pro &mdash; User Manual</div>
+        <div class="manual-header-actions">
+          <button class="manual-pdf-btn" id="manualPdfBtn" onclick="downloadManualPdf()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+          <button class="manual-close-btn" onclick="closeManual()">&#10005;</button>
+        </div>
+      </div>
+      <div class="manual-body" id="manualBody">
+
+        <!-- COVER -->
+        <div class="manual-cover">
+          <div class="manual-cover-logo">&#127866;</div>
+          <h2>Bartendaz Pro</h2>
+          <p>The complete guide to running your bar with Bartendaz Pro &mdash; from opening the session to closing the night, every feature explained step by step.</p>
+        </div>
+
+        <!-- TOC -->
+        <div class="manual-toc">
+          <h3>Table of Contents</h3>
+          <ol>
+            <li><a href="#m-login">Signing In &amp; Account Roles</a></li>
+            <li><a href="#m-session">Opening &amp; Closing the Bar Session</a></li>
+            <li><a href="#m-pos">Bar (POS) &mdash; Taking Orders</a></li>
+            <li><a href="#m-cash">Cash Sales &amp; Change</a></li>
+            <li><a href="#m-credit">Credit Sales (Charge to Tab)</a></li>
+            <li><a href="#m-bottles">Opened Bottles &amp; Drink Sales</a></li>
+            <li><a href="#m-packs">Cigarette &amp; Rolling Paper Packs</a></li>
+            <li><a href="#m-specials">Specials &amp; Bundle Deals</a></li>
+            <li><a href="#m-products">Items (Product Catalog)</a></li>
+            <li><a href="#m-wallet">Wallet &amp; Financial Overview</a></li>
+            <li><a href="#m-customers">Customers (Credit Accounts)</a></li>
+            <li><a href="#m-cashiers">Staff (Cashiers)</a></li>
+            <li><a href="#m-manager">Manager &mdash; Bar Expense</a></li>
+            <li><a href="#m-machines">Machines Tracker</a></li>
+            <li><a href="#m-music">Music Player</a></li>
+            <li><a href="#m-summary">Summary Reports</a></li>
+            <li><a href="#m-profile">Profile &amp; Settings</a></li>
+            <li><a href="#m-offline">Offline Mode &amp; Sync</a></li>
+          </ol>
+        </div>
   <!-- HERO -->
   <section class="hero">
     <div class="logo-wrap">
@@ -1366,8 +1674,367 @@
     &copy; 2026 Bartendaz Pro. All rights reserved.
   </footer>
 
+  <!-- jsPDF for manual download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
   <script>
-    // Fetch latest release version from GitHub and update download buttons
+    // ── Manual modal helpers ──────────────────────────────────────────────────
+    function closeManual() {
+      document.getElementById('manualOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeManual();
+    });
+
+    // ── Download Manual as PDF using jsPDF ───────────────────────────────────
+    async function downloadManualPdf() {
+      const btn = document.getElementById('manualPdfBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        const gold   = [240, 160, 48];
+        const dark   = [15, 10, 4];
+        const white  = [245, 240, 232];
+        const muted  = [138, 122, 106];
+        const W      = 210;
+        const MARGIN = 18;
+        const CW     = W - MARGIN * 2;
+        let y        = 0;
+
+        function newPage() {
+          doc.addPage();
+          // subtle header line
+          doc.setDrawColor(...gold);
+          doc.setLineWidth(0.4);
+          doc.line(MARGIN, 8, W - MARGIN, 8);
+          doc.setFontSize(7);
+          doc.setTextColor(...muted);
+          doc.text('Bartendaz Pro — User Manual', MARGIN, 6);
+          doc.text('bartendazpro.com', W - MARGIN, 6, { align: 'right' });
+          y = 18;
+        }
+
+        function checkY(need) {
+          if (y + need > 272) newPage();
+        }
+
+        function sectionHeader(icon, title, sub) {
+          checkY(24);
+          // gold accent line
+          doc.setFillColor(...gold);
+          doc.rect(MARGIN, y, 2, 14, 'F');
+          doc.setFontSize(13);
+          doc.setTextColor(...white);
+          doc.setFont('helvetica', 'bold');
+          doc.text(icon + '  ' + title, MARGIN + 6, y + 9);
+          doc.setFontSize(7.5);
+          doc.setTextColor(...muted);
+          doc.setFont('helvetica', 'normal');
+          doc.text(sub, MARGIN + 6, y + 14);
+          y += 20;
+          doc.setDrawColor(...gold);
+          doc.setLineWidth(0.3);
+          doc.line(MARGIN, y, W - MARGIN, y);
+          y += 5;
+        }
+
+        function step(num, title, body) {
+          checkY(18);
+          // Circle number
+          doc.setFillColor(...gold);
+          doc.circle(MARGIN + 4, y + 3, 3.5, 'F');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...dark);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(num), MARGIN + 4, y + 4.5, { align: 'center' });
+          // Title
+          doc.setFontSize(9);
+          doc.setTextColor(...white);
+          doc.setFont('helvetica', 'bold');
+          doc.text(title, MARGIN + 12, y + 4);
+          // Body
+          doc.setFontSize(8);
+          doc.setTextColor(...muted);
+          doc.setFont('helvetica', 'normal');
+          const lines = doc.splitTextToSize(body, CW - 14);
+          doc.text(lines, MARGIN + 12, y + 9);
+          y += 8 + lines.length * 4.2;
+          checkY(4);
+        }
+
+        function tip(text) {
+          checkY(14);
+          doc.setFillColor(40, 28, 8);
+          doc.roundedRect(MARGIN, y, CW, 12 + Math.ceil(doc.splitTextToSize(text, CW - 14).length * 4.2), 2, 2, 'F');
+          doc.setDrawColor(...gold);
+          doc.setLineWidth(0.5);
+          doc.line(MARGIN, y, MARGIN, y + 12 + Math.ceil(doc.splitTextToSize(text, CW - 14).length * 4.2));
+          doc.setFontSize(8);
+          doc.setTextColor(...gold);
+          doc.setFont('helvetica', 'bold');
+          doc.text('💡  Note:', MARGIN + 4, y + 5);
+          doc.setTextColor(...white);
+          doc.setFont('helvetica', 'normal');
+          const lines = doc.splitTextToSize(text, CW - 14);
+          doc.text(lines, MARGIN + 4, y + 10);
+          y += 14 + lines.length * 4.2;
+        }
+
+        function para(text) {
+          checkY(12);
+          doc.setFontSize(8.5);
+          doc.setTextColor(...muted);
+          doc.setFont('helvetica', 'normal');
+          const lines = doc.splitTextToSize(text, CW);
+          doc.text(lines, MARGIN, y);
+          y += lines.length * 4.5 + 4;
+        }
+
+        // ── COVER PAGE ──
+        // background
+        doc.setFillColor(...dark);
+        doc.rect(0, 0, W, 297, 'F');
+        // gold gradient band
+        doc.setFillColor(40, 20, 5);
+        doc.rect(0, 0, W, 80, 'F');
+        doc.setDrawColor(...gold);
+        doc.setLineWidth(0.5);
+        doc.line(0, 80, W, 80);
+
+        doc.setFontSize(42);
+        doc.setTextColor(...gold);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bartendaz Pro', W / 2, 42, { align: 'center' });
+        doc.setFontSize(16);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'normal');
+        doc.text('User Manual', W / 2, 55, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setTextColor(...muted);
+        doc.text('Complete guide to every feature', W / 2, 64, { align: 'center' });
+
+        // TOC
+        y = 96;
+        doc.setFontSize(9);
+        doc.setTextColor(...gold);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TABLE OF CONTENTS', MARGIN, y);
+        y += 8;
+        const toc = [
+          '1. Signing In & Account Roles',     '2. Opening & Closing Bar Session',
+          '3. Bar (POS) &mdash; Taking Orders',      '4. Cash Sales & Change',
+          '5. Credit Sales (Charge to Tab)',   '6. Opened Bottles & Drink Sales',
+          '7. Cigarette & Rolling Paper Packs','8. Specials & Bundle Deals',
+          '9. Items (Product Catalog)',        '10. Wallet & Financial Overview',
+          '11. Customers (Credit Accounts)',   '12. Staff (Cashiers & Managers)',
+          '13. Manager &mdash; Bar Expense',         '14. Machines Tracker',
+          '15. Music Player',                  '16. Summary Reports',
+          '17. Profile & Settings',            '18. Offline Mode & Sync',
+        ];
+        doc.setFontSize(8.5);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'normal');
+        toc.forEach((item, i) => {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          doc.text(item, MARGIN + col * (CW / 2 + 2), y + row * 7);
+        });
+
+        // footer
+        doc.setFontSize(8);
+        doc.setTextColor(...muted);
+        doc.text('© 2026 Bartendaz Pro  ·  +1 868 385-0635  ·  +1 868 726-7313', W / 2, 285, { align: 'center' });
+
+        // ── SECTIONS ──
+        newPage();
+
+        // 1. Login
+        sectionHeader('🔐', 'Signing In & Account Roles', 'Section 1');
+        step(1,'Open the app','Launch Bartendaz Pro. You will land on the Sign In screen.');
+        step(2,'Enter credentials','Owners use their email address. Cashiers use the username set by the owner — no email needed.');
+        step(3,'Tap Sign In','Owners land on Bar (POS). Cashiers on Bar. Managers on Items.');
+        tip('Forgot your password? Tap "Forgot password?" on the login screen to receive a reset email.');
+
+        // 2. Session
+        sectionHeader('🟢', 'Opening & Closing the Bar Session', 'Section 2');
+        para('The bar session controls whether sales can be made. When closed, the POS is locked. Only owners can open/close sessions.');
+        step(1,'Navigate to Bar','Go to the Bar page. If closed you will see a lock screen overlay.');
+        step(2,'Tap "Open Bar Now"','A modal asks for the Bar Float amount (starting cash). If you have Machines add-on, set that float too.');
+        step(3,'Enter float and confirm','Session starts. POS becomes active. Float tracking begins.');
+        step(4,'Close at end of night','In Wallet, tap Close Bar to end the session. Sales are blocked until reopened.');
+        tip('Cashier change mid-session: In Wallet → Float section tap Update Float → New Session to swap cashiers without ending the night.');
+
+        // 3. POS
+        sectionHeader('🍺', 'Bar (POS) &mdash; Taking Orders', 'Section 3');
+        para('The Bar screen is the main selling interface. Products are displayed in a category grid. Tap to add to cart.');
+        step(1,'Select a category tab','Tap Beer, Rum, Soft Drinks, etc. to filter. Swipe the tab bar horizontally on mobile.');
+        step(2,'Tap a product','Each tap adds 1 unit. Use +/− to adjust quantity. Tap ✕ on the product card to remove it.');
+        step(3,'Review the cart','Cart summary shows at the bottom with item count and total.');
+        step(4,'Apply a discount (optional)','Tap % Discount in the order review to apply a flat dollar discount to the order.');
+        step(5,'Tap CASH or CREDIT','Choose the payment method to proceed to checkout.');
+        tip('Long-press any product to enter reorder mode. Tap to select, tap another to swap positions. Tap Done when finished.');
+
+        // 4. Cash
+        sectionHeader('💵', 'Cash Sales & Change', 'Section 4');
+        step(1,'Tap CASH','The order review panel opens showing total due.');
+        step(2,'Select Guest or Customer','Guest for anonymous sales. Pick a customer to log the purchase in their history (no credit balance change).');
+        step(3,'Enter amount tendered','Use the numpad. Change is calculated automatically and shown on screen.');
+        step(4,'Tap Complete Sale','Order is recorded, stock decrements, cashier wallet is credited.');
+        tip('Delete last sale: In Wallet → Records, the most recent sale has a Delete button visible for up to 1 hour.');
+
+        // 5. Credit
+        sectionHeader('🧾', 'Credit Sales (Charge to Tab)', 'Section 5');
+        para('Credit sales charge the order to a customer tab. Balance is owed until they make a payment.');
+        step(1,'Tap CREDIT','The credit sale overlay opens.');
+        step(2,'Tap Proceed','You are taken to customer selection.');
+        step(3,'Select or create customer','Tap a name or tap + New Account to create one on the spot.');
+        step(4,'Confirm the charge','Tap Yes, Charge. Balance is added to their tab immediately.');
+        tip('Cash with customer record: Choose CASH then select a customer to log the sale in their history as paid cash — no balance change.');
+
+        newPage();
+
+        // 6. Bottles
+        sectionHeader('🍾', 'Opened Bottles & Drink Sales', 'Section 6');
+        para('For liquor products, open a bottle and sell individual drinks instead of the full bottle at once.');
+        step(1,'Tap a liquor product','A bottle/drink modal opens.');
+        step(2,'Open a bottle','Tap Open New Bottle. 1 unit is deducted from stock.');
+        step(3,'Select a variation','Tap a drink type (Single, Double, Neat etc.). Each has its own price set in Items.');
+        step(4,'Tap + Add to Order','Drink is added to cart. Continue adding more or proceed to payment.');
+        step(5,'Finish or cancel bottle','Tap the 🍾 icon → Opened Bottles. Mark Bottle Empty to close and record revenue. Cancel if no shots sold restores stock.');
+        tip('When the bottle hits capacity an Open New Bottle button appears automatically. Tap it to continue without closing the order.');
+
+        // 7. Packs
+        sectionHeader('🚬', 'Cigarette & Rolling Paper Packs', 'Section 7');
+        step(1,'Tap a cigarette product','Pack selection modal opens with open packs and option for a new one.');
+        step(2,'Select or open a pack','Tap an existing open pack or tap + Open New Pack.');
+        step(3,'Set unit price and add','Enter price per unit. Item added to cart. Units-sold tracks per pack.');
+        step(4,'Mark empty when done','Tap 🚬 icon → select pack → Mark Empty. Pack closed, revenue recorded.');
+
+        // 8. Specials
+        sectionHeader('🏷️', 'Specials & Bundle Deals', 'Section 8');
+        para('Specials auto-apply bundle pricing when qualifying products are in the cart.');
+        step(1,'Go to Menu → Specials','Shows all active and inactive deals.');
+        step(2,'Tap + New Special','Set name, required item count, bundle price, and qualifying products.');
+        step(3,'Set schedule','Optionally restrict to specific dates and days of the week.');
+        step(4,'Toggle active/inactive','Enable or pause without deleting.');
+        tip('Specials are applied automatically at POS. No cashier action needed — the discount shows in the order total.');
+
+        // 9. Products
+        sectionHeader('📦', 'Items (Product Catalog)', 'Section 9');
+        para('Owners manage the full product menu here — add items, update prices, manage stock, set drink variations.');
+        step(1,'Tap + Add Item','Enter product name, cost price, sell price, category. Upload or choose a template photo.');
+        step(2,'Set stock quantity','Tap the stock number to open a numpad. Low stock shows a warning badge; zero blocks sales.');
+        step(3,'Liquor: set bottle capacity and drink prices','Enter Units per Item (shots per bottle). Add drink variations with name, units consumed, and price.');
+        step(4,'Cigarettes: set retail and special prices','Enter per-unit retail price and optional bundle deal (e.g. 3 for $20).');
+        step(5,'Bulk edit','Tap the table icon to edit all prices and stock in a fast scrollable table.');
+        tip('Missing cost price or sell price will block cashiers from adding the product to cart. Always set both before opening the bar.');
+
+        // 10. Wallet
+        sectionHeader('💰', 'Wallet & Financial Overview', 'Section 10');
+        para('Every user has a wallet. Cashier wallets track earnings and expenses. The owner wallet aggregates all bar finances.');
+        step(1,'Cashier clears to owner','Tap Clear to Owner. Enter amount to transfer. Cashier balance decreases, owner receives funds.');
+        step(2,'Owner logs expenses','Wallet → Financials → Expenses. Record non-stock costs with description and amount.');
+        step(3,'Download statement','Tap Statement in the wallet hero card to generate a PDF of all transactions.');
+
+        newPage();
+
+        // 11. Customers
+        sectionHeader('👤', 'Customers (Credit Accounts)', 'Section 11');
+        step(1,'Create account','Menu → Customers → + Create. Enter name, contact, ID type and number.');
+        step(2,'Charge a customer','Via Credit Sale at POS (Section 5). Balance increases per charge.');
+        step(3,'Record a payment','Tap customer → Add Payment → enter amount. Balance decreases.');
+        step(4,'View full history','Tap Full History to see every charge and payment. Tap Bill to generate a PDF invoice.');
+        step(5,'Close or reopen account','Toggle Open/Closed on the customer card to show/hide at POS.');
+
+        // 12. Staff
+        sectionHeader('👥', 'Staff (Cashiers & Managers)', 'Section 12');
+        step(1,'Add a cashier','Menu → Staff → + Add Cashier. Set username and password. They can log in immediately.');
+        step(2,'Add a manager','Same as cashier — set Job Title to Manager after creation. Access: Items, Customers, Bar Expense only.');
+        step(3,'View cashier balances','Each card shows wallet balance. Tap to see full history or clear wallet.');
+        step(4,'Suspend or delete','Suspend blocks login without deleting history. Delete is permanent.');
+        tip('The owner sets the cashier float in Wallet before opening the bar. This float represents starting register cash for all cashiers.');
+
+        // 13. Manager
+        sectionHeader('📋', 'Manager &mdash; Bar Expense', 'Section 13');
+        para('Managers log bar expenses during open sessions. Each expense is deducted from the owner wallet and recorded with the manager name tagged.');
+        step(1,'Go to Menu → Bar Expense','Shows float summary cards (Set / Used / Remaining) and session expense total.');
+        step(2,'Tap + Add Expense','Enter description and amount. Add multiple lines for bulk expenses.');
+        step(3,'Confirm','Confirm deduction from owner wallet. Amount is deducted and tagged with manager name.');
+        step(4,'Edit or delete last entry','Pencil/trash icons appear on the most recent expense while bar is open.');
+
+        // 14. Machines
+        sectionHeader('🎰', 'Machines Tracker', 'Section 14');
+        para('Tracks payouts and income for gaming machines. Available on Premium or as a $600 TT/yr add-on.');
+        step(1,'Add a machine','Menu → Machines → + Create. Name it (e.g. Screen 1). Long-press to reorder.');
+        step(2,'Set machine float at open','Entered alongside bar float when opening the bar session.');
+        step(3,'Record a payout','Tap machine → Payout → enter amount, optional proof photo → Save Payout.');
+        step(4,'Record income','Tap Income → enter amount → Save.');
+        step(5,'View per-screen profit','Each machine card shows session payout, income, and net profit.');
+
+        // 15. Music
+        sectionHeader('🎵', 'Music Player', 'Section 15');
+        step(1,'Access Music','Tap the Music button in the top header.');
+        step(2,'Search YouTube','Type and search. Tap any result to play.');
+        step(3,'Save to playlist','Tap bookmark while a track plays to save it.');
+        step(4,'Return to Bar','Tap Bar in header. Music continues playing while you process orders.');
+        tip('YouTube search has a daily limit shown below the search bar.');
+
+        newPage();
+
+        // 16. Summary
+        sectionHeader('📊', 'Summary Reports', 'Section 16');
+        step(1,'Go to Menu → Summary','Financial cards: Revenue, Stock Cost, Gross Profit, Expenses, Net Profit.');
+        step(2,'Filter by period','Session, today, this week, or this month.');
+        step(3,'Download PDF','Tap Download PDF to generate a formatted report saved to Documents.');
+
+        // 17. Profile
+        sectionHeader('⚙️', 'Profile & Settings', 'Section 17');
+        step(1,'Change password','Menu → Profile → Change Password. Enter current and new passwords.');
+        step(2,'Change language','Menu → Language. Switch between English and Español instantly.');
+        step(3,'Factory Reset','Menu → Factory Reset. Choose scope. Type RESET to confirm. Irreversible.');
+        step(4,'Billing & Subscription','Menu → Billing shows plan, expiry, and renewal. Submit payment for admin activation.');
+
+        // 18. Offline
+        sectionHeader('📴', 'Offline Mode & Sync', 'Section 18');
+        para('Bartendaz Pro works without internet. Orders save locally and upload automatically when connectivity returns.');
+        step(1,'Internet drops','Red banner: "No internet — orders will be saved locally". POS stays fully functional.');
+        step(2,'Process sales normally','Cash/credit sales, stock decrements, shots, packs — all queued locally.');
+        step(3,'Internet restores','Within 1-2 seconds all queued operations sync silently. Green banner confirms.');
+        step(4,'Realtime resumes','Live data (product changes, wallet updates) resumes automatically.');
+        tip('Creating new credit accounts offline is not supported. Charging to existing accounts works offline.');
+
+        // ── final page footer ──
+        checkY(20);
+        y += 10;
+        doc.setDrawColor(...gold);
+        doc.setLineWidth(0.3);
+        doc.line(MARGIN, y, W - MARGIN, y);
+        y += 8;
+        doc.setFontSize(8.5);
+        doc.setTextColor(...gold);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bartendaz Pro © 2026', MARGIN, y);
+        doc.setTextColor(...muted);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Support: +1 868 385-0635  ·  +1 868 726-7313', W - MARGIN, y, { align: 'right' });
+
+        doc.save('bartendaz-pro-manual.pdf');
+      } catch(err) {
+        console.error(err);
+        alert('Could not generate PDF. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PDF';
+      }
+    }
+  
     (async function() {
       try {
         const res = await fetch('https://api.github.com/repos/murrentronics/bartap-pro/releases/latest', {

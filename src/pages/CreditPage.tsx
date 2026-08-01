@@ -34,6 +34,7 @@ type CreditTx = {
   type: "charge" | "payment";
   amount: number;
   note: string | null;
+  items?: any[] | null;
   created_at: string;
 };
 
@@ -200,6 +201,165 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
   doc.text("Balance Remaining:", LM, y);
   doc.setTextColor(balance<=0?40:200, balance<=0?140:40, 40);
   doc.text("$"+balance.toFixed(2), RM, y, { align:"right" });
+
+  addFootersToAllPages(doc);
+  return doc.output("datauristring");
+}
+
+// ── Build single-record PDF — returns base64 data URI ────────────────────────
+async function buildSingleRecordPdf(
+  tx: CreditTx,
+  account: CreditAccount,
+  ownerName: string
+): Promise<string | null> {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const ORANGE = [232, 146, 42] as const;
+  const isCharge = tx.type === "charge";
+
+  const dt = new Date(tx.created_at);
+  const dateStr = dt.toLocaleString("en-GB", {
+    weekday: "long", day: "2-digit", month: "long", year: "numeric",
+  });
+  const timeStr = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const generated = new Date().toLocaleString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
+
+  const docTitle = isCharge ? "Charge Receipt" : "Payment Receipt";
+  let y = await drawHeader(doc, ownerName, docTitle, dateStr + " · " + timeStr, generated);
+
+  // Customer info
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(0, 0, 0);
+  doc.text("Customer: " + account.full_name, LM, y); y += 5;
+  if (account.contact_number) {
+    doc.setFont("helvetica", "normal");
+    doc.text("Contact: " + account.contact_number, LM, y); y += 5;
+  }
+  if (account.id_number) {
+    doc.setFont("helvetica", "normal");
+    doc.text("ID: " + account.id_number, LM, y); y += 5;
+  }
+  y += 3;
+
+  // Date / time row
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(...ORANGE);
+  doc.text("Date", LM, y);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+  doc.text(dateStr, LM + 28, y); y += 5;
+  doc.setFont("helvetica", "bold"); doc.setTextColor(...ORANGE);
+  doc.text("Time", LM, y);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+  doc.text(timeStr, LM + 28, y); y += 8;
+
+  // Type label
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.setTextColor(isCharge ? 200 : 40, isCharge ? 60 : 140, 40);
+  doc.text(isCharge ? "CHARGE" : "PAYMENT", LM, y); y += 8;
+  doc.setTextColor(0, 0, 0);
+
+  // Itemized table (charges only)
+  const C_ITEM = LM + 4;
+  const C_QTY  = LM + 90;
+  const C_SP   = LM + 118;
+  const C_CP   = LM + 146;
+  const C_PROF = RM;
+
+  if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(150, 150, 150);
+    doc.text("ITEM",   C_ITEM, y);
+    doc.text("QTY",    C_QTY,  y, { align: "right" });
+    doc.text("SALE",   C_SP,   y, { align: "right" });
+    doc.text("COST",   C_CP,   y, { align: "right" });
+    doc.text("PROFIT", C_PROF, y, { align: "right" });
+    y += 3.5;
+    doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.15);
+    doc.line(C_ITEM, y, RM, y); y += 3;
+
+    let totalSP = 0, totalCP = 0;
+    let hasCPData = false;
+
+    for (const it of tx.items as any[]) {
+      if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+      const qty    = Number(it.qty ?? 1);
+      const sp     = Number(it.price ?? 0) * qty;
+      const cp     = Number(it.cost_price ?? 0) * qty;
+      const profit = sp - cp;
+      const hasCP  = (it.cost_price ?? 0) > 0;
+      totalSP += sp;
+      totalCP += cp;
+      if (hasCP) hasCPData = true;
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(30, 30, 30);
+      doc.text(doc.splitTextToSize(it.name ?? "", 72)[0], C_ITEM, y);
+      doc.text(String(qty), C_QTY, y, { align: "right" });
+
+      doc.setFont("helvetica", "bold"); doc.setTextColor(...ORANGE);
+      doc.text("$" + sp.toFixed(2), C_SP, y, { align: "right" });
+
+      doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100);
+      doc.text(hasCP ? "$" + cp.toFixed(2) : "—", C_CP, y, { align: "right" });
+
+      const profColor: [number, number, number] = hasCP
+        ? (profit >= 0 ? [22, 163, 74] : [220, 38, 38])
+        : [160, 160, 160];
+      doc.setFont("helvetica", "bold"); doc.setTextColor(...profColor);
+      doc.text(hasCP ? "$" + profit.toFixed(2) : "—", C_PROF, y, { align: "right" });
+      doc.setTextColor(0, 0, 0);
+      y += 4.5;
+    }
+
+    // Subtotal
+    if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
+    doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.15); doc.line(C_ITEM, y, RM, y); y += 3;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(80, 80, 80);
+    doc.text("Subtotal", C_ITEM, y);
+    doc.setTextColor(...ORANGE);
+    doc.text("$" + totalSP.toFixed(2), C_SP, y, { align: "right" });
+    if (hasCPData) {
+      doc.setTextColor(100, 100, 100);
+      doc.text("$" + totalCP.toFixed(2), C_CP, y, { align: "right" });
+      const totalProfit = totalSP - totalCP;
+      doc.setTextColor(totalProfit >= 0 ? 22 : 220, totalProfit >= 0 ? 163 : 38, totalProfit >= 0 ? 74 : 38);
+      doc.text("$" + totalProfit.toFixed(2), C_PROF, y, { align: "right" });
+    }
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+  } else if (tx.note) {
+    // No items — show note
+    doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    const wrapped = doc.splitTextToSize(tx.note, RM - LM - 4);
+    doc.text(wrapped, LM, y); y += wrapped.length * 4.5 + 5;
+    doc.setTextColor(0, 0, 0);
+  }
+
+  // Total amount for this record
+  doc.setDrawColor(...ORANGE); doc.setLineWidth(0.4);
+  doc.line(LM, y, RM, y); y += 5;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.setTextColor(isCharge ? 200 : 40, isCharge ? 60 : 140, 40);
+  doc.text(isCharge ? "Amount Charged:" : "Amount Paid:", LM, y);
+  doc.text((isCharge ? "+" : "-") + "$" + Number(tx.amount).toFixed(2), RM, y, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  y += 10;
+
+  // Outstanding balance box
+  const balance = Number(account.balance_owed);
+  doc.setFillColor(245, 240, 230);
+  doc.roundedRect(LM, y, RM - LM, 18, 2, 2, "F");
+  doc.setDrawColor(...ORANGE); doc.setLineWidth(0.4);
+  doc.roundedRect(LM, y, RM - LM, 18, 2, 2, "S");
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(100, 100, 100);
+  doc.text("Outstanding Balance", LM + (RM - LM) / 2, y + 6, { align: "center" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+  doc.setTextColor(balance <= 0 ? 40 : 200, balance <= 0 ? 140 : 40, 40);
+  doc.text(
+    balance <= 0 ? "CLEARED — $0.00" : "$" + balance.toFixed(2) + " OUTSTANDING",
+    LM + (RM - LM) / 2, y + 14, { align: "center" }
+  );
+  doc.setTextColor(0, 0, 0);
 
   addFootersToAllPages(doc);
   return doc.output("datauristring");
@@ -443,6 +603,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteTx, setConfirmDeleteTx] = useState<CreditTx | null>(null);
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
+  const [txGenerating, setTxGenerating] = useState<string | null>(null);
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
@@ -452,7 +613,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     setTxLoading(true);
     const { data } = await supabase
       .from("credit_transactions")
-      .select("id, credit_account_id, type, amount, note, created_at")
+      .select("id, credit_account_id, type, amount, note, items, created_at")
       .eq("credit_account_id", accountId)
       .order("created_at", { ascending: false });
     setTxs((data ?? []) as CreditTx[]);
@@ -490,6 +651,25 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     setPayAmount("");
     loadTxs(account.id);
     onRefresh();
+  };
+
+  const handleSingleRecordPdf = async (tx: CreditTx, account: CreditAccount) => {
+    setTxGenerating(tx.id);
+    try {
+      const b64 = await buildSingleRecordPdf(tx, account, ownerName);
+      if (b64) {
+        const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+        const dt = new Date(tx.created_at);
+        const dateTag = dt.toISOString().slice(0, 10);
+        await downloadPdf(`receipt-${safeName}-${dateTag}.pdf`, b64);
+        toast.success("Receipt downloaded");
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) {
+        toast.error("Failed: " + (e?.message ?? "unknown"));
+      }
+    }
+    setTxGenerating(null);
   };
 
   const deleteCharge = async (tx: CreditTx) => {
@@ -705,6 +885,19 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                         <span className={`text-sm font-black ${isCharge ? "text-red-400" : "text-green-400"}`}>
                           {isCharge ? "+" : "-"}${Number(tx.amount).toFixed(2)}
                         </span>
+                        {/* Per-record PDF button */}
+                        <button
+                          onClick={() => handleSingleRecordPdf(tx, a)}
+                          disabled={txGenerating === tx.id}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
+                          style={{ color: "var(--primary)" }}
+                          title="Download receipt"
+                        >
+                          {txGenerating === tx.id
+                            ? <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                            : <FileDown className="h-3.5 w-3.5" />
+                          }
+                        </button>
                         {canDelete && (
                           <button
                             onClick={() => setConfirmDeleteTx(tx)}
@@ -779,6 +972,7 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
   const [confirmDelete, setConfirmDelete] = useState<CreditAccount | null>(null);
   const [deleting, setDeleting]   = useState(false);
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
+  const [txGenerating, setTxGenerating] = useState<string | null>(null);
 
   const toggleExpand = async (accountId: string) => {
     if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
@@ -786,11 +980,29 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
     setTxLoading(true);
     const { data } = await supabase
       .from("credit_transactions")
-      .select("id, credit_account_id, type, amount, note, created_at")
+      .select("id, credit_account_id, type, amount, note, items, created_at")
       .eq("credit_account_id", accountId)
       .order("created_at", { ascending: false });
     setTxs((data ?? []) as CreditTx[]);
     setTxLoading(false);
+  };
+
+  const handleSingleRecordPdf = async (tx: CreditTx, account: CreditAccount) => {
+    setTxGenerating(tx.id);
+    try {
+      const b64 = await buildSingleRecordPdf(tx, account, ownerName);
+      if (b64) {
+        const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+        const dateTag = new Date(tx.created_at).toISOString().slice(0, 10);
+        await downloadPdf(`receipt-${safeName}-${dateTag}.pdf`, b64);
+        toast.success("Receipt downloaded");
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) {
+        toast.error("Failed: " + (e?.message ?? "unknown"));
+      }
+    }
+    setTxGenerating(null);
   };
 
   const deleteAccount = async (account: CreditAccount) => {
@@ -899,9 +1111,24 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">{date} · {time}</p>
                       </div>
-                      <span className={`text-sm font-black shrink-0 mt-0.5 ${isCharge ? "text-red-400" : "text-green-400"}`}>
-                        {isCharge ? "+" : "-"}${Number(tx.amount).toFixed(2)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                        <span className={`text-sm font-black ${isCharge ? "text-red-400" : "text-green-400"}`}>
+                          {isCharge ? "+" : "-"}${Number(tx.amount).toFixed(2)}
+                        </span>
+                        {/* Per-record PDF button */}
+                        <button
+                          onClick={() => handleSingleRecordPdf(tx, a)}
+                          disabled={txGenerating === tx.id}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
+                          style={{ color: "var(--primary)" }}
+                          title="Download receipt"
+                        >
+                          {txGenerating === tx.id
+                            ? <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                            : <FileDown className="h-3.5 w-3.5" />
+                          }
+                        </button>
+                      </div>
                     </div>
                   );
                 })

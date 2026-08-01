@@ -7637,7 +7637,7 @@ export default function MachinesPage() {
           ownerId={ownerId}
 
 
-          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined, job_title: (profile as any).job_title ?? undefined }}
+          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined }}
 
 
           floatSession={floatSession}

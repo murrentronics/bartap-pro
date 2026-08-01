@@ -195,7 +195,7 @@ export default function BillingPage() {
       insertData.addon_bar_data  = addonBars.slice(0, addonBarCount);
     }
 
-    const { error } = await supabase.from("billing_payments").insert(insertData);
+    const { error } = await supabase.from("billing_payments").insert(insertData as any);
     setSubmitting(false);
     if (error) { toast.error("Failed to submit payment"); return; }
     toast.success("Payment submitted — awaiting admin confirmation");
@@ -230,7 +230,7 @@ export default function BillingPage() {
   const premiumAddonPlan20       = plans.find(p => p.plan_type === "premium_addon_20");
 
   // Detect 20-screen variant for current machines-only owner (stored as plan_type = "machines_only_20" in future)
-  const isMachinesOnly20 = profile?.plan_type === "machines_only_20";
+  const isMachinesOnly20 = (profile?.plan_type as string) === "machines_only_20";
 
   // Current bar count for capacity checks
   const currentBarCount = (profile?.addon_bar_count ?? 0) + 1;
@@ -299,7 +299,7 @@ export default function BillingPage() {
   // the fraction of the year remaining on the current plan.
   const planEndDate: Date | null = (() => {
     if (!isAddonPlanSelected) return null;
-    if ((profile?.plan_type === "premium" || profile?.plan_type === "premium_20") && profile?.premium_subscription_end_date)
+    if ((profile?.plan_type === "premium" || (profile?.plan_type as string) === "premium_20") && profile?.premium_subscription_end_date)
       return new Date(profile.premium_subscription_end_date);
     if (profile?.plan_type === "machines_only" && profile?.machines_addon_end_date)
       return new Date(profile.machines_addon_end_date);

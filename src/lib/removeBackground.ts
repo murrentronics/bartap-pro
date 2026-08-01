@@ -7,8 +7,8 @@
 import { removeBackground as imglyRemoveBg, type Config } from "@imgly/background-removal";
 
 const CONFIG: Config = {
-  // "medium" strikes the best balance of speed and quality for product photos
-  model: "medium",
+  // "isnet" is the default balanced model for product photos
+  model: "isnet",
   output: {
     format: "image/png", // always output PNG so transparency is preserved
     quality: 1,
