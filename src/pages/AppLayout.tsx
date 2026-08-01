@@ -157,18 +157,18 @@ export default function AppLayout() {
         : (profile.role === "cashier" || profile.role === "manager" || profile.job_title === "manager") ? profile.parent_id : profile.id;
       if (!ownerId) return;
       const { data } = await (supabase as any).from("profiles")
-        .select("plan_type, machines_addon_active, bar_addon_active").eq("id", ownerId).single();
+        .select("plan_type, machines_addon_active").eq("id", ownerId).single();
       const planType = data?.plan_type ?? "basic";
       const addonActive = data?.machines_addon_active ?? false;
-      const barAddonActive = data?.bar_addon_active ?? false;
       const machinesOnly = planType === "machines_only";
       setIsMachinesOnlyUser(machinesOnly);
       const isMasterAccount = user?.email === "renard.sankersingh@gmail.com";
       setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
-      setOwnerHasBar(!machinesOnly || barAddonActive || isMasterAccount);
+      // machines_only owners no longer have a bar add-on — they must upgrade to Bar with Machines
+      setOwnerHasBar(!machinesOnly || isMasterAccount);
     };
     load();
-  }, [profile?.id, profile?.status, profile?.plan_type, profile?.machines_addon_active, profile?.bar_addon_active, isChainOwner, activeBarId]);
+  }, [profile?.id, profile?.status, profile?.plan_type, profile?.machines_addon_active, isChainOwner, activeBarId]);
 
   // Realtime: re-check machines status when the active bar's profile updates
   // (e.g. after enabling machines from within the machines page)
@@ -495,7 +495,9 @@ export default function AppLayout() {
                       style={{ background: loc.pathname === "/switch-bar" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
                       <GitBranch className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`} />
                     </div>
-                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>{t("switch_bar", "Switch Bar")}</span>
+                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>
+                      {isMachinesOnlyUser ? t("switch_account", "Switch Account") : t("switch_bar", "Switch Bar")}
+                    </span>
                   </button>
                 )}
                 {isOwner && (

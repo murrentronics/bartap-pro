@@ -76,7 +76,7 @@ export default function BillingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
-  // ── Handle ?upgrade=machines_addon|premium from Machines page ────────────
+  // ── Handle ?upgrade=premium|machines_only etc. from other pages ─────────
   useEffect(() => {
     if (plans.length === 0) return;
     const params = new URLSearchParams(window.location.search);
@@ -155,7 +155,7 @@ export default function BillingPage() {
     const isFirst   = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
 
     // For addon plans, amount = pro-rated unit price × number of bars
-    const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "premium_addon"].includes(selectedPlan.plan_type ?? "");
+    const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan.plan_type ?? "");
     const amount = isAddonPlan
       ? totalDue   // already pro-rated in derived state above
       : selectedPlan.amount;
@@ -212,17 +212,13 @@ export default function BillingPage() {
   const isPremium       = profile?.plan_type === "premium";
   const isChain         = false; // chain plan retired — premium handles multi-bar
   const isMachinesOnly  = profile?.plan_type === "machines_only";
-  const hasMachinesAddon = !!profile?.machines_addon_active;
-  const hasBarAddon     = !!profile?.bar_addon_active;
 
   const basicPlan             = plans.find(p => p.plan_type === "basic");
-  const machinesAddonPlan     = plans.find(p => p.plan_type === "machines_addon");
   const premiumPlan           = plans.find(p => p.plan_type === "premium");
   const premiumPlan20         = plans.find(p => p.plan_type === "premium_20");
   const machinesOnlyPlan      = plans.find(p => p.plan_type === "machines_only");
   const machinesOnlyPlan20    = plans.find(p => p.plan_type === "machines_only_20");
-  const barAddonPlan          = plans.find(p => p.plan_type === "bar_addon");
-  // Multi-bar addon plans
+  // Multi-bar / multi-account addon plans
   const barOnlyAddonPlan         = plans.find(p => p.plan_type === "bar_only_addon");
   const machinesBarAddonPlan     = plans.find(p => p.plan_type === "machines_bar_addon");
   const machinesBarAddonPlan20   = plans.find(p => p.plan_type === "machines_bar_addon_20");
@@ -271,8 +267,6 @@ export default function BillingPage() {
                       : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 2400)
                       : 0;
 
-  const machinesAddonPrice = (isBasic && hasMachinesAddon) ? (machinesAddonPlan?.amount ?? 600) : 0;
-
   // Bar Only extra bars renew at $800 each; Premium addon at $2,000 each; Machines addon at $1,200 each
   const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 800)
                         : isPremium      ? (premiumAddonPlan?.amount     ?? 2000)
@@ -280,15 +274,12 @@ export default function BillingPage() {
                         : 0;
   const extraBarPrice = addonBarQty * perBarFullPrice;
 
-  const totalRenewalAmount = basePlanPrice + machinesAddonPrice + extraBarPrice;
+  const totalRenewalAmount = basePlanPrice + extraBarPrice;
 
-  // Breakdown shown only when addons exist
+  // Breakdown shown only when addon bars exist
   const renewalBreakdown = (() => {
-    const parts: string[] = [];
-    if (machinesAddonPrice > 0) parts.push(`$${machinesAddonPrice.toLocaleString()} machines addon`);
-    if (addonBarQty > 0) parts.push(`${addonBarQty}×$${perBarFullPrice.toLocaleString()} extra bar${addonBarQty > 1 ? "s" : ""}`);
-    if (parts.length === 0) return "";
-    return `$${basePlanPrice.toLocaleString()} plan + ${parts.join(" + ")}`;
+    if (addonBarQty === 0) return "";
+    return `$${basePlanPrice.toLocaleString()} plan + ${addonBarQty}×$${perBarFullPrice.toLocaleString()} extra bar${addonBarQty > 1 ? "s" : ""}`;
   })();
 
 
@@ -555,59 +546,7 @@ export default function BillingPage() {
                     </div>
                   )}
 
-                  {/* Machines Add-on card — active card if subscribed, subscribe button if not */}
-                  {isBasic && !isSpecial && !pendingPayment && (
-                    hasMachinesAddon ? (
-                      /* ── Active machines addon card ── */
-                      <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                              <Gamepad2 className="h-4 w-4 text-orange-700" />
-                            </div>
-                            <div>
-                              <p className="font-black text-gray-900 text-sm">Machines Add-on</p>
-                              <p className="text-xs text-gray-500">${machinesAddonPlan?.amount.toFixed(0) ?? "600"} TT / year</p>
-                            </div>
-                          </div>
-                          <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
-                            {addonOverdue ? "OVERDUE" : "ACTIVE"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm mb-3">
-                          <span className="text-gray-500">Renews</span>
-                          <span className={`font-bold ${addonOverdue ? "text-red-500" : addonDaysLeft !== null && addonDaysLeft <= 30 ? "text-orange-700" : "text-gray-800"}`}>
-                            {addonEnd ? addonEnd.toLocaleDateString("en-GB") : "—"}
-                            {addonDaysLeft !== null && !addonOverdue && addonDaysLeft <= 30 && ` (${addonDaysLeft}d)`}
-                          </span>
-                        </div>
-                        {addonCanRenew ? (
-                          <button onClick={() => { setSelectedPlan(machinesAddonPlan!); setRenewMode(null); setStep("payment"); }}
-                            className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${addonOverdue ? "bg-red-500 text-white" : "bg-orange-600 text-white"}`}>
-                            {addonOverdue ? "⚠️ Renew Now — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT" : "Renew Add-on — $" + (machinesAddonPlan?.amount.toFixed(0) ?? "600") + " TT"}
-                          </button>
-                        ) : (
-                          <p className="text-xs text-center text-gray-400">Renewal opens {addonDaysLeft !== null ? addonDaysLeft - 7 : 0} days before due date</p>
-                        )}
-                      </div>
-                    ) : (
-                      /* ── Subscribe button ── */
-                      <button onClick={() => { setSelectedPlan(machinesAddonPlan ?? null); setRenewMode(null); setStep("payment"); }}
-                        disabled={!machinesAddonPlan}
-                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition disabled:opacity-50 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Gamepad2 className="h-5 w-5 text-orange-700" />
-                            <div>
-                              <p className="font-black text-gray-900 text-sm">Add Machines Tracker</p>
-                              <p className="text-xs text-gray-900 font-bold mt-0.5">Add Machines tracker to your Bar Only plan — ${machinesAddonPlan?.amount.toFixed(0) ?? "600"} TT/yr</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="h-5 w-5 text-gray-400" />
-                        </div>
-                      </button>
-                    )
-                  )}
+
                 </>
               )} {/* end !isMachinesOnly */}
 
@@ -677,7 +616,7 @@ export default function BillingPage() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own wallet, cashiers and items.
+                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own wallet, cashiers and items. Your plan upgrades to Chain so all bars are kept separate and visible in Switch Account.
                       </p>
                       <button
                         onClick={() => {
@@ -706,7 +645,7 @@ export default function BillingPage() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own set of screens.
+                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own set of screens. Your plan upgrades to Chain so all accounts are kept separate and visible in Switch Account.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -752,7 +691,7 @@ export default function BillingPage() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own bar POS + machine screens. Your plan switches to Chain.
+                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own bar POS + machine screens. Your plan upgrades to Chain so all bars are kept separate and visible in Switch Account.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -955,8 +894,8 @@ export default function BillingPage() {
                     "Per-screen profit reports",
                     "Float session management",
                     "Full history PDF export",
-                    "Add Bar POS as add-on",
-                    "Upgrade to Chain anytime",
+                    "Add extra accounts via billing",
+                    "Upgrade to Bar with Machines",
                   ].map(f => (
                     <div key={f} className="flex items-start gap-2 text-sm text-gray-600">
                       <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />

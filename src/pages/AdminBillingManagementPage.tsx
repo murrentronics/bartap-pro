@@ -189,10 +189,8 @@ export default function AdminBillingManagementPage() {
         
         const startDate = new Date();
         const isPremium = (plan as any).plan_type === "premium" || (plan as any).plan_type === "premium_20";
-        const isMachinesAddon = (plan as any).plan_type === "machines_addon";
         const isChainPlan = (plan as any).plan_type === "chain";
         const isMachinesOnly = (plan as any).plan_type === "machines_only" || (plan as any).plan_type === "machines_only_20";
-        const isBarAddon = (plan as any).plan_type === "bar_addon";
         const isBarOnlyAddon     = (plan as any).plan_type === "bar_only_addon";
         const isMachinesBarAddon = (plan as any).plan_type === "machines_bar_addon" || (plan as any).plan_type === "machines_bar_addon_20";
         const isPremiumAddon     = (plan as any).plan_type === "premium_addon" || (plan as any).plan_type === "premium_addon_20";
@@ -234,17 +232,6 @@ export default function AdminBillingManagementPage() {
 
           updates.next_due_date = endDate.toISOString();
 
-        } else if (isBarAddon) {
-          // Bar Add-on: machines_only user adding bar POS access
-          const addonEnd = new Date(startDate);
-          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
-
-          await supabase.from("profiles").update({
-            bar_addon_active: true,
-          }).eq("id", selectedPayment.owner_id);
-
-          updates.next_due_date = addonEnd.toISOString();
-
         } else if (isPremium) {
           // Premium: extend premium_subscription_end_date independently
           const premiumBase = ownerProfile?.premium_subscription_end_date
@@ -264,23 +251,6 @@ export default function AdminBillingManagementPage() {
           }).eq("id", selectedPayment.owner_id);
 
           updates.next_due_date = premiumEnd.toISOString();
-
-        } else if (isMachinesAddon) {
-          // Machines add-on: keep existing basic plan, just activate machines_addon
-          const addonBase = (ownerProfile as any)?.machines_addon_end_date
-            && new Date((ownerProfile as any).machines_addon_end_date) > startDate
-            ? new Date((ownerProfile as any).machines_addon_end_date)
-            : startDate;
-          const addonEnd = new Date(addonBase);
-          addonEnd.setMonth(addonEnd.getMonth() + plan.duration_months);
-
-          await supabase.from("profiles").update({
-            machines_addon_active: true,
-            machines_addon_start_date: startDate.toISOString(),
-            machines_addon_end_date: addonEnd.toISOString(),
-          }).eq("id", selectedPayment.owner_id);
-
-          updates.next_due_date = addonEnd.toISOString();
 
         } else if (isAnyBarAddon) {
           // Multi-bar addon: call create-addon-bars edge function to bulk-create bars
@@ -423,12 +393,11 @@ export default function AdminBillingManagementPage() {
       planType === "machines_only_20"     ? `${selectedPayment.profiles?.username} machines (20-screen) plan revoked — reset to pending` :
       planType === "premium"              ? `${selectedPayment.profiles?.username} downgraded to Basic` :
       planType === "premium_20"           ? `${selectedPayment.profiles?.username} Bar+Machines 20-screen plan revoked` :
-      planType === "machines_addon"       ? `Machines add-on removed` :
-      planType === "bar_only_addon"       ? `Bar addon revoked` :
-      planType === "machines_bar_addon"   ? `Machines bar addon revoked` :
-      planType === "machines_bar_addon_20"? `Machines 20-screen addon revoked` :
-      planType === "premium_addon"        ? `${selectedPayment.profiles?.username} extra bars (10-screen) revoked` :
-      planType === "premium_addon_20"     ? `${selectedPayment.profiles?.username} extra bars (20-screen) revoked` :
+      planType === "bar_only_addon"       ? `${selectedPayment.profiles?.username} extra bar revoked` :
+      planType === "machines_bar_addon"   ? `${selectedPayment.profiles?.username} extra machines account (10-screen) revoked` :
+      planType === "machines_bar_addon_20"? `${selectedPayment.profiles?.username} extra machines account (20-screen) revoked` :
+      planType === "premium_addon"        ? `${selectedPayment.profiles?.username} extra bar+machines (10-screen) revoked` :
+      planType === "premium_addon_20"     ? `${selectedPayment.profiles?.username} extra bar+machines (20-screen) revoked` :
       "Subscription revoked"
     );
     setSelectedPayment(null);

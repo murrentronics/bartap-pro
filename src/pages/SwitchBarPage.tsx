@@ -25,9 +25,11 @@ export default function SwitchBarPage() {
     );
   }
 
+  const isMachinesOnlyOwner = profile?.plan_type === "machines_only";
+
   const handleSelect = (barId: string) => {
     setActiveBarId(barId);
-    nav("/register");
+    nav(isMachinesOnlyOwner ? "/machines" : "/register");
   };
 
   const handleDeleteConfirm = async () => {
@@ -49,8 +51,6 @@ export default function SwitchBarPage() {
       setDeleting(false);
     }
   };
-
-  const isMachinesOnlyOwner = profile?.plan_type === "machines_only";
 
   return (
     <div className="px-1 py-4 space-y-6">
