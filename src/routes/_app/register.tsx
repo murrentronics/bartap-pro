@@ -15,6 +15,12 @@ import { useTranslation } from "@/lib/i18n";
 import { useNetworkStatus } from "@/lib/useNetworkStatus";
 import { enqueue } from "@/lib/offlineQueue";
 import { useImageCache } from "@/lib/useImageCache";
+import {
+  cacheProducts, getCachedProducts,
+  cacheBarSession, getCachedBarSession,
+  cacheCreditAccounts, getCachedCreditAccounts,
+  type CachedProduct,
+} from "@/lib/offlineCache";
 
 type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
 type Product = { id: string; name: string; price: number; cost_price?: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
@@ -52,9 +58,24 @@ export default function RegisterPage() {
       .select("bar_session_start, bar_closed_at")
       .eq("id", ownerId)
       .single()
-      .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
-        setBarSessionStart(data?.bar_session_start ?? null);
-        setBarClosedAt(data?.bar_closed_at ?? null);
+      .then(async ({ data, error }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null; error: unknown }) => {
+        if (data) {
+          // Network success — update state and refresh cache
+          setBarSessionStart(data.bar_session_start ?? null);
+          setBarClosedAt(data.bar_closed_at ?? null);
+          cacheBarSession(ownerId, {
+            bar_session_start: data.bar_session_start ?? null,
+            bar_closed_at: data.bar_closed_at ?? null,
+          });
+        } else {
+          // Network failed (offline) — serve from IndexedDB cache
+          console.warn("[register] bar session fetch failed, using cache:", error);
+          const cached = await getCachedBarSession(ownerId);
+          if (cached) {
+            setBarSessionStart(cached.bar_session_start);
+            setBarClosedAt(cached.bar_closed_at);
+          }
+        }
         setBarSessionLoading(false);
         // Small delay so the overlay only appears after the data is confirmed — no flash
         setTimeout(() => setBarOverlayReady(true), 150);
@@ -66,8 +87,19 @@ export default function RegisterPage() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         (payload) => {
           const rec = payload.new as Record<string, unknown>;
-          if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
-          if ("bar_closed_at"     in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
+          const newStart = "bar_session_start" in rec ? (rec.bar_session_start as string | null) ?? null : undefined;
+          const newClosed = "bar_closed_at" in rec ? (rec.bar_closed_at as string | null) ?? null : undefined;
+          if (newStart !== undefined) setBarSessionStart(newStart);
+          if (newClosed !== undefined) setBarClosedAt(newClosed);
+          // Keep IndexedDB cache in sync with realtime updates
+          if (newStart !== undefined || newClosed !== undefined) {
+            getCachedBarSession(ownerId).then((prev) => {
+              cacheBarSession(ownerId, {
+                bar_session_start: newStart !== undefined ? newStart : (prev?.bar_session_start ?? null),
+                bar_closed_at:     newClosed !== undefined ? newClosed : (prev?.bar_closed_at ?? null),
+              });
+            });
+          }
         }
       )
       .subscribe();
@@ -206,13 +238,25 @@ export default function RegisterPage() {
   const fetchProducts = useCallback(async () => {
     const id = ownerIdRef.current;
     if (!id) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("owner_id", id)
       .order("name", { ascending: true });
-    setProducts((data ?? []) as Product[]);
-    setLoading(false);
+    if (data) {
+      // Network success — update state and refresh the cache
+      setProducts((data ?? []) as Product[]);
+      setLoading(false);
+      cacheProducts(id, data as CachedProduct[]);
+    } else {
+      // Network failed (offline) — serve from IndexedDB cache
+      console.warn("[register] fetchProducts network error:", error?.message ?? "offline");
+      const cached = await getCachedProducts(id);
+      if (cached.length > 0) {
+        setProducts(cached as Product[]);
+      }
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -2244,7 +2288,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove }: {
       {/* − */}
       <button
         onClick={() => onDec(item.id)}
-        className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
+        className="h-11 w-11 ml-3 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
         style={{ background: "#ef4444" }}>
         <Minus className="h-5 w-5 text-white" />
       </button>
@@ -2308,8 +2352,17 @@ function CashOverlay({
       .select("id, full_name, contact_number, balance_owed, status")
       .eq("owner_id", ownerId)
       .order("full_name")
-      .then(({ data }) => {
-        setCustomers((data ?? []) as CreditAccount[]);
+      .then(async ({ data, error }) => {
+        if (data) {
+          // Network success — update state and refresh cache
+          setCustomers(data as CreditAccount[]);
+          cacheCreditAccounts(ownerId, data as CreditAccount[]);
+        } else {
+          // Network failed (offline) — serve from IndexedDB cache
+          console.warn("[CashOverlay] customers fetch failed, using cache:", error?.message ?? "offline");
+          const cached = await getCachedCreditAccounts(ownerId);
+          setCustomers(cached as CreditAccount[]);
+        }
         setLoadingCustomers(false);
       });
   }, [ownerId]);
@@ -2530,7 +2583,7 @@ function CashOverlay({
                   )}
                   {cart.map((i) => (
                     <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
-                      <div className="h-20 w-14 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
+                      <div className="h-20 w-14 sm:h-28 sm:w-20 md:h-32 md:w-24 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
                         {i.image_url ? <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
                           : i.id.startsWith("shot-") ? <span className="text-2xl">🥃</span>
                           : <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>}

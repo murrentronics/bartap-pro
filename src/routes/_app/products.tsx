@@ -1978,7 +1978,11 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
   };
 
   return (
-    <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] flex flex-col p-4 gap-0">
+    <DialogContent
+      className="max-w-lg w-[calc(100vw-2rem)] max-h-[90dvh] flex flex-col p-4 gap-0"
+      onInteractOutside={(e) => e.preventDefault()}
+      onEscapeKeyDown={(e) => e.preventDefault()}
+    >
       <DialogHeader className="shrink-0 pb-3">
         <div className="flex items-center gap-3">
           {showTemplates && (

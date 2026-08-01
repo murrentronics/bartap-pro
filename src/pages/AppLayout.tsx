@@ -8,6 +8,7 @@ import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
 import { useOffline } from "@/lib/OfflineProvider";
+import { OfflinePageGuard } from "@/components/OfflinePageGuard";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -154,22 +155,35 @@ export default function AppLayout() {
   const [ownerEmail, setOwnerEmail] = useState("");
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Use getSession (reads localStorage, no network) to avoid blocking offline startup
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       setOwnerEmail(user?.email ?? "");
       if (!profile?.id) return;
       const ownerId = isChainOwner && activeBarId
         ? activeBarId
         : (profile.role === "cashier" || profile.role === "manager" || profile.job_title === "manager") ? profile.parent_id : profile.id;
       if (!ownerId) return;
+      const isMasterAccount = user?.email === "renard.sankersingh@gmail.com";
+
+      // Seed from the profile already in memory so Machines shows immediately,
+      // then overwrite once the Supabase fetch resolves.
+      const seedPlan = profile.plan_type ?? "basic";
+      const seedAddon = profile.machines_addon_active ?? false;
+      const seedMachinesOnly = seedPlan === "machines_only";
+      setIsMachinesOnlyUser(seedMachinesOnly);
+      setOwnerHasMachines(seedPlan === "premium" || seedPlan === "chain" || seedAddon || seedMachinesOnly || isMasterAccount);
+      setOwnerHasBar(!seedMachinesOnly || isMasterAccount);
+
+      // Then fetch the definitive plan from the owner profile row
       const { data } = await (supabase as any).from("profiles")
         .select("plan_type, machines_addon_active").eq("id", ownerId).single();
-      const planType = data?.plan_type ?? "basic";
-      const addonActive = data?.machines_addon_active ?? false;
+      if (!data) return; // offline — keep the seeded values above
+      const planType = data.plan_type ?? "basic";
+      const addonActive = data.machines_addon_active ?? false;
       const machinesOnly = planType === "machines_only";
       setIsMachinesOnlyUser(machinesOnly);
-      const isMasterAccount = user?.email === "renard.sankersingh@gmail.com";
       setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
-      // machines_only owners no longer have a bar add-on — they must upgrade to Bar with Machines
       setOwnerHasBar(!machinesOnly || isMasterAccount);
     };
     load();
@@ -211,7 +225,7 @@ export default function AppLayout() {
   const isDemo     = DEMO_EMAILS.includes(ownerEmail);
   const isPending  = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "pending";
   const isSuspended = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "suspended";
-  const hasMusic   = isOwner || isCashier || isManager;
+  const hasMusic   = isOwner || isCashier;
   const isOnMusic  = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {
@@ -335,7 +349,7 @@ export default function AppLayout() {
           </div>
 
           {/* Music / Machines-or-Bar toggle — always visible for owners with music addon */}
-          {hasMusic && !isManager && (
+          {hasMusic && (
             <Link
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
@@ -533,7 +547,9 @@ export default function AppLayout() {
       )}
 
       <main className="max-w-2xl lg:max-w-4xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
-        <Outlet />
+        <OfflinePageGuard>
+          <Outlet />
+        </OfflinePageGuard>
       </main>
 
       {/* ── Persistent YouTube iframe ─────────────────────────────────────────

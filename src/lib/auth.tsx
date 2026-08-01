@@ -56,11 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (uid: string) => {
     profileFetching.current = true;
     try {
-      const { data, error } = await supabase
+      // Race against a 6 s timeout so we never hang the app loader while offline
+      const fetchPromise = supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
+
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>(
+        (resolve) => setTimeout(() => resolve({ data: null, error: { message: "offline" } }), 6000)
+      );
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as { data: unknown; error: { message?: string } | null };
 
       // If the request failed due to a network error (offline), keep whatever
       // profile is already in state rather than wiping it — this prevents the
