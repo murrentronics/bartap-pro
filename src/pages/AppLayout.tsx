@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useYouTube } from "@/lib/YouTubeContext";
 import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
+import { useOffline } from "@/lib/OfflineProvider";
 import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +20,7 @@ export default function AppLayout() {
   const nav = useNavigate();
   const loc = useLocation();
   const { t } = useTranslation();
+  const { isOnline } = useOffline();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const yt = useYouTube();
@@ -28,10 +30,13 @@ export default function AppLayout() {
   }, [session, loading, nav]);
 
   useEffect(() => {
-    if (!loading && session && !profile) {
+    // Don't force sign-out if we're offline — profile may simply be unavailable
+    // from the network. The loadProfile function already preserves the cached
+    // profile on network errors, but this is a belt-and-suspenders guard.
+    if (!loading && session && !profile && isOnline) {
       signOut().then(() => nav("/login", { replace: true }));
     }
-  }, [loading, session, profile]);
+  }, [loading, session, profile, isOnline]);
 
   useEffect(() => {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
@@ -320,7 +325,7 @@ export default function AppLayout() {
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
       <header
         className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        style={{ paddingTop: "calc(var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))" }}
       >
         <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
 
@@ -371,7 +376,7 @@ export default function AppLayout() {
       {menuOpen && (isCashier || isManager) && (
         <>
           <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(56px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+            style={{ top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -423,7 +428,7 @@ export default function AppLayout() {
       {menuOpen && !isCashier && (
         <>
           <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(56px + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+            style={{ top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -540,7 +545,7 @@ export default function AppLayout() {
         <div
           style={{
             position: "fixed",
-            top: "calc(56px + env(safe-area-inset-top, 0px))",
+            top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))",
             bottom: 0,
             left: "50%",
             transform: "translateX(-50%)",

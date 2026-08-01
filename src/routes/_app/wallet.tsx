@@ -3195,7 +3195,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
             <div className="grid grid-cols-2 gap-2">{[0,1,2,3].map(i=><div key={i} className="rounded-2xl h-16 bg-white/10 animate-pulse"/>)}</div>
           ) : (
             <div className="space-y-2">
-              {/* Row 1 — Total Cash Sales / Total Stock Cost / Gross Stock Profit */}
+              {/* Row 1 — Total Cash Sales / Total Stock Cost / Gross Sales Profit */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                   <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total Cash{"\n"}Sales</div>
@@ -3208,7 +3208,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Gross Stock{"\n"}Profit</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>Total Gross{"\n"}Profit</div>
                   {(() => {
                     const gsp = totalIncome - totalStockSoldCost;
                     return (

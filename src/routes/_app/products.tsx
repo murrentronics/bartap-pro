@@ -635,6 +635,11 @@ function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, s
               src={t.url}
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
+              onLoad={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                const placeholder = img.previousElementSibling as HTMLElement | null;
+                if (placeholder) placeholder.style.display = "none";
+              }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
             {/* Selected overlay */}
@@ -1999,7 +2004,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                 onBulkSelect(arr);
               }}
               disabled={selectedTemplates.size === 0}
-              className="ml-auto h-8 px-4 rounded-xl font-black text-sm text-primary-foreground flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40 shrink-0"
+              className="ml-auto mr-8 h-8 px-4 rounded-xl font-black text-sm text-primary-foreground flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40 shrink-0"
               style={{ background: selectedTemplates.size > 0 ? "var(--gradient-hero)" : "rgba(255,255,255,0.08)" }}
             >
               Done {selectedTemplates.size > 0 && <span className="h-5 min-w-[1.25rem] px-1 rounded-full bg-black/30 flex items-center justify-center text-xs font-black">{selectedTemplates.size}</span>}

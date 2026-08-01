@@ -34,14 +34,27 @@ import { YouTubeProvider } from "@/lib/YouTubeContext";
 import { ChainProvider } from "@/lib/ChainContext";
 
 // ── Offline status banner ─────────────────────────────────────────────────────
+const BANNER_H = 32; // px — matches py-2 + text-xs line height
+
 function OfflineBanner() {
   const { isOnline, queueSize } = useOffline();
-  if (isOnline && queueSize === 0) return null;
+  const visible = !isOnline || queueSize > 0;
+
+  // Push the rest of the layout down by setting a CSS variable on <html>
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--offline-banner-h",
+      visible ? `${BANNER_H}px` : "0px"
+    );
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold select-none"
+      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 px-4 text-xs font-semibold select-none"
       style={{
+        height: `${BANNER_H}px`,
         background: isOnline ? "rgba(22,163,74,0.92)" : "rgba(220,38,38,0.92)",
         backdropFilter: "blur(6px)",
         color: "#fff",

@@ -56,11 +56,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (uid: string) => {
     profileFetching.current = true;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
+
+      // If the request failed due to a network error (offline), keep whatever
+      // profile is already in state rather than wiping it — this prevents the
+      // AppLayout guard from triggering a forced sign-out while offline.
+      if (error) {
+        const msg = (error as { message?: string }).message ?? "";
+        const isNetworkError =
+          msg.includes("Failed to fetch") ||
+          msg.includes("NetworkError") ||
+          msg.includes("network") ||
+          msg.includes("offline") ||
+          !navigator.onLine;
+        if (isNetworkError) {
+          // Leave profile unchanged — user is still logged in, just offline
+          return;
+        }
+      }
+
       const p = data ? (data as unknown as Profile) : null;
       setProfile(p);
     } finally {
