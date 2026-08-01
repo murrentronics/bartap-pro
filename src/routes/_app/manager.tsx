@@ -95,6 +95,47 @@ function ManagerExpenses({
     return () => { supabase.removeChannel(ch); };
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Float state (cashier_float set by owner for this session) ─────────────
+  const [floatSet, setFloatSet] = useState<number | null>(null);
+  const [floatSetAt, setFloatSetAt] = useState<string | null>(null);
+  const [floatUsed, setFloatUsed] = useState<number>(0);
+
+  const loadFloat = useCallback(async () => {
+    // Read the float the owner set on the profile row
+    const { data: ownerData } = await sb.from("profiles")
+      .select("cashier_float, cashier_float_set_at")
+      .eq("id", ownerId)
+      .single();
+    const famt = Number(ownerData?.cashier_float ?? 0);
+    const since: string | null = ownerData?.cashier_float_set_at ?? null;
+    setFloatSet(famt > 0 ? famt : null);
+    setFloatSetAt(since);
+
+    // Sum up cashier_expense transactions logged since the last float reset
+    let q = sb.from("wallet_transactions")
+      .select("amount")
+      .eq("profile_id", profile.id)
+      .eq("type", "cashier_expense");
+    if (since) q = q.gte("created_at", since);
+    const { data: expTxs } = await q;
+    const used = (expTxs ?? []).reduce((s: number, tx: { amount: number }) => s + Number(tx.amount), 0);
+    setFloatUsed(used);
+  }, [ownerId, profile.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadFloat(); }, [loadFloat]);
+
+  // Realtime — refresh float when owner changes it
+  useEffect(() => {
+    const ch = supabase
+      .channel(`manager-float-${profile.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` }, () => loadFloat())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadFloat())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId, profile.id, loadFloat]);
+
+  const floatRemaining = floatSet !== null ? Math.max(0, floatSet - floatUsed) : null;
+
   // ── Expense list ──────────────────────────────────────────────────────────
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,11 +216,21 @@ function ManagerExpenses({
       await sb.from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
 
       const expenseNote = valid.length === 1 ? `Expense: ${valid[0].description.trim()}` : `Bulk Expense (${valid.length} items)`;
+
+      // 1. Record on the manager's own cashier wallet (tracks against float)
       await sb.from("wallet_transactions").insert({
         profile_id: profile.id,
         amount: total,
         type: "cashier_expense",
-        note: expenseNote,
+        note: expenseNote + ` ${tag}`,
+      });
+
+      // 2. Record on the owner's wallet so it appears in their Wallet expense history
+      await sb.from("wallet_transactions").insert({
+        profile_id: ownerId,
+        amount: total,
+        type: "cashier_expense",
+        note: expenseNote + ` ${tag}`,
       });
 
       toast.success("Expense saved");
@@ -187,6 +238,7 @@ function ManagerExpenses({
       setShowForm(false);
       setConfirming(false);
       loadExpenses();
+      loadFloat();
     } finally {
       setSaving(false);
     }
@@ -303,6 +355,45 @@ function ManagerExpenses({
           <span className="text-sm font-semibold text-red-400">
             Bar is closed — expenses cannot be added, edited, or deleted.
           </span>
+        </div>
+      )}
+
+      {/* Float row cards — Float Set / Used / Remaining */}
+      {floatSet !== null && (
+        <div className="rounded-3xl px-4 py-3 relative overflow-hidden"
+          style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+          <div className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <p className="text-[10px] font-black mb-2" style={{ color: "rgba(0,0,0,0.55)" }}>FLOAT</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Set</div>
+                <div className="font-black text-sm" style={{ color: "#fbbf24" }}>${fmt(floatSet)}</div>
+                {floatSetAt && (
+                  <div className="text-[8px] leading-tight" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    {new Date(floatSetAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Used</div>
+                <div className="font-black text-sm" style={{ color: floatUsed > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}>
+                  {floatUsed > 0 ? `$${fmt(floatUsed)}` : "—"}
+                </div>
+              </div>
+              <div className="rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}>
+                <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.45)" }}>Remaining</div>
+                <div className="font-black text-sm" style={{
+                  color: floatRemaining !== null && floatRemaining > 0 ? "#86efac" : "#fca5a5"
+                }}>
+                  {floatRemaining !== null ? `$${fmt(floatRemaining)}` : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
