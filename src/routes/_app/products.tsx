@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks } from "lucide-react";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks, CheckCircle2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -8,6 +8,7 @@ import { useTranslation } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useImageCache } from "@/lib/useImageCache";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon } from "@/lib/categories";
@@ -537,8 +538,10 @@ function TemplateKeyboard({ onKey, onClose }: { onKey: (k: string) => void; onCl
     document.body
   );
 }
-function TemplatePicker({ onSelect, ownerId, category, search }: {
+function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, search }: {
   onSelect: (url: string, label: string, category: string) => void;
+  onToggle?: (url: string, label: string, category: string) => void;
+  selectedUrls?: Set<string>;
   ownerId: string;
   category: string;
   search: string;
@@ -607,29 +610,47 @@ function TemplatePicker({ onSelect, ownerId, category, search }: {
     );
   }
 
+  // Multi-select mode when onToggle is provided
+  const isMulti = !!onToggle;
+
   return (
     <div className="grid grid-cols-3 gap-2">
-      {visible.map((t) => (
-        <button
-          key={t.url}
-          onClick={() => onSelect(t.url, t.label, category)}
-          className="aspect-[3/4] relative rounded-xl overflow-hidden border border-border hover:border-primary active:scale-95 transition touch-manipulation"
-          style={{ background: "var(--gradient-card)" }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center text-4xl">
-            {categoryIcon(category)}
-          </div>
-          <img
-            src={t.url}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
-          <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent pointer-events-none">
-            <div className="text-white text-xs font-bold leading-tight line-clamp-2">{t.label}</div>
-          </div>
-        </button>
-      ))}
+      {visible.map((t) => {
+        const isSelected = selectedUrls?.has(t.url) ?? false;
+        return (
+          <button
+            key={t.url}
+            onClick={() => isMulti ? onToggle!(t.url, t.label, category) : onSelect(t.url, t.label, category)}
+            className="aspect-[3/4] relative rounded-xl overflow-hidden border-2 active:scale-95 transition touch-manipulation"
+            style={{
+              background: "var(--gradient-card)",
+              borderColor: isSelected ? "var(--primary)" : "rgba(255,255,255,0.1)",
+              boxShadow: isSelected ? "0 0 0 2px var(--primary)" : "none",
+            }}
+          >
+            <div className="absolute inset-0 flex items-center justify-center text-4xl">
+              {categoryIcon(category)}
+            </div>
+            <img
+              src={t.url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+            {/* Selected overlay */}
+            {isSelected && (
+              <div className="absolute inset-0 bg-primary/20 flex items-start justify-end p-1.5">
+                <div className="h-6 w-6 rounded-full flex items-center justify-center shadow-lg" style={{ background: "var(--primary)" }}>
+                  <CheckCircle2 className="h-4 w-4 text-black" />
+                </div>
+              </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/85 to-transparent pointer-events-none">
+              <div className="text-white text-xs font-bold leading-tight line-clamp-2">{t.label}</div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -666,12 +687,40 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   // id + field for active numpad in the table
-  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" | "units" | "vp" } | null>(null);
+  const [activeNumpad, setActiveNumpad] = useState<{ id: string; field: "cp" | "sp" | "qty" | "units" | "vp" | "vu" } | null>(null);
+  // Product id whose qty is being reverted via the pencil
+  const [revertItem, setRevertItem] = useState<Product | null>(null);
+  // Live qty map so pencil shows updated qty after a revert without needing parent reload
+  const [liveQtys, setLiveQtys] = useState<Record<string, number>>(() =>
+    Object.fromEntries(items.map((p) => [p.id, p.stock_qty ?? 0]))
+  );
+  // Draft variations added inline in the table (keyed by product id)
+  const [localVars, setLocalVars] = useState<Record<string, BottleVariation[]>>({});
 
   const handleNumpad = (k: string) => {
     if (!activeNumpad) return;
     const { id, field } = activeNumpad;
     const isDecimal = field === "cp" || field === "sp" || field === "vp";
+
+    // ── "vu" = variation units (integer), id = "${productId}__${varIdx}" ──
+    if (field === "vu") {
+      const [productId, varIdxStr] = id.split("__varIdx__");
+      const varIdx = parseInt(varIdxStr, 10);
+      if (isNaN(varIdx)) return;
+      setLocalVars((prev) => {
+        const arr = [...(prev[productId] ?? [])];
+        if (!arr[varIdx]) return prev;
+        const cur = String(arr[varIdx].units_consumed || "");
+        let next: string;
+        if (k === "⌫") { next = cur.slice(0, -1); }
+        else if (k === ".") { return prev; } // integer only
+        else { next = cur === "0" ? k : cur + k; }
+        arr[varIdx] = { ...arr[varIdx], units_consumed: parseInt(next) || 0 };
+        return { ...prev, [productId]: arr };
+      });
+      return;
+    }
+
     const current = field === "cp" ? (costPrices[id] ?? "") : field === "sp" ? (sellPrices[id] ?? "") : field === "units" ? (unitsPerItems[id] ?? "") : field === "vp" ? (varPrices[id] ?? "") : (newQtys[id] ?? "");
     const setter = field === "cp"
       ? (v: string) => setCostPrices((p) => ({ ...p, [id]: v }))
@@ -717,7 +766,11 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
       const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
       return !isNaN(nv) && nv !== Number(bv.price ?? 0);
     });
-    return cpChanged || spChanged || unitsChanged || varChanged;
+    const hasNewLocalVars = (localVars[p.id] ?? []).some((lv, idx) => {
+      const price = parseFloat(varPrices[`${p.id}__localVar__${idx}`] ?? "") || lv.price;
+      return lv.units_consumed > 0 && price > 0;
+    });
+    return cpChanged || spChanged || unitsChanged || varChanged || hasNewLocalVars;
   });
 
   // All items with any change — shown in preview
@@ -818,12 +871,23 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         return { ...bv, price: newPrice, label: newLabel, changed: priceChanged };
       });
       const anyVarChanged = varUpdates.some((v) => v.changed);
-      if (!cpChanged && !spChanged && !unitsChanged && !anyVarChanged) continue;
+      // Merge new local variations — resolve price from varPrices (numpad stores it there)
+      const newLocalVars = (localVars[p.id] ?? [])
+        .map((lv, idx) => ({
+          ...lv,
+          price: parseFloat(varPrices[`${p.id}__localVar__${idx}`] ?? "") || lv.price,
+        }))
+        .filter((lv) => lv.units_consumed > 0 && lv.price > 0);
+      const hasNewLocalVars = newLocalVars.length > 0;
+      if (!cpChanged && !spChanged && !unitsChanged && !anyVarChanged && !hasNewLocalVars) continue;
+      const mergedVars = anyVarChanged || hasNewLocalVars
+        ? [...varUpdates.map(({ changed: _c, ...rest }) => rest), ...newLocalVars]
+        : undefined;
       const updatePayload: Record<string, unknown> = {};
       if (cpChanged) updatePayload.cost_price = newCp;
       if (spChanged) updatePayload.price = newSp;
       if (unitsChanged) updatePayload.units_per_item = newUnits;
-      if (anyVarChanged) updatePayload.bottle_variations = varUpdates.map(({ changed: _c, ...rest }) => rest);
+      if (mergedVars) updatePayload.bottle_variations = mergedVars;
       const { error } = await (supabase as any).from("products").update(updatePayload).eq("id", p.id);
       if (!error) {
         patches.push({
@@ -836,20 +900,26 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         });
       }
     }
-    // Save variation price changes for items that DID have qty updates too
+    // Save variation price changes (+ new local vars) for items that DID have qty updates too
     for (const p of updates) {
       const varUpdates = (p.bottle_variations ?? []).map((bv) => {
         const nv = parseFloat(varPrices[`${p.id}__${bv.key}`] ?? "");
         const priceChanged = !isNaN(nv) && nv !== Number(bv.price ?? 0);
         const newPrice = priceChanged ? nv : bv.price;
-        // Regenerate the label for "special" variations so "3 for $5" stays in sync
         const newLabel = bv.key === "special" && priceChanged
           ? `${bv.units_consumed} for $${newPrice.toFixed(2)}`
           : bv.label;
         return { ...bv, price: newPrice, label: newLabel, changed: priceChanged };
       });
-      if (!varUpdates.some((v) => v.changed)) continue;
-      await supabase.from("products").update({ bottle_variations: varUpdates.map(({ changed: _c, ...rest }) => rest) }).eq("id", p.id);
+      const newLocalVars = (localVars[p.id] ?? [])
+        .map((lv, idx) => ({
+          ...lv,
+          price: parseFloat(varPrices[`${p.id}__localVar__${idx}`] ?? "") || lv.price,
+        }))
+        .filter((lv) => lv.units_consumed > 0 && lv.price > 0);
+      if (!varUpdates.some((v) => v.changed) && newLocalVars.length === 0) continue;
+      const merged = [...varUpdates.map(({ changed: _c, ...rest }) => rest), ...newLocalVars];
+      await supabase.from("products").update({ bottle_variations: merged }).eq("id", p.id);
     }
 
     setBusy(false);
@@ -1002,11 +1072,24 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                             <span className="text-xs text-muted-foreground flex justify-end pr-2">—</span>
                           )}
                         </td>
-                        {/* Current qty — read only */}
+                        {/* Current qty — read only, with revert pencil */}
                         <td className="px-2 py-1.5 text-right w-[46px] sm:w-[60px]">
-                          <span className={`font-black text-xs sm:text-sm ${(p.stock_qty ?? 0) === 0 ? "text-red-400" : (p.stock_qty ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
-                            {p.stock_qty ?? 0}
-                          </span>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className={`font-black text-xs sm:text-sm ${(liveQtys[p.id] ?? 0) === 0 ? "text-red-400" : (liveQtys[p.id] ?? 0) <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                              {liveQtys[p.id] ?? 0}
+                            </span>
+                            {/* Pencil — revert existing qty (reduce only) */}
+                            <button
+                              type="button"
+                              disabled={(liveQtys[p.id] ?? 0) === 0}
+                              onClick={() => setRevertItem({ ...p, stock_qty: liveQtys[p.id] ?? p.stock_qty })}
+                              className="h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 transition active:scale-90 disabled:opacity-25"
+                              style={{ background: (liveQtys[p.id] ?? 0) > 0 ? "var(--gradient-hero)" : "rgba(255,255,255,0.06)" }}
+                              title="Edit (reduce) existing qty"
+                            >
+                              <Pencil className="h-2.5 w-2.5 text-black" />
+                            </button>
+                          </div>
                         </td>
                         {/* New qty input */}
                         <td className="pr-4 pl-2 py-1.5 text-right w-[76px] sm:w-[96px]">
@@ -1022,7 +1105,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           </div>
                         </td>
                       </tr>
-                      {/* Variation rows — one per variation, indented, price-only editable */}
+                      {/* Existing variation rows — price editable */}
                       {(p.bottle_variations ?? []).map((bv) => {
                         const varKey = `${p.id}__${bv.key}`;
                         const vPrice = varPrices[varKey] ?? "";
@@ -1047,6 +1130,95 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                           </tr>
                         );
                       })}
+
+                      {/* Local draft variation rows (newly added) */}
+                      {p.category === "liquor" && (localVars[p.id] ?? []).map((lv, lvIdx) => {
+                        const vuKey = `${p.id}__varIdx__${lvIdx}`;
+                        const vpKey = `${p.id}__localVar__${lvIdx}`;
+                        const isVuActive = activeNumpad?.id === vuKey && activeNumpad.field === "vu";
+                        const isVpActive = activeNumpad?.id === vpKey && activeNumpad.field === "vp";
+                        const vpVal = varPrices[vpKey] ?? "";
+                        return (
+                          <tr key={vuKey} className="border-t border-border/20" style={{ background: "rgba(251,146,60,0.04)" }}>
+                            <td className="pl-3 pr-1 py-1">
+                              {/* remove button */}
+                              <button
+                                type="button"
+                                onClick={() => setLocalVars((prev) => {
+                                  const arr = (prev[p.id] ?? []).filter((_, i) => i !== lvIdx);
+                                  return { ...prev, [p.id]: arr };
+                                })}
+                                className="h-5 w-5 rounded-full flex items-center justify-center"
+                                style={{ background: "rgba(220,38,38,0.25)", color: "#f87171" }}
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </td>
+                            {/* Label editable via native input */}
+                            <td className="px-1 py-1">
+                              <input
+                                type="text"
+                                value={lv.label}
+                                onChange={(e) => setLocalVars((prev) => {
+                                  const arr = [...(prev[p.id] ?? [])];
+                                  arr[lvIdx] = { ...arr[lvIdx], label: e.target.value };
+                                  return { ...prev, [p.id]: arr };
+                                })}
+                                placeholder="Label"
+                                className="w-full h-7 rounded-md border border-border bg-muted/40 px-2 text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </td>
+                            {/* Units used — numpad */}
+                            <td className="px-1 py-1">
+                              <div
+                                onClick={() => setActiveNumpad(isVuActive ? null : { id: vuKey, field: "vu" })}
+                                className="h-7 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                                style={{ borderColor: isVuActive ? "var(--primary)" : "var(--border)", color: "var(--muted-foreground)" }}
+                                title="Drinks used from bottle"
+                              >
+                                {lv.units_consumed || "0"}
+                              </div>
+                            </td>
+                            {/* Price — numpad */}
+                            <td className="px-1 py-1">
+                              <div
+                                onClick={() => setActiveNumpad(isVpActive ? null : { id: vpKey, field: "vp" })}
+                                className="h-7 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
+                                style={{ borderColor: isVpActive ? "var(--primary)" : "var(--border)", color: "var(--foreground)" }}
+                                title="Drink price"
+                              >
+                                {vpVal || "0.00"}
+                              </div>
+                            </td>
+                            <td colSpan={3} />
+                          </tr>
+                        );
+                      })}
+
+                      {/* Add Variation row — liquor only */}
+                      {p.category === "liquor" && (
+                        <tr className="border-t border-border/10">
+                          <td colSpan={7} className="pl-8 py-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setLocalVars((prev) => {
+                                const existing = prev[p.id] ?? [];
+                                // Default: Drink / shot with 18 drinks used
+                                const isFirst = (p.bottle_variations ?? []).length === 0 && existing.length === 0;
+                                const newVar: BottleVariation = isFirst
+                                  ? { key: "shot", label: "Drink", units_consumed: 18, price: 0 }
+                                  : { key: `var_${Date.now()}`, label: "", units_consumed: 1, price: 0 };
+                                return { ...prev, [p.id]: [...existing, newVar] };
+                              })}
+                              className="flex items-center gap-1 text-[10px] font-black transition active:scale-95"
+                              style={{ color: "var(--primary)" }}
+                            >
+                              <span className="h-4 w-4 rounded-full flex items-center justify-center text-black text-[10px] font-black" style={{ background: "var(--gradient-hero)" }}>+</span>
+                              Add Variation
+                            </button>
+                          </td>
+                        </tr>
+                      )}
                       </React.Fragment>
                     );
                   })}
@@ -1062,7 +1234,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : activeNumpad.field === "vp" ? "Variation Price" : "Add Qty"}
+                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : activeNumpad.field === "vp" ? "Variation Price" : activeNumpad.field === "vu" ? "Drinks Used" : "Add Qty"}
               </span>
               <button onClick={() => setActiveNumpad(null)}
                 className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
@@ -1071,7 +1243,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
-              {["1","2","3","4","5","6","7","8","9", activeNumpad.field !== "qty" ? "." : "", "0","⌫"].map((k, i) => (
+              {["1","2","3","4","5","6","7","8","9", (activeNumpad.field !== "qty" && activeNumpad.field !== "vu") ? "." : "", "0","⌫"].map((k, i) => (
                 k === "" ? <div key={i} /> :
                 <button
                   key={i}
@@ -1184,6 +1356,22 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
         </div>{/* end max-w-2xl wrapper */}
       </div>
     )}
+
+    {/* ── Revert qty modal from pencil in table ── */}
+    {revertItem && (
+      <RevertStockModal
+        productName={revertItem.name}
+        productId={revertItem.id}
+        ownerId={ownerId}
+        currentQty={liveQtys[revertItem.id] ?? revertItem.stock_qty ?? 0}
+        costPrice={parseFloat(costPrices[revertItem.id] ?? "") || Number(revertItem.cost_price ?? 0)}
+        onClose={() => setRevertItem(null)}
+        onSaved={(newQty) => {
+          setLiveQtys((prev) => ({ ...prev, [revertItem.id]: newQty }));
+          setRevertItem(null);
+        }}
+      />
+    )}
     </>
   );
 }
@@ -1200,6 +1388,9 @@ export default function ProductsPage() {
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [bulkAddItems, setBulkAddItems] = useState<Product[] | null>(null);
+  // Preload product images so the grid renders instantly and works offline
+  useImageCache(items.map((p) => p.image_url));
 
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
@@ -1287,6 +1478,33 @@ export default function ProductsPage() {
                   setItems((prev) => [...prev, product]);
                   setStockNumpadId(product.id);
                 }}
+                onBulkSelect={async (templates) => {
+                  setOpen(false);
+                  // Insert stub products for each selected template, then open bulk edit
+                  const inserted: Product[] = [];
+                  for (const t of templates) {
+                    const { data, error } = await supabase
+                      .from("products")
+                      .insert({
+                        owner_id: ownerIdForQuery,
+                        name: t.label,
+                        image_url: t.url,
+                        category: t.category,
+                        price: 0,
+                        cost_price: 0,
+                        units_per_item: 0,
+                        bottle_variations: null,
+                        stock_qty: 0,
+                      })
+                      .select("*")
+                      .single();
+                    if (!error && data) inserted.push(data as Product);
+                  }
+                  if (inserted.length > 0) {
+                    setItems((prev) => [...prev, ...inserted]);
+                    setBulkAddItems(inserted);
+                  }
+                }}
               />
           </Dialog>
           </div>
@@ -1311,14 +1529,12 @@ export default function ProductsPage() {
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`h-12 rounded-xl font-bold transition flex flex-col items-center justify-center gap-0.5 ${
+              className={`h-10 rounded-xl font-black transition flex items-center justify-center ${
                 category === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
-              title={cat.label}
             >
-              <span className="text-xl leading-none">{cat.icon}</span>
-              <span className="text-[10px] font-black leading-none">{cat.label}</span>
+              <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
             </button>
           ))}
         </div>
@@ -1498,7 +1714,7 @@ export default function ProductsPage() {
         </Dialog>
       )}
 
-      {/* Bulk Edit Modal */}
+      {/* Bulk Edit Modal — regular */}
       {showBulkEdit && (
         <BulkEditModal
           items={items}
@@ -1518,12 +1734,34 @@ export default function ProductsPage() {
           }}
         />
       )}
+
+      {/* Bulk Edit Modal — bulk add from templates */}
+      {bulkAddItems && (
+        <BulkEditModal
+          items={bulkAddItems}
+          ownerId={ownerIdForQuery}
+          onClose={() => { setBulkAddItems(null); load(); }}
+          onSaved={(patches) => {
+            setItems((prev) => prev.map((p) => {
+              const patch = patches.find((x) => x.id === p.id);
+              return patch ? {
+                ...p,
+                stock_qty: patch.stock_qty,
+                stock_last_expense_id: patch.stock_last_expense_id,
+                ...(patch.cost_price !== undefined ? { cost_price: patch.cost_price } : {}),
+                ...(patch.price !== undefined ? { price: patch.price } : {}),
+              } : p;
+            }));
+            setBulkAddItems(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Add Item Dialog ──────────────────────────────────────────────────────────
-function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () => void; onSaved: (product: Product) => void; ownerId: string; editProduct?: Product | null }) {
+function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: { onDone: () => void; onSaved: (product: Product) => void; onBulkSelect?: (templates: { url: string; label: string; category: string }[]) => void; ownerId: string; editProduct?: Product | null }) {
   const { profile } = useAuth();
   const isEdit = !!editProduct;
   const [name, setName] = useState(editProduct?.name ?? "");
@@ -1562,6 +1800,8 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
   // which category tab is active inside the template picker
   const [templateCat, setTemplateCat] = useState<string>("beers");
   const [templateSearch, setTemplateSearch] = useState("");
+  // multi-select: map url → {label, category}
+  const [selectedTemplates, setSelectedTemplates] = useState<Map<string, { label: string; category: string }>>(new Map());
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
   // Scroll the numpad into view when it opens
@@ -1744,6 +1984,26 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
             </button>
           )}
           <DialogTitle>{showTemplates ? "Choose Template" : isEdit ? "Edit Bar Item" : "Add Bar Item"}</DialogTitle>
+          {/* Done button — shown in template view when ≥1 item selected */}
+          {showTemplates && onBulkSelect && (
+            <button
+              onClick={() => {
+                if (selectedTemplates.size === 0) return;
+                const arr = Array.from(selectedTemplates.entries()).map(([url, { label, category }]) => ({ url, label, category }));
+                if (arr.length === 1) {
+                  // Single selection — use the normal single-item route
+                  onTemplateSelect(arr[0].url, arr[0].label, arr[0].category);
+                  return;
+                }
+                onBulkSelect(arr);
+              }}
+              disabled={selectedTemplates.size === 0}
+              className="ml-auto h-8 px-4 rounded-xl font-black text-sm text-primary-foreground flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40 shrink-0"
+              style={{ background: selectedTemplates.size > 0 ? "var(--gradient-hero)" : "rgba(255,255,255,0.08)" }}
+            >
+              Done {selectedTemplates.size > 0 && <span className="h-5 min-w-[1.25rem] px-1 rounded-full bg-black/30 flex items-center justify-center text-xs font-black">{selectedTemplates.size}</span>}
+            </button>
+          )}
         </div>
       </DialogHeader>
 
@@ -1780,19 +2040,27 @@ function AddItemDialog({ onDone, onSaved, ownerId, editProduct }: { onDone: () =
                   <button
                     key={cat.value}
                     onClick={() => setTemplateCat(cat.value)}
-                    className={`h-14 rounded-xl font-bold text-2xl transition ${
+                    className={`h-10 rounded-xl font-black transition flex items-center justify-center ${
                       templateCat === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                     style={templateCat === cat.value ? { background: "var(--gradient-hero)" } : {}}
-                    title={cat.label}
                   >
-                    {cat.icon}
+                    <span className="text-xs leading-none whitespace-nowrap">{cat.label}</span>
                   </button>
                 ))}
               </div>
             </div>
             <TemplatePicker
               onSelect={onTemplateSelect}
+              onToggle={onBulkSelect ? (url, label, cat) => {
+                setSelectedTemplates((prev) => {
+                  const next = new Map(prev);
+                  if (next.has(url)) next.delete(url);
+                  else next.set(url, { label, category: cat });
+                  return next;
+                });
+              } : undefined}
+              selectedUrls={onBulkSelect ? new Set(selectedTemplates.keys()) : undefined}
               ownerId={ownerId}
               category={templateCat}
               search={templateSearch}

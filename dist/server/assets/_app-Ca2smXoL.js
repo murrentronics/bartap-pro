@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-DenXw5B8.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-B11RF-Ol.js";
-import { C as ChartColumn } from "./chart-column-DK2Ndamd.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-DklmIEK8.js";
+import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-BW3vb4yu.js";
+import { T as TrendingDown } from "./trending-down-CyeTiJEj.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -93,6 +93,7 @@ function AppLayout() {
   const [openBarFloat, setOpenBarFloat] = reactExports.useState("");
   const [openMachineFloat, setOpenMachineFloat] = reactExports.useState("");
   const [hasMachines, setHasMachines] = reactExports.useState(false);
+  const [isMachinesAccount, setIsMachinesAccount] = reactExports.useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = reactExports.useState(false);
   reactExports.useEffect(() => {
     if (!loading && !session) nav({
@@ -114,7 +115,8 @@ function AppLayout() {
     }
   }, [loading, profile, loc.pathname, nav]);
   reactExports.useEffect(() => {
-    if (!loading && profile?.role === "manager" && loc.pathname === "/register") {
+    const isMgr = profile?.role === "manager" || profile?.job_title === "manager";
+    if (!loading && isMgr && loc.pathname === "/register") {
       nav({
         to: "/manager"
       });
@@ -133,7 +135,7 @@ function AppLayout() {
     setMenuOpen(false);
   }, [loc.pathname]);
   reactExports.useEffect(() => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const ownerId = effectiveOwnerId(profile.id);
     if (!ownerId) return;
     supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single().then(({
@@ -157,22 +159,24 @@ function AppLayout() {
     };
   }, [profile]);
   const handleOpenBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const ownerId = effectiveOwnerId(profile.id);
     const {
       data: ownerProfile
-    } = await supabase.from("profiles").select("machines_addon_active, plan_type").eq("id", ownerId).single();
+    } = await supabase.from("profiles").select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
     const machinesEnabled = !!ownerProfile?.machines_addon_active || ownerProfile?.plan_type === "premium";
+    const machinesOnly = !!ownerProfile?.is_machines_account;
     setHasMachines(machinesEnabled);
+    setIsMachinesAccount(machinesOnly);
     setOpenBarFloat("");
     setOpenMachineFloat("");
     setShowOpenBarModal(true);
   };
   const confirmOpenBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const ownerId = effectiveOwnerId(profile.id);
-    const barFloatVal = parseFloat(openBarFloat);
-    if (isNaN(barFloatVal) || barFloatVal < 0) {
+    const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
+    if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) {
       toast.error("Enter a valid bar float amount");
       return;
     }
@@ -185,18 +189,40 @@ function AppLayout() {
     }
     setBarToggleBusy(true);
     setShowOpenBarModal(false);
+    const {
+      data: existingOpen
+    } = await supabase.from("bar_sessions").select("id").eq("owner_id", ownerId).is("closed_at", null).limit(1).maybeSingle();
+    if (existingOpen) {
+      setBarToggleBusy(false);
+      toast.error("Bar is already open — close the current session first");
+      return;
+    }
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const {
       error
     } = await supabase.from("profiles").update({
       bar_session_start: now,
       bar_closed_at: null,
-      cashier_float: barFloatVal
+      cashier_float: barFloatVal,
+      cashier_float_set_at: now
     }).eq("id", ownerId);
-    if (!error) {
-      await supabase.from("bar_sessions").insert({
+    if (error) {
+      setBarToggleBusy(false);
+      toast.error("Failed to open bar");
+      return;
+    }
+    const {
+      data: newSession
+    } = await supabase.from("bar_sessions").insert({
+      owner_id: ownerId,
+      opened_at: now
+    }).select("id").single();
+    if (newSession?.id) {
+      await supabase.from("bar_sub_sessions").insert({
         owner_id: ownerId,
-        opened_at: now
+        bar_session_id: newSession.id,
+        opened_at: now,
+        cashier_float: barFloatVal
       });
     }
     if (hasMachines) {
@@ -208,28 +234,21 @@ function AppLayout() {
       });
     }
     setBarToggleBusy(false);
-    if (error) {
-      toast.error("Failed to open bar");
-      return;
-    }
     setBarSessionStart(now);
     setBarClosedAt(null);
     toast.success("🟢 Bar opened");
   };
   const handleCloseBar = async () => {
-    if (!profile || profile.role !== "owner") return;
+    if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const ownerId = effectiveOwnerId(profile.id);
     setBarToggleBusy(true);
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const {
-      data: ownerRow
-    } = await supabase.from("profiles").select("bar_session_start").eq("id", ownerId).single();
-    const sessionStart = ownerRow?.bar_session_start ?? null;
-    if (sessionStart) {
-      await supabase.from("bar_sessions").update({
-        closed_at: now
-      }).eq("owner_id", ownerId).is("closed_at", null);
-    }
+    await supabase.from("bar_sub_sessions").update({
+      closed_at: now
+    }).eq("owner_id", ownerId).is("closed_at", null);
+    await supabase.from("bar_sessions").update({
+      closed_at: now
+    }).eq("owner_id", ownerId).is("closed_at", null);
     const {
       error
     } = await supabase.from("profiles").update({
@@ -248,7 +267,7 @@ function AppLayout() {
   }
   const isOwner = profile.role === "owner";
   const isAdmin = profile.role === "admin";
-  const isManager = profile.role === "manager";
+  const isManager = profile.role === "manager" || profile.job_title === "manager";
   if (!isAdmin) {
     if (profile.status === "expelled") {
       return /* @__PURE__ */ jsxRuntimeExports.jsx(FullScreenStatus, { icon: UserMinus, title: "Account expelled", message: "Your account has been expelled. You no longer have access to Bartendaz Pro.", onSignOut: () => {
@@ -288,8 +307,8 @@ function AppLayout() {
     icon: Package
   }, {
     to: "/manager",
-    label: "Manager",
-    icon: ChartColumn
+    label: "Bar Expense",
+    icon: TrendingDown
   }] : [{
     to: "/register",
     label: "Cashier",
@@ -327,7 +346,7 @@ function AppLayout() {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", ref: menuRef, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold text-muted-foreground truncate max-w-[100px]", children: profile.username }),
-        isOwner && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", disabled: barToggleBusy, onClick: barIsOpen ? () => setShowCloseBarConfirm(true) : handleOpenBar, className: "h-7 px-2.5 rounded-lg font-black text-[11px] flex items-center gap-1 transition active:scale-95 disabled:opacity-50 shrink-0", style: barIsOpen ? {
+        (isOwner || isManager) && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { type: "button", disabled: barToggleBusy, onClick: barIsOpen ? () => setShowCloseBarConfirm(true) : handleOpenBar, className: "h-7 px-2.5 rounded-lg font-black text-[11px] flex items-center gap-1 transition active:scale-95 disabled:opacity-50 shrink-0", style: barIsOpen ? {
           background: "rgba(134,239,172,0.12)",
           border: "1px solid #86efac",
           color: "#86efac"
@@ -404,7 +423,7 @@ function AppLayout() {
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "Set floats before starting the session" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 pb-6 pt-4 space-y-4", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+        !isMachinesAccount && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-black text-muted-foreground uppercase tracking-wider", children: "Bar Float" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "number", min: "0", step: "0.01", placeholder: "e.g. 500.00", value: openBarFloat, onChange: (e) => setOpenBarFloat(e.target.value), className: "w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary" })
         ] }),
@@ -414,7 +433,7 @@ function AppLayout() {
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowOpenBarModal(false), className: "flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition", children: "Cancel" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: confirmOpenBar, disabled: !openBarFloat || hasMachines && !openMachineFloat, className: "flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50", style: {
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: confirmOpenBar, disabled: !isMachinesAccount && !openBarFloat || hasMachines && !openMachineFloat, className: "flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50", style: {
             background: "rgba(134,239,172,0.15)",
             border: "1.5px solid #86efac",
             color: "#86efac"

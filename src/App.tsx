@@ -6,6 +6,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useAppUpdate } from "@/lib/useAppUpdate";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { OfflineProvider, useOffline } from "@/lib/OfflineProvider";
 
 import LoginPage from "@/pages/LoginPage";
 import AppLayout from "@/pages/AppLayout";
@@ -31,6 +32,38 @@ import ManagerPage from "@/pages/ManagerPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 import { ChainProvider } from "@/lib/ChainContext";
+
+// ── Offline status banner ─────────────────────────────────────────────────────
+function OfflineBanner() {
+  const { isOnline, queueSize } = useOffline();
+  if (isOnline && queueSize === 0) return null;
+
+  return (
+    <div
+      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold select-none"
+      style={{
+        background: isOnline ? "rgba(22,163,74,0.92)" : "rgba(220,38,38,0.92)",
+        backdropFilter: "blur(6px)",
+        color: "#fff",
+      }}
+    >
+      {isOnline ? (
+        <>
+          <span>✅ Back online</span>
+          {queueSize > 0 && <span>— syncing {queueSize} pending {queueSize === 1 ? "record" : "records"}…</span>}
+        </>
+      ) : (
+        <>
+          <span>📴 No internet</span>
+          {queueSize > 0 && (
+            <span>— {queueSize} {queueSize === 1 ? "order" : "orders"} saved, will sync on reconnect</span>
+          )}
+          {queueSize === 0 && <span>— orders will be saved locally</span>}
+        </>
+      )}
+    </div>
+  );
+}
 
 function AppWithUpdateCheck() {
   const { update, dismiss } = useAppUpdate();
@@ -66,6 +99,9 @@ function AppWithUpdateCheck() {
         </Routes>
       </HashRouter>
 
+      {/* Offline status banner — sits above everything */}
+      <OfflineBanner />
+
       {/* Update banner — shown on top of everything when a new APK is available */}
       {update && <UpdateBanner update={update} onDismiss={dismiss} />}
 
@@ -77,24 +113,45 @@ function AppWithUpdateCheck() {
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
-  // Register service worker for PWA/Android install support
-  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {/* ignore */});
-    });
-  }
+  // Register service worker for PWA/Android install support + offline caching
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      // Once the SW is active and controlling the page, warm the JS/CSS assets
+      const warm = () => {
+        const ctrl = navigator.serviceWorker.controller;
+        if (!ctrl) return;
+        const assetUrls: string[] = [];
+        document.querySelectorAll<HTMLScriptElement>("script[src]").forEach((s) => {
+          if (s.src.includes("/assets/")) assetUrls.push(s.src);
+        });
+        document.querySelectorAll<HTMLLinkElement>("link[rel=stylesheet][href]").forEach((l) => {
+          if (l.href.includes("/assets/")) assetUrls.push(l.href);
+        });
+        if (assetUrls.length > 0) ctrl.postMessage({ type: "CACHE_ASSETS", urls: assetUrls });
+      };
+      if (navigator.serviceWorker.controller) {
+        warm();
+      } else {
+        navigator.serviceWorker.addEventListener("controllerchange", warm, { once: true });
+      }
+      return reg;
+    }).catch(() => {/* ignore */});
+  }, []);
 
   return (
     <AuthProvider>
       <I18nProvider>
-      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      <ChainProvider>
-        <MusicPlayerProvider>
-          <YouTubeProvider>
-            <AppWithUpdateCheck />
-          </YouTubeProvider>
-        </MusicPlayerProvider>
-      </ChainProvider>
+        <OfflineProvider>
+          {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+          <ChainProvider>
+            <MusicPlayerProvider>
+              <YouTubeProvider>
+                <AppWithUpdateCheck />
+              </YouTubeProvider>
+            </MusicPlayerProvider>
+          </ChainProvider>
+        </OfflineProvider>
       </I18nProvider>
     </AuthProvider>
   );

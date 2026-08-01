@@ -12,6 +12,9 @@ import {
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
+import { useNetworkStatus } from "@/lib/useNetworkStatus";
+import { enqueue } from "@/lib/offlineQueue";
+import { useImageCache } from "@/lib/useImageCache";
 
 type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
 type Product = { id: string; name: string; price: number; cost_price?: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
@@ -28,6 +31,7 @@ export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
+  const { isOnline } = useNetworkStatus();
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
@@ -173,6 +177,8 @@ export default function RegisterPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
+  // Preload all product images into browser + SW cache so tab switches are instant
+  useImageCache(products.map((p) => p.image_url));
   // Initialize cart from localStorage on mount
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -2277,6 +2283,7 @@ function CashOverlay({
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
+  const { isOnline } = useNetworkStatus();
   const [step, setStep] = useState<1 | 2>(1);
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
@@ -2314,15 +2321,29 @@ function CashOverlay({
   const change = Math.max(0, (Number(paid) || 0) - discountedTotal);
   const enough = (Number(paid) || 0) >= discountedTotal;
 
-  // Shared stock/shot/pack helpers
-  const doStockAndShots = async () => {
+  // Shared stock/shot/pack helpers — enqueue offline if no network
+  const doStockAndShots = async (groupId: string) => {
     const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
-    await supabase.rpc("decrement_stock_item", { p_items: stockItems });
+    if (isOnline) {
+      await supabase.rpc("decrement_stock_item", { p_items: stockItems });
+    } else {
+      await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
+    }
     for (const shot of cart.filter((c) => (c as any)._bottle_id)) {
-      await supabase.rpc("record_shot", { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) });
+      const payload = { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) };
+      if (isOnline) {
+        await supabase.rpc("record_shot", payload);
+      } else {
+        await enqueue("rpc_record_shot", payload, groupId);
+      }
     }
     for (const unit of cart.filter((c) => (c as any)._pack_id)) {
-      await supabase.rpc("record_pack_unit", { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) });
+      const payload = { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) };
+      if (isOnline) {
+        await supabase.rpc("record_pack_unit", payload);
+      } else {
+        await enqueue("rpc_record_pack_unit", payload, groupId);
+      }
     }
   };
 
@@ -2338,19 +2359,30 @@ function CashOverlay({
     setBusy(true);
     const paidNum = Number(paid);
     const changeNum = change;
+    // Unique id to group all ops from this checkout together
+    const groupId = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     if (payMode === "credit" && selectedCustomer) {
       // ── Credit order ──────────────────────────────────────────────────
       const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-      const { error } = await supabase.rpc("record_credit_charge", {
+      const creditPayload = {
         p_credit_account_id: selectedCustomer.id,
         p_cashier_id: profile.id,
         p_amount: discountedTotal,
         p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
         p_note: itemsDesc,
-      });
+      };
+      if (!isOnline) {
+        await enqueue("rpc_record_credit_charge", creditPayload, groupId);
+        await doStockAndShots(groupId);
+        setBusy(false);
+        toast.success(`💾 Saved offline — will sync when reconnected`);
+        onSuccess(paidNum, changeNum);
+        return;
+      }
+      const { error } = await supabase.rpc("record_credit_charge", creditPayload);
       if (error) { setBusy(false); toast.error(error.message); return; }
-      await doStockAndShots();
+      await doStockAndShots(groupId);
       setBusy(false);
       toast.success(`Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`);
       onSuccess(paidNum, changeNum);
@@ -2358,13 +2390,36 @@ function CashOverlay({
     }
 
     // ── Cash order (guest or customer) ────────────────────────────────
-    const { error } = await supabase.from("orders").insert({
+    const orderPayload = {
       owner_id: ownerId, cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
       total: discountedTotal, paid: paidNum, change_given: changeNum,
-    });
+    };
+
+    if (!isOnline) {
+      await enqueue("orders_insert", orderPayload, groupId);
+      await doStockAndShots(groupId);
+      if (payMode === "cash" && selectedCustomer) {
+        const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
+        await enqueue("credit_transactions_insert", {
+          credit_account_id: selectedCustomer.id,
+          owner_id: ownerId,
+          cashier_id: profile.id,
+          type: "charge",
+          amount: discountedTotal,
+          items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
+          note: "[CASH] " + itemsDesc,
+        }, groupId);
+      }
+      setBusy(false);
+      toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess(paidNum, changeNum);
+      return;
+    }
+
+    const { error } = await supabase.from("orders").insert(orderPayload);
     if (error) { setBusy(false); toast.error(error.message); return; }
-    await doStockAndShots();
+    await doStockAndShots(groupId);
 
     // If a customer was selected with cash, record history without changing balance
     if (payMode === "cash" && selectedCustomer) {
@@ -2690,6 +2745,7 @@ function CashCustomerOverlay({
   ownerId: string;
 }) {
   const { profile } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const [step, setStep] = useState<"pick" | "confirm" | "create" | "pay">("pick");
   const [accounts, setAccounts] = useState<CreditAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -2725,14 +2781,24 @@ function CashCustomerOverlay({
     setLoadingAccounts(false);
   };
 
-  const recordShotPack = async () => {
+  const recordShotPack = async (groupId: string) => {
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
     for (const shot of shotItems) {
-      await supabase.rpc("record_shot", { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) });
+      const payload = { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) };
+      if (isOnline) {
+        await supabase.rpc("record_shot", payload);
+      } else {
+        await enqueue("rpc_record_shot", payload, groupId);
+      }
     }
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
-      await supabase.rpc("record_pack_unit", { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) });
+      const payload = { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) };
+      if (isOnline) {
+        await supabase.rpc("record_pack_unit", payload);
+      } else {
+        await enqueue("rpc_record_pack_unit", payload, groupId);
+      }
     }
   };
 
@@ -2741,28 +2807,19 @@ function CashCustomerOverlay({
     setBusy(true);
     const paidNum = Number(paid);
     const changeNum = change;
+    const groupId = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    // 1. Normal cash order (triggers cashier wallet update)
-    const { error: orderErr } = await supabase.from("orders").insert({
+    const orderPayload = {
       owner_id: ownerId,
       cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
       total,
       paid: paidNum,
       change_given: changeNum,
-    });
-    if (orderErr) { setBusy(false); toast.error(orderErr.message); return; }
-
-    // 2. Stock decrement
+    };
     const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
-    await supabase.rpc("decrement_stock_item", { p_items: stockItems });
-
-    // 3. Record shot/pack units
-    await recordShotPack();
-
-    // 4. Record the purchase in the customer's credit history (no balance change — cash was paid)
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-    await (supabase as any).from("credit_transactions").insert({
+    const creditTxPayload = {
       credit_account_id: account.id,
       owner_id: ownerId,
       cashier_id: profile.id,
@@ -2770,7 +2827,32 @@ function CashCustomerOverlay({
       amount: total,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
       note: "[CASH] " + itemsDesc,
-    });
+    };
+
+    if (!isOnline) {
+      // Queue all operations — they will replay in order when network returns
+      await enqueue("orders_insert", orderPayload, groupId);
+      await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
+      await recordShotPack(groupId);
+      await enqueue("credit_transactions_insert", creditTxPayload, groupId);
+      setBusy(false);
+      toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess(paidNum, changeNum);
+      return;
+    }
+
+    // 1. Normal cash order (triggers cashier wallet update)
+    const { error: orderErr } = await supabase.from("orders").insert(orderPayload);
+    if (orderErr) { setBusy(false); toast.error(orderErr.message); return; }
+
+    // 2. Stock decrement
+    await supabase.rpc("decrement_stock_item", { p_items: stockItems });
+
+    // 3. Record shot/pack units
+    await recordShotPack(groupId);
+
+    // 4. Record the purchase in the customer's credit history (no balance change — cash was paid)
+    await (supabase as any).from("credit_transactions").insert(creditTxPayload);
 
     setBusy(false);
     onSuccess(paidNum, changeNum);
@@ -2964,7 +3046,7 @@ function CreditSaleOverlay({
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
-
+  const { isOnline } = useNetworkStatus();
   const [step, setStep] = useState<"review" | "pick" | "confirm" | "create">("review");
   const [accounts, setAccounts] = useState<CreditAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -3000,41 +3082,60 @@ function CreditSaleOverlay({
   // After a credit charge succeeds, record shots/pack-units against open bottles/packs
   // exactly the same as a cash sale does — the physical items are consumed regardless
   // of how the customer pays.
-  const recordShotPackForCredit = async () => {
+  const recordShotPackForCredit = async (groupId: string) => {
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
     for (const shot of shotItems) {
-      const { error } = await supabase.rpc("record_shot", {
+      const payload = {
         p_bottle_id: (shot as any)._bottle_id,
         p_qty:       shot.qty,
         p_revenue:   shot.qty * Number(shot.price),
-      });
-      if (error) console.warn("record_shot (credit) failed:", error.message);
+      };
+      if (isOnline) {
+        const { error } = await supabase.rpc("record_shot", payload);
+        if (error) console.warn("record_shot (credit) failed:", error.message);
+      } else {
+        await enqueue("rpc_record_shot", payload, groupId);
+      }
     }
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
-      const { error } = await supabase.rpc("record_pack_unit", {
+      const payload = {
         p_pack_id: (unit as any)._pack_id,
         p_qty:     (unit as any)._pack_units ?? unit.qty,
         p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
-      });
-      if (error) console.warn("record_pack_unit (credit) failed:", error.message);
+      };
+      if (isOnline) {
+        const { error } = await supabase.rpc("record_pack_unit", payload);
+        if (error) console.warn("record_pack_unit (credit) failed:", error.message);
+      } else {
+        await enqueue("rpc_record_pack_unit", payload, groupId);
+      }
     }
   };
 
   const chargeAccount = async (account: CreditAccount) => {
     if (!profile) return;
     setBusy(true);
+    const groupId = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-    const { error } = await supabase.rpc("record_credit_charge", {
+    const creditPayload = {
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
       p_amount: total,
       p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: c.cost_price ?? 0, qty: c.qty })),
       p_note: itemsDesc,
-    });
+    };
+    if (!isOnline) {
+      await enqueue("rpc_record_credit_charge", creditPayload, groupId);
+      await recordShotPackForCredit(groupId);
+      setBusy(false);
+      toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess();
+      return;
+    }
+    const { error } = await supabase.rpc("record_credit_charge", creditPayload);
     if (error) { setBusy(false); toast.error(error.message); return; }
-    // Record shots / pack units consumed — same as cash sale
-    await recordShotPackForCredit();
+    await recordShotPackForCredit(groupId);
     setBusy(false);
     toast.success(`Charged $${total.toFixed(2)} to ${account.full_name}`);
     onSuccess();
@@ -3044,7 +3145,12 @@ function CreditSaleOverlay({
     e.preventDefault();
     if (!newName.trim() || !ownerId || !profile) return;
     setBusy(true);
-    // Create the account
+    // Create the account (account creation always needs network — no offline path here)
+    if (!isOnline) {
+      setBusy(false);
+      toast.error("No internet connection — connect to create a new account.");
+      return;
+    }
     const { data: acc, error: createErr } = await supabase
       .from("credit_accounts")
       .insert({
@@ -3057,7 +3163,7 @@ function CreditSaleOverlay({
       .select()
       .single();
     if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
-    // Charge it
+    const groupId = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
@@ -3067,8 +3173,7 @@ function CreditSaleOverlay({
       p_note: itemsDesc,
     });
     if (chargeErr) { setBusy(false); toast.error(chargeErr.message); return; }
-    // Record shots / pack units consumed — same as cash sale
-    await recordShotPackForCredit();
+    await recordShotPackForCredit(groupId);
     setBusy(false);
     toast.success(`Account created & $${total.toFixed(2)} charged to ${newName.trim()}`);
     onSuccess();
