@@ -355,6 +355,28 @@ function ExpensesTab({
   const sb = supabase as any;
   const tag = `[Manager: ${managerName}]`;
 
+  // ── Float balance ──────────────────────────────────────────────────────────
+  const [floatBalance, setFloatBalance] = useState<number>(0);
+
+  const loadFloat = useCallback(async () => {
+    const { data } = await sb.from("profiles").select("cashier_float").eq("id", ownerId).single();
+    setFloatBalance(Number(data?.cashier_float ?? 0));
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { loadFloat(); }, [loadFloat]);
+
+  // Realtime: keep float in sync when owner opens bar or any update
+  useEffect(() => {
+    const ch = supabase.channel(`mgr-float-${ownerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+        (payload: any) => {
+          const rec = payload.new as Record<string, unknown>;
+          if ("cashier_float" in rec) setFloatBalance(Number(rec.cashier_float ?? 0));
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [ownerId]);
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
@@ -394,8 +416,12 @@ function ExpensesTab({
   const handleSave = async () => {
     const valid = lines.filter((l) => l.description.trim() && parseFloat(l.amount) > 0);
     if (!valid.length) { toast.error("Add at least one item with a description and amount"); return; }
-    setSaving(true);
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+    if (total > floatBalance) {
+      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      return;
+    }
+    setSaving(true);
     const today = trinidadDate();
     const description =
       valid.length === 1
@@ -404,8 +430,10 @@ function ExpensesTab({
     try {
       const { error: expErr } = await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: total, description, expense_date: today });
       if (expErr) { toast.error(expErr.message); return; }
-      const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-      await sb.from("profiles").update({ wallet_balance: Number(ownerRow?.wallet_balance ?? 0) - total }).eq("id", ownerId);
+      // Deduct from cashier_float (bar float), not wallet_balance
+      const newFloat = Math.max(0, floatBalance - total);
+      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+      setFloatBalance(newFloat);
       const expenseNote = valid.length === 1 ? `Expense: ${valid[0].description.trim()}` : `Bulk Expense (${valid.length} items)`;
       await sb.from("wallet_transactions").insert({ profile_id: profile.id, amount: total, type: "cashier_expense", note: expenseNote });
       toast.success("Expense saved");
@@ -437,7 +465,12 @@ function ExpensesTab({
     if (!valid.length) { toast.error("Add at least one item with description and amount"); return; }
     setEditSaving(true);
     const newTotal = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-    const diff = newTotal - Number(e.amount);
+    const diff = newTotal - Number(e.amount); // positive = more spent, negative = refund
+    if (diff > 0 && diff > floatBalance) {
+      setEditSaving(false);
+      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      return;
+    }
     const description =
       valid.length === 1
         ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
@@ -446,8 +479,9 @@ function ExpensesTab({
       const { error: upErr } = await sb.from("owner_expenses").update({ amount: newTotal, description }).eq("id", e.id);
       if (upErr) { toast.error(upErr.message); return; }
       if (diff !== 0) {
-        const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-        await sb.from("profiles").update({ wallet_balance: Number(ownerRow?.wallet_balance ?? 0) - diff }).eq("id", ownerId);
+        const newFloat = Math.max(0, floatBalance - diff);
+        await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+        setFloatBalance(newFloat);
       }
       toast.success("Expense updated"); setEditingId(null); loadExpenses();
     } finally { setEditSaving(false); }
@@ -458,9 +492,11 @@ function ExpensesTab({
     try {
       const { error: delErr } = await sb.from("owner_expenses").delete().eq("id", e.id);
       if (delErr) { toast.error(delErr.message); return; }
-      const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-      await sb.from("profiles").update({ wallet_balance: Number(ownerRow?.wallet_balance ?? 0) + Number(e.amount) }).eq("id", ownerId);
-      toast.success("Expense deleted and wallet refunded"); setDeleteConfirmId(null); loadExpenses();
+      // Refund amount back to float
+      const newFloat = floatBalance + Number(e.amount);
+      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+      setFloatBalance(newFloat);
+      toast.success("Expense deleted and float refunded"); setDeleteConfirmId(null); loadExpenses();
     } finally { setDeleting(false); }
   };
 
@@ -485,8 +521,9 @@ function ExpensesTab({
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <p className="text-xs font-black relative" style={{ color: "rgba(0,0,0,0.65)" }}>My Expense Summary</p>
-        <div className="grid grid-cols-2 gap-2 relative">
+        <div className="grid grid-cols-3 gap-2 relative">
           {[
+            { label: "Float\nBalance",   value: barIsOpen ? `$${fmt(floatBalance)}` : "—", highlight: floatBalance < 10 && barIsOpen },
             { label: "Session\nExpense", value: barIsOpen ? `$${fmt(sessionExpenses)}` : "—" },
             { label: "Total\nExpense",   value: totalAllTime > 0 ? `$${fmt(totalAllTime)}` : "$0.00" },
           ].map((c) => (
@@ -494,7 +531,8 @@ function ExpensesTab({
               style={{ background: "oklch(0.18 0.02 60)" }}>
               <div className="text-[9px] font-semibold leading-tight whitespace-pre-line"
                 style={{ color: "rgba(255,255,255,0.5)" }}>{c.label}</div>
-              <div className="font-black text-xs" style={{ color: "#fca5a5" }}>{c.value}</div>
+              <div className="font-black text-xs"
+                style={{ color: (c as any).highlight ? "#fde68a" : "#fca5a5" }}>{c.value}</div>
             </div>
           ))}
         </div>
@@ -550,7 +588,7 @@ function ExpensesTab({
                   <div className="space-y-2">
                     <div className="rounded-xl px-3 py-2 text-xs text-center font-semibold"
                       style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}>
-                      Deduct ${lineTotal.toFixed(2)} from owner wallet?
+                      Deduct ${lineTotal.toFixed(2)} from bar float? (Balance: ${fmt(floatBalance)})
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => setConfirming(false)}
@@ -643,7 +681,7 @@ function ExpensesTab({
                             </div>
                           ) : deleteConfirmId === e.id ? (
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-center text-red-400">Delete ${fmt(Number(e.amount))} expense and refund to wallet?</p>
+                              <p className="text-xs font-semibold text-center text-red-400">Delete ${fmt(Number(e.amount))} expense and refund to float?</p>
                               <div className="grid grid-cols-2 gap-2">
                                 <button onClick={() => setDeleteConfirmId(null)}
                                   className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
