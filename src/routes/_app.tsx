@@ -50,7 +50,11 @@ function AppLayout() {
 
   useEffect(() => {
     if (!loading && session && !profile) {
-      signOut().then(() => nav({ to: "/login" }));
+      // Give profile a moment to load before signing out — avoids false logout on slow connections
+      const t = setTimeout(() => {
+        signOut().then(() => nav({ to: "/login" }));
+      }, 3000);
+      return () => clearTimeout(t);
     }
   }, [loading, session, profile]);
 
@@ -62,8 +66,11 @@ function AppLayout() {
 
   useEffect(() => {
     const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+    const isMachinesOnly = (profile as any)?.is_machines_account || profile?.plan_type === "machines_only";
     if (!loading && isMgr && loc.pathname === "/register") {
       nav({ to: "/products" as "/" });
+    } else if (!loading && isMachinesOnly && loc.pathname === "/register") {
+      nav({ to: "/machines" as "/" });
     }
   }, [loading, profile, loc.pathname, nav]);
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -34,13 +34,25 @@ type OpenedBottle = {
   units_consumed: number;
 };
 
+export const Route = createFileRoute("/_app/register")({
+  component: RegisterPage,
+});
+
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const { effectiveOwnerId } = useChain();
   const { t } = useTranslation();
   const { isOnline } = useNetworkStatus();
+  const nav = useNavigate();
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
+
+  // Machines-only accounts have no register page — send them to /machines
+  useEffect(() => {
+    if ((profile as any)?.is_machines_account) {
+      nav({ to: "/machines" as any });
+    }
+  }, [profile]);
 
   // ── Bar session state — blocks sales when bar is closed ────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);

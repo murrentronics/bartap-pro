@@ -21,7 +21,14 @@ function LoginPage() {
   useEffect(() => {
     if (!loading && session && profile) {
       const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
-      const dest = profile.role === "admin" ? "/admin" : isManager ? "/products" : "/register";
+      const isMachinesOnly = (profile as any)?.is_machines_account || profile.plan_type === "machines_only";
+      const dest = profile.role === "admin"
+        ? "/admin"
+        : isManager
+        ? "/products"
+        : isMachinesOnly
+        ? "/machines"
+        : "/register";
       nav({ to: dest as any });
     }
   }, [session, profile, loading, nav]);

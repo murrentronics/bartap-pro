@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppSwitchBarRouteImport } from './routes/_app/switch-bar'
 import { Route as AppStockCheckRouteImport } from './routes/_app/stock-check'
+import { Route as AppRegisterRouteImport } from './routes/_app/register'
 import { Route as AppManagerRouteImport } from './routes/_app/manager'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
@@ -49,6 +50,11 @@ const AppManagerRoute = AppManagerRouteImport.update({
   path: '/manager',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRegisterRoute = AppRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMachinesRoute = AppMachinesRouteImport.update({
   id: '/machines',
   path: '/machines',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
+  '/register': typeof AppRegisterRoute
   '/stock-check': typeof AppStockCheckRoute
   '/switch-bar': typeof AppSwitchBarRoute
 }
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
+  '/register': typeof AppRegisterRoute
   '/stock-check': typeof AppStockCheckRoute
   '/switch-bar': typeof AppSwitchBarRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/_app/factory-reset': typeof AppFactoryResetRoute
   '/_app/machines': typeof AppMachinesRoute
   '/_app/manager': typeof AppManagerRoute
+  '/_app/register': typeof AppRegisterRoute
   '/_app/stock-check': typeof AppStockCheckRoute
   '/_app/switch-bar': typeof AppSwitchBarRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/factory-reset'
     | '/machines'
     | '/manager'
+    | '/register'
     | '/stock-check'
     | '/switch-bar'
   fileRoutesByTo: FileRoutesByTo
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/factory-reset'
     | '/machines'
     | '/manager'
+    | '/register'
     | '/stock-check'
     | '/switch-bar'
   id:
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/_app/factory-reset'
     | '/_app/machines'
     | '/_app/manager'
+    | '/_app/register'
     | '/_app/stock-check'
     | '/_app/switch-bar'
   fileRoutesById: FileRoutesById
@@ -196,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppManagerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/register': {
+      id: '/_app/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof AppRegisterRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/machines': {
       id: '/_app/machines'
       path: '/machines'
@@ -233,6 +252,7 @@ interface AppRouteChildren {
   AppFactoryResetRoute: typeof AppFactoryResetRoute
   AppMachinesRoute: typeof AppMachinesRoute
   AppManagerRoute: typeof AppManagerRoute
+  AppRegisterRoute: typeof AppRegisterRoute
   AppStockCheckRoute: typeof AppStockCheckRoute
   AppSwitchBarRoute: typeof AppSwitchBarRoute
 }
@@ -243,6 +263,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFactoryResetRoute: AppFactoryResetRoute,
   AppMachinesRoute: AppMachinesRoute,
   AppManagerRoute: AppManagerRoute,
+  AppRegisterRoute: AppRegisterRoute,
   AppStockCheckRoute: AppStockCheckRoute,
   AppSwitchBarRoute: AppSwitchBarRoute,
 }

@@ -228,6 +228,16 @@ export default function BillingPage() {
   // Detect 20-screen variant for current machines-only owner (stored as plan_type = "machines_only_20" in future)
   const isMachinesOnly20 = (profile?.plan_type as string) === "machines_only_20";
 
+  // Total machine screens across all accounts
+  const baseScreens = (isPremium || (profile?.plan_type as string) === "premium_20")
+    ? ((profile?.plan_type as string) === "premium_20" ? 20 : 10)
+    : isMachinesOnly ? (isMachinesOnly20 ? 20 : 10)
+    : 0;
+  const addonScreensPerAccount = isMachinesOnly
+    ? (machinesBarAddonPlan20 && profile?.addon_bar_count ? 20 : 10)
+    : 10;
+  const totalMachineScreens = baseScreens + (profile?.addon_bar_count ?? 0) * addonScreensPerAccount;
+
   // Current bar count for capacity checks
   const currentBarCount = (profile?.addon_bar_count ?? 0) + 1;
 
@@ -520,7 +530,7 @@ export default function BillingPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-amber-800 mb-1">
-                        <Gamepad2 className="h-3 w-3" /> Machines Tracker included
+                        <Gamepad2 className="h-3 w-3" /> Machines Tracker included · <span className="font-black">{totalMachineScreens} screen{totalMachineScreens !== 1 ? "s" : ""}</span>
                       </div>
                       {renewalBreakdown && (
                         <p className="text-xs text-amber-700/70 mb-3">{renewalBreakdown}</p>
@@ -565,6 +575,10 @@ export default function BillingPage() {
                         <div>
                           <p className="font-black text-gray-900 text-sm">Machines Only Plan</p>
                           <p className="text-xs text-gray-500">${totalRenewalAmount.toLocaleString()} TT / year</p>
+                          <div className="flex items-center gap-1 text-xs text-orange-700 mt-0.5">
+                            <Gamepad2 className="h-3 w-3" /> <span className="font-black">{totalMachineScreens} screen{totalMachineScreens !== 1 ? "s" : ""}</span>
+                            {(profile?.addon_bar_count ?? 0) > 0 && <span className="text-gray-400">across {currentBarCount} accounts</span>}
+                          </div>
                         </div>
                       </div>
                       <span className={`text-xs font-black px-2.5 py-1 rounded-full ${addonOverdue ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
