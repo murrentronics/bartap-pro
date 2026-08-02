@@ -4684,7 +4684,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             <button onClick={onSetFloat}
               className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", width: "70%" }}>
-              {floatSession ? t("update_float", "Actualizar Float") : t("set_float", "Establecer Float")}
+              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
             </button>
           </div>
           )}
@@ -6275,7 +6275,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         {/* Sessions list — filtered by active date tab, always visible */}
         <div className="space-y-1">
           <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">
-            Sesiones{filteredSessions.length > 0 ? ` (${filteredSessions.length})` : ""}
+            {filteredSessions.length > 0 ? t("sessions_count", `Sessions (${filteredSessions.length})`) : t("sessions", "Sessions")}
           </p>
           {loadingSessionsList ? (
             <div className="h-8 rounded-xl bg-muted/30 animate-pulse" />
@@ -6354,7 +6354,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                 <div className="font-black text-xs text-yellow-400">${fmtWhole(totalSessionExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Gan. Neta</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("net_profit", "Net Profit")}</div>
                 <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
                   {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
                 </div>
@@ -6493,7 +6493,8 @@ export default function MachinesPage() {
   // Cashiers see their owner's machines; owners see their own
 
 
-  const ownerId = effectiveOwnerId(profile?.role === "cashier" ? (profile.parent_id ?? "") : (profile?.id ?? ""));
+  const isSubAccount = profile?.role === "cashier" || profile?.role === "manager" || (profile as any)?.job_title === "manager";
+  const ownerId = effectiveOwnerId(isSubAccount ? ((profile as any)?.parent_id ?? profile?.id ?? "") : (profile?.id ?? ""));
 
 
   const isOwner = profile?.role === "owner";
@@ -7623,10 +7624,10 @@ export default function MachinesPage() {
     ...(isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : []),
 
 
-    ...(isOwner ? [{ key: "summary", label: t("summary", "Resumen") }] : []),
+    ...(isOwner ? [{ key: "summary", label: t("summary", "Summary") }] : []),
 
 
-    ...(isOwner ? [{ key: "create", label: t("create_machine", "Crear") }] : []),
+    ...(isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []),
 
 
   ] as const;
@@ -8879,7 +8880,7 @@ function SetAlertsModal({
           >
 
 
-            {enabled ? `${t("save", "Save")} — ${t("set_alerts", "Alert")} $${threshold.toLocaleString()} TT` : `${t("save", "Save")} — ${t("set_alerts", "Alerts Off")}`}
+            {enabled ? `Save — Alert $${threshold.toLocaleString()} TT` : `Save — Alerts Off`}
 
 
           </button>
