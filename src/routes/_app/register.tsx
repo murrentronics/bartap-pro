@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,9 +34,6 @@ type OpenedBottle = {
   units_consumed: number;
 };
 
-export const Route = createFileRoute("/_app/register")({
-  component: RegisterPage,
-});
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
@@ -52,14 +49,14 @@ export default function RegisterPage() {
     if (!profile) return;
     const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
     if (isManager) {
-      nav({ to: "/products" as any });
+      nav("/products");
     }
   }, [profile]);
 
   // Machines-only accounts have no register page — send them to /machines
   useEffect(() => {
     if ((profile as any)?.is_machines_account) {
-      nav({ to: "/machines" as any });
+      nav("/machines");
     }
   }, [profile]);
 
