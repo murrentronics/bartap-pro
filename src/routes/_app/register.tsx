@@ -369,13 +369,14 @@ export default function RegisterPage() {
     ).then(() => {}).catch(() => {});
   };
 
-  const applyBarSort = (prods: Product[], cat: string, map: Record<string, number>) =>
-    [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
+  function applyBarSort(prods: Product[], cat: string, map: Record<string, number>) {
+    return [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
       const ia = map[a.id] ?? Infinity;
       const ib = map[b.id] ?? Infinity;
       if (ia !== ib) return ia - ib;
       return a.name.localeCompare(b.name);
     });
+  }
 
   const barEnterEditMode = () => {
     if (barEditModeRef.current) return;
