@@ -306,6 +306,16 @@ export default function RegisterPage() {
   // Ref for the edit-mode grid — used to block native long-press browser behaviour
   const barEditGridRef = useRef<HTMLDivElement>(null);
 
+  // Pre-sort all categories at once so switching tabs is a map lookup, not a re-sort
+  const allCategorySorted = useMemo(() => {
+    const map: Record<string, Product[]> = {};
+    for (const cat of CATEGORIES) {
+      map[cat.value] = applyBarSort(products, cat.value, barSortMapRef.current);
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, barSortMap]);
+
   // Block the browser's built-in long-press (context menu / text-selection grab)
   // which steals touch focus and freezes buttons. Must be non-passive so we can
   // call preventDefault().
@@ -367,7 +377,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (barEditModeRef.current) return;
-    const sorted = applyBarSort(products, category, barSortMapRef.current);
+    const sorted = allCategorySorted[category] ?? applyBarSort(products, category, barSortMapRef.current);
     barOrderedRef.current = sorted;
     setBarOrdered(sorted);
   }, [products, barSortMap]); // category changes are handled synchronously in the tab click handler
@@ -976,7 +986,7 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
-                const sorted = applyBarSort(products, cat.value, barSortMapRef.current);
+                const sorted = allCategorySorted[cat.value] ?? applyBarSort(products, cat.value, barSortMapRef.current);
                 barOrderedRef.current = sorted;
                 setCategory(cat.value);
                 setBarOrdered(sorted);
@@ -1000,7 +1010,7 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
-                const sorted = applyBarSort(products, cat.value, barSortMapRef.current);
+                const sorted = allCategorySorted[cat.value] ?? applyBarSort(products, cat.value, barSortMapRef.current);
                 barOrderedRef.current = sorted;
                 setCategory(cat.value);
                 setBarOrdered(sorted);
@@ -1168,7 +1178,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={productImageUrl(p.image_url)!} alt="" loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"
@@ -1251,7 +1261,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={productImageUrl(p.image_url)!} alt="" loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"

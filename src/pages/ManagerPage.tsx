@@ -100,12 +100,15 @@ function ManagerMain({
   useEffect(() => {
     if (!ownerId) return;
     setBarStateLoading(true);
-    sb.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single()
-      .then(({ data }: any) => {
-        setBarSessionStart(data?.bar_session_start ?? null);
-        setBarClosedAt(data?.bar_closed_at ?? null);
-        setBarStateLoading(false);
-      });
+    const fetchBarState = () =>
+      sb.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single()
+        .then(({ data }: any) => {
+          setBarSessionStart(data?.bar_session_start ?? null);
+          setBarClosedAt(data?.bar_closed_at ?? null);
+          setBarStateLoading(false);
+        });
+    fetchBarState();
+
     const ch = supabase.channel(`mgr-bar-state-${ownerId}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         (payload: any) => {
@@ -113,7 +116,15 @@ function ManagerMain({
           if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
           if ("bar_closed_at" in rec) setBarClosedAt((rec.bar_closed_at as string | null) ?? null);
         }).subscribe();
-    return () => { supabase.removeChannel(ch); };
+
+    // Re-fetch when the tab regains focus (handles page refresh / tab switch)
+    const onVisible = () => { if (document.visibilityState === "visible") fetchBarState(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenBar = async () => {
@@ -1255,39 +1266,41 @@ export function TimeCardsTab({ profile, ownerId, managerName, barIsOpen }: {
                 const isSel = selectedEmp?.id === emp.id;
                 const isCIn = isSel && isClockedIn;
                 return (
-                  <button key={emp.id} onClick={() => setSelectedEmp(isSel ? null : emp)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] text-left"
-                    style={{ background: isSel ? (isCIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.06)") : "var(--gradient-card)",
-                      borderColor: empOpen ? "#86efac" : isSel ? "rgba(239,68,68,0.4)" : "var(--border)" }}>
-                    <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
-                      style={{ background: empOpen ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: empOpen ? "#86efac" : "var(--primary)" }}>
-                      {emp.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm truncate">{emp.username}</p>
-                      <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
-                      {isSel && empOpen && <p className="text-[10px] mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>Since {fmtTime(empOpen.clocked_in_at)} · {fmtDuration(empOpen.clocked_in_at, null)} on shift</p>}
-                    </div>
-                    {empOpen
-                      ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Clocked In</span>
-                      : <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Out</span>}
-                  </button>
+                  <div key={emp.id}>
+                    <button onClick={() => setSelectedEmp(isSel ? null : emp)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] text-left"
+                      style={{ background: isSel ? (isCIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.06)") : "var(--gradient-card)",
+                        borderColor: empOpen ? "#86efac" : isSel ? "rgba(239,68,68,0.4)" : "var(--border)" }}>
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
+                        style={{ background: empOpen ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: empOpen ? "#86efac" : "var(--primary)" }}>
+                        {emp.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-sm truncate">{emp.username}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
+                        {isSel && empOpen && <p className="text-[10px] mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>Since {fmtTime(empOpen.clocked_in_at)} · {fmtDuration(empOpen.clocked_in_at, null)} on shift</p>}
+                      </div>
+                      {empOpen
+                        ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Clocked In</span>
+                        : <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Out</span>}
+                    </button>
+                    {isSel && (
+                      <div className="grid grid-cols-2 gap-3 pt-2 pb-4">
+                        <button onClick={handleClockIn} disabled={isCIn || clockBusy || !barIsOpen}
+                          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={!isCIn && barIsOpen ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                          {clockBusy && !isCIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
+                        </button>
+                        <button onClick={handleClockOut} disabled={!isCIn || clockBusy}
+                          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={isCIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                          {clockBusy && isCIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-          {selectedEmp && (
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy || !barIsOpen}
-                className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={!isClockedIn && barIsOpen ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-                {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
-              </button>
-              <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
-                className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={isClockedIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-                {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
-              </button>
-            </div>
-          )}
 
           {/* ── Active workers flat list ── */}
           {(() => {
