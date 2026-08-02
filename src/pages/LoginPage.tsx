@@ -25,7 +25,16 @@ export default function LoginPage() {
     // verifyOtp signs the user in but we need to stay on the password step
     if (forgotOpen) return;
     if (!loading && session && profile) {
-      nav(profile.role === "admin" ? "/admin" : "/register", { replace: true });
+      const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
+      const isMachinesOnly = (profile as any)?.is_machines_account || profile.plan_type === "machines_only";
+      const dest = profile.role === "admin"
+        ? "/admin"
+        : isManager
+        ? "/products"
+        : isMachinesOnly
+        ? "/machines"
+        : "/register";
+      nav(dest, { replace: true });
     }
   }, [session, profile, loading, nav, forgotOpen]);
 
