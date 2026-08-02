@@ -30,6 +30,7 @@ import CreateBarPage from "@/pages/CreateBarPage";
 import SummaryPage from "@/pages/SummaryPage";
 import ManagerPage from "@/pages/ManagerPage";
 import StockCheckPage from "@/pages/StockCheckPage";
+import ManualPage from "@/pages/ManualPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 import { ChainProvider } from "@/lib/ChainContext";
@@ -106,6 +107,7 @@ function AppWithUpdateCheck() {
             <Route path="summary" element={<SummaryPage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="stock-check" element={<StockCheckPage />} />
+            <Route path="manual" element={<ManualPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />

@@ -287,9 +287,10 @@ function StockCheckPage() {
               };
             });
           });
-          // If Actual was synced to Qty previously, keep Actual in step only if
-          // the actual was already equal to old qty (i.e. user never manually changed it).
-          // We do NOT auto-update actuals — the point is to show divergence.
+          // The DB trigger (trg_sync_actual_qty) automatically applies the same
+          // delta to actual_qty whenever stock_qty changes, preserving the gap.
+          // The realtime subscription on stock_check_actuals picks up those
+          // changes and updates the actuals map — nothing extra needed here.
         }
       )
       .subscribe();
@@ -390,8 +391,9 @@ function StockCheckPage() {
   return (
     <div>
       {/* ── Sticky sub-header ─────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-0 z-30 -mx-3 -mt-3">
+        {/* Title row — original background */}
+        <div className="flex items-center justify-between px-3 py-2 bg-background border-b border-border">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" style={{ color: "var(--primary)" }} />
             <div>
@@ -399,9 +401,10 @@ function StockCheckPage() {
               <p className="text-muted-foreground text-xs">{items.length} items</p>
             </div>
           </div>
-          {/* Summary pills */}
-          <div className="flex items-center gap-2">
-            {totalMissing > 0 && (
+        </div>
+        {/* Pills row — normal background */}
+        <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-background border-b border-border">
+          {totalMissing > 0 && (
               <div
                 className="px-3 py-1.5 rounded-xl text-xs font-black"
                 style={{
@@ -425,7 +428,6 @@ function StockCheckPage() {
                 −${totalLoss.toFixed(2)}
               </div>
             )}
-          </div>
         </div>
       </div>
 
@@ -443,8 +445,8 @@ function StockCheckPage() {
       ) : (
         <>
           {/* ── Column header ───────────────────────────────────────────── */}
-          <div className="sticky top-[68px] z-20 bg-background/95 backdrop-blur border-b border-border">
-            <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-muted-foreground uppercase tracking-wide">
+          <div className="sticky top-[68px] z-20 border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
+            <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide">
               {/* Image + Name */}
               <div className="flex-1 min-w-0">Name</div>
               {/* Qty */}
