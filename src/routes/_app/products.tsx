@@ -622,7 +622,8 @@ function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, s
           <button
             key={t.url}
             onClick={() => isMulti ? onToggle!(t.url, t.label, category) : onSelect(t.url, t.label, category)}
-            className="aspect-[3/4] relative rounded-xl overflow-hidden border-2 active:scale-95 transition touch-manipulation"
+            onDragStart={(e) => e.preventDefault()}
+            className="aspect-[3/4] relative rounded-xl overflow-hidden border-2 active:scale-95 transition touch-manipulation select-none"
             style={{
               background: "var(--gradient-card)",
               borderColor: isSelected ? "var(--primary)" : "rgba(255,255,255,0.1)",
@@ -635,7 +636,8 @@ function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, s
             <img
               src={t.url}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               onLoad={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
                 const placeholder = img.previousElementSibling as HTMLElement | null;
