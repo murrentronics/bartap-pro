@@ -9,7 +9,7 @@ import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
 import { useOffline } from "@/lib/OfflineProvider";
 import { OfflinePageGuard } from "@/components/OfflinePageGuard";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
@@ -316,9 +316,10 @@ export default function AppLayout() {
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
     : isManager ? [
-        // Manager: Items first, Customers, Expenses, Machines — no Bar, no Wallet
-        ...(ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }] : []),
-        ...(ownerHasBar ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }] : []),
+        // Manager: Items first, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
+        ...(ownerHasBar ? [{ to: "/products",    label: t("products_title", "Items"),       icon: Package      }] : []),
+        ...(ownerHasBar ? [{ to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList }] : []),
+        ...(ownerHasBar ? [{ to: "/credit",      label: t("customers_title", "Customers"),  icon: Receipt      }] : []),
         { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
       ]
@@ -326,8 +327,9 @@ export default function AppLayout() {
         ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
         ...(ownerHasBar ? [{ to: "/credit",   label: t("customers_title", "Customers"), icon: Receipt }] : []),
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
-        ...(isOwner && ownerHasBar ? [{ to: "/products", label: t("products_title", "Items"),    icon: Package  }] : []),
-        ...(isOwner && ownerHasBar ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
+        ...(isOwner && ownerHasBar ? [{ to: "/products",    label: t("products_title", "Items"),       icon: Package      }] : []),
+        ...(isOwner && ownerHasBar ? [{ to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList }] : []),
+        ...(isOwner && ownerHasBar ? [{ to: "/specials",    label: t("specials", "Specials"),           icon: Tag          }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
         ...(isOwner ? [{ to: "/summary",  label: t("summary", "Summary"),       icon: BarChart3 }] : []),

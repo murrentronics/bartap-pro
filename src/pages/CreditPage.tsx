@@ -176,8 +176,8 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
   y += 4;
   doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...ORANGE);
   doc.text("Balance Remaining:", LM, y);
-  doc.setTextColor(balance<=0?40:200, balance<=0?140:40, 40);
-  doc.text("$"+balance.toFixed(2), RM, y, { align:"right" });
+  doc.setTextColor(creditBalance<=0?40:200, creditBalance<=0?140:40, 40);
+  doc.text("$"+creditBalance.toFixed(2), RM, y, { align:"right" });
 
   addFootersToAllPages(doc);
   return doc.output("datauristring");

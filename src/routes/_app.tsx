@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2, TrendingDown } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, Receipt, Gamepad2, TrendingDown, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -264,17 +264,19 @@ function AppLayout() {
     ? [{ to: "/admin", label: "Users", icon: Users }]
     : isManager
     ? [
-        { to: "/products", label: "Items",   icon: Package     },
-        { to: "/manager",  label: "Manage",  icon: TrendingDown },
+        { to: "/products",     label: "Items",        icon: Package       },
+        { to: "/stock-check",  label: "Stock Check",  icon: ClipboardList },
+        { to: "/manager",      label: "Manage",       icon: TrendingDown  },
         ...(managerHasMachinesNav ? [{ to: "/machines", label: "Machines", icon: Gamepad2 }] : []),
       ]
     : [
-        { to: "/register", label: "Cashier",  icon: Wine },
-        { to: "/credit",   label: "Customers", icon: Receipt },
-        { to: "/machines", label: "Machines", icon: Gamepad2 },
-        ...(isOwner ? [{ to: "/products", label: "Items",    icon: Package  }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: "Staff",    icon: Users    }] : []),
-        { to: "/wallet",   label: "Wallet",   icon: Wallet },
+        { to: "/register",    label: "Cashier",      icon: Wine          },
+        { to: "/credit",      label: "Customers",    icon: Receipt       },
+        { to: "/machines",    label: "Machines",     icon: Gamepad2      },
+        ...(isOwner ? [{ to: "/products",    label: "Items",       icon: Package       }] : []),
+        ...(isOwner ? [{ to: "/stock-check", label: "Stock Check", icon: ClipboardList }] : []),
+        ...(isOwner ? [{ to: "/cashiers",    label: "Staff",       icon: Users         }] : []),
+        { to: "/wallet",      label: "Wallet",       icon: Wallet        },
       ];
 
   return (
