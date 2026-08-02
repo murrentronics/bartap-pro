@@ -1320,7 +1320,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   machine: Machine; screenNumber: number; ownerId: string;
 
 
-  profile: { id: string; username?: string; role?: string };
+  profile: { id: string; username?: string; role?: string; job_title?: string };
 
 
   floatSession: FloatSession | null;
@@ -1362,7 +1362,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const isCashier = profile.role === "cashier";
   const isOwner = profile.role === "owner";
-  const isManager = profile.role === "manager" || (profile as any).job_title === "manager";
+  const isManager = profile.role === "manager" || profile.job_title === "manager";
 
 
   const [tab, setTab] = useState<"payout" | "income" | "history" | "monitor">(initialTab ?? "payout");
@@ -2966,7 +2966,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
 
 
-          {([...(isOwner || isManager ? ["income"] : []), "payout", ...(isOwner || isManager ? ["history"] : []), ...(isOwner ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
+          {([...(isOwner || isManager ? ["income"] : []), "payout", ...(isOwner || isManager ? ["history"] : []), ...(isOwner || isManager ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
 
             <button key={tabKey} onClick={() => setTab(tabKey)}
@@ -7679,7 +7679,7 @@ export default function MachinesPage() {
           ownerId={ownerId}
 
 
-          profile={{ id: ownerId, username: profile.username ?? undefined, role: profile.role ?? undefined }}
+          profile={{ id: profile.id, username: profile.username ?? undefined, role: profile.role ?? undefined, job_title: (profile as any).job_title ?? undefined }}
 
 
           floatSession={floatSession}

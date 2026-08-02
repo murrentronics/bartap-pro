@@ -2357,7 +2357,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             }
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Siguiente →"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("next", "Next →")}
           </Button>
         </div>
       )}
