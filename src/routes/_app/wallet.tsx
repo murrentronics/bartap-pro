@@ -803,6 +803,11 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   const ccAmount   = ccParts.find(p => p.startsWith("$")) ?? "";
                   const ccBal      = ccParts.find(p => p.startsWith("Balance owed:")) ?? "";
                   const ccItems    = ccParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
+                  const ccDiscRaw  = ccParts.find(p => p.startsWith("Disc:")) ?? "";
+                  // parse "Disc: -$X.XX (orig $Y.YY)"
+                  const ccDiscMatch = ccDiscRaw.match(/Disc:\s*-\$?([\d.]+)(?:\s*\(orig\s*\$?([\d.]+)\))?/);
+                  const ccDiscAmt  = ccDiscMatch ? Number(ccDiscMatch[1]) : 0;
+                  const ccDiscOrig = ccDiscMatch?.[2] ? Number(ccDiscMatch[2]) : null;
                   return (
                     <div key={tx.id} className="rounded-xl p-4 border border-orange-500/30 flex items-start gap-3"
                       style={{ background: "oklch(0.20 0.04 45 / 0.30)" }}>
@@ -812,6 +817,17 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                         <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>{ccTitle}</div>
                         {ccItems && <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">{ccItems}</div>}
                         {ccAmount && <div className="text-sm font-black text-green-400 mt-0.5">{ccAmount}</div>}
+                        {ccDiscAmt > 0 && (
+                          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            {ccDiscOrig != null && (
+                              <span className="text-[9px] text-muted-foreground line-through">${fmt(ccDiscOrig)}</span>
+                            )}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                              style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                              -{fmt(ccDiscAmt)} off
+                            </span>
+                          </div>
+                        )}
                         {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
                       </div>
                       {/* credit_charge is always read-only — no amount shown */}
@@ -1361,6 +1377,10 @@ function OwnerStatement({ profile, onClose, chainBarIds }: { profile: { id: stri
                               const cashierPart = noteParts.find(p => p.startsWith("Cashier:")) ?? "";
                               const amountPart  = !isPayment ? (noteParts.find(p => p.startsWith("$")) ?? "") : "";
                               const itemsPart   = noteParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
+                              const discRaw     = noteParts.find(p => p.startsWith("Disc:")) ?? "";
+                              const discMatch   = discRaw.match(/Disc:\s*-\$?([\d.]+)(?:\s*\(orig\s*\$?([\d.]+)\))?/);
+                              const discAmt     = discMatch ? Number(discMatch[1]) : 0;
+                              const discOrig    = discMatch?.[2] ? Number(discMatch[2]) : null;
                               return (
                                 <div key={tx.id} className={`px-4 py-3 flex items-start gap-3 ${isPayment ? "bg-green-500/5" : "bg-orange-500/5"}`}>
                                   <span className="text-base shrink-0">{isPayment ? "💳" : "🪙"}</span>
@@ -1375,6 +1395,17 @@ function OwnerStatement({ profile, onClose, chainBarIds }: { profile: { id: stri
                                     )}
                                     {itemsPart && (
                                       <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">{itemsPart}</div>
+                                    )}
+                                    {discAmt > 0 && (
+                                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                        {discOrig != null && (
+                                          <span className="text-[9px] text-muted-foreground line-through">${fmt(discOrig)}</span>
+                                        )}
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                                          style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                          -{fmt(discAmt)} off
+                                        </span>
+                                      </div>
                                     )}
                                     {cashierPart && (
                                       <div className="text-xs text-muted-foreground mt-0.5">{cashierPart}</div>
@@ -2404,7 +2435,12 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 // Charge records: amount shown as "$X" part, items listed after "Items:"
                 const amountPart  = !isPayment ? (noteParts.find(p => p.startsWith("$")) ?? "") : "";
                 const itemsPart   = noteParts.find(p => p.startsWith("Items:"))?.replace("Items: ", "") ?? "";
-                const balOwedPart = noteParts.find(p => p.startsWith("Balance owed:")) ?? "";                return (
+                const balOwedPart = noteParts.find(p => p.startsWith("Balance owed:")) ?? "";
+                const discRaw     = noteParts.find(p => p.startsWith("Disc:")) ?? "";
+                const discMatch   = discRaw.match(/Disc:\s*-\$?([\d.]+)(?:\s*\(orig\s*\$?([\d.]+)\))?/);
+                const discAmt     = discMatch ? Number(discMatch[1]) : 0;
+                const discOrig    = discMatch?.[2] ? Number(discMatch[2]) : null;
+                return (
                   <div key={tx.id} className="rounded-xl p-4 border flex items-start gap-3"
                     style={{
                       borderColor: isPayment ? "rgba(34,197,94,0.3)" : "rgba(251,146,60,0.25)",
@@ -2434,6 +2470,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                       )}
                       {!isPayment && amountPart && (
                         <div className="text-sm font-black text-green-400 mt-0.5">{amountPart}</div>
+                      )}
+                      {discAmt > 0 && (
+                        <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          {discOrig != null && (
+                            <span className="text-[9px] text-muted-foreground line-through">${fmt(discOrig)}</span>
+                          )}
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                            style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                            -{fmt(discAmt)} off
+                          </span>
+                        </div>
                       )}
                       {balOwedPart && (
                         <div className="text-xs mt-0.5 font-semibold" style={{ color: "var(--primary)" }}>{balOwedPart}</div>

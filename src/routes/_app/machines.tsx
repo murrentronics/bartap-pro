@@ -3064,10 +3064,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Lifetime totals — owner only */}
           {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_income", "All Session Cash In")}
+            <SmallStat label={t("session_income", "Session Cash In")}
               value={"$" + fmtWhole(sessionIncome)}
               color="#86efac" />
-            <SmallStat label={t("session_payout", "All Session Payout")}
+            <SmallStat label={t("session_payout", "Session Payout")}
               value={"$" + fmtWhole(sessionPayouts)}
               color="#fca5a5" />
             <SmallStat label={t("session_profit", "Session Profit")}
@@ -3091,7 +3091,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
             <StatCard label={t("all_time_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-            <StatCard label={t("all_time_profit", "Gross Profit")}
+            <StatCard label={t("all_time_profit", "Profit")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -3118,7 +3118,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
-              {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"}
+              {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Meters"}
             </button>
 
           ))}
@@ -4959,13 +4959,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Title */}
         <div className="relative text-xs font-black uppercase tracking-widest text-center" style={{ color: "rgba(0,0,0,0.55)" }}>
-          {t("screen_totals", "Screen Totals")}
+          {t("screen_totals", "Machine Totals")}
         </div>
 
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_income", "All Session Cash In")} value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
-          <StatCard label={t("session_payout", "All Session Payout")} value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
+          <StatCard label={t("session_income", "Session Cash In")} value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
+          <StatCard label={t("session_payout", "Session Payout")} value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
           <StatCard label={t("session_profit", "Session Profit")}
             value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
             color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
@@ -4987,7 +4987,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <div className="relative grid grid-cols-3 gap-2">
           <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
           <StatCard label={t("all_machines_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-          <StatCard label={t("all_time_gross_profit", "Gross Profit")}
+          <StatCard label={t("all_time_gross_profit", "Profit")}
             value={(grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit)}
             color={grossProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>

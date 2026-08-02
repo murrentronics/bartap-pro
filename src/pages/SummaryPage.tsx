@@ -70,7 +70,7 @@ function aggregateItems(
       map.set(it.name, { qty: existing.qty + it.qty, revenue: existing.revenue + it.qty * it.price, costTotal: existing.costTotal + costUnits * costEach, category: cat });
     }
   }
-  return Array.from(map.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty);
+  return Array.from(map.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function isoToDate(iso: string) { return new Date(iso + "T00:00:00"); }

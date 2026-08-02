@@ -1473,7 +1473,7 @@ export default function ProductsPage() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="font-bold h-8" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-                <Plus className="h-4 w-4 mr-1" /> Add Item
+                +Receive
               </Button>
             </DialogTrigger>
             <AddItemDialog

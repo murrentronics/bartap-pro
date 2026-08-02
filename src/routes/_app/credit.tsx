@@ -88,9 +88,8 @@ async function printBill(account: CreditAccount, ownerName: string) {
 
   // ── Balance summary box ────────────────────────────────────────────────────
   const ORANGE = [232, 146, 42] as const;
-  const totalCharged = (txs ?? []).filter(t => t.type === "charge").reduce((s, t) => s + Number(t.amount), 0);
-  const totalPaid    = (txs ?? []).filter(t => t.type === "payment").reduce((s, t) => s + Number(t.amount), 0);
-  const balance      = Number(account.balance_owed);
+  const cashPurchases = (txs ?? []).filter(t => t.type === "charge").reduce((s, t) => s + Number(t.amount), 0);
+  const creditBalance = Number(account.balance_owed);
 
   doc.setFillColor(245, 240, 230);
   doc.roundedRect(LM, y, RM - LM, 22, 2, 2, "F");
@@ -99,11 +98,10 @@ async function printBill(account: CreditAccount, ownerName: string) {
   doc.roundedRect(LM, y, RM - LM, 22, 2, 2, "S");
 
   const cols = [
-    { label: "Total Charged", value: "$" + totalCharged.toFixed(2) },
-    { label: "Total Paid",    value: "$" + totalPaid.toFixed(2) },
-    { label: "Balance Remaining", value: "$" + balance.toFixed(2) },
+    { label: "Cash Purchases", value: "$" + cashPurchases.toFixed(2), red: false },
+    { label: "Credit Balance", value: "$" + creditBalance.toFixed(2), red: creditBalance > 0 },
   ];
-  const colW = (RM - LM) / 3;
+  const colW = (RM - LM) / 2;
   cols.forEach((col, i) => {
     const cx = LM + i * colW + colW / 2;
     doc.setFont("helvetica", "normal");
@@ -112,11 +110,7 @@ async function printBill(account: CreditAccount, ownerName: string) {
     doc.text(col.label, cx, y + 7, { align: "center" });
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    if (col.label === "Balance Remaining") {
-      doc.setTextColor(balance <= 0 ? 40 : 200, balance <= 0 ? 140 : 40, 40);
-    } else {
-      doc.setTextColor(30, 30, 30);
-    }
+    doc.setTextColor(col.red ? 200 : 30, col.red ? 40 : 30, 40);
     doc.text(col.value, cx, y + 17, { align: "center" });
   });
   doc.setTextColor(0, 0, 0);
@@ -162,26 +156,24 @@ async function printBill(account: CreditAccount, ownerName: string) {
     doc.setTextColor(0, 0, 0);
     y += 5;
 
-    // Items for charges — per-item table with name, qty, unit price, and total
+    // Items for charges — per-item table with name, qty, unit price, and row total
     if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
       if (y > CONTENT_BOTTOM - 8) { doc.addPage(); y = 20; }
 
       // Column x positions (LM=15, RM=195, width=180)
       const C_ITEM  = LM + 4;   // item name — left aligned
-      const C_QTY   = LM + 80;  // qty
-      const C_SALE  = LM + 110; // unit sale price
-      const C_COST  = LM + 148; // cost
+      const C_QTY   = LM + 100; // qty — right aligned
+      const C_PRICE = LM + 140; // unit price — right aligned
       const C_TOTAL = RM;       // row total — right edge
 
       // Sub-header
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
       doc.setTextColor(150, 150, 150);
-      doc.text("ITEM", C_ITEM, y);
-      doc.text("QTY", C_QTY, y, { align: "right" });
-      doc.text("SALE", C_SALE, y, { align: "right" });
-      doc.text("COST", C_COST, y, { align: "right" });
-      doc.text("PROFIT", C_TOTAL, y, { align: "right" });
+      doc.text("ITEM",  C_ITEM,  y);
+      doc.text("QTY",   C_QTY,   y, { align: "right" });
+      doc.text("PRICE", C_PRICE, y, { align: "right" });
+      doc.text("TOTAL", C_TOTAL, y, { align: "right" });
       y += 3.5;
       doc.setDrawColor(210, 210, 210);
       doc.setLineWidth(0.15);
@@ -189,7 +181,6 @@ async function printBill(account: CreditAccount, ownerName: string) {
       y += 3;
 
       let chargeTotal = 0;
-      let chargeCostTotal = 0;
 
       for (const it of tx.items as any[]) {
         if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
@@ -198,31 +189,18 @@ async function printBill(account: CreditAccount, ownerName: string) {
         const total = price * qty;
         chargeTotal += total;
 
-        // Resolve cost: stored cost_price first, then product lookup
-        const storedCost = Number(it.cost_price ?? 0);
-        const lookupCost = prodCostById.get(it.id ?? "") ?? prodCostByName.get(it.name ?? "") ?? 0;
-        const costEach   = storedCost > 0 ? storedCost : lookupCost;
-        const costTotal  = costEach * qty;
-        const rowProfit  = total - costTotal;
-        chargeCostTotal += costTotal;
-
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
         doc.setTextColor(30, 30, 30);
 
-        const nameStr = doc.splitTextToSize(it.name ?? "", 72)[0];
+        const nameStr = doc.splitTextToSize(it.name ?? "", 90)[0];
         doc.text(nameStr, C_ITEM, y);
         doc.text(String(qty), C_QTY, y, { align: "right" });
 
         doc.setTextColor(...ORANGE);
-        doc.text("$" + price.toFixed(2), C_SALE, y, { align: "right" });
-
-        doc.setTextColor(180, 40, 40);
-        doc.text(costEach > 0 ? "$" + costTotal.toFixed(2) : "—", C_COST, y, { align: "right" });
-
+        doc.text("$" + price.toFixed(2), C_PRICE, y, { align: "right" });
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(rowProfit >= 0 ? 40 : 180, rowProfit >= 0 ? 140 : 40, 40);
-        doc.text(costEach > 0 ? (rowProfit >= 0 ? "+" : "") + "$" + rowProfit.toFixed(2) : "—", C_TOTAL, y, { align: "right" });
+        doc.text("$" + total.toFixed(2), C_TOTAL, y, { align: "right" });
         doc.setTextColor(0, 0, 0);
 
         y += 4.5;
@@ -235,20 +213,12 @@ async function printBill(account: CreditAccount, ownerName: string) {
       doc.line(C_ITEM, y, RM, y);
       y += 3;
 
-      const subtotalProfit = chargeTotal - chargeCostTotal;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(80, 80, 80);
       doc.text("Subtotal", C_ITEM, y);
-
       doc.setTextColor(...ORANGE);
-      doc.text("$" + chargeTotal.toFixed(2), C_SALE, y, { align: "right" });
-
-      doc.setTextColor(180, 40, 40);
-      doc.text(chargeCostTotal > 0 ? "$" + chargeCostTotal.toFixed(2) : "—", C_COST, y, { align: "right" });
-
-      doc.setTextColor(subtotalProfit >= 0 ? 40 : 180, subtotalProfit >= 0 ? 140 : 40, 40);
-      doc.text(chargeCostTotal > 0 ? (subtotalProfit >= 0 ? "+" : "") + "$" + subtotalProfit.toFixed(2) : "—", C_TOTAL, y, { align: "right" });
+      doc.text("$" + chargeTotal.toFixed(2), C_TOTAL, y, { align: "right" });
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(8.5);
       y += 5;

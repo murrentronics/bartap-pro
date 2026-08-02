@@ -2431,12 +2431,13 @@ function CashOverlay({
     if (payMode === "credit" && selectedCustomer) {
       // ── Credit order ──────────────────────────────────────────────────
       const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
+      const discountNote = orderDiscount > 0 ? ` | Disc: -$${orderDiscount.toFixed(2)} (orig $${total.toFixed(2)})` : "";
       const creditPayload = {
         p_credit_account_id: selectedCustomer.id,
         p_cashier_id: profile.id,
         p_amount: discountedTotal,
         p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
-        p_note: itemsDesc,
+        p_note: itemsDesc + discountNote,
       };
       if (!isOnline) {
         await enqueue("rpc_record_credit_charge", creditPayload, groupId);
