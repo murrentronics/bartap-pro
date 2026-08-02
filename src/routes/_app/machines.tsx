@@ -2415,7 +2415,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       const cols = [
 
 
-        { label: "Total Expense", value: "-$" + fmt(totalPayout), r: 180, g: 40,  b: 40 },
+        { label: "Total Payout", value: "-$" + fmt(totalPayout), r: 180, g: 40,  b: 40 },
 
 
         { label: "Total Cash In", value: "+$" + fmt(totalIncome), r: 40,  g: 140, b: 40 },
@@ -2932,7 +2932,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <SmallStat label={t("session_income", "Session Cash In")}
               value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
               color="#86efac" />
-            <SmallStat label={t("session_payout", "Session Expense")}
+            <SmallStat label={t("session_payout", "Session Payout")}
               value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
               color="#fca5a5" />
             <SmallStat label={t("session_profit", "Session Profit")}
@@ -2944,7 +2944,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("today_income", "Today's Cash In")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-            <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+            <StatCard label={t("today_payout", "Today's Payout")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
             <StatCard label={t("today_profit", "Today's Profit")}
               value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
               color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
@@ -2955,7 +2955,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-            <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+            <StatCard label={t("all_time_payout", "Total Payout")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
             <StatCard label={t("all_time_profit", "Total Profit")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
@@ -4756,6 +4756,11 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
+        {/* Title */}
+        <div className="relative text-xs font-black uppercase tracking-widest text-center" style={{ color: "rgba(0,0,0,0.55)" }}>
+          All Screens Totals
+        </div>
+
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
           <StatCard label={t("session_income", "All Session Cash In")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
@@ -5320,7 +5325,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
     const cols = [
 
 
-      { label: "Total Expense", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
+      { label: "Total Payout", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
 
 
       { label: "Total Cash In", value: "+$" + fmt(mIncome), r: 40,  g: 140, b: 40 },
