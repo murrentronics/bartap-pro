@@ -541,7 +541,16 @@ export default function AppLayout() {
 
       <main className="max-w-2xl lg:max-w-4xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         <OfflinePageGuard>
-          <Outlet />
+          {/* Block outlet while a redirect is pending — prevents register flashing for managers */}
+          {(() => {
+            if (!loading && profile) {
+              const isManagerUser = profile.role === "manager" || (profile as any)?.job_title === "manager";
+              if (isManagerUser && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
+                return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+              }
+            }
+            return <Outlet />;
+          })()}
         </OfflinePageGuard>
       </main>
 
