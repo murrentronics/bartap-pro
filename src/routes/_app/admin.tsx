@@ -804,8 +804,7 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
         <img
           src={t.url}
           alt={label}
-          draggable={false}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
         {/* Saving indicator */}
