@@ -2447,6 +2447,7 @@ function CashOverlay({
       owner_id: ownerId, cashier_id: profile.id,
       items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
       total: discountedTotal, paid: paidNum, change_given: changeNum,
+      ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total } : {}),
     };
 
     if (!isOnline) {
@@ -2869,6 +2870,7 @@ function CashCustomerOverlay({
       total,
       paid: paidNum,
       change_given: changeNum,
+      ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total + orderDiscount } : {}),
     };
     const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");

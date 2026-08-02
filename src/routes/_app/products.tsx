@@ -1485,26 +1485,29 @@ export default function ProductsPage() {
                 }}
                 onBulkSelect={async (templates) => {
                   setOpen(false);
-                  // Insert stub products for each selected template, then open bulk edit
-                  const inserted: Product[] = [];
-                  for (const t of templates) {
-                    const { data, error } = await supabase
-                      .from("products")
-                      .insert({
-                        owner_id: ownerIdForQuery,
-                        name: t.label,
-                        image_url: t.url,
-                        category: t.category,
-                        price: 0,
-                        cost_price: 0,
-                        units_per_item: 0,
-                        bottle_variations: null,
-                        stock_qty: 0,
-                      })
-                      .select("*")
-                      .single();
-                    if (!error && data) inserted.push(data as Product);
-                  }
+                  // Insert all stub products in parallel, then open bulk edit immediately
+                  const results = await Promise.all(
+                    templates.map((t) =>
+                      supabase
+                        .from("products")
+                        .insert({
+                          owner_id: ownerIdForQuery,
+                          name: t.label,
+                          image_url: t.url,
+                          category: t.category,
+                          price: 0,
+                          cost_price: 0,
+                          units_per_item: 0,
+                          bottle_variations: null,
+                          stock_qty: 0,
+                        })
+                        .select("*")
+                        .single()
+                    )
+                  );
+                  const inserted = results
+                    .filter(({ error }) => !error)
+                    .map(({ data }) => data as Product);
                   if (inserted.length > 0) {
                     setItems((prev) => [...prev, ...inserted]);
                     setBulkAddItems(inserted);

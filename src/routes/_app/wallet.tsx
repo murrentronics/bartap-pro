@@ -25,6 +25,8 @@ type Order = {
   total: number;
   paid: number;
   change_given: number;
+  discount_amount?: number;
+  original_total?: number;
   items: { name: string; qty: number; price: number; discount?: number; original_price?: number }[];
   created_at: string;
 };
@@ -840,6 +842,17 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                         </span>
                       ))}
                     </div>
+                    {o.discount_amount != null && Number(o.discount_amount) > 0 && (
+                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        {o.original_total != null && (
+                          <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(o.original_total))}</span>
+                        )}
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                          style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                          -{fmt(Number(o.discount_amount))} off
+                        </span>
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                     </div>
@@ -1155,6 +1168,15 @@ function OwnerStatement({ profile, onClose, chainBarIds }: { profile: { id: stri
           doc.text(wrapped, LM, y); y += wrapped.length * 4.5 + 1;
           doc.setTextColor(100, 100, 100);
           doc.text("  Paid $" + Number(o.paid).toFixed(2) + "   Change $" + Number(o.change_given).toFixed(2), LM, y);
+          if (o.discount_amount && Number(o.discount_amount) > 0) {
+            y += 4;
+            doc.setTextColor(180, 130, 10);
+            doc.text(
+              "  Order discount: -$" + Number(o.discount_amount).toFixed(2) +
+              (o.original_total ? "  (was $" + Number(o.original_total).toFixed(2) + ")" : ""),
+              LM, y
+            );
+          }
           doc.setTextColor(0, 0, 0); y += 4;
           doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.1); doc.line(LM, y, RM, y); y += 4;
         } else {
@@ -1400,6 +1422,17 @@ function OwnerStatement({ profile, onClose, chainBarIds }: { profile: { id: stri
                                   </span>
                                 ))}
                               </div>
+                              {o.discount_amount != null && Number(o.discount_amount) > 0 && (
+                                <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                  {o.original_total != null && (
+                                    <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(o.original_total))}</span>
+                                  )}
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                                    style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                                    -{fmt(Number(o.discount_amount))} off
+                                  </span>
+                                </div>
+                              )}
                               <div className="mt-0.5 text-xs text-muted-foreground">
                                 Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                               </div>
@@ -2455,6 +2488,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                             </span>
                           ))}
                         </div>
+                        {o.discount_amount != null && Number(o.discount_amount) > 0 && (
+                          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            {o.original_total != null && (
+                              <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(o.original_total))}</span>
+                            )}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                              style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                              -{fmt(Number(o.discount_amount))} off
+                            </span>
+                          </div>
+                        )}
                         <div className="text-xs text-muted-foreground mt-0.5">
                           Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                         </div>
@@ -2617,6 +2661,17 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                       </span>
                     ))}
                   </div>
+                  {o.discount_amount != null && Number(o.discount_amount) > 0 && (
+                    <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      {o.original_total != null && (
+                        <span className="text-[9px] text-muted-foreground line-through">${fmt(Number(o.original_total))}</span>
+                      )}
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                        style={{ background: "rgba(251,191,36,0.2)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)" }}>
+                        -{fmt(Number(o.discount_amount))} off
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                   </div>

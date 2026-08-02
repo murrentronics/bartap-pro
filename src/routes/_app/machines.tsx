@@ -2911,16 +2911,16 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-2 gap-2">
 
 
-            <SmallStat label={t("session_float", "Float Establecido")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+            <SmallStat label={t("session_float", "Float Establecido")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "$0"} color="#fbbf24" />
 
 
             <SmallStat label={t("remaining", "Restante")}
 
 
-              value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
+              value={(remainingFloat === null ? 0 : remainingFloat) >= 0 ? "" + "$" + fmtWhole(Math.abs(remainingFloat ?? 0)) : "-$" + fmtWhole(Math.abs(remainingFloat ?? 0))}
 
 
-              color={remainingFloat === null ? "oklch(0.45 0.02 60)" : remainingFloat >= 0 ? "#86efac" : "#fca5a5"} />
+              color={(remainingFloat ?? 0) >= 0 ? "#86efac" : "#fca5a5"} />
 
 
           </div>
@@ -2930,24 +2930,24 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
             <SmallStat label={t("session_income", "Ingreso de Sesión")}
-              value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
+              value={"$" + fmtWhole(sessionIncome)}
               color="#86efac" />
             <SmallStat label={t("session_payout", "Pago de Sesión")}
-              value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
+              value={"$" + fmtWhole(sessionPayouts)}
               color="#fca5a5" />
             <SmallStat label={t("session_profit", "Ganancia de Sesión")}
-              value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
-              color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+              value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
+              color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
 
           {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("today_income", "Ingreso de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-            <StatCard label={t("today_payout", "Pago de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+            <StatCard label={t("today_income", "Ingreso de Hoy")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
+            <StatCard label={t("today_payout", "Pago de Hoy")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
             <StatCard label={t("today_profit", "Ganancia de Hoy")}
-              value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
-              color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
+              value={(todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit)}
+              color={todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
           )}
 
@@ -4763,21 +4763,21 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_income", "Ingreso de Sesión")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
-          <StatCard label={t("session_payout", "Pago de Sesión")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("session_income", "Ingreso de Sesión")} value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
+          <StatCard label={t("session_payout", "Pago de Sesión")} value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
           <StatCard label={t("session_profit", "Ganancia de Sesión")}
-            value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
-            color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
+            value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
+            color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
 
         {/* Row 2 — Today's stats — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("today_income", "Ingreso de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-          <StatCard label={t("today_payout", "Pago de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("today_income", "Ingreso de Hoy")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
+          <StatCard label={t("today_payout", "Pago de Hoy")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
           <StatCard label={t("today_profit", "Ganancia de Hoy")}
-            value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
-            color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
+            value={(todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit)}
+            color={todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
         )}
 
