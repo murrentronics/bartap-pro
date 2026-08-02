@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-DklmIEK8.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, l as useTranslation, s as supabase, m as ChevronRight, i as LoaderCircle, P as Pencil, n as CircleCheck, L as Label, I as Input, B as Button, X, k as Trash2, t as toast, o as drawHeader, p as LM, q as RM, r as CONTENT_BOTTOM, v as addFootersToAllPages, w as downloadPdf } from "./router-BW3vb4yu.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-Cy59YT7_.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, q as useTranslation, s as supabase, w as ChevronRight, o as LoaderCircle, r as Pencil, x as CircleCheck, L as Label, I as Input, B as Button, X, v as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, F as downloadPdf } from "./router-BVkVTQ1g.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -61,7 +61,7 @@ async function printBill(account, ownerName) {
   const prodCostByName = new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-DI9pno1V.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-D08al7de.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -385,7 +385,7 @@ function CreditPage() {
       background: "var(--gradient-card)"
     }, children: ["credit", "cleared", ...profile?.role !== "manager" && profile?.job_title !== "manager" ? ["create"] : []].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setTab(tabKey), className: `flex-1 py-2.5 rounded-xl text-sm font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`, style: tab === tabKey ? {
       background: "var(--gradient-hero)"
-    } : {}, children: tabKey === "credit" ? `Open Tabs${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create" }, tabKey)) }),
+    } : {}, children: tabKey === "credit" ? `Abiertos${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cerrados" : "Crear" }, tabKey)) }),
     tab === "credit" && /* @__PURE__ */ jsxRuntimeExports.jsx(OpenedTab, { accounts: opened, loading, ownerName, onSelect: setPayAccount, onEdit: setEditAccount }),
     tab === "cleared" && /* @__PURE__ */ jsxRuntimeExports.jsx(ClosedTab, { accounts: closed, loading, ownerName, onEdit: setEditAccount, ownerId }),
     tab === "create" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreateTab, { ownerId, onCreated: handleCreated }),
@@ -409,7 +409,7 @@ function OpenedTab({
   if (loading) return /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {});
   if (accounts.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-16 text-muted-foreground", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-semibold", children: "No open tabs" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-semibold", children: "No hay cuentas abiertas" })
   ] });
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: accounts.map((a) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full rounded-2xl border border-border text-left overflow-hidden", style: {
     background: "var(--gradient-card)"
@@ -432,33 +432,30 @@ function OpenedTab({
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-4 w-4 text-muted-foreground" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-end gap-1.5", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: async () => {
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: async () => {
           setPrinting(a.id);
           await printBill(a, ownerName);
           setPrinting(null);
           setPrinted(a.id);
           setTimeout(() => setPrinted(null), 5e3);
-        }, disabled: printing === a.id, className: "flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50", style: printed === a.id ? {
+        }, disabled: printing === a.id, className: "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50", style: printed === a.id ? {
           background: "#16a34a",
-          color: "#fff",
           border: "1px solid #16a34a"
         } : {
-          background: "rgba(251,146,60,0.12)",
-          color: "var(--primary)",
-          border: "1px solid rgba(251,146,60,0.25)"
-        }, children: [
-          printing === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : printed === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-3 w-3", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-3 w-3" }),
-          printed === a.id ? "Done" : "Bill"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => onEdit(a), className: "flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95", style: {
-          background: "rgba(251,146,60,0.12)",
-          color: "var(--primary)",
-          border: "1px solid rgba(251,146,60,0.25)"
-        }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-3 w-3" }),
-          "Edit"
-        ] })
+          background: "rgba(251,146,60,0.15)",
+          border: "1px solid rgba(251,146,60,0.35)"
+        }, title: "Print Bill", children: printing === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin", style: {
+          color: "var(--primary)"
+        } }) : printed === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-4 w-4 text-white", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-4 w-4", style: {
+          color: "var(--primary)"
+        } }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onEdit(a), className: "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition", style: {
+          background: "rgba(251,146,60,0.15)",
+          border: "1px solid rgba(251,146,60,0.35)"
+        }, title: "Edit customer", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-4 w-4", style: {
+          color: "var(--primary)"
+        } }) })
       ] })
     ] })
   ] }, a.id)) });
@@ -485,7 +482,7 @@ function ClosedTab({
   if (loading) return /* @__PURE__ */ jsxRuntimeExports.jsx(Spinner, {});
   if (accounts.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-16 text-muted-foreground", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-semibold", children: "No cleared customers yet" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-semibold", children: "Sin clientes pagados aún" })
   ] });
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: accounts.map((a) => {
     const hasCashPurchase = cashAccounts.has(a.id);
@@ -511,34 +508,31 @@ function ClosedTab({
         } }) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-2.5", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10", children: "Cleared" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-end gap-1.5", children: [
-          hasCashPurchase && /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: async () => {
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10", children: "Pagado" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          hasCashPurchase && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: async () => {
             setPrinting(a.id);
             await printBill(a, ownerName);
             setPrinting(null);
             setPrinted(a.id);
             setTimeout(() => setPrinted(null), 5e3);
-          }, disabled: printing === a.id, className: "flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95 disabled:opacity-50", style: printed === a.id ? {
+          }, disabled: printing === a.id, className: "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50", style: printed === a.id ? {
             background: "#16a34a",
-            color: "#fff",
             border: "1px solid #16a34a"
           } : {
-            background: "rgba(251,146,60,0.12)",
-            color: "var(--primary)",
-            border: "1px solid rgba(251,146,60,0.25)"
-          }, children: [
-            printing === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : printed === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-3 w-3", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-3 w-3" }),
-            printed === a.id ? "Done" : "Bill"
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => onEdit(a), className: "flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition active:scale-95", style: {
-            background: "rgba(251,146,60,0.12)",
-            color: "var(--primary)",
-            border: "1px solid rgba(251,146,60,0.25)"
-          }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-3 w-3" }),
-            "Edit"
-          ] })
+            background: "rgba(251,146,60,0.15)",
+            border: "1px solid rgba(251,146,60,0.35)"
+          }, title: "Print Bill", children: printing === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin", style: {
+            color: "var(--primary)"
+          } }) : printed === a.id ? /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: "h-4 w-4 text-white", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "20 6 9 17 4 12" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-4 w-4", style: {
+            color: "var(--primary)"
+          } }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onEdit(a), className: "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition", style: {
+            background: "rgba(251,146,60,0.15)",
+            border: "1px solid rgba(251,146,60,0.35)"
+          }, title: "Edit customer", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-4 w-4", style: {
+            color: "var(--primary)"
+          } }) })
         ] })
       ] })
     ] }, a.id);

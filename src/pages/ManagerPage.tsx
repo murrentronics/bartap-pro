@@ -6,7 +6,10 @@ import { toast } from "sonner";
 import {
   Loader2, TrendingDown, X, Settings2, Pencil, Trash2,
   AlertTriangle, Clock, LogIn, LogOut, ChevronDown, LayoutGrid,
+  FileDown, Users, CalendarDays,
 } from "lucide-react";
+import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Expense = {
@@ -1048,12 +1051,69 @@ function MgrCalendar({ workedDates, selectedDate, onSelect }: {
 }
 
 
+// ─── Timesheet PDF (manager) ──────────────────────────────────────────────────
+async function downloadTimesheetPdf(
+  cards: TimeCard[],
+  staffName: string | null,
+  periodLabel: string,
+  businessName: string,
+) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const generated = new Date().toLocaleString("en-US", { timeZone: "America/Port_of_Spain", dateStyle: "medium", timeStyle: "short" });
+  let y = await drawHeader(doc, businessName, "Timesheet Report", periodLabel, generated);
+
+  // Group by employee then by date
+  const byEmp: Record<string, { name: string; cards: TimeCard[] }> = {};
+  cards.forEach(tc => {
+    if (!byEmp[tc.employee_id]) byEmp[tc.employee_id] = { name: tc.employee_name, cards: [] };
+    byEmp[tc.employee_id].cards.push(tc);
+  });
+
+  const BRAND = [232, 146, 42] as [number, number, number];
+
+  for (const { name, cards: empCards } of Object.values(byEmp)) {
+    // Employee header
+    if (y + 10 > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+    doc.setFillColor(232, 146, 42, 0.15);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...BRAND);
+    doc.text(name.toUpperCase(), LM, y + 4);
+    y += 8;
+
+    let empTotalMins = 0;
+    for (const tc of empCards) {
+      const inTime = new Date(tc.clocked_in_at).toLocaleString("en-US", { timeZone: "America/Port_of_Spain", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+      const outTime = tc.clocked_out_at ? new Date(tc.clocked_out_at).toLocaleTimeString("en-US", { timeZone: "America/Port_of_Spain", hour: "numeric", minute: "2-digit", hour12: true }) : "On shift";
+      const mins = tc.clocked_out_at ? Math.max(0, Math.round((new Date(tc.clocked_out_at).getTime() - new Date(tc.clocked_in_at).getTime()) / 60000)) : 0;
+      empTotalMins += mins;
+      const dur = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+      if (y + 7 > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(40, 40, 40);
+      doc.text(`${inTime}  →  ${outTime}`, LM + 3, y + 3);
+      doc.text(dur, RM, y + 3, { align: "right" });
+      doc.setDrawColor(220, 220, 220); doc.line(LM, y + 6, RM, y + 6);
+      y += 7;
+    }
+    // Employee total
+    const totalH = Math.floor(empTotalMins / 60); const totalM = empTotalMins % 60;
+    const totalStr = empTotalMins < 60 ? `${empTotalMins}m` : `${totalH}h ${totalM}m`;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(...BRAND);
+    doc.text(`Total: ${totalStr}`, RM, y + 3, { align: "right" });
+    y += 9;
+  }
+
+  addFootersToAllPages(doc);
+  const safeName = (staffName ?? "all-staff").replace(/\s+/g, "-").toLowerCase();
+  await downloadPdf(`timesheet-${safeName}-${periodLabel.replace(/\s+/g, "-")}.pdf`, doc.output("datauristring"));
+}
+
 // ─── Time Cards Tab ───────────────────────────────────────────────────────────
 export function TimeCardsTab({ profile, ownerId, managerName }: {
   profile: { id: string; username?: string | null; wallet_balance: number };
   ownerId: string; managerName: string;
 }) {
   const sb = supabase as any;
+  const [tcSubTab, setTcSubTab] = useState<"clock" | "timesheets">("clock");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [empLoading, setEmpLoading] = useState(true);
 
@@ -1090,12 +1150,17 @@ export function TimeCardsTab({ profile, ownerId, managerName }: {
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, loadTimeCards]);
 
+  // Clock sub-tab state
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [clockBusy, setClockBusy] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [showCal, setShowCal] = useState(false);
   const [openDate, setOpenDate] = useState<string | null>(null);
-
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
+  const [tsSelectedDate, setTsSelectedDate] = useState<string | null>(null);
+  const [tsShowCal, setTsShowCal] = useState(false);
+  const [tsPeriod, setTsPeriod] = useState<"day" | "week" | "month" | "year">("day");
+  const [tsStaffEmp, setTsStaffEmp] = useState<Employee | null>(null);
+  const [tsShowStaffPicker, setTsShowStaffPicker] = useState(false);
+  const [tsPdfBusy, setTsPdfBusy] = useState(false);
   const openCard = selectedEmp ? timeCards.find(tc => tc.employee_id === selectedEmp.id && !tc.clocked_out_at) ?? null : null;
   const isClockedIn = !!openCard;
   const workedDates = new Set(timeCards.map(tc => tc.work_date));
@@ -1111,7 +1176,6 @@ export function TimeCardsTab({ profile, ownerId, managerName }: {
     if (error) { toast.error(error.message); return; }
     toast.success(`${selectedEmp.username} clocked in`); loadTimeCards();
   };
-
   const handleClockOut = async () => {
     if (!openCard) return;
     setClockBusy(true);
@@ -1120,185 +1184,320 @@ export function TimeCardsTab({ profile, ownerId, managerName }: {
     if (error) { toast.error(error.message); return; }
     toast.success(`${openCard.employee_name} clocked out`); loadTimeCards();
   };
-
   function roleLabel(emp: Employee) {
     if (emp.role === "manager") return "Manager";
     if (emp.role === "custom" && emp.job_title) return emp.job_title;
     return "Cashier";
   }
 
-  const DatePicker = () => (
-    <div className="space-y-2">
-      <button onClick={() => setShowCal(v => !v)}
-        className="w-full h-10 rounded-xl font-black text-sm flex items-center justify-center gap-2 border transition active:scale-[0.98]"
-        style={selectedDate
-          ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
-          : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
-        <Clock className="h-4 w-4" />
-        {selectedDate
-          ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-          : "Pick a Date"}
-      </button>
-      {showCal && <MgrCalendar workedDates={workedDates} selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setShowCal(false); }} />}
-    </div>
-  );
+  // ── Timesheets filter helpers ──────────────────────────────────────────────
+  function getTsFilteredCards(): TimeCard[] {
+    const base = tsStaffEmp ? timeCards.filter(tc => tc.employee_id === tsStaffEmp.id) : timeCards;
+    if (!tsSelectedDate) return base;
+    const ref = new Date(tsSelectedDate + "T12:00:00");
+    if (tsPeriod === "day") return base.filter(tc => tc.work_date === tsSelectedDate);
+    if (tsPeriod === "week") {
+      const dow = ref.getDay();
+      const start = new Date(ref); start.setDate(ref.getDate() - dow);
+      const end   = new Date(ref); end.setDate(ref.getDate() + (6 - dow));
+      const s = start.toLocaleDateString("en-CA"); const e = end.toLocaleDateString("en-CA");
+      return base.filter(tc => tc.work_date >= s && tc.work_date <= e);
+    }
+    if (tsPeriod === "month") { const ym = tsSelectedDate.slice(0, 7); return base.filter(tc => tc.work_date.startsWith(ym)); }
+    if (tsPeriod === "year")  { const yr = tsSelectedDate.slice(0, 4); return base.filter(tc => tc.work_date.startsWith(yr)); }
+    return base;
+  }
+  function getTsPeriodLabel(): string {
+    if (!tsSelectedDate) return "All Time";
+    const ref = new Date(tsSelectedDate + "T12:00:00");
+    if (tsPeriod === "day") return ref.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    if (tsPeriod === "week") {
+      const dow = ref.getDay();
+      const start = new Date(ref); start.setDate(ref.getDate() - dow);
+      const end   = new Date(ref); end.setDate(ref.getDate() + (6 - dow));
+      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    }
+    if (tsPeriod === "month") return ref.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    if (tsPeriod === "year")  return String(ref.getFullYear());
+    return "All Time";
+  }
+  const tsFilteredCards = getTsFilteredCards();
+  const tsPeriodLabel   = getTsPeriodLabel();
+  const tsByDate: Record<string, TimeCard[]> = {};
+  tsFilteredCards.forEach(tc => { if (!tsByDate[tc.work_date]) tsByDate[tc.work_date] = []; tsByDate[tc.work_date].push(tc); });
+  const tsSortedDates = Object.keys(tsByDate).sort((a, b) => b.localeCompare(a));
 
+  return (
+    <div className="space-y-3">
+      {/* Clock / Timesheets tabs */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+        {(["clock","timesheets"] as const).map(t => (
+          <button key={t} onClick={() => setTcSubTab(t)}
+            className="h-9 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
+            style={tcSubTab === t ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { color: "var(--muted-foreground)" }}>
+            {t === "clock" ? <><Clock className="h-3.5 w-3.5" /> Clock</> : <><CalendarDays className="h-3.5 w-3.5" /> Timesheets</>}
+          </button>
+        ))}
+      </div>
 
-  if (!selectedEmp) {
-    const filtered = selectedDate ? timeCards.filter(tc => tc.work_date === selectedDate) : timeCards;
-    const byDate: Record<string, TimeCard[]> = {};
-    filtered.forEach(tc => { if (!byDate[tc.work_date]) byDate[tc.work_date] = []; byDate[tc.work_date].push(tc); });
-    const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
-    return (
-      <div className="space-y-4">
-        <DatePicker />
-        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Select Employee</p>
-        {empLoading
-          ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl h-16 bg-muted/30 animate-pulse" />)}</div>
-          : employees.length === 0
-          ? <div className="text-center py-10 text-muted-foreground text-sm">No staff found.</div>
-          : (
-            <div className="space-y-2">
-              {employees.map(emp => {
+      {/* ══ CLOCK TAB ══════════════════════════════════════════════════════ */}
+      {tcSubTab === "clock" && (
+        <div className="space-y-3">
+          {empLoading
+            ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-2xl h-16 bg-muted/30 animate-pulse" />)}</div>
+            : employees.length === 0
+            ? <div className="text-center py-10 text-muted-foreground text-sm">No staff found.</div>
+            : employees.map(emp => {
                 const empOpen = timeCards.find(tc => tc.employee_id === emp.id && !tc.clocked_out_at);
+                const isSel = selectedEmp?.id === emp.id;
+                const isCIn = isSel && isClockedIn;
                 return (
-                  <button key={emp.id} onClick={() => setSelectedEmp(emp)}
+                  <button key={emp.id} onClick={() => setSelectedEmp(isSel ? null : emp)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] text-left"
-                    style={{ background: "var(--gradient-card)", borderColor: empOpen ? "#86efac" : "var(--border)", boxShadow: empOpen ? "0 0 0 1px rgba(134,239,172,0.3)" : undefined }}>
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
+                    style={{ background: isSel ? (isCIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.06)") : "var(--gradient-card)",
+                      borderColor: empOpen ? "#86efac" : isSel ? "rgba(239,68,68,0.4)" : "var(--border)" }}>
+                    <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
                       style={{ background: empOpen ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: empOpen ? "#86efac" : "var(--primary)" }}>
                       {emp.username.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-sm truncate">{emp.username}</p>
                       <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
+                      {isSel && empOpen && <p className="text-[10px] mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>Since {fmtTime(empOpen.clocked_in_at)} · {fmtDuration(empOpen.clocked_in_at, null)} on shift</p>}
                     </div>
                     {empOpen
-                      ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Clocked In</span>
-                      : <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Out</span>}
+                      ? <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Clocked In</span>
+                      : <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Out</span>}
                   </button>
                 );
               })}
+          {selectedEmp && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
+                className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
+              </button>
+              <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
+                className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={isClockedIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
+              </button>
             </div>
           )}
-        <div className="space-y-2 pt-2">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">All Time Cards</p>
+        </div>
+      )}
+
+      {/* ══ TIMESHEETS TAB ═════════════════════════════════════════════════ */}
+      {tcSubTab === "timesheets" && (
+        <div className="space-y-3">
+          {/* Filter row: date picker + staff picker + PDF button */}
+          <div className="flex gap-2 items-center">
+            <button onClick={() => setTsShowCal(v => !v)}
+              className="flex-1 h-10 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 border transition active:scale-[0.98] truncate"
+              style={tsSelectedDate
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+                : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{tsSelectedDate ? new Date(tsSelectedDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Pick Date"}</span>
+            </button>
+            <button onClick={() => setTsShowStaffPicker(v => !v)}
+              className="h-10 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 border transition active:scale-95 shrink-0"
+              style={tsStaffEmp
+                ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+                : { background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+              <Users className="h-3.5 w-3.5" />
+              <span className="max-w-[72px] truncate">{tsStaffEmp ? tsStaffEmp.username : "Staff"}</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (tsPdfBusy) return;
+                setTsPdfBusy(true);
+                try { await downloadTimesheetPdf(tsFilteredCards, tsStaffEmp?.username ?? null, tsPeriodLabel, managerName); }
+                catch { toast.error("PDF failed"); }
+                setTsPdfBusy(false);
+              }}
+              disabled={tsPdfBusy || tsFilteredCards.length === 0}
+              className="h-10 w-10 rounded-xl flex items-center justify-center border transition active:scale-95 disabled:opacity-40 shrink-0"
+              style={{ background: "var(--gradient-card)", borderColor: "var(--border)", color: "var(--primary)" }}>
+              {tsPdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            </button>
+          </div>
+
+          {/* Calendar popup */}
+          {tsShowCal && (
+            <MgrCalendar workedDates={workedDates} selectedDate={tsSelectedDate}
+              onSelect={d => { setTsSelectedDate(d); setTsShowCal(false); }} />
+          )}
+
+          {/* Staff picker popup */}
+          {tsShowStaffPicker && (
+            <div className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+              <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+                <p className="font-black text-xs text-muted-foreground uppercase tracking-widest">Select Staff</p>
+                <button onClick={() => setTsShowStaffPicker(false)} className="text-xs font-black text-muted-foreground hover:text-foreground">✕</button>
+              </div>
+              <div className="divide-y divide-border/50">
+                <button onClick={() => { setTsStaffEmp(null); setTsShowStaffPicker(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition"
+                  style={{ background: !tsStaffEmp ? "rgba(251,146,60,0.08)" : undefined }}>
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="font-black text-sm flex-1">All Staff</p>
+                  {!tsStaffEmp && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>Selected</span>}
+                </button>
+                {employees.map(emp => (
+                  <button key={emp.id} onClick={() => { setTsStaffEmp(emp); setTsShowStaffPicker(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/20 transition"
+                    style={{ background: tsStaffEmp?.id === emp.id ? "rgba(251,146,60,0.08)" : undefined }}>
+                    <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-black text-xs" style={{ background: "rgba(255,255,255,0.06)", color: "var(--primary)" }}>
+                      {emp.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm truncate">{emp.username}</p>
+                      <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
+                    </div>
+                    {tsStaffEmp?.id === emp.id && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>Selected</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Week / Month / Year / Day period pickers — only shown when a date is selected */}
+          {tsSelectedDate && (
+            <div className="flex gap-1.5">
+              {(["day","week","month","year"] as const).map(p => (
+                <button key={p} onClick={() => setTsPeriod(p)}
+                  className="flex-1 h-8 rounded-xl font-black text-[11px] transition active:scale-95 capitalize"
+                  style={tsPeriod === p
+                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                    : { background: "var(--gradient-card)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Active filter badges */}
+          {(tsSelectedDate || tsStaffEmp) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {tsSelectedDate && (
+                <span className="text-[11px] font-black px-2.5 py-1 rounded-full" style={{ background: "rgba(251,146,60,0.12)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}>
+                  {tsPeriodLabel}
+                </span>
+              )}
+              {tsStaffEmp && (
+                <span className="text-[11px] font-black px-2.5 py-1 rounded-full" style={{ background: "rgba(134,239,172,0.1)", color: "#86efac", border: "1px solid rgba(134,239,172,0.3)" }}>
+                  {tsStaffEmp.username}
+                </span>
+              )}
+              <button onClick={() => { setTsSelectedDate(null); setTsStaffEmp(null); setTsPeriod("day"); setTsShowCal(false); }}
+                className="text-[11px] font-black text-muted-foreground hover:text-foreground transition">Clear ✕</button>
+            </div>
+          )}
+
+          {/* Records — Month accordion → Day rows → Employee entries */}
           {tcLoading
             ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}</div>
-            : dates.length === 0
-            ? <div className="text-center py-8 text-muted-foreground text-sm">{selectedDate ? "No records for this day." : "No time cards recorded yet."}</div>
-            : dates.map(d => {
-                const cards = byDate[d];
-                const isOpen = openDate === d;
-                const active = cards.filter(c => !c.clocked_out_at).length;
-                const dl = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-                return (
-                  <div key={d} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-                    <button type="button" onClick={() => setOpenDate(isOpen ? null : d)}
-                      className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-muted/20">
-                      <div className="text-left">
-                        <p className="font-black text-sm">{dl}</p>
-                        <p className="text-xs text-muted-foreground">{cards.length} record{cards.length !== 1 ? "s" : ""}{active > 0 && <span className="text-green-400 ml-1">· {active} active</span>}</p>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    {isOpen && (
-                      <div className="border-t border-border divide-y divide-border/40">
-                        {cards.map(tc => (
-                          <div key={tc.id} className="px-4 py-3 flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-black text-xs" style={{ background: "rgba(255,255,255,0.06)" }}>
-                              {tc.employee_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-black text-sm truncate">{tc.employee_name}</p>
-                              <div className="flex items-center gap-1.5 text-xs mt-0.5 flex-wrap">
-                                <LogIn className="h-3 w-3 text-green-400 shrink-0" />
-                                <span className="text-green-400 font-bold">{fmtTime(tc.clocked_in_at)}</span>
-                                {tc.clocked_out_at
-                                  ? <><span className="text-muted-foreground/40">→</span><LogOut className="h-3 w-3 text-red-400 shrink-0" /><span className="text-red-400 font-bold">{new Date(tc.clocked_out_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) !== new Date(tc.clocked_in_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) && <span className="text-[10px] font-black mr-0.5 opacity-80">{new Date(tc.clocked_out_at).toLocaleDateString("en-US", { timeZone: "America/Port_of_Spain", month: "short", day: "numeric" })} </span>}{fmtTime(tc.clocked_out_at)}</span><span className="text-muted-foreground">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span></>
-                                  : <span className="text-green-400 font-semibold">· Still on shift</span>}
+            : tsSortedDates.length === 0
+            ? <div className="text-center py-12 text-muted-foreground text-sm">No records match these filters.</div>
+            : (() => {
+                // Group days into months
+                const byMonth: Record<string, string[]> = {};
+                tsSortedDates.forEach(d => {
+                  const mk = d.slice(0, 7);
+                  if (!byMonth[mk]) byMonth[mk] = [];
+                  byMonth[mk].push(d);
+                });
+                const sortedMonths = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+                return sortedMonths.map(mk => {
+                  const mDays = byMonth[mk];
+                  const mLabel = new Date(mk + "-01T12:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+                  const mMins  = mDays.reduce((s, d) => s + tsByDate[d].reduce((ss, tc) => {
+                    const out = tc.clocked_out_at ? new Date(tc.clocked_out_at) : new Date();
+                    return ss + Math.max(0, Math.round((out.getTime() - new Date(tc.clocked_in_at).getTime()) / 60000));
+                  }, 0), 0);
+                  const mHM    = mMins < 60 ? `${mMins}m` : `${Math.floor(mMins / 60)}h ${mMins % 60}m`;
+                  const mOpen  = openMonth === mk;
+                  const mActive = mDays.some(d => tsByDate[d].some(tc => !tc.clocked_out_at));
+                  return (
+                    <div key={mk} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                      {/* Month header */}
+                      <button type="button" onClick={() => setOpenMonth(mOpen ? null : mk)}
+                        className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-muted/20">
+                        <div className="text-left">
+                          <p className="font-black text-sm">{mLabel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {mDays.length} day{mDays.length !== 1 ? "s" : ""}
+                            {mActive && <span className="text-green-400 ml-1">· active</span>}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-xs" style={{ color: "var(--primary)" }}>{mHM}</span>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${mOpen ? "rotate-180" : ""}`} />
+                        </div>
+                      </button>
+                      {/* Day rows inside month */}
+                      {mOpen && (
+                        <div className="border-t border-border/60 divide-y divide-border/30">
+                          {mDays.map(d => {
+                            const cards  = tsByDate[d];
+                            const dOpen  = openDate === d;
+                            const dActive = cards.filter(c => !c.clocked_out_at).length;
+                            const dl     = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                            const dMins  = cards.reduce((s, tc) => {
+                              const out = tc.clocked_out_at ? new Date(tc.clocked_out_at) : new Date();
+                              return s + Math.max(0, Math.round((out.getTime() - new Date(tc.clocked_in_at).getTime()) / 60000));
+                            }, 0);
+                            const dHM = dMins < 60 ? `${dMins}m` : `${Math.floor(dMins / 60)}h ${dMins % 60}m`;
+                            return (
+                              <div key={d}>
+                                <button type="button" onClick={() => setOpenDate(dOpen ? null : d)}
+                                  className="w-full flex items-center justify-between px-4 py-2.5 transition hover:bg-muted/20 pl-6">
+                                  <div className="text-left">
+                                    <p className="font-black text-xs">{dl}</p>
+                                    <p className="text-[10px] text-muted-foreground">{cards.length} record{cards.length !== 1 ? "s" : ""}{dActive > 0 && <span className="text-green-400 ml-1">· {dActive} active</span>}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-[11px]" style={{ color: "var(--primary)" }}>{dHM}</span>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${dOpen ? "rotate-180" : ""}`} />
+                                  </div>
+                                </button>
+                                {dOpen && (
+                                  <div className="divide-y divide-border/30 bg-black/10">
+                                    {cards.map(tc => (
+                                      <div key={tc.id} className="px-4 py-3 pl-7 flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-black text-xs" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                          {tc.employee_name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-black text-sm truncate">{tc.employee_name}</p>
+                                          <div className="flex items-center gap-1.5 text-xs mt-0.5 flex-wrap">
+                                            <LogIn className="h-3 w-3 text-green-400 shrink-0" />
+                                            <span className="text-green-400 font-bold">{fmtTime(tc.clocked_in_at)}</span>
+                                            {tc.clocked_out_at
+                                              ? <><span className="text-muted-foreground/40">→</span><LogOut className="h-3 w-3 text-red-400 shrink-0" /><span className="text-red-400 font-bold">{fmtTime(tc.clocked_out_at)}</span><span className="text-muted-foreground ml-1">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span></>
+                                              : <span className="text-green-400 font-semibold">· Still on shift</span>}
+                                          </div>
+                                        </div>
+                                        {!tc.clocked_out_at && <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>Active</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            {!tc.clocked_out_at && <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>Active</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
         </div>
-      </div>
-    );
-  }
-
-  const empCards = timeCards.filter(tc => tc.employee_id === selectedEmp.id && (!selectedDate || tc.work_date === selectedDate));
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <button onClick={() => setSelectedEmp(null)}
-          className="h-9 px-4 rounded-xl font-black text-xs border border-border transition active:scale-95" style={{ background: "var(--gradient-card)" }}>
-          ← Go Back
-        </button>
-        <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
-          style={{ background: isClockedIn ? "rgba(134,239,172,0.15)" : "rgba(255,255,255,0.06)", color: isClockedIn ? "#86efac" : "var(--primary)" }}>
-          {selectedEmp.username.charAt(0).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-base truncate">{selectedEmp.username}</p>
-          <p className="text-xs text-muted-foreground">{roleLabel(selectedEmp)}</p>
-        </div>
-      </div>
-      <div className="rounded-3xl p-5" style={{ background: isClockedIn ? "rgba(134,239,172,0.08)" : "rgba(239,68,68,0.08)", border: isClockedIn ? "1.5px solid rgba(134,239,172,0.35)" : "1.5px solid rgba(239,68,68,0.25)" }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: isClockedIn ? "rgba(134,239,172,0.7)" : "rgba(239,68,68,0.6)" }}>
-              {isClockedIn ? "Currently Clocked In" : "Currently Clocked Out"}
-            </p>
-            {isClockedIn && openCard
-              ? <><p className="font-black text-lg" style={{ color: "#86efac" }}>Since {fmtTime(openCard.clocked_in_at)}</p><p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.6)" }}>{fmtDuration(openCard.clocked_in_at, null)} on shift</p></>
-              : <p className="font-black text-base text-muted-foreground">Not on shift</p>}
-          </div>
-          <div className="text-4xl">{isClockedIn ? "🟢" : "⚫"}</div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
-          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-          {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
-        </button>
-        <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
-          className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={isClockedIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
-          {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
-        </button>
-      </div>
-      <DatePicker />
-      <div className="space-y-2">
-        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Time Card History</p>
-        {tcLoading
-          ? <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}</div>
-          : empCards.length === 0
-          ? <div className="text-center py-8 text-muted-foreground text-sm">{selectedDate ? "No records for this day." : "No time cards yet."}</div>
-          : empCards.map(tc => (
-            <div key={tc.id} className="rounded-2xl border px-4 py-3 flex items-center gap-3"
-              style={{ background: "var(--gradient-card)", borderColor: !tc.clocked_out_at ? "rgba(134,239,172,0.35)" : "var(--border)" }}>
-              <div className="rounded-xl px-2.5 py-1.5 text-center shrink-0" style={{ background: "rgba(255,255,255,0.06)", minWidth: 52 }}>
-                <p className="text-[9px] font-black text-muted-foreground uppercase">{new Date(tc.work_date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}</p>
-                <p className="font-black text-base leading-none">{new Date(tc.work_date + "T12:00:00").getDate()}</p>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-sm font-bold">
-                  <LogIn className="h-3.5 w-3.5 text-green-400 shrink-0" /><span className="text-green-400">{fmtTime(tc.clocked_in_at)}</span>
-                  {tc.clocked_out_at && <><span className="text-muted-foreground/50">→</span><LogOut className="h-3.5 w-3.5 text-red-400 shrink-0" /><span className="text-red-400">{new Date(tc.clocked_out_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) !== new Date(tc.clocked_in_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) && <span className="text-[10px] font-black mr-0.5 opacity-80">{new Date(tc.clocked_out_at).toLocaleDateString("en-US", { timeZone: "America/Port_of_Spain", month: "short", day: "numeric" })} </span>}{fmtTime(tc.clocked_out_at)}</span></>}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{tc.clocked_out_at ? `Duration: ${fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}` : "Still on shift"}</p>
-              </div>
-              {!tc.clocked_out_at && <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Active</span>}
-            </div>
-          ))}
-      </div>
+      )}
     </div>
   );
 }

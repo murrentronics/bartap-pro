@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "No PowerShell File Edits",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "agent",
+        "prompt": "IMPORTANT PROJECT RULE: Never use PowerShell (or any shell command) to edit, truncate, overwrite, or append to source files in this project. Always use the dedicated file tools: str_replace, fs_write, fs_append, delete_file. PowerShell file manipulation commands like Set-Content, Add-Content, Out-File, etc. are strictly forbidden for source file editing."
+      }
+    }
+  ]
+}

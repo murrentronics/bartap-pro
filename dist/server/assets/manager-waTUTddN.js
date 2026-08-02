@@ -1,6 +1,6 @@
-import { W as jsxRuntimeExports, r as reactExports } from "./server-DklmIEK8.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, s as supabase, T as TriangleAlert, X, i as LoaderCircle, P as Pencil, k as Trash2, t as toast } from "./router-BW3vb4yu.js";
-import { T as TrendingDown } from "./trending-down-CyeTiJEj.js";
+import { W as jsxRuntimeExports, r as reactExports } from "./server-Cy59YT7_.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, q as useTranslation, s as supabase, T as TriangleAlert, X, o as LoaderCircle, r as Pencil, v as Trash2, t as toast } from "./router-BVkVTQ1g.js";
+import { T as TrendingDown } from "./trending-down-Dh8UZzfh.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -35,8 +35,11 @@ function ManagerPage() {
   const {
     effectiveOwnerId
   } = useChain();
+  const {
+    t
+  } = useTranslation();
   if (!profile || profile.role !== "manager" && profile.job_title !== "manager") {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-muted-foreground py-20", children: "Manager access only." });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-muted-foreground py-20", children: t("manager_only", "Manager access only.") });
   }
   const ownerId = effectiveOwnerId(profile.parent_id ?? profile.id);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(ManagerExpenses, { profile, ownerId });
@@ -48,6 +51,9 @@ function ManagerExpenses({
   const managerName = profile.username ?? profile.id;
   const tag = `[Manager: ${managerName}]`;
   const sb = supabase;
+  const {
+    t
+  } = useTranslation();
   const [barSessionStart, setBarSessionStart] = reactExports.useState(null);
   const [barClosedAt, setBarClosedAt] = reactExports.useState(null);
   const [barStateLoading, setBarStateLoading] = reactExports.useState(true);
@@ -76,6 +82,45 @@ function ManagerExpenses({
       supabase.removeChannel(ch);
     };
   }, [ownerId]);
+  const [floatSet, setFloatSet] = reactExports.useState(null);
+  const [floatSetAt, setFloatSetAt] = reactExports.useState(null);
+  const [floatUsed, setFloatUsed] = reactExports.useState(0);
+  const loadFloat = reactExports.useCallback(async () => {
+    const {
+      data: ownerData
+    } = await sb.from("profiles").select("cashier_float, cashier_float_set_at").eq("id", ownerId).single();
+    const famt = Number(ownerData?.cashier_float ?? 0);
+    const since = ownerData?.cashier_float_set_at ?? null;
+    setFloatSet(famt > 0 ? famt : null);
+    setFloatSetAt(since);
+    let q = sb.from("wallet_transactions").select("amount").eq("profile_id", profile.id).eq("type", "cashier_expense");
+    if (since) q = q.gte("created_at", since);
+    const {
+      data: expTxs
+    } = await q;
+    const used = (expTxs ?? []).reduce((s, tx) => s + Number(tx.amount), 0);
+    setFloatUsed(used);
+  }, [ownerId, profile.id]);
+  reactExports.useEffect(() => {
+    loadFloat();
+  }, [loadFloat]);
+  reactExports.useEffect(() => {
+    const ch = supabase.channel(`manager-float-${profile.id}`).on("postgres_changes", {
+      event: "UPDATE",
+      schema: "public",
+      table: "profiles",
+      filter: `id=eq.${ownerId}`
+    }, () => loadFloat()).on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "wallet_transactions",
+      filter: `profile_id=eq.${profile.id}`
+    }, () => loadFloat()).subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [ownerId, profile.id, loadFloat]);
+  const floatRemaining = floatSet !== null ? Math.max(0, floatSet - floatUsed) : null;
   const [expenses, setExpenses] = reactExports.useState([]);
   const [loading, setLoading] = reactExports.useState(true);
   const [openMonth, setOpenMonth] = reactExports.useState(null);
@@ -163,7 +208,13 @@ ${tag}`;
         profile_id: profile.id,
         amount: total,
         type: "cashier_expense",
-        note: expenseNote
+        note: expenseNote + ` ${tag}`
+      });
+      await sb.from("wallet_transactions").insert({
+        profile_id: ownerId,
+        amount: total,
+        type: "cashier_expense",
+        note: expenseNote + ` ${tag}`
       });
       toast.success("Expense saved");
       setLines([{
@@ -173,6 +224,7 @@ ${tag}`;
       setShowForm(false);
       setConfirming(false);
       loadExpenses();
+      loadFloat();
     } finally {
       setSaving(false);
     }
@@ -284,7 +336,7 @@ ${tag}`;
         background: "var(--gradient-hero)"
       }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChartColumn, { className: "h-5 w-5 text-primary-foreground" }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-black leading-tight", children: "Bar Expense" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-black leading-tight", children: t("bar_expense", "Bar Expense") }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: managerName })
       ] })
     ] }),
@@ -293,7 +345,60 @@ ${tag}`;
       border: "1px solid rgba(239,68,68,0.25)"
     }, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-4 w-4 text-red-400 shrink-0" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-semibold text-red-400", children: "Bar is closed — expenses cannot be added, edited, or deleted." })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-semibold text-red-400", children: t("bar_closed_msg", "Bar is closed — expenses cannot be added, edited, or deleted.") })
+    ] }),
+    floatSet !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-3xl px-4 py-3 relative overflow-hidden", style: {
+      background: "var(--gradient-hero)",
+      boxShadow: "var(--shadow-glow)"
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] font-black mb-2", style: {
+          color: "rgba(0,0,0,0.55)"
+        }, children: t("float_lbl", "FLOAT") }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center", style: {
+            background: "oklch(0.18 0.04 60)"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] font-semibold uppercase tracking-wider", style: {
+              color: "rgba(255,255,255,0.45)"
+            }, children: t("set_lbl", "Set") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "font-black text-sm", style: {
+              color: "#fbbf24"
+            }, children: [
+              "$",
+              fmt(floatSet)
+            ] }),
+            floatSetAt && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[8px] leading-tight", style: {
+              color: "rgba(255,255,255,0.3)"
+            }, children: new Date(floatSetAt).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true
+            }) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center", style: {
+            background: "oklch(0.18 0.04 60)"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] font-semibold uppercase tracking-wider", style: {
+              color: "rgba(255,255,255,0.45)"
+            }, children: t("used_lbl", "Used") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm", style: {
+              color: floatUsed > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)"
+            }, children: floatUsed > 0 ? `$${fmt(floatUsed)}` : "—" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl px-2 py-2.5 flex flex-col gap-0.5 text-center", style: {
+            background: "oklch(0.18 0.04 60)"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-[9px] font-semibold uppercase tracking-wider", style: {
+              color: "rgba(255,255,255,0.45)"
+            }, children: t("remaining_lbl2", "Remaining") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm", style: {
+              color: floatRemaining !== null && floatRemaining > 0 ? "#86efac" : "#fca5a5"
+            }, children: floatRemaining !== null ? `$${fmt(floatRemaining)}` : "—" })
+          ] })
+        ] })
+      ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-3xl p-4 space-y-3 relative overflow-hidden", style: {
       background: "var(--gradient-hero)",
@@ -302,7 +407,7 @@ ${tag}`;
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black relative", style: {
         color: "rgba(0,0,0,0.65)"
-      }, children: "My Expense Summary" }),
+      }, children: t("my_expense_summary", "My Expense Summary") }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2 relative", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl p-2.5 flex flex-col gap-0.5 text-center", style: {
           background: "oklch(0.18 0.02 60)"
@@ -310,9 +415,9 @@ ${tag}`;
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[9px] font-semibold leading-tight", style: {
             color: "rgba(255,255,255,0.5)"
           }, children: [
-            "Session",
+            t("session_expense", "Session"),
             "\n",
-            "Expense"
+            t("total_expense", "Expense")
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-xs", style: {
             color: barIsOpen ? "#fca5a5" : "rgba(255,255,255,0.3)"
@@ -324,9 +429,9 @@ ${tag}`;
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[9px] font-semibold leading-tight", style: {
             color: "rgba(255,255,255,0.5)"
           }, children: [
-            "Today's",
+            t("todays_expense", "Today's"),
             "\n",
-            "Expense"
+            t("total_expense", "Expense")
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-xs", style: {
             color: "#fca5a5"
@@ -338,9 +443,9 @@ ${tag}`;
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[9px] font-semibold leading-tight", style: {
             color: "rgba(255,255,255,0.5)"
           }, children: [
-            "Total",
+            t("total_expense", "Total"),
             "\n",
-            "Expense"
+            t("total_expense", "Expense")
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-xs", style: {
             color: totalAllTime > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)"
@@ -360,19 +465,19 @@ ${tag}`;
         background: "var(--gradient-card)",
         borderColor: "var(--border)",
         color: "var(--primary)"
-      }, children: showForm ? "✕ Cancel" : "+ Add Expense" }),
+      }, children: showForm ? t("cancel_add", "✕ Cancel") : t("add_expense_btn", "+ Add Expense") }),
       showForm && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border p-4 space-y-3", style: {
         background: "var(--gradient-card)"
       }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "Expense Lines" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: t("expense_lines", "Expense Lines") }),
         lines.map((line, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: line.description, onChange: (e) => updateLine(i, "description", e.target.value), placeholder: "Description (e.g. Supplies)", className: "w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: line.description, onChange: (e) => updateLine(i, "description", e.target.value), placeholder: t("description_ph", "Description (e.g. Supplies)"), className: "w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2 items-center", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: line.amount, onChange: (e) => updateLine(i, "amount", e.target.value), placeholder: "$0.00", type: "number", min: "0", step: "0.01", className: "flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" }),
             lines.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => removeLine(i), className: "h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4" }) })
           ] })
         ] }, i)),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: addLine, className: "w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]", children: "+ Add Line" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: addLine, className: "w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]", children: t("add_line", "+ Add Line") }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pt-1 space-y-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-between", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-muted-foreground font-semibold", children: [
             "Total: ",
@@ -383,31 +488,33 @@ ${tag}`;
           ] }) }),
           !confirming ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirming(true), disabled: lineTotal <= 0, className: "w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40", style: {
             background: "var(--gradient-hero)"
-          }, children: "Save Expense" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+          }, children: t("save_expense", "Save Expense") }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl px-3 py-2 text-xs text-center font-semibold", style: {
               background: "rgba(239,68,68,0.08)",
               border: "1px solid rgba(239,68,68,0.25)",
               color: "#f87171"
             }, children: [
-              "Deduct $",
+              t("deduct_confirm", "Deduct"),
+              " $",
               lineTotal.toFixed(2),
-              " from owner wallet?"
+              " ",
+              t("deduct_from_wallet", "from owner wallet?")
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirming(false), className: "h-10 rounded-xl font-black text-sm border border-border transition active:scale-95", children: "Back" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setConfirming(false), className: "h-10 rounded-xl font-black text-sm border border-border transition active:scale-95", children: t("back", "Back") }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, disabled: saving, className: "h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50", style: {
                 background: "#dc2626"
-              }, children: saving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : "Confirm" })
+              }, children: saving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : t("confirm", "Confirm") })
             ] })
           ] })
         ] })
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "My Expenses" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: t("my_expenses", "My Expenses") }),
       loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: Array.from({
         length: 3
-      }).map((_, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-xl h-14 bg-muted/30 animate-pulse" }, i)) }) : months.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center py-10 text-muted-foreground text-sm", children: "No expenses logged yet." }) : months.map((mk) => {
+      }).map((_, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "rounded-xl h-14 bg-muted/30 animate-pulse" }, i)) }) : months.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center py-10 text-muted-foreground text-sm", children: t("no_expenses_yet", "No expenses logged yet.") }) : months.map((mk) => {
         const monthExpenses = byMonth[mk];
         const monthTotal = monthExpenses.reduce((s, e) => s + Number(e.amount), 0);
         const isOpen = openMonth === mk;
@@ -419,8 +526,8 @@ ${tag}`;
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-black text-sm", children: monthLabel(mk) }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-muted-foreground", children: [
                 monthExpenses.length,
-                " expense",
-                monthExpenses.length !== 1 ? "s" : ""
+                " ",
+                monthExpenses.length !== 1 ? t("expense_count_n", "expenses") : t("expense_count_1", "expense")
               ] })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
@@ -443,7 +550,7 @@ ${tag}`;
             return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-4 py-3 space-y-2", children: isEditing ? (
               /* ── Inline edit form ── */
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "Edit Expense" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: t("edit_expense", "Edit Expense") }),
                 editLines.map((el, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx("input", { value: el.description, onChange: (ev) => setEditLines((ls) => ls.map((l, idx) => idx === i ? {
                     ...l,
@@ -460,27 +567,29 @@ ${tag}`;
                 /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setEditLines((ls) => [...ls, {
                   description: "",
                   amount: ""
-                }]), className: "w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]", children: "+ Add Line" }),
+                }]), className: "w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]", children: t("add_line", "+ Add Line") }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2 pt-1", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: cancelEdit, className: "h-9 rounded-xl font-black text-xs border border-border transition active:scale-95", children: "Cancel" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: cancelEdit, className: "h-9 rounded-xl font-black text-xs border border-border transition active:scale-95", children: t("cancel", "Cancel") }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleEditSave(e), disabled: editSaving, className: "h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50", style: {
                     background: "var(--gradient-hero)"
-                  }, children: editSaving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : "Save" })
+                  }, children: editSaving ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : t("save", "Save") })
                 ] })
               ] })
             ) : deleteConfirmId === e.id ? (
               /* ── Delete confirm ── */
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs font-semibold text-center text-red-400", children: [
-                  "Delete $",
+                  t("deduct_confirm", "Delete"),
+                  " $",
                   fmt(Number(e.amount)),
-                  " expense and refund to wallet?"
+                  " ",
+                  t("deduct_from_wallet", "expense and refund to wallet?")
                 ] }),
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setDeleteConfirmId(null), className: "h-9 rounded-xl font-black text-xs border border-border transition active:scale-95", children: "Cancel" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setDeleteConfirmId(null), className: "h-9 rounded-xl font-black text-xs border border-border transition active:scale-95", children: t("cancel", "Cancel") }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => handleDelete(e), disabled: deleting, className: "h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50", style: {
                     background: "#dc2626"
-                  }, children: deleting ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : "Delete" })
+                  }, children: deleting ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : t("delete", "Delete") })
                 ] })
               ] })
             ) : (
@@ -514,7 +623,7 @@ ${tag}`;
                       background: "rgba(239,68,68,0.12)"
                     }, title: "Delete", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3 w-3 text-red-400" }) })
                   ] }),
-                  isLast && !barIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] text-muted-foreground/50 mt-0.5", children: "Bar closed" })
+                  isLast && !barIsOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] text-muted-foreground/50 mt-0.5", children: t("bar_closed_label", "Bar closed") })
                 ] })
               ] })
             ) }, e.id);

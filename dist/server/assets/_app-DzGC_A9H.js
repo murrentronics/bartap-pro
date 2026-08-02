@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-DklmIEK8.js";
-import { g as createLucideIcon, b as useAuth, h as useChain, d as useNavigate, s as supabase, i as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, j as Link, B as Button, t as toast } from "./router-BW3vb4yu.js";
-import { T as TrendingDown } from "./trending-down-CyeTiJEj.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-Cy59YT7_.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, p as Link, B as Button, t as toast } from "./router-BVkVTQ1g.js";
+import { T as TrendingDown } from "./trending-down-Dh8UZzfh.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -95,6 +95,22 @@ function AppLayout() {
   const [hasMachines, setHasMachines] = reactExports.useState(false);
   const [isMachinesAccount, setIsMachinesAccount] = reactExports.useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = reactExports.useState(false);
+  const [activeOpenBarField, setActiveOpenBarField] = reactExports.useState(null);
+  const handleOpenBarNumpad = (field, k) => {
+    const current = field === "bar" ? openBarFloat : openMachineFloat;
+    const setter = field === "bar" ? setOpenBarFloat : setOpenMachineFloat;
+    if (k === "⌫") {
+      setter(current.slice(0, -1));
+      return;
+    }
+    if (k === ".") {
+      if (!current.includes(".")) setter(current + ".");
+      return;
+    }
+    const dotIdx = current.indexOf(".");
+    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    setter(current === "0" ? k : current + k);
+  };
   reactExports.useEffect(() => {
     if (!loading && !session) nav({
       to: "/login"
@@ -170,6 +186,7 @@ function AppLayout() {
     setIsMachinesAccount(machinesOnly);
     setOpenBarFloat("");
     setOpenMachineFloat("");
+    setActiveOpenBarField(null);
     setShowOpenBarModal(true);
   };
   const confirmOpenBar = async () => {
@@ -307,7 +324,7 @@ function AppLayout() {
     icon: Package
   }, {
     to: "/manager",
-    label: "Bar Expense",
+    label: "Manage",
     icon: TrendingDown
   }] : [{
     to: "/register",
@@ -425,12 +442,17 @@ function AppLayout() {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 pb-6 pt-4 space-y-4", children: [
         !isMachinesAccount && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-black text-muted-foreground uppercase tracking-wider", children: "Bar Float" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "number", min: "0", step: "0.01", placeholder: "e.g. 500.00", value: openBarFloat, onChange: (e) => setOpenBarFloat(e.target.value), className: "w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { onClick: () => setActiveOpenBarField(activeOpenBarField === "bar" ? null : "bar"), className: "w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition", style: {
+            borderColor: activeOpenBarField === "bar" ? "var(--primary)" : "var(--border)"
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`, children: openBarFloat || "0.00" }) })
         ] }),
         hasMachines && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-black text-muted-foreground uppercase tracking-wider", children: "Machine Float" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "number", min: "0", step: "0.01", placeholder: "e.g. 200.00", value: openMachineFloat, onChange: (e) => setOpenMachineFloat(e.target.value), className: "w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { onClick: () => setActiveOpenBarField(activeOpenBarField === "machine" ? null : "machine"), className: "w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition", style: {
+            borderColor: activeOpenBarField === "machine" ? "var(--primary)" : "var(--border)"
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`, children: openMachineFloat || "0.00" }) })
         ] }),
+        activeOpenBarField !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => handleOpenBarNumpad(activeOpenBarField, k), className: `h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`, children: k }, i)) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowOpenBarModal(false), className: "flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition", children: "Cancel" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: confirmOpenBar, disabled: !isMachinesAccount && !openBarFloat || hasMachines && !openMachineFloat, className: "flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50", style: {

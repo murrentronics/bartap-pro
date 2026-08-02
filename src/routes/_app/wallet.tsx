@@ -3282,7 +3282,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("alltime_gross", "Gross\nProfit Total")}</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("alltime_gross", "Total\nGross Profit")}</div>
                   {(() => {
                     const gsp = totalIncome - totalStockSoldCost;
                     return (
@@ -3302,7 +3302,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("alltime_net", "Net\nProfit Total")}</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("alltime_net", "Total\nNet Profit")}</div>
                   {(() => {
                     const tnp = totalIncome - totalStockSoldCost - totalExpenses;
                     return (
@@ -3316,19 +3316,19 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
               {/* Row 3 — Total Stock Value / Total Stock Cost / Total Stock Profit */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_value", "Stock\nResale Value")}</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_value", "Current\nStock Value")}</div>
                   <div className="font-black text-xs" style={{ color: "#86efac" }}>
                     ${fmt(stockResaleValue)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_cost_current", "Stock\nCost")}</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_cost_current", "Current\nStock Cost")}</div>
                   <div className="font-black text-xs" style={{ color: "#fca5a5" }}>
                     ${fmt(stockCost)}
                   </div>
                 </div>
                 <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_profit", "Stock\nExpected Profit")}</div>
+                  <div className="text-[9px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.5)" }}>{t("stock_profit", "Current\nStock Profit")}</div>
                   <div className="font-black text-xs" style={{ color: stockExpectedProfit >= 0 ? "#86efac" : "#fca5a5" }}>
                     {stockExpectedProfit >= 0 ? "+" : ""}${fmt(Math.abs(stockExpectedProfit))}
                   </div>

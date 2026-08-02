@@ -1,5 +1,5 @@
-import { y as WebPlugin, x as registerPlugin } from "./router-BW3vb4yu.js";
-import "./server-DklmIEK8.js";
+import { J as WebPlugin, H as registerPlugin } from "./router-BVkVTQ1g.js";
+import "./server-Cy59YT7_.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
