@@ -210,7 +210,7 @@ function SpecialForm({
           onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0 border-b border-border">
-            <span className="font-black text-base">{isEdit ? "Edit Special" : "New Special"}</span>
+            <span className="font-black text-base">{isEdit ? "Editar Especial" : "Nuevo Especial"}</span>
             <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
               <X className="h-4 w-4" />
             </button>
@@ -218,15 +218,15 @@ function SpecialForm({
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {/* Name */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Friday Beer Special"
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Nombre del Especial</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Especial de Cervezas del Viernes"
                 className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
             </div>
 
             {/* Qty + Price row */}
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">How Many Items</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Cuántos Artículos</label>
                 <div
                   className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                   onClick={() => setActiveNumpad(activeNumpad === "qty" ? null : "qty")}
@@ -237,7 +237,7 @@ function SpecialForm({
                 </div>
               </div>
               <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Special Price $</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Precio Especial $</label>
                 <div
                   className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                   onClick={() => setActiveNumpad(activeNumpad === "price" ? null : "price")}
@@ -268,12 +268,12 @@ function SpecialForm({
 
             {/* Item picker */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Eligible Items</label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Artículos Elegibles</label>
               <button onClick={() => setShowSelector(true)}
                 className="w-full min-h-[40px] rounded-xl border px-3 py-2 text-sm text-left transition active:scale-[0.98]"
                 style={{ borderColor: selectedIds.length ? "var(--primary)" : "var(--border)", background: "rgba(255,255,255,0.03)" }}>
                 {selectedIds.length === 0
-                  ? <span className="text-muted-foreground">Tap to select items…</span>
+                  ? <span className="text-muted-foreground">Toca para seleccionar artículos…</span>
                   : <span className="font-bold" style={{ color: "var(--primary)" }}>{selectedNames}</span>}
               </button>
               {selectedIds.length > 0 && (
@@ -284,14 +284,14 @@ function SpecialForm({
             {/* Dates + Times */}
             <div className="flex gap-3">
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Start Date</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Fecha de Inicio</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">End Date (opt)</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Fecha de Fin (opc)</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
@@ -302,17 +302,17 @@ function SpecialForm({
 
             {/* Recurring toggle */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Schedule</label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Programación</label>
               <div className="flex gap-3">
                 <button onClick={() => setIsRecurring(false)}
                   className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
                   style={{ background: !isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: !isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                  One-time
+                  Una vez
                 </button>
                 <button onClick={() => setIsRecurring(true)}
                   className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
                   style={{ background: isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                  Recurring
+                  Recurrente
                 </button>
               </div>
             </div>
@@ -342,7 +342,7 @@ function SpecialForm({
             <button onClick={save} disabled={!canSave || busy}
               className="w-full h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 flex items-center justify-center gap-2 transition active:scale-[0.98]"
               style={{ background: "var(--gradient-hero)" }}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Save Changes" : "Create Special"}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Guardar Cambios" : "Crear Especial"}
             </button>
           </div>
         </div>
@@ -396,7 +396,7 @@ function SpecialActionsModal({
             style={{ background: "rgba(251,146,60,0.08)", border: "1.5px solid var(--primary)", color: "var(--primary)" }}
           >
             <Pencil className="h-4 w-4 shrink-0" />
-            Edit Special
+            Editar Especial
           </button>
 
           {/* Disable / Enable */}
@@ -410,7 +410,7 @@ function SpecialActionsModal({
             }}
           >
             <span className="text-base leading-none shrink-0">{special.active ? "○" : "●"}</span>
-            {special.active ? "Disable Special" : "Enable Special"}
+            {special.active ? "Desactivar Especial" : "Activar Especial"}
           </button>
 
           {/* Delete */}
@@ -420,7 +420,7 @@ function SpecialActionsModal({
             style={{ background: "rgba(239,68,68,0.08)", border: "1.5px solid #ef4444", color: "#f87171" }}
           >
             <Trash2 className="h-4 w-4 shrink-0" />
-            Delete Special
+            Eliminar Especial
           </button>
         </div>
 

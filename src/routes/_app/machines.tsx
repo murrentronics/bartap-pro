@@ -2911,10 +2911,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-2 gap-2">
 
 
-            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
+            <SmallStat label={t("session_float", "Float Establecido")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "—"} color="#fbbf24" />
 
 
-            <SmallStat label={t("remaining", "Remaining")}
+            <SmallStat label={t("remaining", "Restante")}
 
 
               value={remainingFloat === null ? "—" : (remainingFloat >= 0 ? "" : "-") + "$" + fmtWhole(Math.abs(remainingFloat))}
@@ -2929,13 +2929,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Lifetime totals — owner only */}
           {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_income", "Session Cash In")}
+            <SmallStat label={t("session_income", "Ingreso de Sesión")}
               value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
               color="#86efac" />
-            <SmallStat label={t("session_payout", "Session Payout")}
+            <SmallStat label={t("session_payout", "Pago de Sesión")}
               value={floatSession ? "$" + fmtWhole(sessionPayouts) : "—"}
               color="#fca5a5" />
-            <SmallStat label={t("session_profit", "Session Profit")}
+            <SmallStat label={t("session_profit", "Ganancia de Sesión")}
               value={floatSession ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
               color={!floatSession ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -2943,9 +2943,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("today_income", "Today's Cash In")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-            <StatCard label={t("today_payout", "Today's Payout")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
-            <StatCard label={t("today_profit", "Today's Profit")}
+            <StatCard label={t("today_income", "Ingreso de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+            <StatCard label={t("today_payout", "Pago de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+            <StatCard label={t("today_profit", "Ganancia de Hoy")}
               value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
               color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -2954,9 +2954,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Total / All-time stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-            <StatCard label={t("all_time_payout", "Total Payout")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-            <StatCard label={t("all_time_profit", "Total Profit")}
+            <StatCard label={t("all_time_income", "Ingreso Total")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+            <StatCard label={t("all_time_payout", "Pago Total")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+            <StatCard label={t("all_time_profit", "Ganancia Total")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -2993,7 +2993,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
 
 
-              {tabKey === "payout" ? t("payout", "Payouts") : tabKey === "income" ? t("income", "Cash In") : tabKey === "history" ? t("history", "History") : "Monitor"}
+              {tabKey === "payout" ? t("payout", "Pagos") : tabKey === "income" ? t("income", "Ingreso") : tabKey === "history" ? t("history", "Historial") : "Monitor"}
 
 
             </button>
@@ -3023,7 +3023,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <h2 className="font-black text-sm">
 
 
-              {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record Cash In")}
+              {tab === "payout" ? t("save_payout", "Registrar Pago") : t("save_income", "Registrar Ingreso")}
 
 
             </h2>
@@ -4122,13 +4122,13 @@ function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; mach
       style={{ background: "var(--gradient-card)" }}>
 
 
-      <h2 className="font-black text-sm">{t("add_machine", "New Machine")}</h2>
+      <h2 className="font-black text-sm">{t("add_machine", "Nueva Máquina")}</h2>
 
 
       <div>
 
 
-        <Label className="text-xs">{t("machine_name", "Machine Name")}</Label>
+        <Label className="text-xs">{t("machine_name", "Nombre de Máquina")}</Label>
 
 
         <Input value={name} onChange={e => setName(e.target.value)}
@@ -4149,7 +4149,7 @@ function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; mach
         style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
 
 
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />{t("create_machine", "Create Machine")}</>}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />{t("create_machine", "Crear Máquina")}</>}
 
 
       </Button>
@@ -4268,10 +4268,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
   const netProfit = grossProfit - manualExpenses;                 // Net Profit = Gross Profit − manual expenses
   const totalProfit = grossProfit;                                // keep alias for any other usages
 
-  // Today's sessions — payouts/income entries since bar_session_start (bar open to bar closed)
+  // Today's sessions — machine payouts only since bar_session_start (manual expenses excluded)
   const todayPayouts = barSessionStart
-    ? entries.filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => (e.type === "payout" || e.type === "expense") && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
+    ? entries.filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
+    : entries.filter(e => e.type === "payout" && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
   const todayIncome = barSessionStart
     ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
     : entries.filter(e => e.type === "income" && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
@@ -4292,13 +4292,13 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
     ? entries
 
 
-        .filter(e => (e.type === "payout" || e.type === "expense") && new Date(e.created_at) >= new Date(machineSessionAnchor))
+        .filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(machineSessionAnchor))
 
 
         .reduce((s, e) => s + Number(e.amount), 0)
 
 
-    : entries.filter(e => e.type === "payout" || e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+    : entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
 
 
   const sessionIncome = machineSessionAnchor
@@ -4694,7 +4694,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             <button onClick={onSetFloat}
               className="rounded-xl font-black text-xs active:scale-95 transition flex items-center justify-center px-3 py-2"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", width: "70%" }}>
-              {floatSession ? t("update_float", "Update Float") : t("set_float", "Set Float")}
+              {floatSession ? t("update_float", "Actualizar Float") : t("set_float", "Establecer Float")}
             </button>
           </div>
           )}
@@ -4706,7 +4706,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("float_set", "Float Set")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("float_set", "Float Establecido")}</div>
 
 
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
@@ -4727,7 +4727,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("remaining", "Remaining")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("remaining", "Restante")}</div>
 
 
             <div className="font-black text-xs"
@@ -4758,14 +4758,14 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Title */}
         <div className="relative text-xs font-black uppercase tracking-widest text-center" style={{ color: "rgba(0,0,0,0.55)" }}>
-          All Screens Totals
+          Totales de Pantallas
         </div>
 
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_income", "All Session Cash In")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
-          <StatCard label={t("session_payout", "All Session Payout")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
-          <StatCard label={t("session_profit", "Session Profit")}
+          <StatCard label={t("session_income", "Ingreso de Sesión")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+          <StatCard label={t("session_payout", "Pago de Sesión")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("session_profit", "Ganancia de Sesión")}
             value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
             color={!machineSessionAnchor ? "oklch(0.45 0.02 60)" : sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4773,9 +4773,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 2 — Today's stats — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("today_income", "Today's Cash In")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
-          <StatCard label={t("today_payout", "Today's Payout")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
-          <StatCard label={t("today_profit", "Today's Profit")}
+          <StatCard label={t("today_income", "Ingreso de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+          <StatCard label={t("today_payout", "Pago de Hoy")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
+          <StatCard label={t("today_profit", "Ganancia de Hoy")}
             value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
             color={!barSessionStart ? "oklch(0.45 0.02 60)" : todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4784,9 +4784,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 3 — Lifetime totals — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-          <StatCard label={t("all_machines_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-          <StatCard label={t("all_time_gross_profit", "Gross Profit")}
+          <StatCard label={t("all_time_income", "Ingreso Total")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+          <StatCard label={t("all_machines_payout", "Pagos Totales")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+          <StatCard label={t("all_time_gross_profit", "Ganancia Bruta")}
             value={(grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit)}
             color={grossProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4795,8 +4795,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 4 — Manual Expenses — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-2 gap-2">
-          <StatCard label={t("total_manual_expenses", "Total Expenses")} value={"$" + fmtWhole(manualExpenses)} color="#fca5a5" />
-          <StatCard label={t("net_profit", "Net Profit")}
+          <StatCard label={t("total_manual_expenses", "Gastos Totales")} value={"$" + fmtWhole(manualExpenses)} color="#fca5a5" />
+          <StatCard label={t("net_profit", "Ganancia Neta")}
             value={(netProfit >= 0 ? "+" : "") + "$" + fmtWhole(netProfit)}
             color={netProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4811,7 +4811,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
               <Receipt className="h-4 w-4" />
-              Add Expense
+              Agregar Gasto
             </button>
           </div>
         )}
@@ -4837,7 +4837,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           style={{ background: "oklch(0.20 0.05 60)" }}>
 
 
-          <span className="text-xs font-black text-amber-400">{t("hold_to_sort", "Hold & drag to reorder")}</span>
+          <span className="text-xs font-black text-amber-400">{t("hold_to_sort", "Mantén para reordenar")}</span>
 
 
           <button
@@ -4849,7 +4849,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             className="text-xs font-black text-white/60 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">
 
 
-            {t("done", "Done")}
+            {t("done", "Listo")}
 
 
           </button>
@@ -4870,7 +4870,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <p className="text-xs text-center" style={{ color: "rgba(180,160,130,0.6)" }}>
 
 
-          {t("hold_to_sort", "Hold down any screen to sort order")}
+          {t("hold_to_sort", "Mantén presionado para ordenar")}
 
 
         </p>
@@ -5777,7 +5777,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                       <div className="text-[9px] text-muted-foreground">Profit</div>
 
 
-                      <div className="font-black text-xs" style={{ color: mProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                      <div className="font-black text-xs sm:text-sm lg:text-base" style={{ color: mProfit >= 0 ? "#86efac" : "#fca5a5" }}>
 
 
                         {mProfit >= 0 ? "+" : ""}${fmtWhole(mProfit)}
@@ -6273,7 +6273,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                 style={summaryFilter === f && !selectedSessionId
                   ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                   : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
-                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === "all" ? "Todo" : f === "day" ? "Día" : f === "week" ? "Semana" : f === "month" ? "Mes" : "Año"}
               </button>
             ))}
           </div>
@@ -6293,12 +6293,12 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         {/* Sessions list — filtered by active date tab, always visible */}
         <div className="space-y-1">
           <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">
-            Sessions{filteredSessions.length > 0 ? ` (${filteredSessions.length})` : ""}
+            Sesiones{filteredSessions.length > 0 ? ` (${filteredSessions.length})` : ""}
           </p>
           {loadingSessionsList ? (
             <div className="h-8 rounded-xl bg-muted/30 animate-pulse" />
           ) : filteredSessions.length === 0 ? (
-            <p className="text-[10px] text-white/30 text-center py-2">No sessions for this period</p>
+            <p className="text-[10px] text-white/30 text-center py-2">Sin sesiones para este período</p>
           ) : (
             <div className="rounded-xl border border-border/40 p-1" style={{ background: "oklch(0.18 0.015 60)" }}>
               <div className="space-y-1 max-h-44 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--primary) transparent" }}>
@@ -6326,11 +6326,11 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <CalendarPopover label="Select Day" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+          <CalendarPopover label="Seleccionar Día" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
         )}
         {summaryFilter === "week" && (
           <div className="space-y-1">
-            <CalendarPopover label="Select Week Start" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+            <CalendarPopover label="Inicio de Semana" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
             <p className="text-xs text-muted-foreground pl-1">
               {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`; })()}
             </p>
@@ -6360,19 +6360,19 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           <>
             <div className="grid grid-cols-4 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Cash In</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Ingreso</div>
                 <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Payout</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Pago</div>
                 <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Expense</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Gasto</div>
                 <div className="font-black text-xs text-yellow-400">${fmtWhole(totalSessionExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Net Profit</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Gan. Neta</div>
                 <div className="font-black text-xs" style={{ color: totalProfit >= 0 ? "#86efac" : "#fca5a5" }}>
                   {totalProfit >= 0 ? "+" : ""}${fmtWhole(totalProfit)}
                 </div>
@@ -6381,7 +6381,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
             {statList.length > 0 && (
               <div className="space-y-2 pt-1 border-t border-border/40">
                 <div>
-                  <p className="text-[9px] font-black text-green-400/70 uppercase tracking-wider mb-1.5">Income by Machine</p>
+                  <p className="text-[9px] font-black text-green-400/70 uppercase tracking-wider mb-1.5">Ingreso por Máquina</p>
                   <div className="space-y-1">
                     {byIncome.map((m, i) => (
                       <div key={m.name + "i"} className="flex items-center gap-2">
@@ -6393,7 +6393,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black text-red-400/70 uppercase tracking-wider mb-1.5">Payout by Machine</p>
+                  <p className="text-[9px] font-black text-red-400/70 uppercase tracking-wider mb-1.5">Pago por Máquina</p>
                   <div className="space-y-1">
                     {byPayout.filter(m => m.payout > 0).map((m, i) => (
                       <div key={m.name + "p"} className="flex items-center gap-2">
@@ -6405,7 +6405,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
+                  <p className="text-[9px] font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Ganancia por Máquina</p>
                   <div className="space-y-1">
                     {profitList.map((m, i) => {
                       const isPos = m.profit >= 0;
@@ -7635,16 +7635,16 @@ export default function MachinesPage() {
   const tabs = [
 
 
-    { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
+    { key: "screens", label: `${t("screens", "Pantallas")}${machines.length ? ` (${machines.length})` : ""}` },
 
 
-    ...(isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : []),
+    ...(isOwner ? [{ key: "allHistory", label: t("all_history", "Todo el Historial") }] : []),
 
 
-    ...(isOwner ? [{ key: "summary", label: t("summary", "Summary") }] : []),
+    ...(isOwner ? [{ key: "summary", label: t("summary", "Resumen") }] : []),
 
 
-    ...(isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []),
+    ...(isOwner ? [{ key: "create", label: t("create_machine", "Crear") }] : []),
 
 
   ] as const;
@@ -7780,7 +7780,7 @@ export default function MachinesPage() {
             <Bell className={`h-3.5 w-3.5 ${alertSettings.enabled ? "fill-current" : ""}`} />
 
 
-            {t("set_alerts", "Set Alerts")}
+            {t("set_alerts", "Alertas")}
 
 
             {alertSettings.enabled && (
@@ -8681,10 +8681,10 @@ function SetAlertsModal({
             <div>
 
 
-              <h2 className="font-black text-base">Payout Alerts</h2>
+              <h2 className="font-black text-base">Alertas de Pago</h2>
 
 
-              <p className="text-xs text-muted-foreground">Get notified when a payout hits your threshold</p>
+              <p className="text-xs text-muted-foreground">Recibe una notificación cuando un pago alcance tu límite</p>
 
 
             </div>
@@ -8723,13 +8723,13 @@ function SetAlertsModal({
             <div>
 
 
-              <p className="font-black text-sm">Enable Payout Alerts</p>
+              <p className="font-black text-sm">Activar Alertas de Pago</p>
 
 
               <p className="text-xs text-muted-foreground mt-0.5">
 
 
-                Send a notification when any payout meets or exceeds the threshold
+                Enviar notificación cuando un pago llegue o supere el límite
 
 
               </p>
@@ -8786,7 +8786,7 @@ function SetAlertsModal({
               <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
 
 
-                Alert Threshold
+                Límite de Alerta
 
 
               </p>
@@ -8852,7 +8852,7 @@ function SetAlertsModal({
               <p className="text-xs text-muted-foreground text-center pt-1">
 
 
-                You'll be alerted when a payout of{" "}
+                Recibirás una alerta cuando un pago de{" "}
 
 
                 <span className="font-black" style={{ color: "var(--primary)" }}>
@@ -8864,7 +8864,7 @@ function SetAlertsModal({
                 </span>{" "}
 
 
-                or more is recorded
+                o más sea registrado
 
 
               </p>
@@ -8897,7 +8897,7 @@ function SetAlertsModal({
           >
 
 
-            {enabled ? `Save — Alert at $${threshold.toLocaleString()} TT` : "Save — Alerts Off"}
+            {enabled ? `Guardar — Alerta a $${threshold.toLocaleString()} TT` : "Guardar — Alertas Desactivadas"}
 
 
           </button>

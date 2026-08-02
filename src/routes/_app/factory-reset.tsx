@@ -46,7 +46,7 @@ export default function FactoryResetPage() {
   if (profile?.role !== "owner") {
     return (
       <div className="text-center text-muted-foreground py-20">
-        Only owners can access this page.
+        Solo los propietarios pueden acceder a esta página.
       </div>
     );
   }
@@ -167,43 +167,43 @@ export default function FactoryResetPage() {
   // ── Derived display values ────────────────────────────────────────────────
 
   const targetLabel =
-    target === "bar"             ? "Bar (Full)"
-    : target === "bar_financials" ? "Bar Financials"
-    : target === "machines"       ? "Machines"
-    : "Everything";
+    target === "bar"             ? "Bar (Completo)"
+    : target === "bar_financials" ? "Finanzas del Bar"
+    : target === "machines"       ? "Máquinas"
+    : "Todo";
 
   const scopeLabel =
-    isChainOwner && barScope === "all" ? "All Bars"
-    : isChainOwner && barScope ? chainBars.find((b) => b.id === barScope)?.bar_name ?? "Selected Bar"
+    isChainOwner && barScope === "all" ? "Todos los Bares"
+    : isChainOwner && barScope ? chainBars.find((b) => b.id === barScope)?.bar_name ?? "Bar Seleccionado"
     : null;
 
   const targetItems: Record<NonNullable<ResetTarget>, string[]> = {
     bar_financials: [
-      "All sales orders and transaction history",
-      "All wallet and statement records",
-      "All credit accounts and bills",
-      "All financial expense records",
-      "All stock quantities (reset to zero)",
-      "All open bottles and shots sold",
-      "All open packs and pack quantities",
-      "✓ Items (products list) are KEPT",
-      "✓ Cost prices and shot/retail prices are KEPT",
+      "Todos los pedidos y el historial de transacciones",
+      "Todos los registros de cartera y estados de cuenta",
+      "Todas las cuentas de crédito y facturas",
+      "Todos los registros de gastos financieros",
+      "Todas las cantidades de stock (reiniciadas a cero)",
+      "Todas las botellas abiertas y tragos vendidos",
+      "Todos los paquetes abiertos y cantidades de paquetes",
+      "✓ Los artículos (lista de productos) se CONSERVAN",
+      "✓ Los precios de costo y venta se CONSERVAN",
     ],
     bar: [
-      "All sales orders and transaction history",
-      "All cashier accounts and their records",
-      "All wallet and statement records",
-      "All bar items and products",
-      "All credit accounts and bills",
-      "All financial expenses",
+      "Todos los pedidos y el historial de transacciones",
+      "Todas las cuentas de cajeros y sus registros",
+      "Todos los registros de cartera y estados de cuenta",
+      "Todos los artículos y productos del bar",
+      "Todas las cuentas de crédito y facturas",
+      "Todos los gastos financieros",
     ],
     machines: [
-      "All machine entries (payouts & income)",
-      "All machine float sessions",
-      "All machine records",
+      "Todas las entradas de máquinas (pagos e ingresos)",
+      "Todas las sesiones de float de máquinas",
+      "Todos los registros de máquinas",
     ],
     both: [
-      "All of the above — bar AND machines",
+      "Todo lo anterior — bar Y máquinas",
     ],
   };
 
@@ -218,8 +218,8 @@ export default function FactoryResetPage() {
           <AlertTriangle className="h-6 w-6 text-red-400" />
         </div>
         <div>
-          <h1 className="text-xl font-black text-red-400">Factory Reset</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Choose which database to wipe</p>
+          <h1 className="text-xl font-black text-red-400">Restablecimiento de Fábrica</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Elige qué base de datos borrar</p>
         </div>
       </div>
 
@@ -227,7 +227,7 @@ export default function FactoryResetPage() {
       {isChainOwner && (
         <div className="space-y-3">
           <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Step 1 — Which bar?
+            Step 1 — ¿Cuál bar?
           </p>
 
           {chainBars.map((bar) => (
@@ -273,10 +273,10 @@ export default function FactoryResetPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className={`font-black text-sm ${barScope === "all" ? "text-red-400" : "text-foreground"}`}>
-                All Bars
+                Todos los Bares
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                Apply the same reset to all {chainBars.length} bars at once
+                Aplicar el mismo restablecimiento a todos los {chainBars.length} bares a la vez
               </div>
             </div>
             <ChevronRight className={`h-4 w-4 shrink-0 ${barScope === "all" ? "text-red-400" : "text-muted-foreground"}`} />
@@ -289,16 +289,16 @@ export default function FactoryResetPage() {
         <>
           {isChainOwner && (
             <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              Step 2 — What to reset?
+              Step 2 — ¿Qué restablecer?
             </p>
           )}
 
           <div className="space-y-3">
             {([
-              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Clear Bar Financials", desc: "Keep items — wipe orders, wallet, expenses, credit & stock quantities.", showWhen: "bar"  },
-              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Full Bar Reset",        desc: "Wipe everything: items, cashiers, orders, wallet, credit, financials",  showWhen: "bar"  },
-              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Machines Reset",        desc: "Wipe machine entries, payouts and floats",                               showWhen: "machines" },
-              { value: "both"           as ResetTarget, icon: Trash2,   label: "Everything",            desc: "Wipe both bar and machines completely",                                  showWhen: "both" },
+              { value: "bar_financials" as ResetTarget, icon: Wine,     label: "Limpiar Finanzas del Bar", desc: "Mantener artículos — borrar órdenes, cartera, gastos, crédito y cantidades de stock.", showWhen: "bar"  },
+              { value: "bar"            as ResetTarget, icon: Trash2,   label: "Restablecer Bar Completo",  desc: "Borrar todo: artículos, cajeros, órdenes, cartera, crédito, finanzas",           showWhen: "bar"  },
+              { value: "machines"       as ResetTarget, icon: Gamepad2, label: "Restablecer Máquinas",      desc: "Borrar entradas, pagos y floats de máquinas",                                    showWhen: "machines" },
+              { value: "both"           as ResetTarget, icon: Trash2,   label: "Todo",                      desc: "Borrar tanto el bar como las máquinas completamente",                            showWhen: "both" },
             ] as { value: ResetTarget; icon: React.ElementType; label: string; desc: string; showWhen: "bar" | "machines" | "both" }[])
               .filter((opt) => {
                 const hasBar = !isMachinesOnlyPlan;
@@ -339,7 +339,7 @@ export default function FactoryResetPage() {
           {target && (
             <div className="rounded-2xl border border-red-500/30 p-4 space-y-2"
               style={{ background: "rgba(239,68,68,0.05)" }}>
-              <p className="text-xs font-black text-red-400 uppercase tracking-wider">This will permanently delete:</p>
+              <p className="text-xs font-black text-red-400 uppercase tracking-wider">Esto eliminará permanentemente:</p>
               <ul className="space-y-1.5">
                 {targetItems[target].map((item) => {
                   const isKept = item.startsWith("✓");
@@ -355,10 +355,10 @@ export default function FactoryResetPage() {
               </ul>
               {isChainOwner && barScope === "all" && (
                 <p className="text-xs font-black text-red-400 pt-1">
-                  ⚠ This will run on all {chainBars.length} bars.
+                  ⚠ Esto se aplicará a los {chainBars.length} bares.
                 </p>
               )}
-              <p className="text-xs font-black text-red-400 pt-1">This cannot be undone.</p>
+              <p className="text-xs font-black text-red-400 pt-1">Esto no se puede deshacer.</p>
             </div>
           )}
 
@@ -369,7 +369,7 @@ export default function FactoryResetPage() {
             className="w-full h-14 text-base font-black bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
           >
             <Trash2 className="h-5 w-5 mr-2" />
-            Reset {target ? targetLabel : "…"}
+            Restablecer {target ? targetLabel : "…"}
           </Button>
         </>
       )}
@@ -384,20 +384,19 @@ export default function FactoryResetPage() {
                 <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-red-500/15 border border-red-500/30 shrink-0">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                 </div>
-                <h2 className="font-black text-lg text-red-400">Reset {targetLabel}?</h2>
+                <h2 className="font-black text-lg text-red-400">¿Restablecer {targetLabel}?</h2>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isChainOwner && scopeLabel && (
                   <span>Scope: <span className="font-black text-foreground">{scopeLabel}</span> · </span>
                 )}
-                All <span className="font-black text-foreground">{targetLabel}</span> data will be
-                permanently deleted. Type <span className="font-black text-foreground">RESET</span> to confirm.
+                Todos los datos de <span className="font-black text-foreground">{targetLabel}</span> serán eliminados permanentemente. Escribe <span className="font-black text-foreground">RESET</span> para confirmar.
               </p>
               <input
                 type="text"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="Type RESET to confirm"
+                placeholder="Escribe RESET para confirmar"
                 className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-red-500/40"
                 autoCapitalize="characters"
               />
@@ -409,14 +408,14 @@ export default function FactoryResetPage() {
                 onClick={() => { setShowConfirm(false); setConfirmText(""); }}
                 disabled={busy}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 className="flex-1 h-14 text-base font-black bg-red-600 hover:bg-red-700 text-white"
                 disabled={busy || confirmText !== "RESET"}
                 onClick={handleReset}
               >
-                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Reset"}
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Restablecer"}
               </Button>
             </div>
           </div>

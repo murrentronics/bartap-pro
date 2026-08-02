@@ -202,19 +202,19 @@ export default function ProfilePage() {
     <div className="space-y-6 pb-8 pt-3">
       <div>
         <h1 className="text-3xl font-black tracking-tight">Profile Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your business information and account</p>
+        <p className="text-muted-foreground mt-1">Gestiona la información de tu negocio y tu cuenta</p>
       </div>
 
       {/* ── Business Information ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Business Information</CardTitle>
-          <CardDescription>Update your business name, phone, and address</CardDescription>
+          <CardTitle>Información del Negocio</CardTitle>
+          <CardDescription>Actualiza el nombre, teléfono y dirección de tu negocio</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div>
-              <Label htmlFor="business-name">Business Name</Label>
+              <Label htmlFor="business-name">Nombre del Negocio</Label>
               <Input
                 id="business-name"
                 value={businessName}
@@ -225,7 +225,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">Número de Teléfono</Label>
               <PhoneInput
                 id="phone"
                 name="phone"
@@ -235,7 +235,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <Label htmlFor="address">Business Address</Label>
+              <Label htmlFor="address">Dirección del Negocio</Label>
               <Input
                 id="address"
                 value={address}
@@ -245,7 +245,7 @@ export default function ProfilePage() {
               />
             </div>
             <Button type="submit" disabled={busy}>
-              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Cambios"}
             </Button>
           </form>
         </CardContent>
@@ -254,16 +254,16 @@ export default function ProfilePage() {
       {/* ── Change Email (OTP — no redirect link) ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Email</CardTitle>
+          <CardTitle>Cambiar Correo</CardTitle>
           <CardDescription>
-            Current: <span className="font-semibold text-foreground">{user?.email}</span>
+            Actual: <span className="font-semibold text-foreground">{user?.email}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
           {emailStep === "idle" ? (
             <form onSubmit={handleSendEmailOtp} className="space-y-4">
               <div>
-                <Label htmlFor="new-email">New Email Address</Label>
+                <Label htmlFor="new-email">Nueva Dirección de Correo</Label>
                 <Input
                   id="new-email"
                   type="email"
@@ -274,7 +274,7 @@ export default function ProfilePage() {
                 />
               </div>
               <Button type="submit" disabled={emailBusy}>
-                {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : "Send 6-Digit Code"}
+                {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : "Enviar Código de 6 Dígitos"}
               </Button>
             </form>
           ) : (
@@ -283,7 +283,7 @@ export default function ProfilePage() {
                 Enter the 6-digit code sent to <span className="font-semibold text-foreground">{newEmail}</span>
               </p>
               <div>
-                <Label htmlFor="email-otp">6-Digit Code</Label>
+                <Label htmlFor="email-otp">Código de 6 Dígitos</Label>
                 <Input
                   id="email-otp"
                   type="number"
@@ -302,10 +302,10 @@ export default function ProfilePage() {
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => { setEmailStep("idle"); setEmailOtp(""); }}>
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button type="submit" disabled={emailBusy}>
-                  {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : "Confirm Email"}
+                  {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verificando...</> : "Confirmar Correo"}
                 </Button>
               </div>
             </form>
@@ -316,13 +316,13 @@ export default function ProfilePage() {
       {/* ── Change Password ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-          <CardDescription>You must enter your current password to change it</CardDescription>
+          <CardTitle>Cambiar Contraseña</CardTitle>
+          <CardDescription>Debes ingresar tu contraseña actual para cambiarla</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div>
-              <Label htmlFor="current-password">Current Password</Label>
+              <Label htmlFor="current-password">Contraseña Actual</Label>
               <div className="relative">
                 <Input
                   id="current-password"
@@ -340,7 +340,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">Nueva Contraseña</Label>
               <div className="relative">
                 <Input
                   id="new-password"
@@ -358,7 +358,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
               <div className="relative">
                 <Input
                   id="confirm-password"
@@ -376,7 +376,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <Button type="submit" disabled={busy}>
-              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</> : "Update Password"}
+              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Actualizando...</> : "Actualizar Contraseña"}
             </Button>
           </form>
         </CardContent>

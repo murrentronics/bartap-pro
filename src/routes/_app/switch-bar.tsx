@@ -61,9 +61,9 @@ export default function SwitchBarPage() {
     <div className="min-h-screen px-4 py-6 space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-black">Your Bars</h1>
+        <h1 className="text-2xl font-black">Tus Bares</h1>
         <p className="text-sm text-muted-foreground">
-          Select a bar to manage, or add a new one.
+          Selecciona un bar para gestionar, o agrega uno nuevo.
         </p>
       </div>
 
@@ -91,8 +91,8 @@ export default function SwitchBarPage() {
                 style={{ background: "var(--gradient-card)" }}>
                 <Wine className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-muted-foreground text-sm font-semibold">No bars yet</p>
-              <p className="text-xs text-muted-foreground">Add your first bar to get started.</p>
+              <p className="text-muted-foreground text-sm font-semibold">Sin bares aún</p>
+              <p className="text-xs text-muted-foreground">Agrega tu primer bar para comenzar.</p>
             </div>
           )}
 
@@ -136,10 +136,10 @@ export default function SwitchBarPage() {
                       <span className="text-xs text-muted-foreground truncate">{bar.bar_location}</span>
                       <span className="shrink-0">
                         {bar.is_machines_account
-                          ? <span className="flex items-center gap-1 text-xs font-bold text-primary"><Gamepad2 className="h-3 w-3" />Machines only</span>
+                          ? <span className="flex items-center gap-1 text-xs font-bold text-primary"><Gamepad2 className="h-3 w-3" />Solo Máquinas</span>
                           : bar.has_machines
-                          ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Machines</span>
-                          : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Bar only</span>
+                          ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Máquinas</span>
+                          : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Solo Bar</span>
                         }
                       </span>
                     </div>
@@ -171,7 +171,7 @@ export default function SwitchBarPage() {
                       border: isActive ? "none" : "1px solid var(--border)",
                     }}
                   >
-                    {isActive ? "● Active" : "Switch"}
+                    {isActive ? "● Activo" : "Cambiar"}
                   </span>
                 </button>
               </div>
@@ -190,11 +190,11 @@ export default function SwitchBarPage() {
             style={{ background: canAddBar ? "var(--gradient-hero)" : undefined }}
           >
             <Plus className="h-4 w-4" />
-            {canAddBar ? "Add New Bar" : "Maximum 10 bars reached"}
+            {canAddBar ? "Agregar Nuevo Bar" : "Máximo de 10 bares alcanzado"}
           </Button>
           {!canAddBar && (
             <p className="text-center text-xs text-muted-foreground mt-2">
-              You've reached the maximum of 10 bars on your Chain plan.
+              Has alcanzado el máximo de 10 bares en tu plan Chain.
             </p>
           )}
         </div>

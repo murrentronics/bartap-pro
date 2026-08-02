@@ -367,7 +367,7 @@ function CreditPage() {
             }`}
             style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}
           >
-            {tabKey === "credit" ? `Open Tabs${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cleared" : "Create"}
+            {tabKey === "credit" ? `Abiertos${opened.length ? ` (${opened.length})` : ""}` : tabKey === "cleared" ? "Cerrados" : "Crear"}
           </button>
         ))}
       </div>
@@ -433,7 +433,7 @@ function OpenedTab({
     return (
       <div className="text-center py-16 text-muted-foreground">
         <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-semibold">No open tabs</p>
+        <p className="font-semibold">No hay cuentas abiertas</p>
       </div>
     );
 
@@ -520,7 +520,7 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts
     return (
       <div className="text-center py-16 text-muted-foreground">
         <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-semibold">No cleared customers yet</p>
+        <p className="font-semibold">Sin clientes pagados aún</p>
       </div>
     );
 
@@ -554,7 +554,7 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts
 
           {/* Footer row — cleared badge + conditional Bill + Edit */}
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">Cleared</span>
+            <span className="text-xs font-bold text-green-500 px-2 py-1 rounded-lg bg-green-500/10">Pagado</span>
             <div className="flex items-center gap-2">
               {hasCashPurchase && (
                 <button

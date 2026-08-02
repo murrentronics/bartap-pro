@@ -1239,7 +1239,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {activeNumpad.field === "cp" ? "Cost Price" : activeNumpad.field === "sp" ? "Sell Price" : activeNumpad.field === "units" ? "Units per Item" : activeNumpad.field === "vp" ? "Variation Price" : activeNumpad.field === "vu" ? "Drinks Used" : "Add Qty"}
+                {activeNumpad.field === "cp" ? "Precio de Costo" : activeNumpad.field === "sp" ? "Precio de Venta" : activeNumpad.field === "units" ? "Unidades por Artículo" : activeNumpad.field === "vp" ? "Precio de Variación" : activeNumpad.field === "vu" ? "Bebidas Usadas" : "Agregar Cant."}
               </span>
               <button onClick={() => setActiveNumpad(null)}
                 className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
@@ -1993,7 +1993,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <DialogTitle>{showTemplates ? "Choose Template" : isEdit ? "Edit Bar Item" : "Add Bar Item"}</DialogTitle>
+          <DialogTitle>{showTemplates ? "Elegir Plantilla" : isEdit ? "Editar Artículo" : "Agregar Artículo"}</DialogTitle>
           {/* Done button — shown in template view when ≥1 item selected */}
           {showTemplates && onBulkSelect && (
             <button
@@ -2095,23 +2095,23 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
               </div>
               <div className="flex flex-col gap-2 flex-1 justify-center">
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => setShowTemplates(true)}>
-                  <LayoutGrid className="h-5 w-5 mr-2" /> Template
+                  <LayoutGrid className="h-5 w-5 mr-2" /> Plantilla
                 </Button>
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => camRef.current?.click()}>
-                  <Camera className="h-5 w-5 mr-2" /> Take Photo
+                  <Camera className="h-5 w-5 mr-2" /> Tomar Foto
                 </Button>
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="h-5 w-5 mr-2" /> Upload
+                  <ImagePlus className="h-5 w-5 mr-2" /> Subir
                 </Button>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground/70 leading-snug">
-              💡 For best results, upload a <span className="font-bold text-amber-400">transparent background PNG</span> image.
+              💡 Para mejores resultados, sube una imagen <span className="font-bold text-amber-400">PNG con fondo transparente</span>.
             </p>
 
             {/* Name */}
             <div>
-              <Label className="text-xs">Name</Label>
+              <Label className="text-xs">Nombre</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Heineken 330ml" className="h-9" />
             </div>
 
@@ -2119,7 +2119,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             <div className="space-y-0">
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Label className="text-xs">Category</Label>
+                  <Label className="text-xs">Categoría</Label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
@@ -2131,7 +2131,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                   </select>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">Cost Price</Label>
+                  <Label className="text-xs">Precio de Costo</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
@@ -2142,7 +2142,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                   </div>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">{category === "cigarettes" ? "Pack Sale Price" : category === "liquor" ? "Bottle Price" : "Sale Price"}</Label>
+                  <Label className="text-xs">{category === "cigarettes" ? "Precio de Venta por Paquete" : category === "liquor" ? "Precio de Botella" : "Precio de Venta"}</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}
@@ -2353,7 +2353,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             }
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Next →"}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Siguiente →"}
           </Button>
         </div>
       )}

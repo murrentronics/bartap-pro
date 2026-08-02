@@ -286,7 +286,7 @@ function HoursTab({ ownerId }: { ownerId: string }) {
         <CalendarDays className="h-4 w-4" />
         {selectedDate
           ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
-          : "Pick a Date"}
+          : "Seleccionar Fecha"}
       </button>
 
       {/* ── Calendar popup ── */}
@@ -310,7 +310,7 @@ function HoursTab({ ownerId }: { ownerId: string }) {
       {/* ── Records ── */}
       {sortedDates.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          {selectedDate ? "No records for this day." : "No time cards recorded yet."}
+          {selectedDate ? "Sin registros para este día." : "No hay tarjetas de tiempo registradas."}
         </div>
       ) : (
         sortedDates.map(d => {
@@ -451,9 +451,9 @@ function SalaryHistory({ cashier, ownerId, onClose }: {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="font-black text-base">{cashier.username} — Salary History</h2>
+          <h2 className="font-black text-base">{cashier.username} — Historial de Salario</h2>
           <p className="text-xs text-muted-foreground">
-            {payments.length} payment{payments.length !== 1 ? "s" : ""} · Total{" "}
+            {payments.length} pago{payments.length !== 1 ? "s" : ""} · Total{" "}
             <span className="font-black" style={{ color: "#86efac" }}>${total.toFixed(2)}</span>
           </p>
         </div>
@@ -1809,17 +1809,17 @@ export default function CashiersPage() {
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="add">Create</TabsTrigger>
-          <TabsTrigger value="manage">{t("cashier_name", "Manage")} ({list.length})</TabsTrigger>
-          <TabsTrigger value="salary">Salary</TabsTrigger>
-          <TabsTrigger value="hours">Hours</TabsTrigger>
+          <TabsTrigger value="add">Crear</TabsTrigger>
+          <TabsTrigger value="manage">{t("cashier_name", "Gestionar")} ({list.length})</TabsTrigger>
+          <TabsTrigger value="salary">Salario</TabsTrigger>
+          <TabsTrigger value="hours">Horas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
           {/* ── Step 1: Role picker ── */}
           {!selectedRole && (
             <div className="mt-6 space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Select the type of staff member to create</p>
+              <p className="text-sm text-muted-foreground text-center">Selecciona el tipo de empleado a crear</p>
               <div className="grid grid-cols-3 gap-3">
                 {/* Cashier */}
                 <button type="button" onClick={() => setSelectedRole("cashier")}
@@ -1827,8 +1827,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)" }}>💰</div>
-                  <span className="font-black text-sm">Cashier</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Full bar access, login required</span>
+                  <span className="font-black text-sm">Cajero</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Acceso completo al bar, requiere inicio de sesión</span>
                 </button>
                 {/* Manager */}
                 <button type="button" onClick={() => setSelectedRole("manager")}
@@ -1836,8 +1836,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(134,239,172,0.15)" }}>👔</div>
-                  <span className="font-black text-sm">Manager</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Items, Wallet & Machines only</span>
+                  <span className="font-black text-sm">Gerente</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Solo Artículos, Cartera y Máquinas</span>
                 </button>
                 {/* Custom */}
                 <button type="button" onClick={() => setSelectedRole("custom")}
@@ -1845,8 +1845,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(167,139,250,0.15)" }}>🏷️</div>
-                  <span className="font-black text-sm">Custom</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">No login, salary tracking only</span>
+                  <span className="font-black text-sm">Personalizado</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Sin inicio de sesión, solo seguimiento de salario</span>
                 </button>
               </div>
             </div>
