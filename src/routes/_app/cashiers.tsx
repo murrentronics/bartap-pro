@@ -346,7 +346,8 @@ function HoursTab({ ownerId }: { ownerId: string }) {
 
   // Timesheets filter helpers
   function getTsCards(): TimeCardRow[] {
-    const base = tsStaffEmp ? timeCards.filter(tc => tc.employee_id === tsStaffEmp.id) : timeCards;
+    const base = (tsStaffEmp ? timeCards.filter(tc => tc.employee_id === tsStaffEmp.id) : timeCards)
+      .filter(tc => !!tc.clocked_out_at); // timesheets only shows completed shifts
     if (!tsSelectedDate) return base;
     const ref = new Date(tsSelectedDate + "T12:00:00");
     if (tsPeriod === "day") return base.filter(tc => tc.work_date === tsSelectedDate);
@@ -442,6 +443,34 @@ function HoursTab({ ownerId }: { ownerId: string }) {
               </button>
             </div>
           )}
+
+          {/* ── Active workers flat list ── */}
+          {(() => {
+            const activeCards = timeCards.filter(tc => !tc.clocked_out_at);
+            if (activeCards.length === 0) return null;
+            return (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">On Shift Now</p>
+                {activeCards.map(tc => (
+                  <div key={tc.id} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                    style={{ background: "rgba(134,239,172,0.06)", border: "1.5px solid rgba(134,239,172,0.25)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 font-black text-sm"
+                      style={{ background: "rgba(134,239,172,0.15)", color: "#86efac" }}>
+                      {tc.employee_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm truncate">{tc.employee_name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>
+                        Since {fmtClockTime(tc.clocked_in_at)} · {fmtWorkDuration(tc.clocked_in_at, null)} on shift
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full shrink-0"
+                      style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.4)" }}>Active</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 

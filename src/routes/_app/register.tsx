@@ -2808,6 +2808,9 @@ function CashCustomerOverlay({
   const [paid, setPaid] = useState("");
   const [selectedAccount, setSelectedAccount] = useState<CreditAccount | null>(null);
 
+  // Order-level discount (mirrors CashOverlay)
+  const [orderDiscount, setOrderDiscount] = useState(0);
+
   // Create account form
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");

@@ -1405,6 +1405,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [editLogIn,    setEditLogIn]   = useState("");
   const [editLogOut,   setEditLogOut]  = useState("");
   const [savingLogEdit, setSavingLogEdit] = useState(false);
+  const [openMonthKeys,      setOpenMonthKeys]      = useState<Set<string>>(() => new Set());
+  const [downloadingMonthKey, setDownloadingMonthKey] = useState<string | null>(null);
 
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -1583,6 +1585,148 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       out_diff:   parseFloat(fields.out_diff)   || 0,
       updated_at: new Date().toISOString(),
     }, { onConflict: "machine_id,owner_id" });
+  };
+
+  // ── Per-month monitor log PDF ────────────────────────────────────────────
+  const handleDownloadMonthMonitorPdf = async (monthKey: string, logs: MonitorLog[]) => {
+    if (logs.length === 0) return;
+    setDownloadingMonthKey(monthKey);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const TZ  = "America/Port_of_Spain";
+      const fmt2 = (n: number) => n.toFixed(2);
+      const sign = (n: number) => (n >= 0 ? "+" : "") + fmt2(n);
+
+      const generated = new Date().toLocaleString("en-GB", {
+        hour: "2-digit", minute: "2-digit", hour12: true,
+        day: "numeric", month: "short", year: "numeric",
+      });
+      const [yr, mo] = monthKey.split("-");
+      const monthLabel = new Date(Number(yr), Number(mo) - 1, 1)
+        .toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+      let y = await drawHeader(doc, machine.name, "Machine Monitor Log", monthLabel, generated);
+      const bw = RM - LM;
+
+      // Month summary header card — use the FIRST log in the array (most recent = highest seq)
+      const latestLog = logs[0];
+      const monthProfit = latestLog.in_diff - latestLog.out_diff;
+
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(LM, y, bw, 28, 2, 2, "F");
+      doc.setDrawColor(60, 60, 60); doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, 28, 2, 2, "S");
+
+      // Header card title
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+      doc.setTextColor(60, 60, 60);
+      doc.text("MONTH SUMMARY — " + monthLabel.toUpperCase(), LM + bw / 2, y + 7, { align: "center" });
+
+      const summCols = [
+        { label: "Latest IN Present",  value: fmt2(latestLog.in_present)  },
+        { label: "Latest OUT Present", value: fmt2(latestLog.out_present) },
+        { label: "Latest Profit",      value: sign(monthProfit)           },
+      ];
+      const cw = bw / 3;
+      summCols.forEach((c, i) => {
+        const cx = LM + i * cw + cw / 2;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+        doc.text(c.label, cx, y + 14, { align: "center" });
+        doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+        doc.setTextColor(30, 30, 30);
+        doc.text(c.value, cx, y + 23, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0);
+      y += 34;
+
+      // One card per log entry (newest first = same order as UI)
+      for (const log of logs) {
+        const cardH = 58;
+        if (y + cardH > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
+
+        // Outer card border
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
+        doc.roundedRect(LM, y, bw, cardH, 2, 2, "FD");
+
+        // Date / time header strip
+        const dt = new Date(log.logged_at);
+        const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
+        const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
+        const logProfit = log.in_diff - log.out_diff;
+
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 30, 30);
+        doc.text(dateStr, LM + 4, y + 7);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(120, 120, 120);
+        doc.text(timeStr, LM + 4, y + 12);
+
+        // IN diff / OUT diff / Profit on the right of the header strip
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+        doc.setTextColor(30, 100, 30);
+        doc.text("IN " + sign(log.in_diff), RM - 4, y + 7, { align: "right" });
+        doc.setTextColor(140, 40, 40);
+        doc.text("OUT " + sign(log.out_diff), RM - 4, y + 13, { align: "right" });
+        doc.setTextColor(logProfit >= 0 ? 30 : 160, logProfit >= 0 ? 100 : 30, 30);
+        doc.text("PROFIT " + sign(logProfit), RM - 4, y + 19, { align: "right" });
+
+        // Thin divider under header strip
+        y += 22;
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2);
+        doc.line(LM + 2, y, LM + bw - 2, y);
+        y += 4;
+
+        // IN / OUT columns — 3 rows each (Present, Last, Total)
+        const colW   = (bw - 8) / 2;
+        const leftX  = LM + 4;
+        const rightX = LM + 4 + colW + 4;
+
+        const inRows  = [
+          { label: "Present", val: fmt2(log.in_present)  },
+          { label: "Last",    val: fmt2(log.in_last)     },
+          { label: "Total",   val: sign(log.in_diff)     },
+        ];
+        const outRows = [
+          { label: "Present", val: fmt2(log.out_present) },
+          { label: "Last",    val: fmt2(log.out_last)    },
+          { label: "Total",   val: sign(log.out_diff)    },
+        ];
+
+        // Column headers
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(30, 30, 30);
+        doc.text("IN",  leftX  + colW / 2, y, { align: "center" });
+        doc.text("OUT", rightX + colW / 2, y, { align: "center" });
+        y += 4;
+
+        inRows.forEach((row, ri) => {
+          // cell background
+          doc.setFillColor(248, 248, 248);
+          doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.15);
+          doc.roundedRect(leftX,  y - 3, colW, 6, 1, 1, "FD");
+          doc.roundedRect(rightX, y - 3, colW, 6, 1, 1, "FD");
+
+          // labels
+          doc.setFont("helvetica", "normal"); doc.setFontSize(5.5); doc.setTextColor(130, 130, 130);
+          doc.text(row.label.toUpperCase(),      leftX  + 2, y);
+          doc.text(outRows[ri].label.toUpperCase(), rightX + 2, y);
+
+          // values
+          doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(30, 30, 30);
+          doc.text(row.val,          leftX  + colW - 2, y + 0.5, { align: "right" });
+          doc.text(outRows[ri].val,  rightX + colW - 2, y + 0.5, { align: "right" });
+
+          y += 7;
+        });
+
+        y += 3; // gap between cards
+      }
+
+      addFootersToAllPages(doc);
+      const safeMonth = monthLabel.replace(/\s+/g, "-");
+      await downloadPdf(`monitor-${machine.name.replace(/\s+/g, "-")}-${safeMonth}.pdf`, doc.output("datauristring"));
+    } finally {
+      setDownloadingMonthKey(null);
+    }
   };
 
   const handleMonitorUpdate = async () => {
@@ -3663,134 +3807,214 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : monitorLogs.length === 0 ? (
                   <div className="text-center py-10 text-muted-foreground text-sm">No logs yet. Press Update on the monitor to create entries.</div>
-                ) : monitorLogs.map((log) => {
-                  const isOpen    = openLogId   === log.id;
-                  const isEditing = editingLogId === log.id;
-                  const dt = new Date(log.logged_at);
-                  const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" });
-                  const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
-                  return (
-                    <div key={log.id} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-                      {/* Accordion header */}
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <button className="flex-1 flex items-start gap-3 text-left" onClick={() => setOpenLogId(isOpen ? null : log.id)}>
-                          <div>
-                            <div className="font-black text-sm">{dateStr}</div>
-                            <div className="text-xs text-muted-foreground">{timeStr}</div>
-                          </div>
-                          <div className="ml-auto flex flex-col items-end pr-2 gap-0.5">
-                            <div className="flex gap-2.5 items-center">
-                              <span className="text-xs font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {log.in_diff >= 0 ? "+" : ""}{log.in_diff.toFixed(2)}</span>
-                              <span className="text-xs font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {log.out_diff >= 0 ? "+" : ""}{log.out_diff.toFixed(2)}</span>
+                ) : (() => {
+                  // ── Group logs by YYYY-MM (TT timezone) ──────────────────
+                  const TZ = "America/Port_of_Spain";
+                  const grouped: { monthKey: string; label: string; logs: MonitorLog[] }[] = [];
+                  const seenMonths = new Map<string, MonitorLog[]>();
+                  for (const log of monitorLogs) {
+                    const dt  = new Date(log.logged_at);
+                    const key = dt.toLocaleDateString("en-CA", { year: "numeric", month: "2-digit", timeZone: TZ }); // "YYYY-MM"
+                    if (!seenMonths.has(key)) seenMonths.set(key, []);
+                    seenMonths.get(key)!.push(log);
+                  }
+                  seenMonths.forEach((logs, key) => {
+                    const [yr, mo] = key.split("-");
+                    const label = new Date(Number(yr), Number(mo) - 1, 1)
+                      .toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+                    grouped.push({ monthKey: key, label, logs });
+                  });
+                  // Keep newest month first
+                  grouped.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
+                  return grouped.map(({ monthKey, label, logs: mLogs }) => {
+                    const isMonthOpen = openMonthKeys.has(monthKey);
+                    const isDownloading = downloadingMonthKey === monthKey;
+                    // Summary numbers from the most recent log in this month
+                    const latest = mLogs[0];
+                    const mProfit = latest.in_diff - latest.out_diff;
+
+                    return (
+                      <div key={monthKey} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+
+                        {/* ── Month accordion header ── */}
+                        <div className="flex items-center gap-2 px-4 py-3">
+                          {/* Expand / collapse */}
+                          <button
+                            className="flex-1 flex items-center gap-3 text-left min-w-0"
+                            onClick={() => setOpenMonthKeys(prev => {
+                              const next = new Set(prev);
+                              next.has(monthKey) ? next.delete(monthKey) : next.add(monthKey);
+                              return next;
+                            })}
+                          >
+                            <svg className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isMonthOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            <div className="min-w-0">
+                              <div className="font-black text-sm truncate" style={{ color: "oklch(0.82 0.18 65)" }}>{label}</div>
+                              <div className="text-[10px] text-muted-foreground">{mLogs.length} {mLogs.length === 1 ? "entry" : "entries"}</div>
                             </div>
-                            {(() => {
-                              const logProfit = log.in_diff - log.out_diff;
+                            {/* Quick stats */}
+                            <div className="ml-auto flex flex-col items-end pr-1 gap-0.5 shrink-0">
+                              <div className="flex gap-2 items-center">
+                                <span className="text-[10px] font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {latest.in_present.toFixed(2)}</span>
+                                <span className="text-[10px] font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {latest.out_present.toFixed(2)}</span>
+                              </div>
+                              <div className="text-[10px] font-black" style={{ color: mProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                                PROFIT {mProfit >= 0 ? "+" : ""}{mProfit.toFixed(2)}
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* PDF download button */}
+                          <button
+                            onClick={() => handleDownloadMonthMonitorPdf(monthKey, mLogs)}
+                            disabled={isDownloading}
+                            className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                            style={{ background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)" }}
+                            title={`Download ${label} PDF`}
+                          >
+                            {isDownloading
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Download className="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        </div>
+
+                        {/* ── Log entries (existing accordion cards) ── */}
+                        {isMonthOpen && (
+                          <div className="border-t border-border px-2 pb-2 pt-2 space-y-2">
+                            {mLogs.map((log) => {
+                              const isOpen    = openLogId   === log.id;
+                              const isEditing = editingLogId === log.id;
+                              const dt = new Date(log.logged_at);
+                              const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
+                              const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
                               return (
-                                <div className="text-[11px] font-black" style={{ color: logProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
-                                  PROFIT {logProfit >= 0 ? "+" : ""}{logProfit.toFixed(2)}
+                                <div key={log.id} className="rounded-xl border border-border overflow-hidden" style={{ background: "var(--background)" }}>
+                                  {/* Log accordion header */}
+                                  <div className="flex items-center justify-between px-4 py-3">
+                                    <button className="flex-1 flex items-start gap-3 text-left" onClick={() => setOpenLogId(isOpen ? null : log.id)}>
+                                      <div>
+                                        <div className="font-black text-sm">{dateStr}</div>
+                                        <div className="text-xs text-muted-foreground">{timeStr}</div>
+                                      </div>
+                                      <div className="ml-auto flex flex-col items-end pr-2 gap-0.5">
+                                        <div className="flex gap-2.5 items-center">
+                                          <span className="text-xs font-black" style={{ color: "oklch(0.72 0.18 145)" }}>IN {log.in_diff >= 0 ? "+" : ""}{log.in_diff.toFixed(2)}</span>
+                                          <span className="text-xs font-black" style={{ color: "oklch(0.65 0.22 25)" }}>OUT {log.out_diff >= 0 ? "+" : ""}{log.out_diff.toFixed(2)}</span>
+                                        </div>
+                                        {(() => {
+                                          const logProfit = log.in_diff - log.out_diff;
+                                          return (
+                                            <div className="text-[11px] font-black" style={{ color: logProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                                              PROFIT {logProfit >= 0 ? "+" : ""}{logProfit.toFixed(2)}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
+                                    </button>
+                                    {/* Edit pencil */}
+                                    <button
+                                      onClick={() => {
+                                        setOpenLogId(log.id);
+                                        if (editingLogId === log.id) { setEditingLogId(null); }
+                                        else { setEditingLogId(log.id); setEditLogIn(String(log.in_present)); setEditLogOut(String(log.out_present)); }
+                                      }}
+                                      className="h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 ml-1"
+                                      style={{ background: isEditing ? "var(--gradient-hero)" : "oklch(0.22 0.04 60)", color: isEditing ? "var(--primary-foreground)" : "oklch(0.72 0.18 145)" }}>
+                                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                  </div>
+                                  {/* Chevron */}
+                                  <button onClick={() => setOpenLogId(isOpen ? null : log.id)}
+                                    className="w-full flex justify-center pb-1 -mt-1">
+                                    <svg className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                  </button>
+
+                                  {/* Expanded detail */}
+                                  {isOpen && (
+                                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+                                      {isEditing ? (
+                                        <div className="space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
+                                            {log.id === monitorLogs[0]?.id && (
+                                              <button onClick={() => setConfirmDeleteLogId(log.id)} disabled={deletingLogId === log.id}
+                                                className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40"
+                                                style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
+                                                {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN Present</label>
+                                              <input type="number" value={editLogIn} onChange={e => setEditLogIn(e.target.value)}
+                                                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
+                                                style={{ color: "oklch(0.72 0.18 145)" }} />
+                                            </div>
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT Present</label>
+                                              <input type="number" value={editLogOut} onChange={e => setEditLogOut(e.target.value)}
+                                                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
+                                                style={{ color: "oklch(0.65 0.22 25)" }} />
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <button onClick={() => setEditingLogId(null)}
+                                              className="flex-1 h-10 rounded-xl font-black text-xs border border-border transition">Cancel</button>
+                                            <button onClick={() => handleSaveLogEdit(log)} disabled={savingLogEdit}
+                                              className="flex-1 h-10 rounded-xl font-black text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                                              {savingLogEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save & Recalculate"}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-3">
+                                          <div className="grid grid-cols-2 gap-4">
+                                            {/* IN */}
+                                            <div className="space-y-2">
+                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
+                                              {[
+                                                { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
+                                                { label: "Last",    value: log.in_last.toFixed(2),    color: "oklch(0.72 0.18 145)" },
+                                                { label: "Total",   value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                                              ].map(({ label, value, color }) => (
+                                                <div key={label} className="space-y-0.5">
+                                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+                                                  <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                            {/* OUT */}
+                                            <div className="space-y-2">
+                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
+                                              {[
+                                                { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                                                { label: "Last",    value: log.out_last.toFixed(2),    color: "oklch(0.65 0.22 25)" },
+                                                { label: "Total",   value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                                              ].map(({ label, value, color }) => (
+                                                <div key={label} className="space-y-0.5">
+                                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+                                                  <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               );
-                            })()}
+                            })}
                           </div>
-                        </button>
-                        {/* Edit pencil */}
-                        <button
-                          onClick={() => {
-                            setOpenLogId(log.id);
-                            if (editingLogId === log.id) { setEditingLogId(null); }
-                            else { setEditingLogId(log.id); setEditLogIn(String(log.in_present)); setEditLogOut(String(log.out_present)); }
-                          }}
-                          className="h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 ml-1"
-                          style={{ background: isEditing ? "var(--gradient-hero)" : "oklch(0.22 0.04 60)", color: isEditing ? "var(--primary-foreground)" : "oklch(0.72 0.18 145)" }}>
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
+                        )}
                       </div>
-                      {/* Chevron center bottom of header row */}
-                      <button onClick={() => setOpenLogId(isOpen ? null : log.id)}
-                        className="w-full flex justify-center pb-1 -mt-1">
-                        <svg className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                      </button>
-
-                      {/* Dropdown — card layout */}
-                      {isOpen && (
-                        <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
-                          {isEditing ? (
-                            /* Edit mode — only in_present and out_present are editable */
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Edit Present Values</p>
-                                {log.id === monitorLogs[0]?.id && (
-                                  <button onClick={() => setConfirmDeleteLogId(log.id)} disabled={deletingLogId === log.id}
-                                    className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40"
-                                    style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
-                                    {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                                  </button>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN Present</label>
-                                  <input type="number" value={editLogIn} onChange={e => setEditLogIn(e.target.value)}
-                                    className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
-                                    style={{ color: "oklch(0.72 0.18 145)" }} />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT Present</label>
-                                  <input type="number" value={editLogOut} onChange={e => setEditLogOut(e.target.value)}
-                                    className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center"
-                                    style={{ color: "oklch(0.65 0.22 25)" }} />
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button onClick={() => setEditingLogId(null)}
-                                  className="flex-1 h-10 rounded-xl font-black text-xs border border-border transition">Cancel</button>
-                                <button onClick={() => handleSaveLogEdit(log)} disabled={savingLogEdit}
-                                  className="flex-1 h-10 rounded-xl font-black text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-                                  {savingLogEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save & Recalculate"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            /* View mode — same card layout as the monitor */
-                            <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
-                              {/* IN */}
-                              <div className="space-y-2">
-                                <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
-                                {[
-                                  { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
-                                  { label: "Last",    value: log.in_last.toFixed(2),    color: "oklch(0.72 0.18 145)" },
-                                  { label: "Total",   value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
-                                ].map(({ label, value, color }) => (
-                                  <div key={label} className="space-y-0.5">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-                                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
-                                  </div>
-                                ))}
-                              </div>
-                              {/* OUT */}
-                              <div className="space-y-2">
-                                <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
-                                {[
-                                  { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
-                                  { label: "Last",    value: log.out_last.toFixed(2),    color: "oklch(0.65 0.22 25)" },
-                                  { label: "Total",   value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: log.out_diff >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" },
-                                ].map(({ label, value, color }) => (
-                                  <div key={label} className="space-y-0.5">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-                                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>

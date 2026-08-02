@@ -666,8 +666,10 @@ export type Database = {
           cashier_id: string
           change_given: number
           created_at: string
+          discount_amount: number | null
           id: string
           items: Json
+          original_total: number | null
           owner_id: string
           paid: number
           total: number
@@ -676,8 +678,10 @@ export type Database = {
           cashier_id: string
           change_given: number
           created_at?: string
+          discount_amount?: number | null
           id?: string
           items: Json
+          original_total?: number | null
           owner_id: string
           paid: number
           total: number
@@ -686,8 +690,10 @@ export type Database = {
           cashier_id?: string
           change_given?: number
           created_at?: string
+          discount_amount?: number | null
           id?: string
           items?: Json
+          original_total?: number | null
           owner_id?: string
           paid?: number
           total?: number
