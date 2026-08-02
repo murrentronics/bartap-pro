@@ -796,14 +796,16 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
 
   return (
     <div
-      className="relative rounded-xl overflow-hidden border border-border group"
+      className="relative rounded-xl overflow-hidden border border-border group select-none"
       style={{ background: "var(--gradient-card)" }}
+      onDragStart={(e) => e.preventDefault()}
     >
       <div className="aspect-[3/4] relative">
         <img
           src={t.url}
           alt={label}
-          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
         {/* Saving indicator */}
@@ -2039,18 +2041,6 @@ function YouTubeAdminPanel() {
     setSaving(null);
   };
 
-  const resetCounts = async () => {
-    const ok = await confirm({
-      title: "Reset all key counts?",
-      description: "This manually resets the daily search counters for all keys. Use only if the daily cron hasn't run yet.",
-      confirmLabel: "Reset",
-    });
-    if (!ok) return;
-    const { error } = await supabase.rpc("reset_youtube_key_counts");
-    if (error) toast.error(error.message);
-    else { toast.success("Counters reset"); await load(); }
-  };
-
   const totalCapacity = keys.filter(k => k.enabled).reduce((s, k) => s + k.daily_limit, 0);
   const totalUsed     = stats?.quota_used_today ?? 0;
   const pctUsed       = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
@@ -2076,9 +2066,7 @@ function YouTubeAdminPanel() {
             <Key className="h-4 w-4 text-yellow-400" />
             API Key Pool
           </h2>
-          <Button size="sm" variant="outline" onClick={resetCounts} className="gap-1.5 h-8 text-xs text-orange-400 border-orange-400/30">
-            <RefreshCw className="h-3.5 w-3.5" /> Reset Counts
-          </Button>
+
         </div>
         <p className="text-xs text-muted-foreground mb-3">
           Keys are stored as Supabase secrets <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> … <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_25</code>. Enable each slot once the secret is set.

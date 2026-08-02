@@ -1039,7 +1039,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         <td className="pl-3 pr-2 py-1.5 w-10 sm:w-14">
                           <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base sm:text-xl" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url
-                              ? <img src={productImageUrl(p.image_url)!} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    ? <img src={productImageUrl(p.image_url)!} alt="" draggable={false} className="h-full w-full object-cover pointer-events-none" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                               : categoryIcon(p.category ?? "drinks")}
                           </div>
                         </td>
@@ -1305,7 +1305,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                 <div className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
                   style={{ background: "var(--gradient-card)" }}>
                   {p.image_url
-                    ? <img src={productImageUrl(p.image_url)!} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    ? <img src={productImageUrl(p.image_url)!} alt="" draggable={false} className="h-full w-full object-cover pointer-events-none" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     : categoryIcon(p.category ?? "drinks")}
                 </div>
                 {/* Details */}
