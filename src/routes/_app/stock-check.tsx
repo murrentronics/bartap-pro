@@ -392,7 +392,7 @@ function StockCheckPage() {
     <div>
       {/* ── Sticky sub-header ─────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 -mx-3 -mt-3">
-        {/* Title row — original background */}
+        {/* Title row with pills inline */}
         <div className="flex items-center justify-between px-3 py-2 bg-background border-b border-border">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" style={{ color: "var(--primary)" }} />
@@ -401,10 +401,9 @@ function StockCheckPage() {
               <p className="text-muted-foreground text-xs">{items.length} items</p>
             </div>
           </div>
-        </div>
-        {/* Pills row — normal background */}
-        <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-background border-b border-border">
-          {totalMissing > 0 && (
+          {/* Summary pills */}
+          <div className="flex items-center gap-2">
+            {totalMissing > 0 && (
               <div
                 className="px-3 py-1.5 rounded-xl text-xs font-black"
                 style={{
@@ -428,6 +427,15 @@ function StockCheckPage() {
                 −${totalLoss.toFixed(2)}
               </div>
             )}
+          </div>
+        </div>
+        {/* Column header row — orange */}
+        <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
+          <div className="flex-1 min-w-0">Name</div>
+          <div className="w-[52px] text-center">Qty</div>
+          <div className="w-[64px] text-center">Actual</div>
+          <div className="w-[58px] text-center">Price</div>
+          <div className="w-[62px] text-right">Loss</div>
         </div>
       </div>
 
@@ -444,21 +452,7 @@ function StockCheckPage() {
         </div>
       ) : (
         <>
-          {/* ── Column header ───────────────────────────────────────────── */}
-          <div className="sticky top-[68px] z-20 border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
-            <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide">
-              {/* Image + Name */}
-              <div className="flex-1 min-w-0">Name</div>
-              {/* Qty */}
-              <div className="w-[52px] text-center">Qty</div>
-              {/* Actual */}
-              <div className="w-[64px] text-center">Actual</div>
-              {/* Sale Price */}
-              <div className="w-[58px] text-center">Price</div>
-              {/* Loss */}
-              <div className="w-[62px] text-right">Loss</div>
-            </div>
-          </div>
+          {/* ── Column header now lives in the sticky wrapper above ── */}
 
           {/* ── Item groups ─────────────────────────────────────────────── */}
           <div className="pb-10">
