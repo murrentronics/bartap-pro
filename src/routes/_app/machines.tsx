@@ -2277,7 +2277,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-    toast.success(tab === "payout" ? "Expense recorded" : "Amount recorded");
+    toast.success(tab === "payout" ? "Payout recorded" : "Cash In recorded");
 
 
 
@@ -2418,7 +2418,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         { label: "Total Expense", value: "-$" + fmt(totalPayout), r: 180, g: 40,  b: 40 },
 
 
-        { label: "Total Income", value: "+$" + fmt(totalIncome), r: 40,  g: 140, b: 40 },
+        { label: "Total Cash In", value: "+$" + fmt(totalIncome), r: 40,  g: 140, b: 40 },
 
 
         { label: "Total Profit", value: (totalProfit >= 0 ? "+" : "") + "$" + fmt(totalProfit),
@@ -2929,7 +2929,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Lifetime totals — owner only */}
           {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_income", "Session Income")}
+            <SmallStat label={t("session_income", "Session Cash In")}
               value={floatSession ? "$" + fmtWhole(sessionIncome) : "—"}
               color="#86efac" />
             <SmallStat label={t("session_payout", "Session Expense")}
@@ -2943,7 +2943,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+            <StatCard label={t("today_income", "Today's Cash In")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
             <StatCard label={t("today_payout", "Today's Expense")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
             <StatCard label={t("today_profit", "Today's Profit")}
               value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
@@ -2954,7 +2954,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Total / All-time stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+            <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
             <StatCard label={t("all_time_payout", "Total Expense")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
             <StatCard label={t("all_time_profit", "Total Profit")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
@@ -2975,7 +2975,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "var(--gradient-card)" }}>
 
 
-          {(["payout", ...(isOwner || isManager ? ["income"] : []), ...(isOwner || isManager ? ["history"] : []), ...(isOwner ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
+          {([...(isOwner || isManager ? ["income"] : []), "payout", ...(isOwner || isManager ? ["history"] : []), ...(isOwner ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
 
             <button key={tabKey} onClick={() => setTab(tabKey)}
@@ -2993,7 +2993,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
 
 
-              {tabKey === "payout" ? t("payout", "Expense") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"}
+              {tabKey === "payout" ? t("payout", "Payouts") : tabKey === "income" ? t("income", "Cash In") : tabKey === "history" ? t("history", "History") : "Monitor"}
 
 
             </button>
@@ -3023,7 +3023,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <h2 className="font-black text-sm">
 
 
-              {tab === "payout" ? t("save_payout", "Record Expense") : t("save_income", "Record amount cleared from machine")}
+              {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record Cash In")}
 
 
             </h2>
@@ -3311,7 +3311,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                       title={noFloat ? "Set a float first" : overFloat ? `Amount exceeds remaining float ($${remainingFloat?.toFixed(2)})` : undefined}>
 
 
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : "Save Expense"}
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : noFloat ? "Set Float First" : overFloat ? "Exceeds Float" : tab === "payout" ? "Save Payout" : "Save Cash In"}
 
 
                     </Button>
@@ -4758,7 +4758,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_income", "All Session Income")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
+          <StatCard label={t("session_income", "All Session Cash In")} value={machineSessionAnchor ? "$" + fmtWhole(sessionIncome) : "—"} color="#86efac" />
           <StatCard label={t("session_payout", "All Session Payout")} value={machineSessionAnchor ? "$" + fmtWhole(sessionPayouts) : "—"} color="#fca5a5" />
           <StatCard label={t("session_profit", "Session Profit")}
             value={machineSessionAnchor ? (sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit) : "—"}
@@ -4768,7 +4768,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 2 — Today's stats — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("today_income", "Today's Income")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
+          <StatCard label={t("today_income", "Today's Cash In")} value={barSessionStart ? "$" + fmtWhole(todayIncome) : "—"} color="#86efac" />
           <StatCard label={t("today_payout", "Today's Payout")} value={barSessionStart ? "$" + fmtWhole(todayPayouts) : "—"} color="#fca5a5" />
           <StatCard label={t("today_profit", "Today's Profit")}
             value={barSessionStart ? (todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit) : "—"}
@@ -4779,7 +4779,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 3 — Lifetime totals — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("all_time_income", "Total Income")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+          <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
           <StatCard label={t("all_machines_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
           <StatCard label={t("all_time_gross_profit", "Gross Profit")}
             value={(grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit)}
@@ -5323,7 +5323,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
       { label: "Total Expense", value: "-$" + fmt(mPayout), r: 180, g: 40, b: 40 },
 
 
-      { label: "Total Income", value: "+$" + fmt(mIncome), r: 40,  g: 140, b: 40 },
+      { label: "Total Cash In", value: "+$" + fmt(mIncome), r: 40,  g: 140, b: 40 },
 
 
       { label: "Net Profit",   value: (mProfit >= 0 ? "+" : "") + "$" + fmt(mProfit),
