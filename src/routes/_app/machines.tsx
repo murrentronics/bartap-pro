@@ -5738,6 +5738,18 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                     <div className="text-center">
 
 
+                      <div className="text-[9px] text-muted-foreground">Cash In</div>
+
+
+                      <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(mIncome)}</div>
+
+
+                    </div>
+
+
+                    <div className="text-center">
+
+
                       <div className="text-[9px] text-muted-foreground">Payout</div>
 
 
@@ -5754,18 +5766,6 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
 
                       <div className="font-black text-xs sm:text-sm lg:text-base" style={{ color: "#fdba74" }}>${fmtWhole(mExpense)}</div>
-
-
-                    </div>
-
-
-                    <div className="text-center">
-
-
-                      <div className="text-[9px] text-muted-foreground">Income</div>
-
-
-                      <div className="font-black text-xs sm:text-sm lg:text-base text-green-400">${fmtWhole(mIncome)}</div>
 
 
                     </div>
