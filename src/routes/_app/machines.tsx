@@ -6039,6 +6039,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
   type SummaryFilter = "all" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
+  const { t } = useTranslation();
   const today = todayTT();
   const [pickerDate, setPickerDate] = useState(today);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
@@ -6255,7 +6256,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                 style={summaryFilter === f && !selectedSessionId
                   ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                   : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
-                {f === "all" ? "Todo" : f === "day" ? "Día" : f === "week" ? "Semana" : f === "month" ? "Mes" : "Año"}
+                {f === "all" ? t("all", "All") : f === "day" ? "Day" : f === "week" ? t("filter_week", "Week") : f === "month" ? t("filter_month", "Month") : t("filter_year", "Year")}
               </button>
             ))}
           </div>
@@ -6280,7 +6281,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           {loadingSessionsList ? (
             <div className="h-8 rounded-xl bg-muted/30 animate-pulse" />
           ) : filteredSessions.length === 0 ? (
-            <p className="text-[10px] text-white/30 text-center py-2">Sin sesiones para este período</p>
+            <p className="text-[10px] text-white/30 text-center py-2">No sessions for this period</p>
           ) : (
             <div className="rounded-xl border border-border/40 p-1" style={{ background: "oklch(0.18 0.015 60)" }}>
               <div className="space-y-1 max-h-44 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--primary) transparent" }}>
@@ -6308,7 +6309,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <CalendarPopover label="Seleccionar Día" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+          <CalendarPopover label={t("select_day", "Select Day")} value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
         )}
         {summaryFilter === "week" && (
           <div className="space-y-1">
@@ -6363,7 +6364,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
             {statList.length > 0 && (
               <div className="space-y-2 pt-1 border-t border-border/40">
                 <div>
-                  <p className="text-[9px] font-black text-green-400/70 uppercase tracking-wider mb-1.5">Ingreso por Máquina</p>
+                  <p className="text-[9px] font-black text-green-400/70 uppercase tracking-wider mb-1.5">{t("income", "Machine Income")}</p>
                   <div className="space-y-1">
                     {byIncome.map((m, i) => (
                       <div key={m.name + "i"} className="flex items-center gap-2">
@@ -6375,7 +6376,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black text-red-400/70 uppercase tracking-wider mb-1.5">Pago por Máquina</p>
+                  <p className="text-[9px] font-black text-red-400/70 uppercase tracking-wider mb-1.5">{t("payout", "Machine Payout")}</p>
                   <div className="space-y-1">
                     {byPayout.filter(m => m.payout > 0).map((m, i) => (
                       <div key={m.name + "p"} className="flex items-center gap-2">
@@ -6387,7 +6388,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Ganancia por Máquina</p>
+                  <p className="text-[9px] font-black uppercase tracking-wider mb-1.5" style={{ color: "rgba(134,239,172,0.7)" }}>Machine Profit</p>
                   <div className="space-y-1">
                     {profitList.map((m, i) => {
                       const isPos = m.profit >= 0;
@@ -8663,10 +8664,10 @@ function SetAlertsModal({
             <div>
 
 
-              <h2 className="font-black text-base">Alertas de Pago</h2>
+              <h2 className="font-black text-base">Payment Alerts</h2>
 
 
-              <p className="text-xs text-muted-foreground">Recibe una notificación cuando un pago alcance tu límite</p>
+              <p className="text-xs text-muted-foreground">Get notified when a payout reaches your limit</p>
 
 
             </div>
@@ -8705,13 +8706,13 @@ function SetAlertsModal({
             <div>
 
 
-              <p className="font-black text-sm">Activar Alertas de Pago</p>
+              <p className="font-black text-sm">Enable Payment Alerts</p>
 
 
               <p className="text-xs text-muted-foreground mt-0.5">
 
 
-                Enviar notificación cuando un pago llegue o supere el límite
+                Send notification when a payout meets or exceeds the limit
 
 
               </p>
@@ -8768,7 +8769,7 @@ function SetAlertsModal({
               <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
 
 
-                Límite de Alerta
+                Alert Limit
 
 
               </p>
@@ -8834,7 +8835,7 @@ function SetAlertsModal({
               <p className="text-xs text-muted-foreground text-center pt-1">
 
 
-                Recibirás una alerta cuando un pago de{" "}
+                You'll get an alert when a payout of{" "}
 
 
                 <span className="font-black" style={{ color: "var(--primary)" }}>
@@ -8846,7 +8847,7 @@ function SetAlertsModal({
                 </span>{" "}
 
 
-                o más sea registrado
+                or more is recorded
 
 
               </p>
@@ -8898,6 +8899,7 @@ function SetAlertsModal({
 
 
 }
+
 
 
 

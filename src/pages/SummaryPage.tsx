@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { drawHeader, addFootersToAllPages } from "@/lib/pdfHelpers";
 import { downloadPdf } from "@/lib/download";
 import { CATEGORIES } from "@/lib/categories";
+import { useTranslation } from "@/lib/i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type OrderItem = { id?: string; name: string; qty: number; price: number; units_consumed?: number | null };
@@ -189,7 +190,7 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
           </div>
           <div className="flex items-center gap-1.5 pl-5">
             <span className="text-[10px] text-muted-foreground">
-              {sub.closed_at ? `→ ${fmtTs(sub.closed_at)}` : "Aún abierto"}
+              {sub.closed_at ? `→ ${fmtTs(sub.closed_at)}` : "Still open"}
             </span>
             {sub.cashier_float > 0 && <span className="text-[9px] text-muted-foreground">· Float ${fmt(sub.cashier_float)}</span>}
           </div>
@@ -361,12 +362,12 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
             {closedLabel
-              ? <span className="text-[11px] text-muted-foreground">Cerrado {closedLabel}</span>
-              : <span className="text-[11px] font-semibold" style={{ color: "#86efac" }}>Aún abierto</span>
+              ? <span className="text-[11px] text-muted-foreground">Closed {closedLabel}</span>
+              : <span className="text-[11px] font-semibold" style={{ color: "#86efac" }}>Still open</span>
             }
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {mySubs.length > 0 ? `${mySubs.length} turno${mySubs.length !== 1 ? "s" : ""} de cajero` : "Sesión Completa"}
+            {mySubs.length > 0 ? `${mySubs.length} cashier shift${mySubs.length !== 1 ? "s" : ""}` : "Full Session"}
           </div>
         </div>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
@@ -407,6 +408,7 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
 export default function SummaryPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
+  const { t } = useTranslation();
   const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: TZ }));
   const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 
@@ -527,11 +529,11 @@ export default function SummaryPage() {
   const activeSessionId = allSessions.find(s => !s.closed_at)?.id ?? null;
 
   const FILTERS: { key: FilterType; label: string }[] = [
-    { key: "session", label: "Sesión"  },
-    { key: "week",    label: "Semana"  },
-    { key: "month",   label: "Mes"     },
-    { key: "year",    label: "Año"     },
-    { key: "period",  label: "Período" },
+    { key: "session", label: t("filter_session", "Session") },
+    { key: "week",    label: t("filter_week",    "Week")    },
+    { key: "month",   label: t("filter_month",   "Month")   },
+    { key: "year",    label: t("filter_year",    "Year")    },
+    { key: "period",  label: t("filter_period",  "Period")  },
   ];
 
   const handleDownloadPdf = async () => {
@@ -565,7 +567,7 @@ export default function SummaryPage() {
           <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
             className="h-7 rounded-lg border border-border bg-background px-1.5 text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary max-w-[90px]"
             style={{ color: "var(--foreground)" }}>
-            <option value="all">Todos</option>
+            <option value="all">All</option>
             {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
           </select>
           <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 font-black"
@@ -610,23 +612,23 @@ export default function SummaryPage() {
       {/* Date pickers */}
       {filter === "session" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <CalendarPopover label="Seleccionar Día" value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
+          <CalendarPopover label={t("select_day", "Select Day")} value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
           {!loadingSessions && (
             <p className="text-xs text-muted-foreground pt-1">
-              {filteredSessions.length === 0 ? "No hay sesiones de bar este día." : `${filteredSessions.length} sesión${filteredSessions.length !== 1 ? "es" : ""} abierta${filteredSessions.length !== 1 ? "s" : ""} este día`}
+              {filteredSessions.length === 0 ? t("bar_not_open_day", "Bar was not opened this day.") : `${filteredSessions.length} session${filteredSessions.length !== 1 ? "s" : ""} this day`}
             </p>
           )}
         </div>
       )}
       {filter === "week" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <CalendarPopover label="Inicio de Semana" value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
-          <p className="text-xs text-muted-foreground">Período: <span className="font-black text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → {new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
+          <CalendarPopover label={t("week_start", "Week Start")} value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
+          <p className="text-xs text-muted-foreground">Period: <span className="font-black text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → {new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
         </div>
       )}
       {filter === "month" && (
         <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Seleccionar Mes</label>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("select_month", "Select Month")}</label>
           <div className="flex gap-3">
             <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))} className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none">
               {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => <option key={i} value={i}>{m}</option>)}
@@ -639,7 +641,7 @@ export default function SummaryPage() {
       )}
       {filter === "year" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Seleccionar Año</label>
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("select_year", "Select Year")}</label>
           <div className="relative">
             <select value={selYear} onChange={e => setSelYear(Number(e.target.value))} className="w-full h-11 rounded-xl border border-border bg-background pl-4 pr-10 text-sm font-black outline-none appearance-none cursor-pointer" style={{ color: "var(--primary)" }}>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -651,10 +653,10 @@ export default function SummaryPage() {
       {filter === "period" && (
         <div className="rounded-2xl border border-border p-4 space-y-3" style={{ background: "var(--gradient-card)" }}>
           <div className="grid grid-cols-2 gap-3">
-            <CalendarPopover label="Desde" value={fromDate} minDate={earliestDate} maxDate={toDate} onChange={v => setFromDate(v)} />
-            <CalendarPopover label="Hasta" value={toDate}   minDate={fromDate}     maxDate={today}  onChange={v => setToDate(v)}   />
+            <CalendarPopover label={t("from_date", "From")} value={fromDate} minDate={earliestDate} maxDate={toDate} onChange={v => setFromDate(v)} />
+            <CalendarPopover label={t("to_date", "To")}     value={toDate}   minDate={fromDate}     maxDate={today}  onChange={v => setToDate(v)}   />
           </div>
-          <p className="text-xs text-muted-foreground">Registro más antiguo: <span className="font-black text-foreground">{new Date(earliestDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
+          <p className="text-xs text-muted-foreground">Oldest record: <span className="font-black text-foreground">{new Date(earliestDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></p>
         </div>
       )}
 
@@ -664,14 +666,14 @@ export default function SummaryPage() {
       ) : filteredSessions.length === 0 ? (
         <div className="rounded-2xl border border-border p-8 text-center" style={{ background: "var(--gradient-card)" }}>
           <div className="text-3xl mb-3">📊</div>
-          <p className="font-black text-sm">No se encontraron sesiones</p>
-          <p className="text-xs text-muted-foreground mt-1">{filter === "session" ? "No se abrió el bar este día." : `No hay sesiones en este ${filter === "week" ? "semana" : filter === "month" ? "mes" : filter === "year" ? "año" : "período"}.`}</p>
+          <p className="font-black text-sm">No sessions found</p>
+          <p className="text-xs text-muted-foreground mt-1">{filter === "session" ? "Bar was not opened this day." : `No sessions in this ${filter === "week" ? "week" : filter === "month" ? "month" : filter === "year" ? "year" : "period"}.`}</p>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              {filteredSessions.length} Sesión{filteredSessions.length !== 1 ? "es" : ""}{filter !== "session" && ` · ${filterLabel(filter, fromDate, toDate)}`}
+              {filteredSessions.length} Session{filteredSessions.length !== 1 ? "s" : ""}{filter !== "session" && ` · ${filterLabel(filter, fromDate, toDate)}`}
             </span>
           </div>
           {filteredSessions.map(session => (

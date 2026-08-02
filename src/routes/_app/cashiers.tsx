@@ -231,6 +231,20 @@ function HoursTab({ ownerId }: { ownerId: string }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showCal, setShowCal]           = useState(false);
 
+  // ── Employee list + clock in/out ──────────────────────────────────────────
+  const [employees, setEmployees] = useState<{ id: string; username: string; role: string; job_title?: string }[]>([]);
+  const [selectedEmp, setSelectedEmp] = useState<{ id: string; username: string } | null>(null);
+  const [clockBusy, setClockBusy] = useState(false);
+
+  const loadEmployees = useCallback(async () => {
+    const { data } = await sb.from("profiles")
+      .select("id, username, role, job_title")
+      .eq("parent_id", ownerId)
+      .in("role", ["cashier", "manager", "custom"])
+      .order("username", { ascending: true });
+    setEmployees((data ?? []) as { id: string; username: string; role: string; job_title?: string }[]);
+  }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadCards = useCallback(async () => {
     setLoading(true);
     const { data } = await sb.from("time_cards")
@@ -241,7 +255,7 @@ function HoursTab({ ownerId }: { ownerId: string }) {
     setLoading(false);
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadCards(); }, [loadCards]);
+  useEffect(() => { loadEmployees(); loadCards(); }, [loadEmployees, loadCards]);
 
   useEffect(() => {
     const ch = supabase.channel(`owner-timecards-${ownerId}`)
@@ -250,6 +264,33 @@ function HoursTab({ ownerId }: { ownerId: string }) {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [ownerId, loadCards]);
+
+  const openCard = selectedEmp ? timeCards.find(tc => tc.employee_id === selectedEmp.id && !tc.clocked_out_at) ?? null : null;
+  const isClockedIn = !!openCard;
+
+  const handleClockIn = async () => {
+    if (!selectedEmp) return;
+    setClockBusy(true);
+    const today = tzNow().toLocaleDateString("en-CA");
+    const { error } = await sb.from("time_cards").insert({
+      owner_id: ownerId, employee_id: selectedEmp.id,
+      employee_name: selectedEmp.username, clocked_in_at: new Date().toISOString(), work_date: today,
+    });
+    setClockBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${selectedEmp.username} clocked in`);
+    loadCards();
+  };
+
+  const handleClockOut = async () => {
+    if (!openCard) return;
+    setClockBusy(true);
+    const { error } = await sb.from("time_cards").update({ clocked_out_at: new Date().toISOString() }).eq("id", openCard.id);
+    setClockBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${openCard.employee_name} clocked out`);
+    loadCards();
+  };
 
   // All worked dates across all staff — used to highlight the calendar
   const workedDates = new Set(timeCards.map(tc => tc.work_date));
@@ -276,6 +317,55 @@ function HoursTab({ ownerId }: { ownerId: string }) {
   return (
     <div className="space-y-4 mt-4">
 
+      {/* ── Employee selector ── */}
+      {employees.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Select Staff</p>
+          <div className="grid grid-cols-2 gap-2">
+            {employees.map(emp => {
+              const isSelected = selectedEmp?.id === emp.id;
+              const empOpenCard = timeCards.find(tc => tc.employee_id === emp.id && !tc.clocked_out_at);
+              const isActive = !!empOpenCard;
+              return (
+                <button key={emp.id} onClick={() => setSelectedEmp(isSelected ? null : emp)}
+                  className="h-14 rounded-2xl font-black text-sm flex items-center gap-2 px-3 transition active:scale-95 border"
+                  style={isSelected
+                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)", borderColor: "transparent" }
+                    : { background: "var(--gradient-card)", borderColor: isActive ? "rgba(134,239,172,0.4)" : "var(--border)", color: "var(--foreground)" }}>
+                  <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 font-black text-xs"
+                    style={{ background: isActive ? "rgba(134,239,172,0.2)" : "rgba(255,255,255,0.08)", color: isActive ? "#86efac" : "var(--primary)" }}>
+                    {emp.username.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate text-xs">{emp.username}</span>
+                  {isActive && !isSelected && (
+                    <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                      style={{ background: "rgba(134,239,172,0.15)", color: "#86efac", border: "1px solid rgba(134,239,172,0.35)" }}>
+                      IN
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Clock In / Out buttons ── */}
+      {selectedEmp && (
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
+            className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+            {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
+          </button>
+          <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
+            className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={isClockedIn ? { background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171", color: "#f87171" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+            {clockBusy && isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Clock Out
+          </button>
+        </div>
+      )}
+
       {/* ── Date picker button ── */}
       <button
         onClick={() => setShowCal(v => !v)}
@@ -286,7 +376,7 @@ function HoursTab({ ownerId }: { ownerId: string }) {
         <CalendarDays className="h-4 w-4" />
         {selectedDate
           ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
-          : "Seleccionar Fecha"}
+          : "Select Date"}
       </button>
 
       {/* ── Calendar popup ── */}
@@ -310,7 +400,7 @@ function HoursTab({ ownerId }: { ownerId: string }) {
       {/* ── Records ── */}
       {sortedDates.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          {selectedDate ? "Sin registros para este día." : "No hay tarjetas de tiempo registradas."}
+          {selectedDate ? "No records for this day." : "No time cards recorded yet."}
         </div>
       ) : (
         sortedDates.map(d => {
@@ -349,6 +439,11 @@ function HoursTab({ ownerId }: { ownerId: string }) {
                   const outTime = tc.clocked_out_at ? fmtClockTime(tc.clocked_out_at) : null;
                   const duration = fmtWorkDuration(tc.clocked_in_at, tc.clocked_out_at);
                   const isActive = !tc.clocked_out_at;
+                  // Show date on clock-out if it's a different calendar day (TT timezone)
+                  const inDate  = new Date(tc.clocked_in_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
+                  const outDate = tc.clocked_out_at ? new Date(tc.clocked_out_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) : null;
+                  const outCrossDay = outDate && outDate !== inDate;
+                  const outDateLabel = outCrossDay ? new Date(tc.clocked_out_at!).toLocaleDateString("en-US", { timeZone: "America/Port_of_Spain", month: "short", day: "numeric" }) : null;
 
                   return (
                     <div key={tc.id} className="px-4 py-3 flex items-center gap-3">
@@ -365,14 +460,17 @@ function HoursTab({ ownerId }: { ownerId: string }) {
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-sm truncate">{tc.employee_name}</p>
                         {/* In → Out */}
-                        <div className="flex items-center gap-1.5 text-xs mt-0.5">
+                        <div className="flex items-center gap-1.5 text-xs mt-0.5 flex-wrap">
                           <LogIn className="h-3 w-3 text-green-400 shrink-0" />
                           <span className="font-bold text-green-400">{inTime}</span>
                           {outTime ? (
                             <>
                               <span className="text-muted-foreground/40">→</span>
                               <LogOut className="h-3 w-3 text-red-400 shrink-0" />
-                              <span className="font-bold text-red-400">{outTime}</span>
+                              <span className="font-bold text-red-400">
+                                {outDateLabel && <span className="text-[10px] font-black mr-0.5 opacity-80">{outDateLabel} </span>}
+                                {outTime}
+                              </span>
                             </>
                           ) : (
                             <span className="text-green-400 font-semibold">· still on shift</span>
@@ -451,9 +549,9 @@ function SalaryHistory({ cashier, ownerId, onClose }: {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="font-black text-base">{cashier.username} — Historial de Salario</h2>
+          <h2 className="font-black text-base">{cashier.username} — Salary History</h2>
           <p className="text-xs text-muted-foreground">
-            {payments.length} pago{payments.length !== 1 ? "s" : ""} · Total{" "}
+            {payments.length} payment{payments.length !== 1 ? "s" : ""} · Total{" "}
             <span className="font-black" style={{ color: "#86efac" }}>${total.toFixed(2)}</span>
           </p>
         </div>
@@ -1809,17 +1907,17 @@ export default function CashiersPage() {
       <div className="pt-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="add">Crear</TabsTrigger>
-          <TabsTrigger value="manage">{t("cashier_name", "Gestionar")} ({list.length})</TabsTrigger>
-          <TabsTrigger value="salary">Salario</TabsTrigger>
-          <TabsTrigger value="hours">Horas</TabsTrigger>
+          <TabsTrigger value="add">{t("tab_create", "Create")}</TabsTrigger>
+          <TabsTrigger value="manage">{t("tab_manage", "Manage")} ({list.length})</TabsTrigger>
+          <TabsTrigger value="salary">{t("tab_salary", "Salary")}</TabsTrigger>
+          <TabsTrigger value="hours">{t("tab_hours", "Hours")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="add">
           {/* ── Step 1: Role picker ── */}
           {!selectedRole && (
             <div className="mt-6 space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Selecciona el tipo de empleado a crear</p>
+              <p className="text-sm text-muted-foreground text-center">{t("select_employee_type", "Select the type of employee to create")}</p>
               <div className="grid grid-cols-3 gap-3">
                 {/* Cashier */}
                 <button type="button" onClick={() => setSelectedRole("cashier")}
@@ -1827,8 +1925,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.15)" }}>💰</div>
-                  <span className="font-black text-sm">Cajero</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Acceso completo al bar, requiere inicio de sesión</span>
+                  <span className="font-black text-sm">{t("role_cashier", "Cashier")}</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">{t("cashier_desc", "Full bar access, requires login")}</span>
                 </button>
                 {/* Manager */}
                 <button type="button" onClick={() => setSelectedRole("manager")}
@@ -1836,8 +1934,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(134,239,172,0.15)" }}>👔</div>
-                  <span className="font-black text-sm">Gerente</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Solo Artículos, Cartera y Máquinas</span>
+                  <span className="font-black text-sm">{t("role_manager_label", "Manager")}</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">{t("manager_desc", "Items, Wallet & Machines only")}</span>
                 </button>
                 {/* Custom */}
                 <button type="button" onClick={() => setSelectedRole("custom")}
@@ -1845,8 +1943,8 @@ export default function CashiersPage() {
                   style={{ background: "var(--gradient-card)", borderColor: "var(--border)" }}>
                   <div className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl"
                     style={{ background: "rgba(167,139,250,0.15)" }}>🏷️</div>
-                  <span className="font-black text-sm">Personalizado</span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">Sin inicio de sesión, solo seguimiento de salario</span>
+                  <span className="font-black text-sm">{t("role_custom", "Custom")}</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">{t("custom_desc", "No login, salary tracking only")}</span>
                 </button>
               </div>
             </div>

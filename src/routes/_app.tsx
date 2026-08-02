@@ -32,6 +32,17 @@ function AppLayout() {
   const [hasMachines, setHasMachines] = useState(false);
   const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = useState(false);
+  const [activeOpenBarField, setActiveOpenBarField] = useState<"bar" | "machine" | null>(null);
+
+  const handleOpenBarNumpad = (field: "bar" | "machine", k: string) => {
+    const current = field === "bar" ? openBarFloat : openMachineFloat;
+    const setter  = field === "bar" ? setOpenBarFloat : setOpenMachineFloat;
+    if (k === "⌫") { setter(current.slice(0, -1)); return; }
+    if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
+    const dotIdx = current.indexOf(".");
+    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
+    setter(current === "0" ? k : current + k);
+  };
 
   useEffect(() => {
     if (!loading && !session) nav({ to: "/login" });
@@ -109,6 +120,7 @@ function AppLayout() {
     setIsMachinesAccount(machinesOnly);
     setOpenBarFloat("");
     setOpenMachineFloat("");
+    setActiveOpenBarField(null);
     setShowOpenBarModal(true);
   };
 
@@ -382,15 +394,15 @@ function AppLayout() {
               {!isMachinesAccount && (
                 <div className="space-y-1">
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 500.00"
-                    value={openBarFloat}
-                    onChange={e => setOpenBarFloat(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                  />
+                  <div
+                    onClick={() => setActiveOpenBarField(activeOpenBarField === "bar" ? null : "bar")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeOpenBarField === "bar" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`}>
+                      {openBarFloat || "0.00"}
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -398,15 +410,33 @@ function AppLayout() {
               {hasMachines && (
                 <div className="space-y-1">
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 200.00"
-                    value={openMachineFloat}
-                    onChange={e => setOpenMachineFloat(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                  />
+                  <div
+                    onClick={() => setActiveOpenBarField(activeOpenBarField === "machine" ? null : "machine")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeOpenBarField === "machine" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`}>
+                      {openMachineFloat || "0.00"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Inline numpad */}
+              {activeOpenBarField !== null && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleOpenBarNumpad(activeOpenBarField, k)}
+                      className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                        k === "⌫"
+                          ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                          : "bg-muted hover:bg-muted/70 text-foreground"
+                      }`}
+                    >{k}</button>
+                  ))}
                 </div>
               )}
 

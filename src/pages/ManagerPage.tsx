@@ -317,10 +317,15 @@ function DashboardTab({
     const { data: ownerRow } = await sb.from("profiles")
       .select("cashier_float, machines_addon_active, plan_type, is_machines_account")
       .eq("id", ownerId).single();
-    const barFloat = Number(ownerRow?.cashier_float ?? 0);
     const hasMach = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
-    setBarFloatSet(barFloat);
     setHasMachinesEnabled(hasMach);
+
+    // "Amount Set" = the float value from the latest sub-session (original set amount)
+    // "Remaining"  = live cashier_float (updated by all deductions in realtime)
+    const { data: lastSubSession } = await sb.from("bar_sub_sessions")
+      .select("cashier_float").eq("owner_id", ownerId)
+      .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+    setBarFloatSet(Number(lastSubSession?.cashier_float ?? ownerRow?.cashier_float ?? 0));
 
     if (barSessionStart) {
       const { data: orders } = await sb.from("orders")
@@ -408,18 +413,21 @@ function DashboardTab({
   // ── Expenses state ─────────────────────────────────────────────────────────
   const [expenses,  setExpenses]  = useState<Expense[]>([]);
   const [loading,   setLoading]   = useState(true);
-  const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const loadExpenses = useCallback(async () => {
     setLoading(true);
-    const { data } = await sb.from("owner_expenses").select("*")
+    let query = sb.from("owner_expenses").select("*")
       .eq("owner_id", ownerId).ilike("description", `%[Manager: ${managerName}]%`)
       .order("created_at", { ascending: false });
+    if (barSessionStart) query = query.gte("created_at", barSessionStart);
+    const { data } = await query;
     setExpenses((data ?? []) as Expense[]);
     setLoading(false);
-  }, [ownerId, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ownerId, managerName, barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadExpenses(); }, [loadExpenses]);
+  // Reload when bar opens or closes
+  useEffect(() => { loadExpenses(); }, [barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const ch = supabase.channel(`mgr-expenses-${profile.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "owner_expenses", filter: `owner_id=eq.${ownerId}` },
@@ -517,9 +525,7 @@ function DashboardTab({
     } finally { setDeleting(false); }
   };
 
-  const byMonth: Record<string, Expense[]> = {};
-  expenses.forEach((e) => { const k = monthKey(e.expense_date); if (!byMonth[k]) byMonth[k] = []; byMonth[k].push(e); });
-  const months = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+  const sessionTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
   return (
     <div className="space-y-4">
@@ -538,48 +544,44 @@ function DashboardTab({
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="relative space-y-1.5">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Bar Float</p>
-            {barIsOpen && (
-              <button onClick={() => { setSetFloatInput(String(barFloatSet)); setShowSetBarFloat(true); }}
-                className="text-[10px] font-black px-2 py-0.5 rounded-lg transition active:scale-95"
-                style={{ background: "rgba(0,0,0,0.2)", color: "rgba(0,0,0,0.7)" }}>
-                Set Float
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Bar Float</p>
+          <div className="grid grid-cols-3 gap-2">
             <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
               <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
-              <div className="font-black text-sm" style={{ color: "#86efac" }}>{barIsOpen ? `$${fmt(barFloatSet)}` : "—"}</div>
+              <div className="font-black text-sm" style={{ color: "#86efac" }}>{barIsOpen ? `$${fmt(barFloatSet)}` : "$0"}</div>
             </div>
             <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Balance Remaining</div>
-              <div className="font-black text-sm" style={{ color: barIsOpen && floatBalance < 10 ? "#fde68a" : "#86efac" }}>{barIsOpen ? `$${fmt(floatBalance)}` : "—"}</div>
+              <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Remaining</div>
+              <div className="font-black text-sm" style={{ color: barIsOpen && floatBalance < 10 ? "#fde68a" : "#86efac" }}>{barIsOpen ? `$${fmt(floatBalance)}` : "$0"}</div>
             </div>
+            <button
+              onClick={() => { setSetFloatInput(String(barFloatSet)); setShowSetBarFloat(true); }}
+              className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
+              style={{ background: "var(--gradient-hero)", border: "1.5px solid rgba(0,0,0,0.25)", color: "rgba(0,0,0,0.75)" }}>
+              <span className="text-base">💰</span>
+              <span>{barFloatSet > 0 ? "Update" : "Set"} Float</span>
+            </button>
           </div>
         </div>
         {hasMachinesEnabled && (
           <div className="relative space-y-1.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Machine Float</p>
-              {barIsOpen && (
-                <button onClick={() => { setSetFloatInput(String(machineFloatSet)); setShowSetMachFloat(true); }}
-                  className="text-[10px] font-black px-2 py-0.5 rounded-lg transition active:scale-95"
-                  style={{ background: "rgba(0,0,0,0.2)", color: "rgba(0,0,0,0.7)" }}>
-                  Set Float
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Machine Float</p>
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
-                <div className="font-black text-sm" style={{ color: "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatSet)}` : "—"}</div>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatSet)}` : "$0"}</div>
               </div>
               <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
-                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Balance Remaining</div>
-                <div className="font-black text-sm" style={{ color: machineFloatSet > 0 && machineFloatBal < 10 ? "#fde68a" : "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatBal)}` : "—"}</div>
+                <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Remaining</div>
+                <div className="font-black text-sm" style={{ color: machineFloatSet > 0 && machineFloatBal < 10 ? "#fde68a" : "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatBal)}` : "$0"}</div>
               </div>
+              <button
+                onClick={() => { setSetFloatInput(String(machineFloatSet)); setShowSetMachFloat(true); }}
+                className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
+                style={{ background: "var(--gradient-hero)", border: "1.5px solid rgba(0,0,0,0.25)", color: "rgba(0,0,0,0.75)" }}>
+                <span className="text-base">🎰</span>
+                <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
+              </button>
             </div>
           </div>
         )}
@@ -784,125 +786,106 @@ function DashboardTab({
 
       {/* Expense History */}
       <div className="space-y-2">
-        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">My Expenses</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Session Expenses</p>
+          {expenses.length > 0 && <span className="text-xs font-black text-red-400">${fmt(sessionTotal)}</span>}
+        </div>
         {loading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />)}</div>
-        ) : months.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground text-sm">No expenses logged yet.</div>
+        ) : expenses.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-sm">No expenses this session.</div>
         ) : (
-          months.map((mk) => {
-            const me = byMonth[mk];
-            const mt = me.reduce((s, e) => s + Number(e.amount), 0);
-            const isOpen = openMonth === mk;
-            return (
-              <div key={mk} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
-                <button type="button" onClick={() => setOpenMonth(isOpen ? null : mk)}
-                  className="w-full flex items-center justify-between px-4 py-3 transition hover:bg-muted/20">
-                  <div className="text-left">
-                    <p className="font-black text-sm">{monthLabel(mk)}</p>
-                    <p className="text-xs text-muted-foreground">{me.length} expense{me.length !== 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-black text-sm text-red-400">${fmt(mt)}</span>
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                  </div>
-                </button>
-                {isOpen && (
-                  <div className="border-t border-border divide-y divide-border/40">
-                    {me.map((e) => {
-                      const canEdit = e.id === lastExpenseId && barIsOpen;
-                      const raw = (e.description ?? "").replace(tag, "").trim();
-                      const descLines = raw.split("\n").filter((l) => l && l !== "Non-Stock Expense").map((l) => l.trim());
-                      const isEditing = editingId === e.id;
-                      return (
-                        <div key={e.id} className="px-4 py-3 space-y-2">
-                          {isEditing ? (
-                            <div className="space-y-2">
-                              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Edit Expense</p>
-                              {editLines.map((el, i) => (
-                                <div key={i} className="space-y-1">
-                                  <input value={el.description}
-                                    onChange={(ev) => setEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, description: ev.target.value } : l))}
-                                    placeholder="Description"
-                                    className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-                                  <div className="flex gap-2">
-                                    <input value={el.amount}
-                                      onChange={(ev) => setEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, amount: ev.target.value } : l))}
-                                      placeholder="$0.00" type="number" min="0" step="0.01"
-                                      className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
-                                    {editLines.length > 1 && (
-                                      <button onClick={() => setEditLines((ls) => ls.filter((_, idx) => idx !== i))}
-                                        className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition">
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                              <button onClick={() => setEditLines((ls) => [...ls, { description: "", amount: "" }])}
-                                className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]">
-                                + Add Line
+          <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
+            {expenses.map((e) => {
+              const canEdit = e.id === lastExpenseId && barIsOpen;
+              const raw = (e.description ?? "").replace(tag, "").trim();
+              const descLines = raw.split("\n").filter((l) => l && l !== "Non-Stock Expense").map((l) => l.trim());
+              const isEditing = editingId === e.id;
+              return (
+                <div key={e.id} className="px-4 py-3 space-y-2">
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Edit Expense</p>
+                      {editLines.map((el, i) => (
+                        <div key={i} className="space-y-1">
+                          <input value={el.description}
+                            onChange={(ev) => setEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, description: ev.target.value } : l))}
+                            placeholder="Description"
+                            className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                          <div className="flex gap-2">
+                            <input value={el.amount}
+                              onChange={(ev) => setEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, amount: ev.target.value } : l))}
+                              placeholder="$0.00" type="number" min="0" step="0.01"
+                              className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                            {editLines.length > 1 && (
+                              <button onClick={() => setEditLines((ls) => ls.filter((_, idx) => idx !== i))}
+                                className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition">
+                                <X className="h-3.5 w-3.5" />
                               </button>
-                              <div className="grid grid-cols-2 gap-2 pt-1">
-                                <button onClick={() => { setEditingId(null); setEditLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
-                                <button onClick={() => handleEditSave(e)} disabled={editSaving}
-                                  className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50"
-                                  style={{ background: "var(--gradient-hero)" }}>
-                                  {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : deleteConfirmId === e.id ? (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold text-center text-red-400">Delete ${fmt(Number(e.amount))} expense and refund to float?</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setDeleteConfirmId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
-                                <button onClick={() => handleDelete(e)} disabled={deleting}
-                                  className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
-                                  style={{ background: "#dc2626" }}>
-                                  {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-start gap-3">
-                              <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
-                                style={{ background: "rgba(239,68,68,0.10)", borderColor: "rgba(239,68,68,0.25)" }}>
-                                <TrendingDown className="h-3.5 w-3.5 text-red-400" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(e.created_at).toLocaleString("en-GB", { timeZone: "America/Port_of_Spain", hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
-                                </p>
-                                {descLines.map((l, i) => <p key={i} className="text-sm font-semibold leading-snug mt-0.5 break-words">{l}</p>)}
-                              </div>
-                              <div className="flex flex-col items-end gap-1 shrink-0">
-                                <span className="font-black text-sm text-red-400">${fmt(Number(e.amount))}</span>
-                                {canEdit && (
-                                  <div className="flex gap-1 mt-0.5">
-                                    <button onClick={() => startEdit(e)}
-                                      className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                                      style={{ background: "rgba(255,255,255,0.08)" }}>
-                                      <Pencil className="h-3 w-3 text-muted-foreground" />
-                                    </button>
-                                    <button onClick={() => setDeleteConfirmId(e.id)}
-                                      className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                                      style={{ background: "rgba(239,68,68,0.12)" }}>
-                                      <Trash2 className="h-3 w-3 text-red-400" />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
+                      ))}
+                      <button onClick={() => setEditLines((ls) => [...ls, { description: "", amount: "" }])}
+                        className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]">
+                        + Add Line
+                      </button>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button onClick={() => { setEditingId(null); setEditLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                        <button onClick={() => handleEditSave(e)} disabled={editSaving}
+                          className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                          style={{ background: "var(--gradient-hero)" }}>
+                          {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : deleteConfirmId === e.id ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-center text-red-400">Delete ${fmt(Number(e.amount))} expense and refund to float?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setDeleteConfirmId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                        <button onClick={() => handleDelete(e)} disabled={deleting}
+                          className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                          style={{ background: "#dc2626" }}>
+                          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
+                        style={{ background: "rgba(239,68,68,0.10)", borderColor: "rgba(239,68,68,0.25)" }}>
+                        <TrendingDown className="h-3.5 w-3.5 text-red-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(e.created_at).toLocaleString("en-GB", { timeZone: "America/Port_of_Spain", hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                        {descLines.map((l, i) => <p key={i} className="text-sm font-semibold leading-snug mt-0.5 break-words">{l}</p>)}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="font-black text-sm text-red-400">${fmt(Number(e.amount))}</span>
+                        {canEdit && (
+                          <div className="flex gap-1 mt-0.5">
+                            <button onClick={() => startEdit(e)}
+                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                              style={{ background: "rgba(255,255,255,0.08)" }}>
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(e.id)}
+                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                              style={{ background: "rgba(239,68,68,0.12)" }}>
+                              <Trash2 className="h-3 w-3 text-red-400" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -1066,7 +1049,7 @@ function MgrCalendar({ workedDates, selectedDate, onSelect }: {
 
 
 // ─── Time Cards Tab ───────────────────────────────────────────────────────────
-function TimeCardsTab({ profile, ownerId, managerName }: {
+export function TimeCardsTab({ profile, ownerId, managerName }: {
   profile: { id: string; username?: string | null; wallet_balance: number };
   ownerId: string; managerName: string;
 }) {
@@ -1232,7 +1215,7 @@ function TimeCardsTab({ profile, ownerId, managerName }: {
                                 <LogIn className="h-3 w-3 text-green-400 shrink-0" />
                                 <span className="text-green-400 font-bold">{fmtTime(tc.clocked_in_at)}</span>
                                 {tc.clocked_out_at
-                                  ? <><span className="text-muted-foreground/40">→</span><LogOut className="h-3 w-3 text-red-400 shrink-0" /><span className="text-red-400 font-bold">{fmtTime(tc.clocked_out_at)}</span><span className="text-muted-foreground">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span></>
+                                  ? <><span className="text-muted-foreground/40">→</span><LogOut className="h-3 w-3 text-red-400 shrink-0" /><span className="text-red-400 font-bold">{new Date(tc.clocked_out_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) !== new Date(tc.clocked_in_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) && <span className="text-[10px] font-black mr-0.5 opacity-80">{new Date(tc.clocked_out_at).toLocaleDateString("en-US", { timeZone: "America/Port_of_Spain", month: "short", day: "numeric" })} </span>}{fmtTime(tc.clocked_out_at)}</span><span className="text-muted-foreground">· {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}</span></>
                                   : <span className="text-green-400 font-semibold">· Still on shift</span>}
                               </div>
                             </div>
@@ -1308,7 +1291,7 @@ function TimeCardsTab({ profile, ownerId, managerName }: {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-sm font-bold">
                   <LogIn className="h-3.5 w-3.5 text-green-400 shrink-0" /><span className="text-green-400">{fmtTime(tc.clocked_in_at)}</span>
-                  {tc.clocked_out_at && <><span className="text-muted-foreground/50">→</span><LogOut className="h-3.5 w-3.5 text-red-400 shrink-0" /><span className="text-red-400">{fmtTime(tc.clocked_out_at)}</span></>}
+                  {tc.clocked_out_at && <><span className="text-muted-foreground/50">→</span><LogOut className="h-3.5 w-3.5 text-red-400 shrink-0" /><span className="text-red-400">{new Date(tc.clocked_out_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) !== new Date(tc.clocked_in_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }) && <span className="text-[10px] font-black mr-0.5 opacity-80">{new Date(tc.clocked_out_at).toLocaleDateString("en-US", { timeZone: "America/Port_of_Spain", month: "short", day: "numeric" })} </span>}{fmtTime(tc.clocked_out_at)}</span></>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{tc.clocked_out_at ? `Duration: ${fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}` : "Still on shift"}</p>
               </div>

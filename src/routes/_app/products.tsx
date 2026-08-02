@@ -667,6 +667,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (patches: { id: string; stock_qty: number; stock_last_expense_id: string | null; cost_price?: number; price?: number }[]) => void;
 }) {
+  const { t } = useTranslation();
   // newQty keyed by product id — only items with a value > 0 will be processed
   const [newQtys, setNewQtys] = useState<Record<string, string>>({});
   // editable cost price and sell price — pre-seeded from items
@@ -1239,7 +1240,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           <div className="shrink-0 border-t border-border px-4 pt-3 pb-2" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {activeNumpad.field === "cp" ? "Precio de Costo" : activeNumpad.field === "sp" ? "Precio de Venta" : activeNumpad.field === "units" ? "Unidades por Artículo" : activeNumpad.field === "vp" ? "Precio de Variación" : activeNumpad.field === "vu" ? "Bebidas Usadas" : "Agregar Cant."}
+                {activeNumpad.field === "cp" ? t("numpad_cost", "Cost Price") : activeNumpad.field === "sp" ? t("numpad_sell", "Sell Price") : activeNumpad.field === "units" ? t("numpad_units", "Units per Item") : activeNumpad.field === "vp" ? t("numpad_var_price", "Variation Price") : activeNumpad.field === "vu" ? t("numpad_drinks_used", "Drinks Used") : t("numpad_add_qty", "Add Qty")}
               </span>
               <button onClick={() => setActiveNumpad(null)}
                 className="h-10 px-5 rounded-xl font-black text-sm flex items-center gap-2 active:scale-95 transition"
@@ -1996,7 +1997,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <DialogTitle>{showTemplates ? "Elegir Plantilla" : isEdit ? "Editar Artículo" : "Agregar Artículo"}</DialogTitle>
+          <DialogTitle>{showTemplates ? t("choose_template", "Choose Template") : isEdit ? t("edit_item", "Edit Item") : t("add_item", "Add Item")}</DialogTitle>
           {/* Done button — shown in template view when ≥1 item selected */}
           {showTemplates && onBulkSelect && (
             <button
@@ -2098,23 +2099,23 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
               </div>
               <div className="flex flex-col gap-2 flex-1 justify-center">
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => setShowTemplates(true)}>
-                  <LayoutGrid className="h-5 w-5 mr-2" /> Plantilla
+                  <LayoutGrid className="h-5 w-5 mr-2" /> {t("template_btn", "Template")}
                 </Button>
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => camRef.current?.click()}>
-                  <Camera className="h-5 w-5 mr-2" /> Tomar Foto
+                  <Camera className="h-5 w-5 mr-2" /> {t("take_photo_btn", "Take Photo")}
                 </Button>
                 <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold" onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="h-5 w-5 mr-2" /> Subir
+                  <ImagePlus className="h-5 w-5 mr-2" /> {t("upload_btn", "Upload")}
                 </Button>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground/70 leading-snug">
-              💡 Para mejores resultados, sube una imagen <span className="font-bold text-amber-400">PNG con fondo transparente</span>.
+              💡 {t("best_results_tip", "For best results, upload a")} <span className="font-bold text-amber-400">{t("png_transparent", "PNG with transparent background")}</span>.
             </p>
 
             {/* Name */}
             <div>
-              <Label className="text-xs">Nombre</Label>
+              <Label className="text-xs">{t("item_name", "Name")}</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Heineken 330ml" className="h-9" />
             </div>
 
@@ -2122,7 +2123,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             <div className="space-y-0">
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Label className="text-xs">Categoría</Label>
+                  <Label className="text-xs">{t("category_label", "Category")}</Label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
@@ -2134,7 +2135,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                   </select>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">Precio de Costo</Label>
+                  <Label className="text-xs">{t("cost_price_label", "Cost Price")}</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
@@ -2145,7 +2146,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
                   </div>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">{category === "cigarettes" ? "Precio de Venta por Paquete" : category === "liquor" ? "Precio de Botella" : "Precio de Venta"}</Label>
+                  <Label className="text-xs">{category === "cigarettes" ? t("sell_price_label", "Sell Price") + " (Pack)" : category === "liquor" ? "Bottle Price" : t("sell_price_label", "Sell Price")}</Label>
                   <div
                     className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                     onClick={() => setActiveNumpad(activeNumpad === "selling" ? null : "selling")}

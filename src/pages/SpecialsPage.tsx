@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, X, Check, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useTranslation } from "@/lib/i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
@@ -136,6 +137,7 @@ function SpecialForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!editSpecial;
   const [name, setName] = useState(editSpecial?.name ?? "");
   const [reqQty, setReqQty] = useState(String(editSpecial?.required_qty ?? "3"));
@@ -210,7 +212,7 @@ function SpecialForm({
           onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0 border-b border-border">
-            <span className="font-black text-base">{isEdit ? "Editar Especial" : "Nuevo Especial"}</span>
+            <span className="font-black text-base">{isEdit ? t("edit_special", "Edit Special") : t("new_special", "New Special")}</span>
             <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
               <X className="h-4 w-4" />
             </button>
@@ -218,15 +220,15 @@ function SpecialForm({
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {/* Name */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Nombre del Especial</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Especial de Cervezas del Viernes"
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("special_name", "Special Name")}</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("special_name_ph", "e.g. Friday Beer Special")}
                 className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
             </div>
 
             {/* Qty + Price row */}
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Cuántos Artículos</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("how_many_items", "How Many Items")}</label>
                 <div
                   className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                   onClick={() => setActiveNumpad(activeNumpad === "qty" ? null : "qty")}
@@ -237,7 +239,7 @@ function SpecialForm({
                 </div>
               </div>
               <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Precio Especial $</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("special_price_lbl", "Special Price $")}</label>
                 <div
                   className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
                   onClick={() => setActiveNumpad(activeNumpad === "price" ? null : "price")}
@@ -268,12 +270,12 @@ function SpecialForm({
 
             {/* Item picker */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Artículos Elegibles</label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("eligible_items", "Eligible Items")}</label>
               <button onClick={() => setShowSelector(true)}
                 className="w-full min-h-[40px] rounded-xl border px-3 py-2 text-sm text-left transition active:scale-[0.98]"
                 style={{ borderColor: selectedIds.length ? "var(--primary)" : "var(--border)", background: "rgba(255,255,255,0.03)" }}>
                 {selectedIds.length === 0
-                  ? <span className="text-muted-foreground">Toca para seleccionar artículos…</span>
+                  ? <span className="text-muted-foreground">{t("tap_select_items", "Tap to select items…")}</span>
                   : <span className="font-bold" style={{ color: "var(--primary)" }}>{selectedNames}</span>}
               </button>
               {selectedIds.length > 0 && (
@@ -284,14 +286,14 @@ function SpecialForm({
             {/* Dates + Times */}
             <div className="flex gap-3">
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Fecha de Inicio</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">{t("start_date", "Start Date")}</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div className="flex-1 space-y-2">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Fecha de Fin (opc)</label>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">{t("end_date_opt", "End Date (opt)")}</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
@@ -302,17 +304,17 @@ function SpecialForm({
 
             {/* Recurring toggle */}
             <div>
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Programación</label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">{t("schedule_lbl", "Schedule")}</label>
               <div className="flex gap-3">
                 <button onClick={() => setIsRecurring(false)}
                   className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
                   style={{ background: !isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: !isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                  Una vez
+                  {t("once", "Once")}
                 </button>
                 <button onClick={() => setIsRecurring(true)}
                   className="flex-1 h-10 rounded-xl font-black text-sm transition active:scale-95"
                   style={{ background: isRecurring ? "var(--gradient-hero)" : "rgba(255,255,255,0.05)", color: isRecurring ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)" }}>
-                  Recurrente
+                  {t("recurring", "Recurring")}
                 </button>
               </div>
             </div>
@@ -342,7 +344,7 @@ function SpecialForm({
             <button onClick={save} disabled={!canSave || busy}
               className="w-full h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 flex items-center justify-center gap-2 transition active:scale-[0.98]"
               style={{ background: "var(--gradient-hero)" }}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Guardar Cambios" : "Crear Especial"}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? t("save_changes", "Save Changes") : t("create_special", "Create Special")}
             </button>
           </div>
         </div>
@@ -373,6 +375,7 @@ function SpecialActionsModal({
   onToggle: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={onClose}>
       <div
@@ -396,7 +399,7 @@ function SpecialActionsModal({
             style={{ background: "rgba(251,146,60,0.08)", border: "1.5px solid var(--primary)", color: "var(--primary)" }}
           >
             <Pencil className="h-4 w-4 shrink-0" />
-            Editar Especial
+            {t("edit_special", "Edit Special")}
           </button>
 
           {/* Disable / Enable */}
@@ -410,7 +413,7 @@ function SpecialActionsModal({
             }}
           >
             <span className="text-base leading-none shrink-0">{special.active ? "○" : "●"}</span>
-            {special.active ? "Desactivar Especial" : "Activar Especial"}
+            {special.active ? t("disable_special", "Disable Special") : t("enable_special", "Enable Special")}
           </button>
 
           {/* Delete */}
@@ -420,7 +423,7 @@ function SpecialActionsModal({
             style={{ background: "rgba(239,68,68,0.08)", border: "1.5px solid #ef4444", color: "#f87171" }}
           >
             <Trash2 className="h-4 w-4 shrink-0" />
-            Eliminar Especial
+            {t("delete_special", "Delete Special")}
           </button>
         </div>
 
@@ -527,6 +530,7 @@ export default function SpecialsPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const [specials, setSpecials] = useState<Special[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -588,7 +592,7 @@ export default function SpecialsPage() {
           </div>
           <Button size="sm" className="font-bold h-8" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
             onClick={() => { setEditSpecial(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> New Special
+            <Plus className="h-4 w-4 mr-1" /> {t("new_special", "New Special")}
           </Button>
         </div>
       </div>
