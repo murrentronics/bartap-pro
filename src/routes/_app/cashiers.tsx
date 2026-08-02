@@ -1851,7 +1851,7 @@ export default function CashiersPage() {
       .select("machines_addon_active, plan_type, is_machines_account")
       .eq("id", ownerIdForBar)
       .single();
-    const machinesActive = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
+    const machinesActive = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium" || ownerRow?.plan_type === "chain";
     const machinesOnly = !!(ownerRow?.is_machines_account);
     setHasMachinesAddon(machinesActive);
     setIsMachinesAccount(machinesOnly);

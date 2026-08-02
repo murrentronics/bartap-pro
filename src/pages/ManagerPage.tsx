@@ -119,7 +119,7 @@ function ManagerMain({
   const handleOpenBar = async () => {
     const { data: ownerProfile } = await sb.from("profiles")
       .select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
-    setHasMachines(!!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium");
+    setHasMachines(!!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium" || ownerProfile?.plan_type === "chain");
     setIsMachinesAccount(!!(ownerProfile?.is_machines_account));
     setOpenBarFloat(""); setOpenMachineFloat("");
     setShowOpenBarModal(true);
@@ -322,7 +322,7 @@ function DashboardTab({
     const { data: ownerRow } = await sb.from("profiles")
       .select("cashier_float, machines_addon_active, plan_type, is_machines_account")
       .eq("id", ownerId).single();
-    const hasMach = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium";
+    const hasMach = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium" || ownerRow?.plan_type === "chain";
     setHasMachinesEnabled(hasMach);
 
     // "Amount Set" = the float value from the latest sub-session (original set amount)

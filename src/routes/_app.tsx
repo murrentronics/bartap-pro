@@ -114,7 +114,7 @@ function AppLayout() {
     // Check if owner has machines enabled
     const { data: ownerProfile } = await (supabase as any)
       .from("profiles").select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
-    const machinesEnabled = !!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium";
+    const machinesEnabled = !!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium" || ownerProfile?.plan_type === "chain";
     const machinesOnly = !!(ownerProfile?.is_machines_account);
     setHasMachines(machinesEnabled);
     setIsMachinesAccount(machinesOnly);
@@ -212,6 +212,21 @@ function AppLayout() {
     toast.success("🔴 Bar closed");
   };
 
+  const [managerHasMachinesNav, setManagerHasMachinesNav] = useState(false);
+
+  useEffect(() => {
+    const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+    if (!profile || !isMgr) return;
+    const ownerId = effectiveOwnerId(profile.id);
+    if (!ownerId) return;
+    (supabase as any).from("profiles")
+      .select("machines_addon_active, plan_type")
+      .eq("id", ownerId).single()
+      .then(({ data }: any) => {
+        setManagerHasMachinesNav(!!(data?.machines_addon_active) || data?.plan_type === "premium" || data?.plan_type === "chain");
+      });
+  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (loading || !session || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -249,8 +264,9 @@ function AppLayout() {
     ? [{ to: "/admin", label: "Users", icon: Users }]
     : isManager
     ? [
-        { to: "/products", label: "Items",       icon: Package     },
-        { to: "/manager",  label: "Manage",      icon: TrendingDown },
+        { to: "/products", label: "Items",   icon: Package     },
+        { to: "/manager",  label: "Manage",  icon: TrendingDown },
+        ...(managerHasMachinesNav ? [{ to: "/machines", label: "Machines", icon: Gamepad2 }] : []),
       ]
     : [
         { to: "/register", label: "Cashier",  icon: Wine },

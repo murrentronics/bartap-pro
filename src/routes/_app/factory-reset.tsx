@@ -39,7 +39,7 @@ export default function FactoryResetPage() {
       .then(({ data }: { data: { plan_type: string; machines_addon_active: boolean } | null }) => {
         const machOnly = data?.plan_type === "machines_only";
         setIsMachinesOnlyPlan(machOnly);
-        setHasMachines(data?.plan_type === "premium" || machOnly || !!data?.machines_addon_active);
+        setHasMachines(data?.plan_type === "premium" || data?.plan_type === "chain" || machOnly || !!data?.machines_addon_active);
       });
   }, [profile?.id]);
 

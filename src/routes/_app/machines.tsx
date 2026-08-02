@@ -6652,11 +6652,11 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
 const MASTER_EMAILS = ["renard.sankersingh@gmail.com"];
 
-/** Returns true if this owner has premium access (premium plan OR master account) */
+/** Returns true if this owner has premium access (premium/chain plan OR master account) */
 function hasPremiumAccess(profile: { plan_type?: string } | null, email?: string | null): boolean {
   if (!profile) return false;
   if (email && MASTER_EMAILS.includes(email)) return true;
-  return profile.plan_type === "premium";
+  return profile.plan_type === "premium" || profile.plan_type === "chain";
 }
 
 
