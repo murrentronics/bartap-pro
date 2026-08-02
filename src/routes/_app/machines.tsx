@@ -3112,27 +3112,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
           {([...(isOwner || isManager ? ["income"] : []), "payout", ...(isOwner || isManager ? ["history"] : []), ...(isOwner || isManager ? ["monitor"] : [])] as ("payout" | "income" | "history" | "monitor")[]).map((tabKey) => (
 
-
-            <button key={tabKey} onClick={() => setTab(tabKey)}
-
-
+            <button key={tabKey} onClick={() => { if (tabKey === "payout" && !barIsOpen) return; setTab(tabKey); }}
+              disabled={tabKey === "payout" && !barIsOpen}
               className={`flex-1 py-2.5 rounded-xl text-xs font-black capitalize transition ${
-
-
                 tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-
-
-              }`}
-
-
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
-
-
               {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"}
-
-
             </button>
-
 
           ))}
 
@@ -4384,7 +4371,7 @@ function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; mach
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, monitorRefreshKey }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, barIsOpen, monitorRefreshKey }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -4424,7 +4411,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
 
   barSessionStart: string | null;
-
+  barIsOpen: boolean;
 
   monitorRefreshKey: number;
 
@@ -5022,7 +5009,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           <div className="relative">
             <button
               onClick={() => onAddExpense()}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition"
+              disabled={!barIsOpen}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
               <Receipt className="h-4 w-4" />
               {t("add_expense", "Add Expense")}
@@ -8093,6 +8081,7 @@ export default function MachinesPage() {
 
 
               barSessionStart={barSessionStart}
+              barIsOpen={barIsOpenMachines}
 
 
               monitorRefreshKey={monitorRefreshKey}

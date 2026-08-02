@@ -254,7 +254,7 @@ async function downloadOwnerTimesheetPdf(
       const dur = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
       if (y + 7 > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(40, 40, 40);
-      doc.text(`${inTime}  →  ${outTime}`, LM + 3, y + 3);
+      doc.text(`${inTime}  -  ${outTime}`, LM + 3, y + 3);
       doc.text(dur, RM, y + 3, { align: "right" });
       doc.setDrawColor(220, 220, 220); doc.line(LM, y + 6, RM, y + 6);
       y += 7;
@@ -270,7 +270,7 @@ async function downloadOwnerTimesheetPdf(
 }
 
 // ─── HoursTab ─────────────────────────────────────────────────────────────────
-function HoursTab({ ownerId }: { ownerId: string }) {
+function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean }) {
   const sb = supabase as any;
 
   // Shared data
@@ -431,9 +431,9 @@ function HoursTab({ ownerId }: { ownerId: string }) {
               })}
           {selectedEmp && (
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
+              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy || !barIsOpen}
                 className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                style={!isClockedIn && barIsOpen ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
                 {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
               </button>
               <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}
@@ -1916,6 +1916,10 @@ export default function CashiersPage() {
   const handleCloseBar = async () => {
     setBarToggleBusy(true);
     const now = new Date().toISOString();
+    // Auto clock-out all open time cards for this owner
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("time_cards")
+      .update({ clocked_out_at: now }).eq("owner_id", ownerIdForBar).is("clocked_out_at", null);
     // Close open sub-sessions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("bar_sub_sessions")
@@ -2281,7 +2285,7 @@ export default function CashiersPage() {
         </TabsContent>
 
         <TabsContent value="hours">
-          <HoursTab ownerId={effectiveOwnerId(profile.id)} />
+          <HoursTab ownerId={effectiveOwnerId(profile.id)} barIsOpen={barIsOpen} />
         </TabsContent>
       </Tabs>
 

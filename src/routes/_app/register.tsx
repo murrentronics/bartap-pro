@@ -1227,12 +1227,15 @@ export default function RegisterPage() {
                   {barOrdered.map((p) => {
                     const inCart = cart.find((i) => i.id === p.id);
                     const outOfStock = (p.stock_qty ?? 1) === 0;
+                    const missingPrice = !p.price || Number(p.price) <= 0;
+                    const missingCost  = !p.cost_price || Number(p.cost_price) <= 0;
+                    const incomplete   = missingPrice || missingCost;
                     return (
                       <div key={p.id} data-bar-id={p.id} className="relative">
                         <button
-                          onClick={() => !outOfStock && addToCart(p)}
-                          disabled={outOfStock}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "cursor-not-allowed" : "active:scale-95"}`}
+                          onClick={() => !outOfStock && !incomplete && addToCart(p)}
+                          disabled={outOfStock || incomplete}
+                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock || incomplete ? "cursor-not-allowed opacity-50 grayscale" : "active:scale-95"}`}
                           style={{
                             background: "var(--gradient-card)",
                             boxShadow: "var(--shadow-elegant)",
@@ -1281,7 +1284,16 @@ export default function RegisterPage() {
                                 </div>
                               </div>
                             )}
-                            {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+                            {!outOfStock && incomplete && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[1px]">
+                                <div className="rounded-xl px-2 py-1 shadow-lg" style={{ background: "#92400e" }}>
+                                  <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
+                                    {missingPrice ? "No Price" : "No Cost"}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {!outOfStock && !incomplete && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
                               <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
                                 <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
                               </div>

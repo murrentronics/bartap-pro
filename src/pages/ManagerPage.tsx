@@ -156,6 +156,8 @@ function ManagerMain({
   const handleCloseBar = async () => {
     setBarToggleBusy(true);
     const now = new Date().toISOString();
+    // Auto clock-out all open time cards for this owner
+    await sb.from("time_cards").update({ clocked_out_at: now }).eq("owner_id", ownerId).is("clocked_out_at", null);
     await sb.from("bar_sub_sessions").update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
     await sb.from("bar_sessions").update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
     const { error } = await sb.from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
@@ -209,7 +211,7 @@ function ManagerMain({
         <DashboardTab profile={profile} ownerId={ownerId} managerName={managerName}
           barIsOpen={barIsOpen} barStateLoading={barStateLoading} barSessionStart={barSessionStart} />
       ) : (
-        <TimeCardsTab profile={profile} ownerId={ownerId} managerName={managerName} />
+        <TimeCardsTab profile={profile} ownerId={ownerId} managerName={managerName} barIsOpen={barIsOpen} />
       )}
 
       {/* Close Bar Confirm */}
@@ -1089,7 +1091,7 @@ async function downloadTimesheetPdf(
       const dur = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
       if (y + 7 > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(40, 40, 40);
-      doc.text(`${inTime}  →  ${outTime}`, LM + 3, y + 3);
+      doc.text(`${inTime}  -  ${outTime}`, LM + 3, y + 3);
       doc.text(dur, RM, y + 3, { align: "right" });
       doc.setDrawColor(220, 220, 220); doc.line(LM, y + 6, RM, y + 6);
       y += 7;
@@ -1108,9 +1110,9 @@ async function downloadTimesheetPdf(
 }
 
 // ─── Time Cards Tab ───────────────────────────────────────────────────────────
-export function TimeCardsTab({ profile, ownerId, managerName }: {
+export function TimeCardsTab({ profile, ownerId, managerName, barIsOpen }: {
   profile: { id: string; username?: string | null; wallet_balance: number };
-  ownerId: string; managerName: string;
+  ownerId: string; managerName: string; barIsOpen: boolean;
 }) {
   const sb = supabase as any;
   const [tcSubTab, setTcSubTab] = useState<"clock" | "timesheets">("clock");
@@ -1274,9 +1276,9 @@ export function TimeCardsTab({ profile, ownerId, managerName }: {
               })}
           {selectedEmp && (
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy}
+              <button onClick={handleClockIn} disabled={isClockedIn || clockBusy || !barIsOpen}
                 className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={!isClockedIn ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
+                style={!isClockedIn && barIsOpen ? { background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" } : { background: "var(--gradient-card)", border: "1.5px solid var(--border)", color: "var(--muted-foreground)" }}>
                 {clockBusy && !isClockedIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />} Clock In
               </button>
               <button onClick={handleClockOut} disabled={!isClockedIn || clockBusy}

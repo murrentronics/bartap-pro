@@ -116,7 +116,6 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<SessionData>({ orders: [], expenses: [], walletIncome: 0, loaded: false, loading: false });
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const loadedRef = useRef(false);
 
   const startIso = sub.opened_at;
@@ -212,22 +211,41 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
           {data.loading && <div className="flex justify-center py-5"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>}
           {data.loaded && (
             <>
-              {/* Mini stats */}
-              <div className="grid grid-cols-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+              {/* Mini stats — top row: Bar Sales, Items Cost */}
+              <div className="grid grid-cols-2 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                 {[
-                  { label: "Bar Sales",   value: totalIncome,    color: "#86efac" },
-                  { label: "Items Cost",  value: totalItemsCost, color: "#fca5a5" },
-                  { label: "Expenses",    value: totalExpenses,  color: "#fbbf24" },
-                  { label: "Profit",      value: totalProfit,    color: totalProfit >= 0 ? "#86efac" : "#fca5a5" },
+                  { label: "Bar Sales",  value: totalIncome,    color: "#86efac" },
+                  { label: "Items Cost", value: totalItemsCost, color: "#fca5a5" },
                 ].map((s, i, arr) => (
                   <div key={i} className="px-2 py-2 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
                     <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
-                      {s.label === "Profit" && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                      {s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
                     </p>
                   </div>
                 ))}
               </div>
+              {/* Mini stats — bottom row: Gross Profit, Expenses, Net Profit */}
+              {(() => {
+                const grossProfit = totalIncome - totalItemsCost;
+                const netProfit   = grossProfit - totalExpenses;
+                return (
+                  <div className="grid grid-cols-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                    {[
+                      { label: "Gross Profit", value: grossProfit, color: grossProfit >= 0 ? "#86efac" : "#fca5a5", sign: true },
+                      { label: "Expenses",     value: totalExpenses, color: "#fbbf24", sign: false },
+                      { label: "Net Profit",   value: netProfit,   color: netProfit >= 0 ? "#86efac" : "#fca5a5", sign: true },
+                    ].map((s, i, arr) => (
+                      <div key={i} className="px-2 py-2 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
+                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
+                        <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
+                          {s.sign && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               {/* Items */}
               {items.length === 0
                 ? <div className="py-6 text-center text-muted-foreground text-xs">No sales in this shift</div>
@@ -264,37 +282,30 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
                     <span className="text-[10px] font-black">Orders</span>
                     <span className="text-[9px] text-muted-foreground">{data.orders.length}</span>
                   </div>
-                  {data.orders.map(o => {
-                    const isExp = expandedOrderId === o.id;
-                    return (
-                      <div key={o.id} style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                        <button onClick={() => setExpandedOrderId(isExp ? null : o.id)}
-                          className="w-full px-3 py-2 flex items-center justify-between gap-2 text-left active:bg-white/5 transition">
-                          <div className="min-w-0">
-                            <span className="text-[10px] text-muted-foreground block">{new Date(o.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ })}</span>
-                            <span className="text-[9px] text-white/30">{o.items.map(i => `${i.qty}× ${i.name}`).join(" · ")}</span>
-                          </div>
-                          <span className="font-black text-xs shrink-0" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
-                        </button>
-                        {isExp && (
-                          <div className="px-3 pb-2 space-y-1" style={{ background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                            <div className="pt-1.5 space-y-0.5">
-                              {o.items.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-semibold">{item.qty}× {item.name}</span>
-                                  <span className="font-black text-xs" style={{ color: "#86efac" }}>${fmt(item.qty * Number(item.price))}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-between text-xs pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                              <span className="text-white/50">Total</span>
-                              <span className="font-black" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
-                            </div>
-                          </div>
-                        )}
+                  {data.orders.map(o => (
+                    <div key={o.id} className="px-3 py-2 flex items-start justify-between gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] text-muted-foreground block">{new Date(o.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ })}</span>
+                        <div className="mt-0.5 space-y-0.5">
+                          {o.items.map((item, idx) => {
+                            const saleTotal = item.qty * Number(item.price);
+                            const unitCost  = nameMap.get(item.name) ?? 0;
+                            const costTotal = item.qty * unitCost;
+                            const profit    = saleTotal - costTotal;
+                            return (
+                              <span key={idx} className="text-[9px] text-white/40 block">
+                                {item.qty}× {item.name}
+                                {" · "}
+                                <span style={{ color: "#86efac" }}>${fmt(saleTotal)}</span>
+                                {costTotal > 0 && <> · <span style={{ color: "#fca5a5" }}>${fmt(costTotal)}</span> · <span style={{ color: profit >= 0 ? "#86efac" : "#fca5a5" }}>{profit >= 0 ? "+" : ""}${fmt(profit)}</span></>}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
-                    );
-                  })}
+                      <span className="font-black text-xs shrink-0" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               {/* Expenses */}
@@ -307,10 +318,12 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
                   {nonStockExpenses.map(e => {
                     const lines = (e.description ?? "").split("\n").filter(Boolean).slice(1).filter(l => !l.startsWith("[Cashier:") && !l.startsWith("[Manager:"));
                     const isRefund = Number(e.amount) < 0;
+                    const dateTime = new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
                     return (
                       <div key={e.id} className="px-3 py-2 flex items-start justify-between gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                         <div className="flex-1 min-w-0">
                           {lines.length > 0 ? lines.map((l, i) => <p key={i} className="text-xs font-semibold">{l.split(" = ")[0]}</p>) : <p className="text-xs font-semibold">Expense</p>}
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{dateTime}</p>
                         </div>
                         <p className="font-black text-xs shrink-0" style={{ color: isRefund ? "#86efac" : "#fca5a5" }}>
                           {isRefund ? `+$${fmt(Math.abs(Number(e.amount)))}` : `$${fmt(Number(e.amount))}`}
