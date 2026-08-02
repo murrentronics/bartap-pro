@@ -2931,8 +2931,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
 
-          {/* Today's stats — owner only */}
-          {!isCashier && profile.role === "owner" && (
+          {/* Today's stats — owner and manager */}
+          {!isCashier && (isOwner || isManager) && (
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("today_income", "Today's Cash In")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
             <StatCard label={t("today_payout", "Today's Payout")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
@@ -2943,7 +2943,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           )}
 
           {/* Total / All-time stats — owner only */}
-          {!isCashier && profile.role === "owner" && (
+          {!isCashier && isOwner && (
           <div className="relative grid grid-cols-3 gap-2">
             <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
             <StatCard label={t("all_time_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
@@ -3355,8 +3355,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
           <HistoryMonthAccordion
 
-
-            entries={entries}
+            entries={isManager && barSessionStart ? entries.filter(e => new Date(e.created_at) >= new Date(barSessionStart)) : entries}
 
 
             loading={loading}
@@ -3405,7 +3404,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
         {/* ── Monitor Tab ─────────────────────────────────────────────────── */}
-        {tab === "monitor" && isOwner && (
+        {tab === "monitor" && (isOwner || isManager) && (
           <div className="space-y-4">
 
             {/* Sub-tab: Monitor / Logs */}
