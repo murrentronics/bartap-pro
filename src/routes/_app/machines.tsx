@@ -1009,22 +1009,7 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                           )}
 
 
-                          {isPayout && !hasProof && (
 
-
-                            <div className="flex items-center gap-1 mt-1">
-
-
-                              <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
-
-
-                              <span className="text-[10px] font-bold text-amber-400">Unverified</span>
-
-
-                            </div>
-
-
-                          )}
 
 
                         </div>
@@ -1033,6 +1018,12 @@ function HistoryMonthAccordion({ entries, loading, downloading, deletingId, last
                         {/* Proof photo — landscape, right side */}
 
 
+                        {e.type === "payout" && !hasProof && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                            <span className="text-[10px] font-bold text-amber-400">Unverified</span>
+                          </div>
+                        )}
                         {isPayout && hasProof && (
 
 
@@ -2911,10 +2902,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           <div className="relative grid grid-cols-2 gap-2">
 
 
-            <SmallStat label={t("session_float", "Float Establecido")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "$0"} color="#fbbf24" />
+            <SmallStat label={t("session_float", "Float Set")} value={floatSession ? "$" + fmtWhole(Number(floatSession.amount)) : "$0"} color="#fbbf24" />
 
 
-            <SmallStat label={t("remaining", "Restante")}
+            <SmallStat label={t("remaining", "Remaining")}
 
 
               value={(remainingFloat === null ? 0 : remainingFloat) >= 0 ? "" + "$" + fmtWhole(Math.abs(remainingFloat ?? 0)) : "-$" + fmtWhole(Math.abs(remainingFloat ?? 0))}
@@ -2929,13 +2920,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Lifetime totals — owner only */}
           {/* Session stats */}
           <div className="relative grid grid-cols-3 gap-2">
-            <SmallStat label={t("session_income", "Ingreso de Sesión")}
+            <SmallStat label={t("session_income", "All Session Cash In")}
               value={"$" + fmtWhole(sessionIncome)}
               color="#86efac" />
-            <SmallStat label={t("session_payout", "Pago de Sesión")}
+            <SmallStat label={t("session_payout", "All Session Payout")}
               value={"$" + fmtWhole(sessionPayouts)}
               color="#fca5a5" />
-            <SmallStat label={t("session_profit", "Ganancia de Sesión")}
+            <SmallStat label={t("session_profit", "Session Profit")}
               value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
               color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -2943,9 +2934,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Today's stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("today_income", "Ingreso de Hoy")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
-            <StatCard label={t("today_payout", "Pago de Hoy")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
-            <StatCard label={t("today_profit", "Ganancia de Hoy")}
+            <StatCard label={t("today_income", "Today's Cash In")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
+            <StatCard label={t("today_payout", "Today's Payout")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
+            <StatCard label={t("today_profit", "Today's Profit")}
               value={(todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit)}
               color={todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -2954,9 +2945,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           {/* Total / All-time stats — owner only */}
           {!isCashier && profile.role === "owner" && (
           <div className="relative grid grid-cols-3 gap-2">
-            <StatCard label={t("all_time_income", "Ingreso Total")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-            <StatCard label={t("all_time_payout", "Pago Total")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-            <StatCard label={t("all_time_profit", "Ganancia Total")}
+            <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+            <StatCard label={t("all_time_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+            <StatCard label={t("all_time_profit", "Gross Profit")}
               value={(totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit)}
               color={totalProfit >= 0 ? "#86efac" : "#fca5a5"} />
           </div>
@@ -4763,9 +4754,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Row 1 — Session stats — visible to all roles */}
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("session_income", "Ingreso de Sesión")} value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
-          <StatCard label={t("session_payout", "Pago de Sesión")} value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
-          <StatCard label={t("session_profit", "Ganancia de Sesión")}
+          <StatCard label={t("session_income", "All Session Cash In")} value={"$" + fmtWhole(sessionIncome)} color="#86efac" />
+          <StatCard label={t("session_payout", "All Session Payout")} value={"$" + fmtWhole(sessionPayouts)} color="#fca5a5" />
+          <StatCard label={t("session_profit", "Session Profit")}
             value={(sessionProfit >= 0 ? "+" : "") + "$" + fmtWhole(sessionProfit)}
             color={sessionProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4773,9 +4764,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 2 — Today's stats — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("today_income", "Ingreso de Hoy")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
-          <StatCard label={t("today_payout", "Pago de Hoy")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
-          <StatCard label={t("today_profit", "Ganancia de Hoy")}
+          <StatCard label={t("today_income", "Today's Cash In")} value={"$" + fmtWhole(todayIncome)} color="#86efac" />
+          <StatCard label={t("today_payout", "Today's Payout")} value={"$" + fmtWhole(todayPayouts)} color="#fca5a5" />
+          <StatCard label={t("today_profit", "Today's Profit")}
             value={(todayProfit >= 0 ? "+" : "") + "$" + fmtWhole(todayProfit)}
             color={todayProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4784,9 +4775,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 3 — Lifetime totals — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-3 gap-2">
-          <StatCard label={t("all_time_income", "Ingreso Total")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
-          <StatCard label={t("all_machines_payout", "Pagos Totales")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
-          <StatCard label={t("all_time_gross_profit", "Ganancia Bruta")}
+          <StatCard label={t("all_time_income", "Total Cash In")} value={"$" + fmtWhole(totalIncome)} color="#86efac" />
+          <StatCard label={t("all_machines_payout", "Total Payouts")} value={"$" + fmtWhole(totalPayout)} color="#fca5a5" />
+          <StatCard label={t("all_time_gross_profit", "Gross Profit")}
             value={(grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit)}
             color={grossProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -4795,8 +4786,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         {/* Row 4 — Manual Expenses — owner only */}
         {isOwner && (
         <div className="relative grid grid-cols-2 gap-2">
-          <StatCard label={t("total_manual_expenses", "Gastos Totales")} value={"$" + fmtWhole(manualExpenses)} color="#fca5a5" />
-          <StatCard label={t("net_profit", "Ganancia Neta")}
+          <StatCard label={t("total_manual_expenses", "Total Expenses")} value={"$" + fmtWhole(manualExpenses)} color="#fca5a5" />
+          <StatCard label={t("net_profit", "Net Profit")}
             value={(netProfit >= 0 ? "+" : "") + "$" + fmtWhole(netProfit)}
             color={netProfit >= 0 ? "#86efac" : "#fca5a5"} />
         </div>
@@ -5879,22 +5870,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                           )}
 
 
-                          {isPayout && !hasProof && (
 
-
-                            <div className="flex items-center gap-1 mt-1">
-
-
-                              <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
-
-
-                              <span className="text-[10px] font-bold text-amber-400">Unverified</span>
-
-
-                            </div>
-
-
-                          )}
 
 
                           {isPayout && hasProof && (
@@ -5921,6 +5897,12 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                         {/* Proof photo — landscape, right side */}
 
 
+                        {e.type === "payout" && !hasProof && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                            <span className="text-[10px] font-bold text-amber-400">Unverified</span>
+                          </div>
+                        )}
                         {isPayout && hasProof && (
 
 
