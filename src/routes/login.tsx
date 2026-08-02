@@ -21,7 +21,7 @@ function LoginPage() {
   useEffect(() => {
     if (!loading && session && profile) {
       const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
-      const dest = profile.role === "admin" ? "/admin" : isManager ? "/manager" : "/register";
+      const dest = profile.role === "admin" ? "/admin" : isManager ? "/products" : "/register";
       nav({ to: dest as any });
     }
   }, [session, profile, loading, nav]);

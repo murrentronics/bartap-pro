@@ -63,7 +63,7 @@ function AppLayout() {
   useEffect(() => {
     const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
     if (!loading && isMgr && loc.pathname === "/register") {
-      nav({ to: "/manager" as "/" });
+      nav({ to: "/products" as "/" });
     }
   }, [loading, profile, loc.pathname, nav]);
 
