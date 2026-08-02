@@ -330,7 +330,7 @@ export default function AppLayout() {
         ...(isOwner && ownerHasBar ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
-        ...(isOwner ? [{ to: "/summary",  label: "Summary",              icon: BarChart3 }] : []),
+        ...(isOwner ? [{ to: "/summary",  label: t("summary", "Summary"),       icon: BarChart3 }] : []),
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"), icon: UserCircle }] : []),
       ];
@@ -348,8 +348,8 @@ export default function AppLayout() {
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
           </div>
 
-          {/* Music / Machines-or-Bar toggle — always visible for owners with music addon */}
-          {hasMusic && (
+          {/* Music / Machines-or-Bar toggle — owners/cashiers only (not managers) */}
+          {hasMusic && !isManager && (
             <Link
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
@@ -357,15 +357,6 @@ export default function AppLayout() {
               title={isOnMusic ? (isMachinesOnlyUser ? "Back to Machines" : "Back to Bar") : "Open Music Player"}
             >
             {isOnMusic ? (isMachinesOnlyUser ? t("machines", "Machines") : t("bar", "Bar")) : t("music", "Music")}
-            </Link>
-          )}
-          {hasMusic && isManager && (
-            <Link
-              to={isOnMusic ? "/products" : "/music"}
-              className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
-              style={{ background: "var(--gradient-hero)" }}
-            >
-              {isOnMusic ? t("products_title", "Items") : t("music", "Music")}
             </Link>
           )}
 
@@ -449,9 +440,9 @@ export default function AppLayout() {
             <div className="px-5 py-4 border-b border-border/50">
               <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
               {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
-              {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
+              {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">{t("no_bar_selected", "⚠ No bar selected")}</span>}
               {!isChainOwner && isMultiBarOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
-              {!isChainOwner && isMultiBarOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">⚠ No bar selected</span>}
+              {!isChainOwner && isMultiBarOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">{t("no_bar_selected", "⚠ No bar selected")}</span>}
 
             </div>
 

@@ -2984,7 +2984,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
               style={tab === tabKey ? { background: "var(--gradient-hero)" } : {}}>
 
 
-              {tabKey === "payout" ? t("payout", "Pagos") : tabKey === "income" ? t("income", "Ingreso") : tabKey === "history" ? t("history", "Historial") : "Monitor"}
+              {tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"}
 
 
             </button>
@@ -3014,7 +3014,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
             <h2 className="font-black text-sm">
 
 
-              {tab === "payout" ? t("save_payout", "Registrar Pago") : t("save_income", "Registrar Ingreso")}
+              {tab === "payout" ? t("save_payout", "Record Payout") : t("save_income", "Record Income")}
 
 
             </h2>
@@ -4113,13 +4113,13 @@ function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; mach
       style={{ background: "var(--gradient-card)" }}>
 
 
-      <h2 className="font-black text-sm">{t("add_machine", "Nueva Máquina")}</h2>
+      <h2 className="font-black text-sm">{t("add_machine", "Add Machine")}</h2>
 
 
       <div>
 
 
-        <Label className="text-xs">{t("machine_name", "Nombre de Máquina")}</Label>
+        <Label className="text-xs">{t("machine_name", "Machine Name")}</Label>
 
 
         <Input value={name} onChange={e => setName(e.target.value)}
@@ -4140,7 +4140,7 @@ function CreateTab({ ownerId, machineCount, onCreated }: { ownerId: string; mach
         style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
 
 
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />{t("create_machine", "Crear Máquina")}</>}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" />{t("create_machine", "Create Machine")}</>}
 
 
       </Button>
@@ -4697,7 +4697,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("float_set", "Float Establecido")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("float_set", "Float Set")}</div>
 
 
             <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
@@ -4718,7 +4718,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             style={{ background: "oklch(0.22 0.02 60)" }}>
 
 
-            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("remaining", "Restante")}</div>
+            <div className="text-[9px] sm:text-[11px] lg:text-xs font-semibold text-white/40">{t("remaining", "Remaining")}</div>
 
 
             <div className="font-black text-xs"
@@ -4749,7 +4749,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Title */}
         <div className="relative text-xs font-black uppercase tracking-widest text-center" style={{ color: "rgba(0,0,0,0.55)" }}>
-          Totales de Pantallas
+          {t("screen_totals", "Screen Totals")}
         </div>
 
         {/* Row 1 — Session stats — visible to all roles */}
@@ -4802,7 +4802,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
               <Receipt className="h-4 w-4" />
-              Agregar Gasto
+              {t("add_expense", "Add Expense")}
             </button>
           </div>
         )}
@@ -4828,7 +4828,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
           style={{ background: "oklch(0.20 0.05 60)" }}>
 
 
-          <span className="text-xs font-black text-amber-400">{t("hold_to_sort", "Mantén para reordenar")}</span>
+          <span className="text-xs font-black text-amber-400">{t("hold_to_sort", "Hold to reorder")}</span>
 
 
           <button
@@ -4861,7 +4861,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         <p className="text-xs text-center" style={{ color: "rgba(180,160,130,0.6)" }}>
 
 
-          {t("hold_to_sort", "Mantén presionado para ordenar")}
+          {t("hold_to_sort", "Hold to sort")}
 
 
         </p>
@@ -6343,15 +6343,15 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           <>
             <div className="grid grid-cols-4 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Ingreso</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("income", "Income")}</div>
                 <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Pago</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("payout", "Payout")}</div>
                 <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Gasto</div>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("add_expense", "Expense")}</div>
                 <div className="font-black text-xs text-yellow-400">${fmtWhole(totalSessionExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
@@ -7618,10 +7618,10 @@ export default function MachinesPage() {
   const tabs = [
 
 
-    { key: "screens", label: `${t("screens", "Pantallas")}${machines.length ? ` (${machines.length})` : ""}` },
+    { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
 
 
-    ...(isOwner ? [{ key: "allHistory", label: t("all_history", "Todo el Historial") }] : []),
+    ...(isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : []),
 
 
     ...(isOwner ? [{ key: "summary", label: t("summary", "Resumen") }] : []),
@@ -7763,7 +7763,7 @@ export default function MachinesPage() {
             <Bell className={`h-3.5 w-3.5 ${alertSettings.enabled ? "fill-current" : ""}`} />
 
 
-            {t("set_alerts", "Alertas")}
+            {t("set_alerts", "Alerts")}
 
 
             {alertSettings.enabled && (
@@ -8880,7 +8880,7 @@ function SetAlertsModal({
           >
 
 
-            {enabled ? `Guardar — Alerta a $${threshold.toLocaleString()} TT` : "Guardar — Alertas Desactivadas"}
+            {enabled ? `${t("save", "Save")} — ${t("set_alerts", "Alert")} $${threshold.toLocaleString()} TT` : `${t("save", "Save")} — ${t("set_alerts", "Alerts Off")}`}
 
 
           </button>

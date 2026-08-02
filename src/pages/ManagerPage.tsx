@@ -546,6 +546,13 @@ function DashboardTab({
         <div className="relative space-y-1.5">
           <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Bar Float</p>
           <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => { setSetFloatInput(String(barFloatSet)); setShowSetBarFloat(true); }}
+              className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
+              style={{ background: "oklch(0.18 0.02 60)", border: "1.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}>
+              <span className="text-base">💰</span>
+              <span>{barFloatSet > 0 ? "Update" : "Set"} Float</span>
+            </button>
             <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
               <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>{barIsOpen ? `$${fmt(barFloatSet)}` : "$0"}</div>
@@ -554,19 +561,19 @@ function DashboardTab({
               <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Remaining</div>
               <div className="font-black text-sm" style={{ color: barIsOpen && floatBalance < 10 ? "#fde68a" : "#86efac" }}>{barIsOpen ? `$${fmt(floatBalance)}` : "$0"}</div>
             </div>
-            <button
-              onClick={() => { setSetFloatInput(String(barFloatSet)); setShowSetBarFloat(true); }}
-              className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
-              style={{ background: "var(--gradient-hero)", border: "1.5px solid rgba(0,0,0,0.25)", color: "rgba(0,0,0,0.75)" }}>
-              <span className="text-base">💰</span>
-              <span>{barFloatSet > 0 ? "Update" : "Set"} Float</span>
-            </button>
           </div>
         </div>
         {hasMachinesEnabled && (
           <div className="relative space-y-1.5">
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Machine Float</p>
             <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => { setSetFloatInput(String(machineFloatSet)); setShowSetMachFloat(true); }}
+                className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
+                style={{ background: "oklch(0.18 0.02 60)", border: "1.5px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}>
+                <span className="text-base">🎰</span>
+                <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
+              </button>
               <div className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center" style={{ background: "oklch(0.18 0.02 60)" }}>
                 <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Amount Set</div>
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatSet)}` : "$0"}</div>
@@ -575,13 +582,6 @@ function DashboardTab({
                 <div className="text-[9px] font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Remaining</div>
                 <div className="font-black text-sm" style={{ color: machineFloatSet > 0 && machineFloatBal < 10 ? "#fde68a" : "#86efac" }}>{machineFloatSet > 0 ? `$${fmt(machineFloatBal)}` : "$0"}</div>
               </div>
-              <button
-                onClick={() => { setSetFloatInput(String(machineFloatSet)); setShowSetMachFloat(true); }}
-                className="rounded-2xl p-2.5 flex flex-col items-center justify-center gap-0.5 font-black text-xs transition active:scale-95"
-                style={{ background: "var(--gradient-hero)", border: "1.5px solid rgba(0,0,0,0.25)", color: "rgba(0,0,0,0.75)" }}>
-                <span className="text-base">🎰</span>
-                <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
-              </button>
             </div>
           </div>
         )}
