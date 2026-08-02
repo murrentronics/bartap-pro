@@ -10,10 +10,12 @@ import { toast } from "sonner";
 import { Wine, Eye, EyeOff } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { friendlyError } from "@/lib/network-error";
+import { useTranslation } from "@/lib/i18n";
 
 export default function LoginPage() {
   const { session, profile, loading } = useAuth();
   const nav = useNavigate();
+  const { t } = useTranslation();
   // Track if forgot-password flow is open so we don't auto-redirect
   // when the OTP verification temporarily signs the user in
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -41,13 +43,13 @@ export default function LoginPage() {
             <Wine className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-4xl font-black tracking-tight">Bartendaz Pro</h1>
-          <p className="text-muted-foreground mt-1">Bar POS & Wallet</p>
+          <p className="text-muted-foreground mt-1">{t("bar_pos_wallet", "Bar POS & Wallet")}</p>
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Owner sign up</TabsTrigger>
+            <TabsTrigger value="signin">{t("sign_in", "Sign in")}</TabsTrigger>
+            <TabsTrigger value="signup">{t("owner_sign_up", "Owner sign up")}</TabsTrigger>
           </TabsList>
           <TabsContent value="signin">
             <SignInForm onForgotChange={setForgotOpen} />
@@ -68,6 +70,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
   const [showPw, setShowPw] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const submitBtnRef = useRef<HTMLButtonElement>(null);
+  const { t } = useTranslation();
 
   const handlePasswordFocus = () => {
     // Give the keyboard time to animate open before scrolling
@@ -100,7 +103,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
     >
       <div>
-        <Label htmlFor="signin-id">Email or Cashier Username</Label>
+        <Label htmlFor="signin-id">{t("email_or_username", "Email or Cashier Username")}</Label>
         <Input
           id="signin-id"
           name="username"
@@ -112,7 +115,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
         />
       </div>
       <div>
-        <Label htmlFor="signin-pw">Password</Label>
+        <Label htmlFor="signin-pw">{t("password", "Password")}</Label>
         <div className="relative">
           <Input
             id="signin-pw"
@@ -132,7 +135,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
         </div>
       </div>
       <Button ref={submitBtnRef} type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
-        {busy ? "Signing in..." : "Sign in"}
+        {busy ? t("signing_in", "Signing in...") : t("sign_in", "Sign in")}
       </Button>
       <div className="text-center pt-2">
         <button
@@ -140,7 +143,7 @@ function SignInForm({ onForgotChange }: { onForgotChange: (open: boolean) => voi
           onClick={() => setForgot(true)}
           className="text-base font-bold text-primary hover:text-primary/80 underline"
         >
-          Forgot password?
+          {t("forgot_password_q", "Forgot password?")}
         </button>
       </div>
     </form>
@@ -156,8 +159,8 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [busy, setBusy] = useState(false);
-  // Hold the session we get after OTP verify so we can update password
   const [recoverySession, setRecoverySession] = useState(false);
+  const { t } = useTranslation();
 
   // Auto-read clipboard only when app regains focus (user switched to email to copy code)
   // Does NOT auto-paste on mount — avoids filling stale codes from clipboard history
@@ -269,17 +272,17 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
         onClick={onBack}
         className="text-sm text-muted-foreground hover:text-foreground transition"
       >
-        ← Back to sign in
+        {t("back_to_sign_in", "← Back to sign in")}
       </button>
 
       {step === "email" && (
         <form onSubmit={sendOtp} className="space-y-4">
           <div>
-            <h3 className="text-lg font-bold mb-1">Reset Password</h3>
-            <p className="text-sm text-muted-foreground">Enter your email to receive a 6-digit code</p>
+            <h3 className="text-lg font-bold mb-1">{t("reset_password", "Reset Password")}</h3>
+            <p className="text-sm text-muted-foreground">{t("enter_email", "Enter your email to receive a 6-digit code")}</p>
           </div>
           <div>
-            <Label htmlFor="forgot-email">Email</Label>
+            <Label htmlFor="forgot-email">{t("email_lbl", "Email")}</Label>
             <Input
               id="forgot-email"
               type="email"
@@ -290,7 +293,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
             />
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
-            {busy ? "Sending..." : "Send code"}
+            {busy ? t("sending_code", "Sending...") : t("send_code", "Send code")}
           </Button>
         </form>
       )}
@@ -298,11 +301,11 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
       {step === "otp" && (
         <form onSubmit={verifyOtp} className="space-y-4">
           <div>
-            <h3 className="text-lg font-bold mb-1">Enter Code</h3>
-            <p className="text-sm text-muted-foreground">Check your email for the 6-digit code</p>
+            <h3 className="text-lg font-bold mb-1">{t("enter_code", "Enter Code")}</h3>
+            <p className="text-sm text-muted-foreground">{t("check_email_code", "Check your email for the 6-digit code")}</p>
           </div>
           <div>
-            <Label htmlFor="otp-code">6-Digit Code</Label>
+            <Label htmlFor="otp-code">{t("digit6_lbl", "6-Digit Code")}</Label>
             <div className="flex gap-2 mt-1">
               <Input
                 id="otp-code"
@@ -337,7 +340,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
                     const digits = text.replace(/\D/g, "").slice(0, 6);
                     if (digits.length === 6) {
                       setOtp(digits);
-                      toast.success("Code pasted");
+                      toast.success(t("copied", "Code pasted"));
                     } else {
                       toast.error("No 6-digit code found in clipboard");
                     }
@@ -346,19 +349,19 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
                   }
                 }}
               >
-                Paste
+                {t("paste", "Paste")}
               </Button>
             </div>
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
-            {busy ? "Verifying..." : "Verify code"}
+            {busy ? t("verifying_code", "Verifying...") : t("verify_code", "Verify code")}
           </Button>
           <button
             type="button"
             onClick={() => setStep("email")}
             className="w-full text-sm text-muted-foreground hover:text-foreground"
           >
-            Resend code
+            {t("resend_code", "Resend code")}
           </button>
         </form>
       )}
@@ -366,11 +369,11 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
       {step === "password" && (
         <form onSubmit={updatePassword} className="space-y-4">
           <div>
-            <h3 className="text-lg font-bold mb-1">New Password</h3>
-            <p className="text-sm text-muted-foreground">Enter your new password</p>
+            <h3 className="text-lg font-bold mb-1">{t("new_password_step", "New Password")}</h3>
+            <p className="text-sm text-muted-foreground">{t("enter_new_password", "Enter your new password")}</p>
           </div>
           <div>
-            <Label htmlFor="new-pw">New Password</Label>
+            <Label htmlFor="new-pw">{t("new_pw_lbl", "New Password")}</Label>
             <div className="relative">
               <Input
                 id="new-pw"
@@ -388,7 +391,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
             </div>
           </div>
           <div>
-            <Label htmlFor="confirm-pw">Confirm Password</Label>
+            <Label htmlFor="confirm-pw">{t("confirm_pw_lbl", "Confirm Password")}</Label>
             <div className="relative">
               <Input
                 id="confirm-pw"
@@ -406,7 +409,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
             </div>
           </div>
           <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
-            {busy ? "Updating..." : "Update password"}
+            {busy ? t("updating_password", "Updating...") : t("update_password_btn", "Update password")}
           </Button>
         </form>
       )}
@@ -424,6 +427,7 @@ function SignUpForm() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { t } = useTranslation();
 
   const scrollIntoView = (e: React.FocusEvent<HTMLElement>) => {
     setTimeout(() => {
@@ -461,7 +465,7 @@ function SignUpForm() {
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
     >
       <div>
-        <Label htmlFor="signup-username">Business Name</Label>
+        <Label htmlFor="signup-username">{t("business_name", "Business Name")}</Label>
         <Input
           id="signup-username"
           name="username"
@@ -475,7 +479,7 @@ function SignUpForm() {
         />
       </div>
       <div>
-        <Label htmlFor="signup-email">Email</Label>
+        <Label htmlFor="signup-email">{t("email_lbl", "Email")}</Label>
         <Input
           id="signup-email"
           name="email"
@@ -489,7 +493,7 @@ function SignUpForm() {
         />
       </div>
       <div>
-        <Label htmlFor="signup-phone">Phone Number</Label>
+        <Label htmlFor="signup-phone">{t("phone_number", "Phone Number")}</Label>
         <PhoneInput
           id="signup-phone"
           name="phone"
@@ -500,7 +504,7 @@ function SignUpForm() {
         />
       </div>
       <div>
-        <Label htmlFor="signup-address">Business Address</Label>
+        <Label htmlFor="signup-address">{t("business_address", "Business Address")}</Label>
         <Input
           id="signup-address"
           name="address"
@@ -513,7 +517,7 @@ function SignUpForm() {
         />
       </div>
       <div>
-        <Label htmlFor="signup-pw">Password</Label>
+        <Label htmlFor="signup-pw">{t("password", "Password")}</Label>
         <div className="relative">
           <Input
             id="signup-pw"
@@ -534,7 +538,7 @@ function SignUpForm() {
         </div>
       </div>
       <div>
-        <Label htmlFor="signup-confirm-pw">Confirm Password</Label>
+        <Label htmlFor="signup-confirm-pw">{t("confirm_password_lbl", "Confirm Password")}</Label>
         <div className="relative">
           <Input
             id="signup-confirm-pw"
@@ -555,7 +559,7 @@ function SignUpForm() {
         </div>
       </div>
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
-        {busy ? "Creating..." : "Create owner account"}
+        {busy ? t("creating_acct", "Creating...") : t("create_owner_acct", "Create owner account")}
       </Button>
     </form>
   );

@@ -5,6 +5,7 @@ import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, TrendingDown, X, BarChart3, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/manager")({
   component: ManagerPage,
@@ -38,11 +39,12 @@ function monthLabel(key: string) {
 function ManagerPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
+  const { t } = useTranslation();
 
   if (!profile || (profile.role !== "manager" && (profile as any).job_title !== "manager")) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        Manager access only.
+        {t("manager_only", "Manager access only.")}
       </div>
     );
   }
@@ -63,6 +65,7 @@ function ManagerExpenses({
   const tag = `[Manager: ${managerName}]`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any;
+  const { t } = useTranslation();
 
   // ── Bar open/closed state ─────────────────────────────────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);

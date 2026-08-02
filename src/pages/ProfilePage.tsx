@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
+import { useTranslation } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import {
 export default function ProfilePage() {
   const { user, profile, loading, signOut, refreshProfile } = useAuth();
   const nav = useNavigate();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
@@ -201,20 +203,20 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 pb-8 pt-3">
       <div>
-        <h1 className="text-3xl font-black tracking-tight">Profile Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your business information and account</p>
+        <h1 className="text-3xl font-black tracking-tight">{t("profile_settings", "Profile Settings")}</h1>
+        <p className="text-muted-foreground mt-1">{t("profile_manage", "Manage your business information and account")}</p>
       </div>
 
       {/* ── Business Information ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Business Information</CardTitle>
-          <CardDescription>Update your business name, phone and address</CardDescription>
+          <CardTitle>{t("business_info", "Business Information")}</CardTitle>
+          <CardDescription>{t("business_info_desc", "Update your business name, phone and address")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div>
-              <Label htmlFor="business-name">Business Name</Label>
+              <Label htmlFor="business-name">{t("business_name_lbl", "Business Name")}</Label>
               <Input
                 id="business-name"
                 value={businessName}
@@ -225,7 +227,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">{t("phone_lbl", "Phone Number")}</Label>
               <PhoneInput
                 id="phone"
                 name="phone"
@@ -235,7 +237,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <Label htmlFor="address">Business Address</Label>
+              <Label htmlFor="address">{t("address_lbl", "Business Address")}</Label>
               <Input
                 id="address"
                 value={address}
@@ -245,7 +247,7 @@ export default function ProfilePage() {
               />
             </div>
             <Button type="submit" disabled={busy}>
-              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("saving", "Saving...")}</> : t("save_changes", "Save Changes")}
             </Button>
           </form>
         </CardContent>
@@ -254,16 +256,16 @@ export default function ProfilePage() {
       {/* ── Change Email (OTP — no redirect link) ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Email</CardTitle>
+          <CardTitle>{t("change_email", "Change Email")}</CardTitle>
           <CardDescription>
-            Actual: <span className="font-semibold text-foreground">{user?.email}</span>
+            {t("current_email_lbl", "Current:")}{" "}<span className="font-semibold text-foreground">{user?.email}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
           {emailStep === "idle" ? (
             <form onSubmit={handleSendEmailOtp} className="space-y-4">
               <div>
-                <Label htmlFor="new-email">New Email Address</Label>
+                <Label htmlFor="new-email">{t("new_email_lbl", "New Email Address")}</Label>
                 <Input
                   id="new-email"
                   type="email"
@@ -274,16 +276,16 @@ export default function ProfilePage() {
                 />
               </div>
               <Button type="submit" disabled={emailBusy}>
-                {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : "Send 6-Digit Code"}
+                {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("sending", "Sending...")}</> : t("send_6digit", "Send 6-Digit Code")}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter the 6-digit code sent to <span className="font-semibold text-foreground">{newEmail}</span>
+                {t("enter_code_sent", "Enter the 6-digit code sent to")}{" "}<span className="font-semibold text-foreground">{newEmail}</span>
               </p>
               <div>
-                <Label htmlFor="email-otp">6-Digit Code</Label>
+                <Label htmlFor="email-otp">{t("digit6_code", "6-Digit Code")}</Label>
                 <Input
                   id="email-otp"
                   type="number"
@@ -302,10 +304,10 @@ export default function ProfilePage() {
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => { setEmailStep("idle"); setEmailOtp(""); }}>
-                  Cancel
+                  {t("cancel", "Cancel")}
                 </Button>
                 <Button type="submit" disabled={emailBusy}>
-                  {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : "Confirm Email"}
+                  {emailBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("verifying", "Verifying...")}</> : t("confirm_email_btn", "Confirm Email")}
                 </Button>
               </div>
             </form>
@@ -316,13 +318,13 @@ export default function ProfilePage() {
       {/* ── Change Password ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-          <CardDescription>You must enter your current password to change it</CardDescription>
+          <CardTitle>{t("change_password_heading", "Change Password")}</CardTitle>
+          <CardDescription>{t("change_password_desc", "You must enter your current password to change it")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div>
-              <Label htmlFor="current-password">Current Password</Label>
+              <Label htmlFor="current-password">{t("current_pw_lbl", "Current Password")}</Label>
               <div className="relative">
                 <Input
                   id="current-password"
@@ -340,7 +342,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">{t("new_pw_lbl", "New Password")}</Label>
               <div className="relative">
                 <Input
                   id="new-password"
@@ -358,7 +360,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Label htmlFor="confirm-password">{t("confirm_pw_lbl", "Confirm New Password")}</Label>
               <div className="relative">
                 <Input
                   id="confirm-password"
@@ -376,7 +378,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <Button type="submit" disabled={busy}>
-              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</> : "Update Password"}
+              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("updating", "Updating...")}</> : t("update_pw_btn", "Update Password")}
             </Button>
           </form>
         </CardContent>
@@ -385,40 +387,39 @@ export default function ProfilePage() {
       {/* ── Danger Zone ── */}
       <Card className="border-destructive">
         <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>Permanently delete your account and all associated data</CardDescription>
+          <CardTitle className="text-destructive">{t("danger_zone", "Danger Zone")}</CardTitle>
+          <CardDescription>{t("danger_zone_desc", "Permanently delete your account and all associated data")}</CardDescription>
         </CardHeader>
         <CardContent>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={deleteBusy}>
                 <AlertTriangle className="mr-2 h-4 w-4" />
-                Delete Account
+                {t("delete_acct_btn", "Delete Account")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t("delete_confirm_title", "Are you absolutely sure?")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This cannot be undone. Your account, all cashiers, products, orders, and
-                  transaction history will be permanently deleted.
+                  {t("delete_confirm_desc", "This cannot be undone. Your account, all cashiers, products, orders, and transaction history will be permanently deleted.")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("cancel", "Cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteAccount}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   {deleteBusy
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
-                    : "Yes, delete my account"}
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("deleting", "Deleting...")}</>
+                    : t("yes_delete_acct", "Yes, delete my account")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <p className="text-xs text-muted-foreground mt-2">
-            Deletes all cashiers, products, orders, and wallet transactions.
+            {t("delete_confirm_desc", "Deletes all cashiers, products, orders, and wallet transactions.")}
           </p>
         </CardContent>
       </Card>

@@ -8,11 +8,13 @@ import { Wine, Gamepad2, Loader2, ChevronLeft, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "@/lib/i18n";
 
 export default function CreateBarPage() {
   const { profile } = useAuth();
   const { isChainOwner, chainBars, refreshBars, setActiveBarId } = useChain();
   const nav = useNavigate();
+  const { t } = useTranslation();
 
   const isMachinesOnlyOwner = profile?.plan_type === "machines_only";
 
@@ -28,7 +30,7 @@ export default function CreateBarPage() {
   if (!isChainOwner && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        This page is only available for multi-bar plan owners.
+        {t("multibar_only", "This page is only available for multi-bar plan owners.")}
       </div>
     );
   }
@@ -114,16 +116,16 @@ export default function CreateBarPage() {
         className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition"
       >
         <ChevronLeft className="h-4 w-4" />
-        Back to My Bars
+        {t("back_to_bars", "Back to My Bars")}
       </button>
 
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-black">
-          {isMachinesOnlyOwner ? "Add New Machine Account" : "Add New Account"}
+          {isMachinesOnlyOwner ? t("add_new_machine_acct", "Add New Machine Account") : t("add_new_account", "Add New Account")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Each account is fully independent — its own wallet, cashiers, and records.
+          {t("each_acct_independent", "Each account is fully independent — its own wallet, cashiers, and records.")}
         </p>
       </div>
 
@@ -134,7 +136,7 @@ export default function CreateBarPage() {
         {/* Bar Name */}
         <div className="space-y-1.5">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Bar Name
+            {t("bar_name_lbl", "Bar Name")}
           </Label>
           <Input
             placeholder="e.g. The Rusty Nail"
@@ -148,7 +150,7 @@ export default function CreateBarPage() {
         {/* District / Location */}
         <div className="space-y-1.5">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            District / Location
+            {t("district_location", "District / Location")}
           </Label>
           <Input
             placeholder="e.g. Port of Spain"
@@ -163,7 +165,7 @@ export default function CreateBarPage() {
         {!isMachinesOnlyOwner && (
         <div className="space-y-2">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Account Type
+            {t("account_type_lbl", "Account Type")}
           </Label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -177,7 +179,7 @@ export default function CreateBarPage() {
             >
               <Wine className={`h-5 w-5 ${accountType === "bar" ? "text-primary" : "text-muted-foreground"}`} />
               <span className={`text-xs font-black ${accountType === "bar" ? "text-primary" : "text-muted-foreground"}`}>
-                Bar only
+                {t("bar_only_lbl", "Bar only")}
               </span>
             </button>
             <button
@@ -191,7 +193,7 @@ export default function CreateBarPage() {
             >
               <Gamepad2 className={`h-5 w-5 ${accountType === "bar_machines" ? "text-primary" : "text-muted-foreground"}`} />
               <span className={`text-xs font-black ${accountType === "bar_machines" ? "text-primary" : "text-muted-foreground"}`}>
-                Bar + Machines
+                {t("bar_machines_lbl", "Bar + Machines")}
               </span>
             </button>
           </div>
@@ -202,10 +204,10 @@ export default function CreateBarPage() {
         {accountType !== "machines_only" && chainBars.length > 0 && (
           <div className="space-y-2">
             <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              Copy Items from Bar 1?
+              {t("copy_items_q", "Copy Items from Bar 1?")}
             </Label>
             <p className="text-xs text-muted-foreground -mt-1">
-              Start this bar with the same product list as your first bar.
+              {t("copy_items_desc", "Start this bar with the same product list as your first bar.")}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -219,7 +221,7 @@ export default function CreateBarPage() {
               >
                 <Copy className={`h-5 w-5 ${copyItems === true ? "text-primary" : "text-muted-foreground"}`} />
                 <span className={`text-xs font-black ${copyItems === true ? "text-primary" : "text-muted-foreground"}`}>
-                  Yes, copy items
+                  {t("yes_copy_items", "Yes, copy items")}
                 </span>
               </button>
               <button
@@ -233,7 +235,7 @@ export default function CreateBarPage() {
               >
                 <Wine className={`h-5 w-5 ${copyItems === false ? "text-primary" : "text-muted-foreground"}`} />
                 <span className={`text-xs font-black ${copyItems === false ? "text-primary" : "text-muted-foreground"}`}>
-                  Start fresh
+                  {t("start_fresh", "Start fresh")}
                 </span>
               </button>
             </div>
@@ -249,18 +251,18 @@ export default function CreateBarPage() {
         style={{ background: canCreate && !busy ? "var(--gradient-hero)" : undefined }}
       >
         {busy ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
+          <><Loader2 className="h-4 w-4 animate-spin" /> {t("creating_ellipsis", "Creating…")}</>
         ) : isMachinesOnlyOwner || accountType === "machines_only" ? (
-          "Create Machines Account"
+          t("create_machines_acct", "Create Machines Account")
         ) : (
-          "Create Bar"
+          t("create_bar_btn", "Create Bar")
         )}
       </Button>
 
       <p className="text-center text-xs text-muted-foreground">
         {isMachinesOnlyOwner
-          ? `Account ${chainBars.length + 1}`
-          : `Bar ${chainBars.length + 1}`}
+          ? `${t("account_number_lbl", "Account")} ${chainBars.length + 1}`
+          : `${t("bar_number_lbl", "Bar")} ${chainBars.length + 1}`}
       </p>
     </div>
   );

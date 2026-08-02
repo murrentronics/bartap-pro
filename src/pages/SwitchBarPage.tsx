@@ -6,11 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Wine, Gamepad2, Plus, CheckCircle2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n";
 
 export default function SwitchBarPage() {
   const { profile } = useAuth();
   const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner, refreshBars } = useChain();
   const nav = useNavigate();
+  const { t } = useTranslation();
 
   // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -20,7 +22,7 @@ export default function SwitchBarPage() {
   if (!isChainOwner && !isMultiBarOwner && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        This page is only available for multi-bar plan owners.
+        {t("multibar_only", "This page is only available for multi-bar plan owners.")}
       </div>
     );
   }
@@ -57,12 +59,12 @@ export default function SwitchBarPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-black">
-          {isMachinesOnlyOwner ? "Your Machine Accounts" : "Your Bars"}
+          {isMachinesOnlyOwner ? t("your_machine_accts", "Your Machine Accounts") : t("your_bars", "Your Bars")}
         </h1>
         <p className="text-sm text-muted-foreground">
           {isMachinesOnlyOwner
-            ? "Select an account to manage, or add a new one."
-            : "Select a bar to manage, or add a new one."}
+            ? t("select_acct_manage", "Select an account to manage, or add a new one.")
+            : t("select_bar_manage", "Select a bar to manage, or add a new one.")}
         </p>
       </div>
 
@@ -70,7 +72,7 @@ export default function SwitchBarPage() {
       <div className="flex items-center gap-2">
         <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 text-primary"
           style={{ background: "rgba(251,146,60,0.08)" }}>
-          {chainBars.length} {isMachinesOnlyOwner ? "account" : "bar"}{chainBars.length !== 1 ? "s" : ""}
+          {chainBars.length} {isMachinesOnlyOwner ? t("account_number_lbl", "account") : t("bar_number_lbl", "bar")}{chainBars.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -94,10 +96,10 @@ export default function SwitchBarPage() {
                 }
               </div>
               <p className="text-muted-foreground text-sm font-semibold">
-                {isMachinesOnlyOwner ? "No machine accounts yet" : "No bars yet"}
+                {isMachinesOnlyOwner ? t("no_machine_accts", "No machine accounts yet") : t("no_bars_yet", "No bars yet")}
               </p>
               <p className="text-xs text-muted-foreground">
-                {isMachinesOnlyOwner ? "Add your first account to get started." : "Add your first bar to get started."}
+                {isMachinesOnlyOwner ? t("add_first_acct", "Add your first account to get started.") : t("add_first_bar", "Add your first bar to get started.")}
               </p>
             </div>
           )}
@@ -142,10 +144,10 @@ export default function SwitchBarPage() {
                       <span className="text-xs text-muted-foreground truncate">{bar.bar_location}</span>
                       <span className="shrink-0">
                         {bar.is_machines_account
-                          ? <span className="flex items-center gap-1 text-xs font-bold text-primary"><Gamepad2 className="h-3 w-3" />Machines only</span>
+                          ? <span className="flex items-center gap-1 text-xs font-bold text-primary"><Gamepad2 className="h-3 w-3" />{t("machines_only_lbl", "Machines only")}</span>
                           : bar.has_machines
-                            ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />Bar + Machines</span>
-                            : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />Bar only</span>
+                            ? <span className="flex items-center gap-1 text-xs font-bold text-amber-400"><Gamepad2 className="h-3 w-3" />{t("bar_machines_lbl", "Bar + Machines")}</span>
+                            : <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground"><Wine className="h-3 w-3" />{t("bar_only_lbl", "Bar only")}</span>
                         }
                       </span>
                     </div>
@@ -177,7 +179,7 @@ export default function SwitchBarPage() {
                       border: isActive ? "none" : "1px solid var(--border)",
                     }}
                   >
-                    {isActive ? "● Active" : "Switch"}
+                    {isActive ? t("active_badge", "● Active") : t("switch_btn", "Switch")}
                   </span>
                 </button>
               </div>
@@ -195,7 +197,7 @@ export default function SwitchBarPage() {
             style={{ background: "var(--gradient-hero)" }}
           >
             <Plus className="h-4 w-4" />
-            {isMachinesOnlyOwner ? "Add New Machine Account" : "Add New Bar"}
+            {isMachinesOnlyOwner ? t("add_new_machine_acct", "Add New Machine Account") : t("add_new_bar", "Add New Bar")}
           </Button>
         </div>
       )}
@@ -209,12 +211,12 @@ export default function SwitchBarPage() {
             style={{ background: "var(--gradient-hero)" }}
           >
             <Plus className="h-4 w-4" />
-            {isMachinesOnlyOwner ? "Add More Machines via Billing" : "Add More Bars via Billing"}
+            {isMachinesOnlyOwner ? t("add_more_machines_billing", "Add More Machines via Billing") : t("add_more_bars_billing", "Add More Bars via Billing")}
           </Button>
           <p className="text-center text-xs text-muted-foreground mt-2">
             {isMachinesOnlyOwner
-              ? "Additional machine accounts are added through your billing plan."
-              : "Additional bars are added through your billing plan."}
+              ? t("extra_machines_billing", "Additional machine accounts are added through your billing plan.")
+              : t("extra_bars_billing", "Additional bars are added through your billing plan.")}
           </p>
         </div>
       )}
@@ -229,12 +231,10 @@ export default function SwitchBarPage() {
                 <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-red-500/15 border border-red-500/30 shrink-0">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                 </div>
-                <h2 className="font-black text-lg text-red-400">Delete Bar?</h2>
+                <h2 className="font-black text-lg text-red-400">{t("delete_bar_title", "Delete Bar?")}</h2>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                <span className="font-black text-foreground">"{deleteTarget.name}"</span> and all its data —
-                items, orders, wallet, cashiers, credit — will be permanently deleted.
-                This cannot be undone.
+                <span className="font-black text-foreground">"{deleteTarget.name}"</span> {t("delete_bar_msg", "and all its data — items, orders, wallet, cashiers, credit — will be permanently deleted. This cannot be undone.")}
               </p>
             </div>
             <div className="flex gap-3 px-6 pb-6">
@@ -244,14 +244,14 @@ export default function SwitchBarPage() {
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
               >
-                Cancel
+                {t("cancel", "Cancel")}
               </Button>
               <Button
                 className="flex-1 h-12 font-black bg-red-600 hover:bg-red-700 text-white"
                 onClick={handleDeleteConfirm}
                 disabled={deleting}
               >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("delete", "Delete")}
               </Button>
             </div>
           </div>
