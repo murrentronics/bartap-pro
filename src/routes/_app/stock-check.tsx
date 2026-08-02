@@ -611,3 +611,5 @@ function StockCheckPage() {
     </div>
   );
 }
+
+export default StockCheckPage;

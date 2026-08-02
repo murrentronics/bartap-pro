@@ -66,7 +66,8 @@ export default function RegisterPage() {
   // ── Bar session state — blocks sales when bar is closed ────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
   const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
-  const [barSessionLoading, setBarSessionLoading] = useState(true);
+  // Start as false — only set true once we have an ownerId and kick off the fetch
+  const [barSessionLoading, setBarSessionLoading] = useState(false);
   // Delay showing the overlay so we don't flash it during initial profile/ownerId resolution
   const [barOverlayReady, setBarOverlayReady] = useState(false);
   const barIsOpen = !!barSessionStart && !barClosedAt;
@@ -876,16 +877,6 @@ export default function RegisterPage() {
   };
 
 
-
-  // Don't render until profile and ownerId are both resolved — prevents blank page
-  // for cashiers whose parent_id loads a tick after the profile
-  if (!profile || !ownerId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <>
