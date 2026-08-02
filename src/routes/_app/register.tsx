@@ -370,7 +370,7 @@ export default function RegisterPage() {
     const sorted = applyBarSort(products, category, barSortMapRef.current);
     barOrderedRef.current = sorted;
     setBarOrdered(sorted);
-  }, [products, category, barSortMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [products, barSortMap]); // category changes are handled synchronously in the tab click handler
 
   // Track cart length via ref so handlers always see live value
   useEffect(() => {
@@ -976,7 +976,10 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
+                const sorted = applyBarSort(products, cat.value, barSortMapRef.current);
+                barOrderedRef.current = sorted;
                 setCategory(cat.value);
+                setBarOrdered(sorted);
                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
               }}
               className={`h-10 shrink-0 rounded-xl font-black transition flex items-center justify-center px-4 ${
@@ -997,7 +1000,10 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
+                const sorted = applyBarSort(products, cat.value, barSortMapRef.current);
+                barOrderedRef.current = sorted;
                 setCategory(cat.value);
+                setBarOrdered(sorted);
                 document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
               }}
               className={`h-10 lg:h-11 rounded-xl font-black transition flex items-center justify-center ${
