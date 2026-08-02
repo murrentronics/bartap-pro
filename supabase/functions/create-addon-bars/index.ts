@@ -14,7 +14,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type BarEntry = { name: string; location: string; type: "bar" | "bar_machines" | "machines_only" };
+type BarEntry = { name: string; location: string; type: "bar" | "bar_machines" | "bar_machines_20" | "machines_only" | "machines_only_20" };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -65,6 +65,15 @@ serve(async (req) => {
     const ownerId: string = payment.owner_id;
     const barData: BarEntry[] = payment.addon_bar_data ?? [];
     const planType: string = (payment.billing_plans as any)?.plan_type ?? "";
+    const paymentNotes: string = payment.notes ?? "";
+
+    // Parse special instructions from notes
+    // "target_account_id: <uuid>" → upgrade an existing sub-account instead of creating new
+    // "destination: existing" → confirms we are upgrading an existing account
+    const targetAccountMatch = paymentNotes.match(/target_account_id:\s*([a-f0-9-]{36})/i);
+    const targetAccountId: string | null = targetAccountMatch ? targetAccountMatch[1] : null;
+    const isUpgradeSame = paymentNotes.includes("Same-account upgrade");
+    const isExistingDestination = paymentNotes.includes("destination: existing");
 
     // Load owner profile
     const { data: ownerProfile } = await supabase
@@ -78,11 +87,67 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Case 1: Same-account upgrade (machines_only → premium/premium_20) ──
+    if (isUpgradeSame) {
+      const targetPlan = paymentNotes.includes("premium_20") ? "premium_20" : "premium";
+      await supabase.from("profiles").update({
+        plan_type:             targetPlan,
+        bar_addon_active:      true,
+        machines_addon_active: true,
+        billing_status:        "active",
+        status:                "approved",
+        music_addon:           true,
+      }).eq("id", ownerId);
+
+      return new Response(
+        JSON.stringify({ upgraded: true, plan: targetPlan }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Case 2: Upgrade existing sub-account (add screens or add bar) ──
+    if (isExistingDestination && targetAccountId) {
+      const addonType = barData[0]?.type ?? "";
+      const is20Screens   = addonType === "machines_only_20";
+      const isBarMachines  = addonType === "bar_machines" || addonType === "bar_machines_20";
+      const is20BarMachines = addonType === "bar_machines_20";
+
+      if (is20Screens) {
+        // Upgrade machine account from 10 → 20 screens
+        await supabase.from("profiles").update({
+          plan_type: "machines_only_20",
+        }).eq("id", targetAccountId).eq("parent_id", ownerId);
+      } else if (isBarMachines) {
+        // Add bar to existing machine account
+        await supabase.from("profiles").update({
+          is_machines_account:   true,
+          machines_addon_active: true,
+          bar_addon_active:      true,
+          plan_type:             is20BarMachines ? "premium_20" : "premium",
+        }).eq("id", targetAccountId).eq("parent_id", ownerId);
+      }
+
+      // Mark owner as multi-bar
+      await supabase.from("profiles").update({
+        is_multi_bar:   true,
+        billing_status: "active",
+        status:         "approved",
+      }).eq("id", ownerId);
+
+      return new Response(
+        JSON.stringify({ upgraded: true, target: targetAccountId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Case 3: Create new sub-accounts ──
     const createdIds: string[] = [];
 
     for (const bar of barData) {
-      const isMachinesType = bar.type === "machines_only";
-      const hasBarMachines = bar.type === "bar_machines";
+      const isMachinesType   = bar.type === "machines_only" || bar.type === "machines_only_20";
+      const isMachines20     = bar.type === "machines_only_20";
+      const hasBarMachines   = bar.type === "bar_machines" || bar.type === "bar_machines_20";
+      const isBarMachines20  = bar.type === "bar_machines_20";
 
       const fakeEmail = `bar-${crypto.randomUUID()}@chain.internal`;
       const { data: authData, error: createError } = await supabase.auth.admin.createUser({
@@ -103,11 +168,12 @@ serve(async (req) => {
 
       const barId = authData.user.id;
 
-      // Derive plan_type for the sub-account based on the owner's plan
+      // Derive plan_type for the sub-account
       const subPlanType =
+        hasBarMachines ? (isBarMachines20 ? "premium_20" : "premium") :
+        isMachinesType ? (isMachines20 ? "machines_only_20" : "machines_only") :
         (ownerProfile.plan_type === "premium" || planType === "premium_addon") ? "chain" :
-        ownerProfile.plan_type === "machines_only" ? "machines_only" :
-        "basic"; // bar_only_addon owners are basic
+        "basic";
 
       const { error: profileError } = await supabase
         .from("profiles")
@@ -120,9 +186,9 @@ serve(async (req) => {
           status:                "approved",
           address:               bar.location.trim(),
           is_bar_account:        true,
-          is_machines_account:   isMachinesType,
+          is_machines_account:   isMachinesType || hasBarMachines,
           machines_addon_active: isMachinesType || hasBarMachines,
-          bar_addon_active:      !isMachinesType,
+          bar_addon_active:      !isMachinesType || hasBarMachines,
           plan_type:             subPlanType,
           chain_addon_active:    false,
           billing_status:        "active",

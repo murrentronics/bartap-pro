@@ -24,9 +24,19 @@ import {
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
 const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
-const PREMIUM_ADDON_FEE = 2000; // per extra bar + 10-screen for premium owners
 
-type Step = "status" | "choose" | "addons" | "addon-bars" | "payment" | "confirm";
+// ── Addon pricing constants ───────────────────────────────────────────────
+const PRICE_BAR_ONLY        = 1000;  // extra bar only /yr
+const PRICE_MACHINES_10     = 1200;  // extra machines 10 screens /yr
+const PRICE_MACHINES_20     = 1800;  // extra machines 20 screens /yr
+const PRICE_BAR_MACHINES_10 = 3000;  // extra bar + 10 machines /yr
+const PRICE_BAR_MACHINES_20 = 3500;  // extra bar + 20 machines /yr
+const PRICE_BASE_BASIC      = 1200;  // bar only base plan
+const PRICE_BASE_MACHINES   = 2400;  // machines only base plan
+const PRICE_BASE_PREMIUM    = 3000;  // bar + 10 machines base plan
+const PRICE_BASE_PREMIUM_20 = 3500;  // bar + 20 machines base plan
+
+type Step = "status" | "choose" | "addons" | "addon-bars" | "addon-ask" | "payment" | "confirm";
 
 export default function BillingPage() {
   const { profile, refreshProfile } = useAuth();
@@ -49,9 +59,22 @@ export default function BillingPage() {
   const [submitting, setSubmitting]   = useState(false);
 
   // ── Addon bar state ──────────────────────────────────────────────────────
-  type BarEntry = { name: string; location: string; type: "bar" | "bar_machines" | "machines_only" };
+  type BarEntry = { name: string; location: string; type: "bar" | "bar_machines" | "bar_machines_20" | "machines_only" | "machines_only_20" };
   const [addonBarCount, setAddonBarCount] = useState(1);
   const [addonBars, setAddonBars]         = useState<BarEntry[]>([{ name: "", location: "", type: "bar" }]);
+
+  // ── New addon ask flow ───────────────────────────────────────────────────
+  // What kind of addon the user picked before the "same bar or new?" question
+  type AddonAskType = "machines_10" | "machines_20" | "bar_only" | "bar_machines_10" | "bar_machines_20" | "upgrade_same_premium" | "upgrade_same_premium_20";
+  const [addonAskType, setAddonAskType]       = useState<AddonAskType | null>(null);
+  // "new" = always new account; "existing" = upgrade an existing sub-account
+  const [addonDestination, setAddonDestination] = useState<"new" | "existing" | null>(null);
+  // Sub-accounts eligible for upgrade (machines accounts with <20 screens, or any machine acct for bar upgrade)
+  type SubAccount = { id: string; username: string; address: string; plan_type: string; screen_count: number };
+  const [eligibleBars, setEligibleBars]       = useState<SubAccount[]>([]);
+  const [selectedBarId, setSelectedBarId]     = useState<string | null>(null);
+  // The manual amount to charge (overrides plan amount when doing diff-based upgrades)
+  const [overrideAmount, setOverrideAmount]   = useState<number | null>(null);
 
   useEffect(() => { loadAll(); }, [profile?.id]);
   useEffect(() => { if (profile?.id) loadPayments(); }, [historyPage]);
@@ -127,12 +150,40 @@ export default function BillingPage() {
     if (data) setBankEnabled(data.enabled);
   };
 
+  // Load sub-accounts eligible for a given upgrade
+  // type "machines_upgrade" = machine accounts with 10 screens (can go to 20)
+  // type "bar_upgrade" = machine accounts (can have bar added)
+  const loadEligibleBars = async (upgradeType: "machines_upgrade" | "bar_upgrade") => {
+    if (!profile?.id) return;
+    const { data } = await (supabase as any)
+      .from("profiles")
+      .select("id, username, address, plan_type")
+      .eq("parent_id", profile.id)
+      .eq("is_machines_account", true);
+    const subs: SubAccount[] = (data ?? []).map((d: any) => ({
+      id: d.id,
+      username: d.username,
+      address: d.address ?? "",
+      plan_type: d.plan_type,
+      screen_count: (d.plan_type as string) === "machines_only_20" ? 20 : 10,
+    }));
+    if (upgradeType === "machines_upgrade") {
+      // Only show accounts with 10 screens (can accept +10 to reach max 20)
+      setEligibleBars(subs.filter(s => s.screen_count < 20));
+    } else {
+      // bar_upgrade: all machine accounts (adding bar to them)
+      setEligibleBars(subs);
+    }
+  };
+
   const copy = (t: string) => { navigator.clipboard.writeText(t); toast.success("Copied"); };
 
   const reset = () => {
     setStep("status"); setSelectedPlan(null); setRenewMode(null);
     setPayMethod(null);
     setAddonBarCount(1); setAddonBars([{ name: "", location: "", type: "bar" }]);
+    setAddonAskType(null); setAddonDestination(null);
+    setEligibleBars([]); setSelectedBarId(null); setOverrideAmount(null);
   };
 
   const cancelPending = async () => {
@@ -155,21 +206,41 @@ export default function BillingPage() {
     const isFirst   = !isRenewal && payments.filter(p => p.status === "paid").length === 0;
 
     // For addon plans, amount = pro-rated unit price × number of bars
-    const isAddonPlan = ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan.plan_type ?? "");
+    // Also treat upgrade flows as "addon" for amount calculation
+    const isUpgradeSame = addonAskType === "upgrade_same_premium" || addonAskType === "upgrade_same_premium_20";
+    const isAddonPlan = isUpgradeSame || ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan.plan_type ?? "");
     const amount = isAddonPlan
       ? totalDue   // already pro-rated in derived state above
       : selectedPlan.amount;
 
     const notesParts: string[] = [];
-    if (isAddonPlan) {
+    if (isUpgradeSame) {
+      const targetPlan = addonAskType === "upgrade_same_premium_20" ? "premium_20" : "premium";
+      notesParts.push(
+        `Same-account upgrade → ${targetPlan}` +
+        (planEndDate && daysRemaining < 365
+          ? ` (prorated $${proRataUnitPrice} TT, ${daysRemaining}d remaining, full diff $${overrideAmount} TT/yr)`
+          : ` — $${overrideAmount} TT`)
+      );
+    } else if (isAddonPlan) {
+      const baseNote = addonAskType
+        ? `type: ${addonAskType}`
+        : `${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""}`;
       if (planEndDate && daysRemaining < 365) {
         notesParts.push(
-          `${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${proRataUnitPrice} TT each ` +
-          `(pro-rated: ${daysRemaining}d remaining of 365d, full price $${selectedPlan.amount} TT/yr)`
+          `${baseNote} @ $${proRataUnitPrice} TT each ` +
+          `(pro-rated: ${daysRemaining}d remaining of 365d, full price $${overrideAmount ?? selectedPlan.amount} TT/yr)`
         );
       } else {
-        notesParts.push(`${addonBarCount} extra bar${addonBarCount > 1 ? "s" : ""} @ $${selectedPlan.amount} TT each`);
+        notesParts.push(`${baseNote} @ $${overrideAmount ?? selectedPlan.amount} TT each`);
       }
+    }
+    // If upgrading an existing machine account (add 10 screens or add bar)
+    if (selectedBarId) {
+      notesParts.push(`target_account_id: ${selectedBarId}`);
+    }
+    if (addonDestination) {
+      notesParts.push(`destination: ${addonDestination}`);
     }
 
     let dueDate = new Date();
@@ -190,7 +261,7 @@ export default function BillingPage() {
     };
 
     // Attach bar names/locations for addon plans so admin approval can auto-create them
-    if (isAddonPlan && addonBars.length > 0) {
+    if (isAddonPlan && !isUpgradeSame && addonBars.length > 0) {
       insertData.addon_bar_count = addonBarCount;
       insertData.addon_bar_data  = addonBars.slice(0, addonBarCount);
     }
@@ -266,7 +337,7 @@ export default function BillingPage() {
   const isNewSignup    = !pendingPayment && profile?.status === "pending" && profile?.billing_status !== "expired";
   const isExpiredRenew = !pendingPayment && profile?.status === "pending" && profile?.billing_status === "expired";
 
-  const isAddonPlanSelected = ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan?.plan_type ?? "");
+  const isAddonPlanSelected = !!(addonAskType) || ["bar_only_addon", "machines_bar_addon", "machines_bar_addon_20", "premium_addon", "premium_addon_20"].includes(selectedPlan?.plan_type ?? "");
 
   // ── Total renewal amount (base plan + all active addons at full annual price) ──
   // Pro-rata only applies at the time of purchasing a new addon — never at renewal.
@@ -306,6 +377,9 @@ export default function BillingPage() {
       return new Date(profile.machines_addon_end_date);
     if (profile?.subscription_end_date)
       return new Date(profile.subscription_end_date);
+    // machines_only uses machines_addon_end_date — also check it as fallback
+    if ((profile as any)?.machines_addon_end_date)
+      return new Date((profile as any).machines_addon_end_date);
     return null;
   })();
 
@@ -317,10 +391,11 @@ export default function BillingPage() {
   // pro-rata fraction: days_remaining / 365
   const proRataFraction: number = planEndDate ? daysRemaining / 365 : 1;
 
-  // unit price after pro-rating (round to nearest dollar)
+  // unit price after pro-rating — use overrideAmount (diff-based upgrades) when set
+  const baseAmount: number = overrideAmount ?? (selectedPlan?.amount ?? 0);
   const proRataUnitPrice: number = isAddonPlanSelected
-    ? Math.round((selectedPlan?.amount ?? 0) * proRataFraction)
-    : (selectedPlan?.amount ?? 0);
+    ? Math.round(baseAmount * proRataFraction)
+    : baseAmount;
 
   const totalDue: number = isAddonPlanSelected
     ? proRataUnitPrice * addonBarCount
@@ -646,8 +721,8 @@ export default function BillingPage() {
                     </div>
                   )}
 
-                  {/* ── Add More Machine Accounts (Machines Only owners) — 10 or 20 screen ── */}
-                  {isMachinesOnly && machinesBarAddonPlan && (
+                  {/* ── Add More Machine Accounts (Machines Only owners) ── */}
+                  {isMachinesOnly && (
                     <div className="rounded-2xl border-2 border-orange-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
@@ -655,91 +730,144 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add More Machine Accounts</p>
-                          <p className="text-xs text-gray-500">10 screens ${machinesBarAddonPlan.amount.toFixed(0)} · 20 screens ${machinesBarAddonPlan20?.amount.toFixed(0) ?? "1500"} TT/yr each</p>
+                          <p className="text-xs text-gray-500">10 screens ${PRICE_MACHINES_10} · 20 screens ${PRICE_MACHINES_20} TT/yr · prorated to your renewal date</p>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Each extra account gets its own set of screens. Your plan upgrades to Chain so all accounts are kept separate and visible in Switch Account.
+                        You have {currentBarCount} account{currentBarCount !== 1 ? "s" : ""}. Max 20 screens per bar (Trinidad law). Each extra account is prorated to your renewal date.
                       </p>
                       <div className="flex gap-2">
+                        {/* +10 Screens — ask same bar or new bar */}
                         <button
                           onClick={() => {
-                            setSelectedPlan(machinesBarAddonPlan);
+                            setAddonAskType("machines_10");
+                            setAddonDestination(null);
+                            setSelectedBarId(null);
+                            setOverrideAmount(PRICE_MACHINES_10);
+                            // find a fake plan to hold plan_type — use machinesBarAddonPlan or fallback
+                            setSelectedPlan(machinesBarAddonPlan ?? null);
                             setAddonBarCount(1);
                             setAddonBars([{ name: "", location: "", type: "machines_only" }]);
-                            setStep("addon-bars");
+                            setStep("addon-ask");
                           }}
                           className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
                         >
-                          + 10 Screens<br />${machinesBarAddonPlan.amount.toFixed(0)} TT/yr
+                          + 10 Screens<br />${PRICE_MACHINES_10} TT/yr
                         </button>
-                        {machinesBarAddonPlan20 && (
-                          <button
-                            onClick={() => {
-                              setSelectedPlan(machinesBarAddonPlan20);
-                              setAddonBarCount(1);
-                              setAddonBars([{ name: "", location: "", type: "machines_only" }]);
-                              setStep("addon-bars");
-                            }}
-                            className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
-                            style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
-                          >
-                            + 20 Screens<br />${machinesBarAddonPlan20.amount.toFixed(0)} TT/yr
-                          </button>
-                        )}
+                        {/* +20 Screens — always new account (max 20 per bar) */}
+                        <button
+                          onClick={() => {
+                            setAddonAskType("machines_20");
+                            setAddonDestination("new");
+                            setOverrideAmount(PRICE_MACHINES_20);
+                            setSelectedPlan(machinesBarAddonPlan20 ?? machinesBarAddonPlan ?? null);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "machines_only_20" }]);
+                            setStep("addon-bars");
+                          }}
+                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
+                        >
+                          + 20 Screens<br />${PRICE_MACHINES_20} TT/yr
+                        </button>
                       </div>
                     </div>
                   )}
 
-                  {/* ── Add More Bars (Premium owners → upgrades to Chain, $2,000/bar 10-screen or $2,500/bar 20-screen) ── */}
-                  {isPremium && premiumAddonPlan && (
+                  {/* ── Add More Accounts (Premium / premium_20 owners) ── */}
+                  {isPremium && (
                     <div className="rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
                           <Plus className="h-4 w-4 text-amber-700" />
                         </div>
                         <div>
-                          <p className="font-black text-gray-900 text-sm">Add More Bars</p>
-                          <p className="text-xs text-gray-500">Bar + 10 screens ${premiumAddonPlan.amount.toFixed(0)} · Bar + 20 screens ${premiumAddonPlan20?.amount.toFixed(0) ?? "2500"} TT/yr each</p>
+                          <p className="font-black text-gray-900 text-sm">Add Another Account</p>
+                          <p className="text-xs text-gray-500">All prorated to your renewal date</p>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mb-3">
-                        You have {currentBarCount} bar{currentBarCount !== 1 ? "s" : ""}. Each extra bar gets its own bar POS + machine screens. Your plan upgrades to Chain so all bars are kept separate and visible in Switch Account.
-                      </p>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => {
-                            setSelectedPlan(premiumAddonPlan);
+                            setAddonAskType("bar_only");
+                            setAddonDestination("new");
+                            setOverrideAmount(PRICE_BAR_ONLY);
+                            setSelectedPlan(barOnlyAddonPlan ?? null);
                             setAddonBarCount(1);
-                            setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
+                            setAddonBars([{ name: "", location: "", type: "bar" }]);
                             setStep("addon-bars");
                           }}
-                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition bg-blue-600"
+                        >
+                          Bar Only<br />${PRICE_BAR_ONLY} TT/yr
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAddonAskType("machines_10");
+                            setAddonDestination("new");
+                            setOverrideAmount(PRICE_MACHINES_10);
+                            setSelectedPlan(machinesBarAddonPlan ?? null);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "machines_only" }]);
+                            setStep("addon-bars");
+                          }}
+                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
+                        >
+                          Machines 10<br />${PRICE_MACHINES_10} TT/yr
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAddonAskType("machines_20");
+                            setAddonDestination("new");
+                            setOverrideAmount(PRICE_MACHINES_20);
+                            setSelectedPlan(machinesBarAddonPlan20 ?? machinesBarAddonPlan ?? null);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "machines_only_20" }]);
+                            setStep("addon-bars");
+                          }}
+                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
+                        >
+                          Machines 20<br />${PRICE_MACHINES_20} TT/yr
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAddonAskType("bar_machines_10");
+                            setAddonDestination(null);
+                            setOverrideAmount(PRICE_BAR_MACHINES_10);
+                            setSelectedPlan(premiumAddonPlan ?? premiumPlan ?? null);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
+                            setStep("addon-ask");
+                          }}
+                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
                         >
-                          + Bar + 10 Screens<br />${premiumAddonPlan.amount.toFixed(0)} TT/yr
+                          Bar+10 Machines<br />${PRICE_BAR_MACHINES_10} TT/yr
                         </button>
-                        {premiumAddonPlan20 && (
-                          <button
-                            onClick={() => {
-                              setSelectedPlan(premiumAddonPlan20);
-                              setAddonBarCount(1);
-                              setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
-                              setStep("addon-bars");
-                            }}
-                            className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
-                            style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
-                          >
-                            + Bar + 20 Screens<br />${premiumAddonPlan20.amount.toFixed(0)} TT/yr
-                          </button>
-                        )}
+                        <button
+                          onClick={() => {
+                            setAddonAskType("bar_machines_20");
+                            setAddonDestination(null);
+                            setOverrideAmount(PRICE_BAR_MACHINES_20);
+                            setSelectedPlan(premiumAddonPlan20 ?? premiumPlan ?? null);
+                            setAddonBarCount(1);
+                            setAddonBars([{ name: "", location: "", type: "bar_machines_20" }]);
+                            setStep("addon-ask");
+                          }}
+                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition col-span-2"
+                          style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
+                        >
+                          Bar + 20 Machines<br />${PRICE_BAR_MACHINES_20} TT/yr
+                        </button>
                       </div>
                     </div>
                   )}
 
                   {/* ── Upgrade to Bar with Machines (Basic or Machines Only owners) ── */}
-                  {(isBasic || isMachinesOnly) && premiumPlan && !isSpecial && (
+                  {(isBasic || isMachinesOnly) && !isSpecial && (
                     <div className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm overflow-hidden relative">
                       <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                         Upgrade
@@ -750,12 +878,9 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Upgrade to Bar with Machines</p>
-                          <p className="text-xs text-gray-500">Full bar + machines in one plan</p>
+                          <p className="text-xs text-gray-500">Add bar to your account — prorated to renewal</p>
                         </div>
                       </div>
-                      <p className="text-2xl font-black text-amber-800 mb-1">
-                        ${premiumPlan.amount.toFixed(0)} <span className="text-sm font-normal text-gray-400">TT / year</span>
-                      </p>
                       <ul className="space-y-1 mb-4">
                         {["Full Bar POS + Machines tracker", "Per-screen profit reports", "Float sessions & PDF export"].map(f => (
                           <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
@@ -764,16 +889,38 @@ export default function BillingPage() {
                           </li>
                         ))}
                       </ul>
-                      <button
-                        onClick={() => {
-                          setSelectedPlan(premiumPlan);
-                          setStep("payment");
-                        }}
-                        className="w-full h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
-                        style={{ background: "linear-gradient(135deg, #f59e0b, #ea580c)" }}
-                      >
-                        Upgrade to Bar with Machines — ${premiumPlan.amount.toFixed(0)} TT
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const diff = isMachinesOnly ? 600 : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC;
+                            setOverrideAmount(diff);
+                            setAddonAskType("upgrade_same_premium");
+                            setSelectedPlan(premiumPlan ?? null);
+                            setAddonDestination("existing");
+                            setStep("payment");
+                          }}
+                          className="flex-1 h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                          style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
+                        >
+                          Bar + 10 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? 600 : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC} TT prorated</span>
+                        </button>
+                        {premiumPlan20 && (
+                          <button
+                            onClick={() => {
+                              const diff = isMachinesOnly ? 600 : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC;
+                              setOverrideAmount(diff);
+                              setAddonAskType("upgrade_same_premium_20");
+                              setSelectedPlan(premiumPlan20 ?? null);
+                              setAddonDestination("existing");
+                              setStep("payment");
+                            }}
+                            className="flex-1 h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
+                            style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
+                          >
+                            Bar + 20 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? 600 : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC} TT prorated</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -1001,6 +1148,90 @@ export default function BillingPage() {
       {/* ═══════════════════════════════════════════════════════════════════
           STEP: ADDON-BARS — name/location for each extra bar
           ═══════════════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          STEP: ADDON-ASK — same bar or new bar?
+          ═══════════════════════════════════════════════════════════════════ */}
+      {step === "addon-ask" && addonAskType && (
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm text-center">
+            <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-3">
+              <Gamepad2 className="h-7 w-7 text-orange-700" />
+            </div>
+            <h3 className="font-black text-gray-900 text-lg mb-1">
+              {addonAskType === "machines_10" ? "+ 10 Screens" :
+               addonAskType === "bar_machines_10" ? "Bar + 10 Machines" :
+               addonAskType === "bar_machines_20" ? "Bar + 20 Machines" : "New Account"}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {addonAskType === "machines_10"
+                ? "Do you want to add 10 more screens to an existing bar (making it 20), or create a new account with 10 screens?"
+                : "Do you want to add this to an existing machine account, or create a brand new account?"}
+            </p>
+          </div>
+
+          {/* Existing bar option */}
+          <button
+            onClick={async () => {
+              setAddonDestination("existing");
+              if (addonAskType === "machines_10") {
+                await loadEligibleBars("machines_upgrade");
+              } else {
+                await loadEligibleBars("bar_upgrade");
+              }
+              // eligibleBars state update is async — don't read it here
+              // The JSX below re-renders with the new eligibleBars value
+            }}
+            className="w-full rounded-2xl border-2 border-orange-300 bg-white p-4 text-left active:scale-[0.98] transition shadow-sm"
+          >
+            <p className="font-black text-gray-900 text-sm">
+              {addonAskType === "machines_10" ? "Add to existing bar (→ 20 screens)" : "Add to existing machine account"}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {addonAskType === "machines_10"
+                ? "Upgrade a bar from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
+                : "Add bar features to an existing machine account — prorated $" + (overrideAmount ?? 0) + " TT"}
+            </p>
+          </button>
+
+          {/* New account option */}
+          <button
+            onClick={() => {
+              setAddonDestination("new");
+              setSelectedBarId(null);
+              setStep("addon-bars");
+            }}
+            className="w-full rounded-2xl border-2 border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition shadow-sm"
+          >
+            <p className="font-black text-gray-900 text-sm">Create a new account</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              New separate account — prorated ${overrideAmount ?? 0} TT
+            </p>
+          </button>
+        </div>
+      )}
+
+      {/* ── Bar picker — shown after choosing "existing bar" ── */}
+      {step === "addon-ask" && addonAskType && addonDestination === "existing" && eligibleBars.length > 0 && (
+        <div className="space-y-3 mt-4">
+          <p className="font-black text-gray-900 text-sm px-1">Select the account to upgrade:</p>
+          {eligibleBars.map(bar => (
+            <button
+              key={bar.id}
+              onClick={() => {
+                setSelectedBarId(bar.id);
+                setStep("payment");
+              }}
+              className={`w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition shadow-sm ${
+                selectedBarId === bar.id ? "border-orange-500 bg-orange-50" : "border-gray-200 bg-white"
+              }`}
+            >
+              <p className="font-black text-gray-900 text-sm">{bar.username}</p>
+              <p className="text-xs text-gray-500">{bar.address} · {bar.screen_count} screens currently</p>
+            </button>
+          ))}
+        </div>
+      )}
+
       {step === "addon-bars" && selectedPlan && (
         <div className="space-y-4">
           <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm">
