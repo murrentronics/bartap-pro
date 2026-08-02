@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useImageCache } from "@/lib/useImageCache";
+import { productImageUrl } from "@/lib/imageUrl";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CATEGORIES, categoryIcon, categoryKey } from "@/lib/categories";
@@ -1036,7 +1037,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         <td className="pl-3 pr-2 py-1.5 w-10 sm:w-14">
                           <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base sm:text-xl" style={{ background: "var(--gradient-card)" }}>
                             {p.image_url
-                              ? <img src={p.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                              ? <img src={productImageUrl(p.image_url)!} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                               : categoryIcon(p.category ?? "drinks")}
                           </div>
                         </td>
@@ -1302,7 +1303,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                 <div className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
                   style={{ background: "var(--gradient-card)" }}>
                   {p.image_url
-                    ? <img src={p.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    ? <img src={productImageUrl(p.image_url)!} alt="" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     : categoryIcon(p.category ?? "drinks")}
                 </div>
                 {/* Details */}
@@ -1396,7 +1397,7 @@ export default function ProductsPage() {
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [bulkAddItems, setBulkAddItems] = useState<Product[] | null>(null);
   // Preload product images so the grid renders instantly and works offline
-  useImageCache(items.map((p) => p.image_url));
+  useImageCache(items.map((p) => productImageUrl(p.image_url)));
 
   const profileRef = useRef(profile);
   useEffect(() => { profileRef.current = profile; }, [profile]);
@@ -1561,7 +1562,7 @@ export default function ProductsPage() {
                 <div className="aspect-[3/4] relative w-full">
                   {p.image_url ? (
                     <img
-                      src={p.image_url}
+                      src={productImageUrl(p.image_url)!}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => {
@@ -1841,11 +1842,37 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     );
   };
 
-  const onPick = (f: File | undefined | null) => {
+  const compressImage = (f: File): Promise<File> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 400;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : f),
+          "image/jpeg", 0.82
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+      img.src = url;
+    });
+
+  const onPick = async (f: File | undefined | null) => {
     if (!f) return;
-    setFile(f);
+    const compressed = await compressImage(f);
+    setFile(compressed);
     setTemplateUrl(null);
-    setPreview(URL.createObjectURL(f));
+    setPreview(URL.createObjectURL(compressed));
   };
 
   const onTemplateSelect = (url: string, label: string, templateCategory: string) => {
@@ -1920,8 +1947,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     if (templateUrl) {
       image_url = templateUrl;
     } else if (file) {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
+      const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
       const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;

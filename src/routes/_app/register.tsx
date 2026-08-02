@@ -15,6 +15,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useNetworkStatus } from "@/lib/useNetworkStatus";
 import { enqueue } from "@/lib/offlineQueue";
 import { useImageCache } from "@/lib/useImageCache";
+import { productImageUrl } from "@/lib/imageUrl";
 import {
   cacheProducts, getCachedProducts,
   cacheBarSession, getCachedBarSession,
@@ -210,7 +211,7 @@ export default function RegisterPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
   // Preload all product images into browser + SW cache so tab switches are instant
-  useImageCache(products.map((p) => p.image_url));
+  useImageCache(products.map((p) => productImageUrl(p.image_url)));
   // Initialize cart from localStorage on mount
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -1161,7 +1162,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"
@@ -1244,7 +1245,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"
@@ -1464,7 +1465,7 @@ export default function RegisterPage() {
                                     }}
                                     className="aspect-[3/4] relative w-full active:scale-95 transition"
                                     style={{ background: "var(--gradient-card)" }}>
-                                    {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                    {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                     <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
                                     {isEmptyNoShots && (
                                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 px-2 text-center">
@@ -1477,7 +1478,7 @@ export default function RegisterPage() {
                                   <div
                                     className="aspect-[3/4] relative w-full flex items-center justify-center"
                                     style={{ background: "var(--gradient-card)" }}>
-                                    {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                    {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 px-2 text-center">
                                       <span className="text-lg">🔒</span>
                                       <span className="text-[9px] font-black text-white/80 leading-tight">No shots set up by owner</span>
@@ -1547,7 +1548,7 @@ export default function RegisterPage() {
                           disabled={bottleBusy}
                           className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
-                            {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            {p.image_url ? <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>🍾</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
                             {bottleBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
@@ -1603,7 +1604,7 @@ export default function RegisterPage() {
                           className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
                           style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
                           <div className="aspect-[3/4] relative w-full">
-                            {bProd?.image_url ? <img src={bProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            {bProd?.image_url ? <img src={productImageUrl(bProd.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
                             {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
                             {bAtCap && !isSelected && <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(239,68,68,0.5)" }}><span className="text-[9px] font-black text-white uppercase">Empty</span></div>}
@@ -1908,7 +1909,7 @@ export default function RegisterPage() {
                     <div className="flex items-center gap-3 p-3">
                       <div className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-black/30 flex items-center justify-center">
                         {prod?.image_url
-                          ? <img src={prod.image_url} alt="" className="h-full w-full object-cover"
+                          ? <img src={productImageUrl(prod.image_url)!} alt="" className="h-full w-full object-cover"
                               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                           : <span className="text-3xl">🍾</span>}
                       </div>
@@ -1985,7 +1986,7 @@ export default function RegisterPage() {
                                 onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }}
                                 className="aspect-[3/4] relative w-full active:scale-95 transition"
                                 style={{ background: "var(--gradient-card)" }}>
-                                {prod?.image_url ? <img src={prod.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                                {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                                 <div className="absolute inset-0 flex items-center justify-center text-3xl"
                                   style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                               </button>
@@ -2038,7 +2039,7 @@ export default function RegisterPage() {
                           disabled={packBusy}
                           className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
                           <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
-                            {p.image_url ? <img src={p.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                            {p.image_url ? <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                             <div className="absolute inset-0 flex items-center justify-center text-3xl"
                               style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
                             <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
@@ -2120,7 +2121,7 @@ export default function RegisterPage() {
                         }}
                         className="w-full relative active:bg-white/5 transition">
                         <div className="aspect-[3/4] relative w-full">
-                          {pkProd?.image_url ? <img src={pkProd.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
+                          {pkProd?.image_url ? <img src={productImageUrl(pkProd.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
                           <div className="absolute inset-0 flex items-center justify-center text-4xl"
                             style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
                           {effectiveRemaining !== null && (
@@ -2597,7 +2598,7 @@ function CashOverlay({
                   {cart.map((i) => (
                     <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
                       <div className="h-20 w-14 sm:h-28 sm:w-20 md:h-32 md:w-24 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-                        {i.image_url ? <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                        {i.image_url ? <img src={productImageUrl(i.image_url)!} alt={i.name} className="h-full w-full object-cover" />
                           : i.id.startsWith("shot-") ? <span className="text-2xl">🥃</span>
                           : <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>}
                       </div>
@@ -3285,7 +3286,7 @@ function CreditSaleOverlay({
                   <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
                     <div className="h-20 w-14 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
                       {i.image_url ? (
-                        <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" />
+                        <img src={productImageUrl(i.image_url)!} alt={i.name} className="h-full w-full object-cover" />
                       ) : i.id.startsWith("shot-") ? (
                         <span className="text-2xl">🥃</span>
                       ) : (

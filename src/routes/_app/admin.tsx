@@ -896,10 +896,36 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const [bulkProgress, setBulkProgress] = useState(0);
   const bulkFileRef = useRef<HTMLInputElement>(null);
 
-  const onPick = (f: File | undefined | null) => {
+  const compressImage = (f: File): Promise<File> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 400;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : f),
+          "image/jpeg", 0.82
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+      img.src = url;
+    });
+
+  const onPick = async (f: File | undefined | null) => {
     if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    const compressed = await compressImage(f);
+    setFile(compressed);
+    setPreview(URL.createObjectURL(compressed));
   };
 
   const clearImage = () => { setFile(null); setPreview(null); };
@@ -908,12 +934,11 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const nameFromFile = (f: File) =>
     f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
 
-  const onBulkPick = (files: FileList | null) => {
+  const onBulkPick = async (files: FileList | null) => {
     if (!files) return;
-    const incoming: BulkItem[] = Array.from(files).map(f => ({
-      file: f,
-      previewUrl: URL.createObjectURL(f),
-      name: nameFromFile(f),
+    const incoming: BulkItem[] = await Promise.all(Array.from(files).map(async f => {
+      const compressed = await compressImage(f);
+      return { file: compressed, previewUrl: URL.createObjectURL(compressed), name: nameFromFile(f) };
     }));
     setBulkItems(prev => [...prev, ...incoming]);
   };
@@ -934,8 +959,7 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     setBusy(true);
     let url: string | null = null;
     if (file) {
-      const ext  = file.name.split(".").pop() || "jpg";
-      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
+      const path = `templates/manual/${crypto.randomUUID()}.jpg`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
         .upload(path, file, { upsert: false });
@@ -1302,7 +1326,7 @@ function AdminBillingInline({ onCountChange }: { onCountChange: (n: number) => v
 
 // ─── Main Admin Page ──────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const { profile, loading, signOut } = useAuth();
+  const { profile, loading, signOut, user } = useAuth();
   const nav = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
@@ -1509,13 +1533,16 @@ export default function AdminPage() {
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-black leading-tight">Admin</h1>
+          <h1 className="text-xl font-black leading-tight">Admin — {profile.username.charAt(0).toUpperCase() + profile.username.slice(1)}</h1>
         </div>
       </div>
 
       <Tabs value={outerTab} onValueChange={setOuterTab}>
-        <TabsList className="grid grid-cols-6 w-full">
-          {(["panel","billing","users","import","templates","youtube"] as const).map((key) => (
+        <TabsList className={`grid w-full ${user?.email === "renard@bartendazpro.com" ? "grid-cols-5" : "grid-cols-6"}`}>
+          {(["panel","billing","users","import","templates","youtube"] as const).filter(key => {
+            if (key === "youtube" && user?.email === "renard@bartendazpro.com") return false;
+            return true;
+          }).map((key) => (
             <TabsTrigger
               key={key}
               value={key}
@@ -2040,66 +2067,7 @@ function YouTubeAdminPanel() {
     <div className="space-y-6">
 
       {/* ── Daily Summary ────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-red-400" />
-            Today's Usage
-          </h2>
-          <Button size="sm" variant="outline" onClick={load} className="gap-1.5 h-8 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </Button>
-        </div>
 
-        {/* Big stat cards */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="rounded-xl p-4 border border-border bg-card space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Searches Today</p>
-            <p className="text-3xl font-black">{stats?.searches_today ?? 0}</p>
-            <p className="text-xs text-muted-foreground">
-              {stats?.unique_users_today ?? 0} user{stats?.unique_users_today !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="rounded-xl p-4 border border-border bg-card space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Quota Remaining</p>
-            <p className="text-3xl font-black text-green-400">
-              {(stats?.quota_remaining ?? 0).toLocaleString("en-GB")}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              of {totalCapacity.toLocaleString("en-GB")} total
-            </p>
-          </div>
-        </div>
-
-        {/* Overall progress bar */}
-        <div className="rounded-xl p-4 border border-border bg-card space-y-2">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-muted-foreground">Daily quota used</span>
-            <span className={pctUsed > 85 ? "text-red-400" : pctUsed > 60 ? "text-yellow-400" : "text-green-400"}>
-              {pctUsed.toFixed(1)}%
-            </span>
-          </div>
-          <div className="h-3 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${Math.min(pctUsed, 100)}%`,
-                background: pctUsed > 85 ? "#ef4444" : pctUsed > 60 ? "#eab308" : "#22c55e",
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>{totalUsed.toLocaleString("en-GB")} used</span>
-            <span>
-              <span className="text-green-400">{stats?.successful_today ?? 0} ok</span>
-              {(stats?.failed_today ?? 0) > 0 && (
-                <span className="text-red-400 ml-2">{stats?.failed_today} failed</span>
-              )}
-            </span>
-            <span>{stats?.active_keys ?? 0}/{stats?.total_keys ?? 0} keys active</span>
-          </div>
-        </div>
-      </div>
 
       {/* ── Key Pool ─────────────────────────────────────────────────────── */}
       <div>
@@ -2192,58 +2160,6 @@ function YouTubeAdminPanel() {
           })}
         </div>
       </div>
-
-      {/* ── Recent Searches ───────────────────────────────────────────────── */}
-      {recent.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-black text-base flex items-center gap-2">
-              <Search className="h-4 w-4 text-blue-400" />
-              Recent Searches
-            </h2>
-            <Button size="sm" variant="outline"
-              className="gap-1.5 h-8 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
-              onClick={async () => {
-                const ok = await confirm({
-                  title: "Clear Search Log?",
-                  description: "This will permanently delete all recent search history. Stats for today will still show.",
-                  confirmLabel: "Clear",
-                  destructive: true,
-                });
-                if (!ok) return;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await (supabase as any).from("youtube_search_log").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                await load();
-              }}>
-              <Trash2 className="h-3.5 w-3.5" /> Clear Log
-            </Button>
-          </div>
-          <div className="rounded-xl border border-border overflow-hidden">
-            <div className="divide-y divide-border">
-              {recent.map(s => (
-                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                  {s.success
-                    ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                    : <XCircle     className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                  }
-                  <span className="flex-1 text-xs text-foreground truncate">{s.query}</span>
-                  {s.key_slot && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">
-                      Key {s.key_slot}
-                    </span>
-                  )}
-                  {s.error_code && (
-                    <span className="text-[10px] text-red-400 shrink-0">{s.error_code}</span>
-                  )}
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Setup Guide ──────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-2">
