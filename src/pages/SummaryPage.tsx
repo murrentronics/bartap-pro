@@ -216,7 +216,7 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
                 {[
                   { label: "Bar Sales",   value: totalIncome,    color: "#86efac" },
                   { label: "Items Cost",  value: totalItemsCost, color: "#fca5a5" },
-                  { label: "Expenses",    value: totalExpenses,  color: "#fdba74" },
+                  { label: "Expenses",    value: totalExpenses,  color: "#fbbf24" },
                   { label: "Profit",      value: totalProfit,    color: totalProfit >= 0 ? "#86efac" : "#fca5a5" },
                 ].map((s, i, arr) => (
                   <div key={i} className="px-2 py-2 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>

@@ -5765,7 +5765,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                       <div className="text-[9px] text-muted-foreground">Expense</div>
 
 
-                      <div className="font-black text-xs sm:text-sm lg:text-base" style={{ color: "#fdba74" }}>${fmtWhole(mExpense)}</div>
+                      <div className="font-black text-xs sm:text-sm lg:text-base" style={{ color: "#fbbf24" }}>${fmtWhole(mExpense)}</div>
 
 
                     </div>
