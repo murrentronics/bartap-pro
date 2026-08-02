@@ -5732,7 +5732,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
                   {/* Month summary strip */}
 
 
-                  <div className="grid grid-cols-3 gap-2 px-4 py-2">
+                  <div className="grid grid-cols-4 gap-2 px-4 py-2">
 
 
                     <div className="text-center">
@@ -5742,6 +5742,18 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
 
                       <div className="font-black text-xs sm:text-sm lg:text-base text-red-400">${fmtWhole(mPayout)}</div>
+
+
+                    </div>
+
+
+                    <div className="text-center">
+
+
+                      <div className="text-[9px] text-muted-foreground">Expense</div>
+
+
+                      <div className="font-black text-xs sm:text-sm lg:text-base" style={{ color: "#fdba74" }}>${fmtWhole(mExpense)}</div>
 
 
                     </div>
