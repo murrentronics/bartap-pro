@@ -47,6 +47,15 @@ export default function RegisterPage() {
 
   const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
 
+  // Managers have no register page — send them to /products
+  useEffect(() => {
+    if (!profile) return;
+    const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
+    if (isManager) {
+      nav({ to: "/products" as any });
+    }
+  }, [profile]);
+
   // Machines-only accounts have no register page — send them to /machines
   useEffect(() => {
     if ((profile as any)?.is_machines_account) {
@@ -867,6 +876,16 @@ export default function RegisterPage() {
   };
 
 
+
+  // Don't render until profile and ownerId are both resolved — prevents blank page
+  // for cashiers whose parent_id loads a tick after the profile
+  if (!profile || !ownerId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
