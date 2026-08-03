@@ -46,6 +46,24 @@ export default function AdminBillingManagementPage() {
     }
   }, [profile, filter, page]);
 
+  // ── Realtime: refresh list + stats whenever any billing_payment changes ──
+  useEffect(() => {
+    if (profile?.role !== "admin") return;
+    const ch = supabase
+      .channel("admin-billing-payments-rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "billing_payments" },
+        () => {
+          loadPayments();
+          loadStats();
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.role]);
+
   useEffect(() => {
     let filtered = payments;
     if (searchTerm) {

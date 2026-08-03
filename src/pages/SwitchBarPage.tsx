@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n";
 
 export default function SwitchBarPage() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner, refreshBars } = useChain();
   const nav = useNavigate();
   const { t } = useTranslation();
@@ -44,7 +44,7 @@ export default function SwitchBarPage() {
       });
       if (error) throw error;
       if (activeBarId === deleteTarget.id) setActiveBarId(null);
-      await refreshBars();
+      await Promise.all([refreshBars(), refreshProfile()]);
       toast.success(`"${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
     } catch (err: any) {

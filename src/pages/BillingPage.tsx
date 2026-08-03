@@ -437,7 +437,7 @@ export default function BillingPage() {
   if (DEMO_EMAILS.includes(userEmail)) {
     return (
       <div className="pb-24 max-w-2xl mx-auto">
-        <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border mb-6">
+      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-orange-700" />
             <h1 className="text-lg font-black">Billing</h1>
@@ -456,7 +456,7 @@ export default function BillingPage() {
   if (MASTER_EMAILS.includes(userEmail)) {
     return (
       <div className="pb-24 max-w-2xl mx-auto">
-        <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border mb-6">
+      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-orange-700" />
             <h1 className="text-lg font-black">Billing</h1>
@@ -478,7 +478,7 @@ export default function BillingPage() {
     <div className="pb-24 max-w-2xl mx-auto">
 
       {/* Header */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border mb-6">
+      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
         <div className="flex items-center gap-3">
           {step !== "status" && (
             <button onClick={reset} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted active:scale-90 transition">
