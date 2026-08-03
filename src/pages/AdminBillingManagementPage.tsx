@@ -579,7 +579,7 @@ export default function AdminBillingManagementPage() {
 
         {/* Payment Details Dialog */}
         <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
-          <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
+          <DialogContent className="max-w-md flex flex-col max-h-[90vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Payment Details</DialogTitle>
             </DialogHeader>
