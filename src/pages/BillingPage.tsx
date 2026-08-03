@@ -437,7 +437,7 @@ export default function BillingPage() {
   if (DEMO_EMAILS.includes(userEmail)) {
     return (
       <div className="pb-24 max-w-2xl mx-auto">
-      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
+      <div className="-mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-orange-700" />
             <h1 className="text-lg font-black">Billing</h1>
@@ -456,7 +456,7 @@ export default function BillingPage() {
   if (MASTER_EMAILS.includes(userEmail)) {
     return (
       <div className="pb-24 max-w-2xl mx-auto">
-      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
+      <div className="-mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-orange-700" />
             <h1 className="text-lg font-black">Billing</h1>
@@ -478,7 +478,7 @@ export default function BillingPage() {
     <div className="pb-24 max-w-2xl mx-auto">
 
       {/* Header */}
-      <div className="sticky top-11 z-20 -mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
+      <div className="-mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
         <div className="flex items-center gap-3">
           {step !== "status" && (
             <button onClick={reset} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted active:scale-90 transition">
@@ -1180,17 +1180,17 @@ export default function BillingPage() {
           ═══════════════════════════════════════════════════════════════════ */}
       {step === "addon-ask" && addonAskType && (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-white border border-gray-200 p-5 shadow-sm text-center">
-            <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-3">
-              <Gamepad2 className="h-7 w-7 text-orange-700" />
+          <div className="rounded-2xl border border-border p-5 text-center" style={{ background: "var(--gradient-card)" }}>
+            <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(251,146,60,0.15)", border: "1.5px solid rgba(251,146,60,0.4)" }}>
+              <Gamepad2 className="h-7 w-7" style={{ color: "var(--primary)" }} />
             </div>
-            <h3 className="font-black text-gray-900 text-lg mb-1">
+            <h3 className="font-black text-foreground text-lg mb-1">
               {addonAskType === "machines_10" ? "+ 10 Screens" :
                addonAskType === "machines_20" ? "+ 20 Screens" :
                addonAskType === "bar_machines_10" ? "Bar + 10 Machines" :
                addonAskType === "bar_machines_20" ? "Bar + 20 Machines" : "New Account"}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {addonAskType === "machines_10"
                 ? "Do you want to add 10 more screens to an existing account (making it 20), or create a new account with 10 screens?"
                 : addonAskType === "machines_20"
@@ -1208,23 +1208,25 @@ export default function BillingPage() {
               } else {
                 await loadEligibleBars("bar_upgrade");
               }
-              // eligibleBars state update is async — don't read it here
-              // The JSX below re-renders with the new eligibleBars value
             }}
-            className="w-full rounded-2xl border-2 border-orange-300 bg-white p-4 text-left active:scale-[0.98] transition shadow-sm"
+            className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+            style={{ background: "var(--gradient-card)", borderColor: "var(--primary)" }}
           >
-            <p className="font-black text-gray-900 text-sm">
-              {addonAskType === "machines_10" ? "Add to existing account (→ 20 screens)" :
-               addonAskType === "machines_20" ? "Upgrade existing 10-screen account to 20" :
-               "Add to existing machine account"}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {addonAskType === "machines_10"
-                ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
-                : addonAskType === "machines_20"
-                ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_20 + " TT"
-                : "Add bar features to an existing machine account — prorated $" + (overrideAmount ?? 0) + " TT"}
-            </p>
+            <div className="flex-1">
+              <p className="font-black text-sm" style={{ color: "var(--primary)" }}>
+                {addonAskType === "machines_10" ? "Add to existing account (→ 20 screens)" :
+                 addonAskType === "machines_20" ? "Upgrade existing 10-screen account to 20" :
+                 "Add to existing machine account"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {addonAskType === "machines_10"
+                  ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
+                  : addonAskType === "machines_20"
+                  ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_20 + " TT"
+                  : "Add bar features to an existing machine account — prorated $" + (overrideAmount ?? 0) + " TT"}
+              </p>
+            </div>
+            <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
           </button>
 
           {/* New account option */}
@@ -1234,12 +1236,16 @@ export default function BillingPage() {
               setSelectedBarId(null);
               setStep("addon-bars");
             }}
-            className="w-full rounded-2xl border-2 border-gray-200 bg-white p-4 text-left active:scale-[0.98] transition shadow-sm"
+            className="w-full rounded-2xl border-2 border-border p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+            style={{ background: "var(--gradient-card)" }}
           >
-            <p className="font-black text-gray-900 text-sm">Create a new account</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              New separate account — prorated ${overrideAmount ?? 0} TT
-            </p>
+            <div className="flex-1">
+              <p className="font-black text-sm text-foreground">Create a new account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                New separate account — prorated ${overrideAmount ?? 0} TT
+              </p>
+            </div>
+            <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
           </button>
         </div>
       )}
@@ -1255,12 +1261,19 @@ export default function BillingPage() {
                 setSelectedBarId(bar.id);
                 setStep("payment");
               }}
-              className={`w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition shadow-sm ${
-                selectedBarId === bar.id ? "border-orange-500 bg-orange-50" : "border-gray-200 bg-white"
-              }`}
+              className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+              style={{
+                background: "var(--gradient-card)",
+                borderColor: selectedBarId === bar.id ? "var(--primary)" : "var(--border)",
+              }}
             >
-              <p className="font-black text-gray-900 text-sm">{bar.username}</p>
-              <p className="text-xs text-gray-500">{bar.address} · {bar.screen_count} screens currently</p>
+              <div className="flex-1">
+                <p className="font-black text-sm text-foreground">{bar.username}</p>
+                <p className="text-xs text-muted-foreground">{bar.address} · {bar.screen_count} screens currently</p>
+              </div>
+              <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>
+                {selectedBarId === bar.id ? "Selected ✓" : "Select →"}
+              </span>
             </button>
           ))}
         </div>
@@ -1381,25 +1394,27 @@ export default function BillingPage() {
 
           {/* Cash */}
           <button onClick={() => { setPayMethod("cash"); setStep("confirm"); }}
-            className="w-full rounded-2xl border-2 border-gray-200 bg-white p-5 text-left hover:border-orange-300 transition active:scale-[0.98] flex items-center gap-4 shadow-sm">
-            <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center shrink-0 text-2xl">💵</div>
+            className="w-full rounded-2xl border-2 border-border p-5 text-left active:scale-[0.98] transition flex items-center gap-4"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="h-12 w-12 rounded-xl bg-green-500/15 border border-green-500/30 flex items-center justify-center shrink-0 text-2xl">💵</div>
             <div className="flex-1">
-              <p className="font-black text-gray-900">Cash Payment</p>
-              <p className="text-xs text-gray-500 mt-0.5">Pay cash directly to admin. You'll receive a reference number.</p>
+              <p className="font-black text-foreground">Cash Payment</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Pay cash directly to admin. You'll receive a reference number.</p>
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-300" />
+            <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
           </button>
 
           {/* Bank transfer */}
           {bankEnabled && (
             <button onClick={() => { setPayMethod("bank"); setStep("confirm"); }}
-              className="w-full rounded-2xl border-2 border-gray-200 bg-white p-5 text-left hover:border-orange-300 transition active:scale-[0.98] flex items-center gap-4 shadow-sm">
-              <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 text-2xl">🏦</div>
+              className="w-full rounded-2xl border-2 border-border p-5 text-left active:scale-[0.98] transition flex items-center gap-4"
+              style={{ background: "var(--gradient-card)" }}>
+              <div className="h-12 w-12 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center shrink-0 text-2xl">🏦</div>
               <div className="flex-1">
-                <p className="font-black text-gray-900">Bank Transfer</p>
-                <p className="text-xs text-gray-500 mt-0.5">Transfer directly to our bank account and submit your reference.</p>
+                <p className="font-black text-foreground">Bank Transfer</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Transfer directly to our bank account and submit your reference.</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-300" />
+              <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
             </button>
           )}
         </div>
