@@ -21,9 +21,18 @@ type Product = {
   image_url: string | null;
   category?: string;
   stock_qty: number;
+  units_per_item: number;
 };
 
 type ActualMap = Record<string, number>; // product_id → actual_qty
+
+// open bottle/pack info keyed by product_id
+type OpenItemInfo = {
+  type: "bottle" | "pack";
+  packType?: string; // 'retail' | 'paper'
+  unitsSold: number;
+  unitsPerItem: number; // from products.units_per_item
+};
 
 // ─── Numpad Modal ─────────────────────────────────────────────────────────────
 
@@ -199,6 +208,7 @@ function StockCheckPage() {
 
   const [items, setItems] = useState<Product[]>([]);
   const [actuals, setActuals] = useState<ActualMap>({});
+  const [openItems, setOpenItems] = useState<Record<string, OpenItemInfo>>({});
   const [loading, setLoading] = useState(true);
   const [activeNumpadId, setActiveNumpadId] = useState<string | null>(null);
 
@@ -225,7 +235,7 @@ function StockCheckPage() {
     );
     const { data } = await supabase
       .from("products")
-      .select("id, name, price, image_url, category, stock_qty")
+      .select("id, name, price, image_url, category, stock_qty, units_per_item")
       .eq("owner_id", oid)
       .order("name", { ascending: true });
     setItems((data ?? []) as Product[]);
@@ -245,6 +255,42 @@ function StockCheckPage() {
       setActuals(map);
     }
   }, [ownerIdForQuery]);
+
+  // ── Load open bottles & packs ────────────────────────────────────────────
+  const loadOpenItems = useCallback(async () => {
+    if (!ownerIdForQuery) return;
+    const [bottlesRes, packsRes] = await Promise.all([
+      (supabase as any)
+        .from("opened_bottles")
+        .select("product_id, shots_sold")
+        .eq("owner_id", ownerIdForQuery)
+        .eq("status", "open"),
+      (supabase as any)
+        .from("opened_packs")
+        .select("product_id, units_sold, pack_type")
+        .eq("owner_id", ownerIdForQuery)
+        .eq("status", "open"),
+    ]);
+    const map: Record<string, OpenItemInfo> = {};
+    for (const row of bottlesRes.data ?? []) {
+      const product = items.find((p) => p.id === row.product_id);
+      map[row.product_id] = {
+        type: "bottle",
+        unitsSold: row.shots_sold,
+        unitsPerItem: product?.units_per_item ?? 0,
+      };
+    }
+    for (const row of packsRes.data ?? []) {
+      const product = items.find((p) => p.id === row.product_id);
+      map[row.product_id] = {
+        type: "pack",
+        packType: row.pack_type,
+        unitsSold: row.units_sold,
+        unitsPerItem: product?.units_per_item ?? 0,
+      };
+    }
+    setOpenItems(map);
+  }, [ownerIdForQuery, items]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -328,7 +374,12 @@ function StockCheckPage() {
       supabase.removeChannel(prodCh);
       supabase.removeChannel(actualsCh);
     };
-  }, [profile?.id, ownerIdForQuery, loadProducts, loadActuals]);
+  }, [profile?.id, ownerIdForQuery, loadProducts, loadActuals, loadOpenItems]);
+
+  // Re-load open items whenever the items list is refreshed
+  useEffect(() => {
+    if (items.length > 0) loadOpenItems();
+  }, [items, loadOpenItems]);
 
   // ── Save actual ──────────────────────────────────────────────────────────
   const saveActual = async (productId: string, newActual: number) => {
@@ -477,11 +528,18 @@ function StockCheckPage() {
                   const isActive = activeNumpadId === p.id;
                   const hasLoss = loss > 0;
 
+                  // Open bottle / pack — show read-only remaining instead of editable actual
+                  const openInfo = openItems[p.id];
+                  const remaining = openInfo
+                    ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold)
+                    : null;
+                  const isOpen = openInfo != null;
+
                   return (
                     <div
                       key={p.id}
                       className="flex items-center gap-2 px-3 py-2 border-t border-border/40 transition"
-                      style={hasLoss ? { background: "rgba(239,68,68,0.04)" } : {}}
+                      style={hasLoss && !isOpen ? { background: "rgba(239,68,68,0.04)" } : {}}
                     >
                       {/* Thumbnail */}
                       <div
@@ -507,6 +565,11 @@ function StockCheckPage() {
                         <span className="font-bold text-sm leading-tight line-clamp-2">
                           {p.name}
                         </span>
+                        {isOpen && (
+                          <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: "var(--primary)" }}>
+                            {openInfo.type === "bottle" ? "🍾 Open" : openInfo.packType === "retail" ? "🚬 Open" : "📦 Open"}
+                          </span>
+                        )}
                       </div>
 
                       {/* Qty — read only, colour-coded */}
@@ -524,32 +587,50 @@ function StockCheckPage() {
                         </span>
                       </div>
 
-                      {/* Actual — editable via numpad */}
+                      {/* Actual — editable if normal, read-only remaining if open */}
                       <div className="w-[64px] flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => setActiveNumpadId(isActive ? null : p.id)}
-                          className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
-                          style={{
-                            background: isActive
-                              ? "rgba(251,146,60,0.15)"
-                              : "var(--gradient-card)",
-                            borderColor: isActive
-                              ? "var(--primary)"
-                              : hasLoss
-                              ? "rgba(239,68,68,0.50)"
-                              : "var(--border)",
-                            color: isActive
-                              ? "var(--primary)"
-                              : hasLoss
-                              ? "#f87171"
-                              : "var(--foreground)",
-                            minWidth: "48px",
-                          }}
-                        >
-                          <span>{actual}</span>
-                          <Pencil className="h-2.5 w-2.5 shrink-0 opacity-60" />
-                        </button>
+                        {isOpen ? (
+                          <div
+                            className="flex flex-col items-center justify-center h-9 px-2 rounded-xl border"
+                            style={{
+                              background: "rgba(251,146,60,0.10)",
+                              borderColor: "rgba(251,146,60,0.40)",
+                              minWidth: "48px",
+                            }}
+                          >
+                            <span className="font-black text-sm" style={{ color: "var(--primary)" }}>
+                              {remaining}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground leading-none">
+                              {openInfo.type === "bottle" ? "drinks" : "retail"}
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveNumpadId(isActive ? null : p.id)}
+                            className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
+                            style={{
+                              background: isActive
+                                ? "rgba(251,146,60,0.15)"
+                                : "var(--gradient-card)",
+                              borderColor: isActive
+                                ? "var(--primary)"
+                                : hasLoss
+                                ? "rgba(239,68,68,0.50)"
+                                : "var(--border)",
+                              color: isActive
+                                ? "var(--primary)"
+                                : hasLoss
+                                ? "#f87171"
+                                : "var(--foreground)",
+                              minWidth: "48px",
+                            }}
+                          >
+                            <span>{actual}</span>
+                            <Pencil className="h-2.5 w-2.5 shrink-0 opacity-60" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Sale Price */}
@@ -561,7 +642,9 @@ function StockCheckPage() {
 
                       {/* Loss */}
                       <div className="w-[62px] text-right">
-                        {hasLoss ? (
+                        {isOpen ? (
+                          <span className="font-black text-xs text-muted-foreground/40">—</span>
+                        ) : hasLoss ? (
                           <span className="font-black text-xs text-red-400">
                             −${loss.toFixed(2)}
                           </span>

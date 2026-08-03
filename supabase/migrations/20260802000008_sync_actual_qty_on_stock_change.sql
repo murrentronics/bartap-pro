@@ -34,14 +34,13 @@ BEGIN
   v_delta := NEW.stock_qty - OLD.stock_qty;
 
   -- Apply the same delta to actual_qty, clamped to >= 0.
-  -- Only updates rows that already exist — no auto-insert.
-  UPDATE public.stock_check_actuals
-  SET
-    actual_qty = GREATEST(0, actual_qty + v_delta),
-    updated_at = now()
-  WHERE
-    product_id = NEW.id
-    AND owner_id = NEW.owner_id;
+  -- If no actual row exists yet, insert one seeded at NEW.stock_qty
+  -- (zero discrepancy) so all future deltas track correctly from day one.
+  INSERT INTO public.stock_check_actuals (owner_id, product_id, actual_qty, updated_at)
+  VALUES (NEW.owner_id, NEW.id, NEW.stock_qty, now())
+  ON CONFLICT (owner_id, product_id) DO UPDATE
+    SET actual_qty = GREATEST(0, stock_check_actuals.actual_qty + v_delta),
+        updated_at = now();
 
   RETURN NEW;
 END;
