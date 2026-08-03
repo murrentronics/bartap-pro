@@ -664,6 +664,7 @@ function TemplateImportPanel() {
                 {/* Image — tapping toggles selection */}
                 <button
                   className="block w-full aspect-[3/4] relative"
+                  style={{ background: "var(--gradient-card)" }}
                   onClick={() => {
                     if (img.duplicate) return;
                     setImages((imgs) =>
@@ -674,7 +675,7 @@ function TemplateImportPanel() {
                   <img
                     src={img.url}
                     alt={img.label}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-contain"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                   {!img.duplicate && (
@@ -800,11 +801,11 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
       style={{ background: "var(--gradient-card)" }}
       onDragStart={(e) => e.preventDefault()}
     >
-      <div className="aspect-[3/4] relative">
+      <div className="aspect-[3/4] relative" style={{ background: "var(--gradient-card)" }}>
         <img
           src={t.url}
           alt={label}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
         {/* Saving indicator */}

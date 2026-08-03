@@ -637,7 +637,7 @@ function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, s
               src={t.url}
               alt=""
               draggable={false}
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
               onLoad={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
                 const placeholder = img.previousElementSibling as HTMLElement | null;
@@ -2114,7 +2114,7 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             <div className="flex gap-3 items-stretch">
               <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0" style={{ background: "var(--gradient-card)" }}>
                 {preview
-                  ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                  ? <img src={preview} className="absolute inset-0 w-full h-full object-contain" alt="preview" />
                   : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
                 }
                 {preview && (
