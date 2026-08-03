@@ -87,7 +87,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check if this user is a chain owner
+    // Check if this user is a chain owner or multi-bar addon owner
     const { data: profileRaw } = await supabase
       .from("profiles")
       .select("plan_type, chain_addon_active, id, is_multi_bar, addon_bar_count")
@@ -102,10 +102,18 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       addon_bar_count?: number | null;
     } | null;
 
+    // Also count actual sub-accounts so premium owners who deleted all addons
+    // but still have sub-account rows (e.g. machines sub) still see Switch Bars
+    const { count: subCount } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", user.id)
+      .eq("is_bar_account", true);
+
     // isChainOwner = plan_type is 'chain'
     const isChain = profile?.plan_type === "chain";
-    // isMultiBarOwner = non-chain owner with extra bars paid via addon system
-    const isMulti = !isChain && !!profile?.is_multi_bar && (profile?.addon_bar_count ?? 0) > 0;
+    // isMultiBarOwner = non-chain owner who has sub-accounts (regardless of addon_bar_count)
+    const isMulti = !isChain && (subCount ?? 0) > 0;
     setIsChainOwner(isChain);
     setIsMultiBarOwner(isMulti);
 

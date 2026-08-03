@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, X, Pencil, ClipboardList } from "lucide-react";
+import { Loader2, X, Pencil, ClipboardList, FileDown } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { productImageUrl } from "@/lib/imageUrl";
-import { CATEGORIES, categoryIcon } from "@/lib/categories";
+import { CATEGORIES, categoryIcon, categoryLabel } from "@/lib/categories";
 import { toast } from "sonner";
+import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 export const Route = createFileRoute("/_app/stock-check")({
   component: StockCheckPage,
@@ -443,7 +445,126 @@ function StockCheckPage() {
     return sum + (diff > 0 ? diff : 0);
   }, 0);
 
-  const activeProduct = activeNumpadId ? items.find((p) => p.id === activeNumpadId) : null;
+  const activeProduct = activeNumpadId
+    ? items.find((p) => p.id === activeNumpadId || activeNumpadId === `${p.id}_open`)
+    : null;
+  const activeIsOpen = activeNumpadId?.endsWith("_open") ?? false;
+  const activeProductId = activeIsOpen && activeNumpadId
+    ? activeNumpadId.replace("_open", "")
+    : activeNumpadId;
+  const activeProductForNumpad = activeProductId ? items.find(p => p.id === activeProductId) : null;
+
+  // ── PDF generation ───────────────────────────────────────────────────────
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null); // category value or "all"
+
+  const generatePdf = async (catFilter: string | null) => {
+    const key = catFilter ?? "all";
+    setPdfBusy(key);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-GB");
+      const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      const title = catFilter ? `Stock Check — ${categoryLabel(catFilter)}` : "Stock Check — All Items";
+      let y = await drawHeader(doc, profile?.username ?? "Stock Check", title, dateStr, `${dateStr} ${timeStr}`);
+
+      const COL = { name: LM, qty: 110, actual: 135, price: 160, loss: 185 };
+      const ROW_H = 7;
+
+      const checkPage = () => {
+        if (y > CONTENT_BOTTOM - ROW_H) { doc.addPage(); y = 20; }
+      };
+
+      const sectionsToDraw = catFilter
+        ? grouped.filter(g => g.cat.value === catFilter)
+        : grouped;
+
+      for (const { cat, products } of sectionsToDraw) {
+        // Category header
+        checkPage();
+        doc.setFillColor(232, 146, 42);
+        doc.rect(LM, y - 4, RM - LM, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${cat.icon}  ${cat.label.toUpperCase()}`, LM + 2, y);
+        y += 5;
+
+        // Column header
+        checkPage();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        doc.text("Name", COL.name, y);
+        doc.text("QTY", COL.qty, y, { align: "right" });
+        doc.text("Actual", COL.actual, y, { align: "right" });
+        doc.text("Price", COL.price, y, { align: "right" });
+        doc.text("Loss", COL.loss, y, { align: "right" });
+        y += 4;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(LM, y - 1, RM, y - 1);
+
+        for (const p of products) {
+          // Sealed row
+          checkPage();
+          const actual = actuals[p.id] ?? p.stock_qty;
+          const diff = p.stock_qty - actual;
+          const loss = diff > 0 ? diff * p.price : 0;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(0, 0, 0);
+          const nameLines = doc.splitTextToSize(p.name, 85);
+          doc.text(nameLines, COL.name, y);
+          doc.text(String(p.stock_qty), COL.qty, y, { align: "right" });
+          doc.text(String(actual), COL.actual, y, { align: "right" });
+          doc.text(`$${p.price.toFixed(2)}`, COL.price, y, { align: "right" });
+          if (loss > 0) {
+            doc.setTextColor(220, 38, 38);
+            doc.text(`-$${loss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            doc.setTextColor(0, 0, 0);
+          } else {
+            doc.text("—", COL.loss, y, { align: "right" });
+          }
+          y += nameLines.length > 1 ? nameLines.length * 4.5 : ROW_H;
+
+          // Open sub-row
+          const openInfo = openItems[p.id];
+          if (openInfo) {
+            checkPage();
+            const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
+            const openActual = actuals[`${p.id}_open`] ?? remaining;
+            const openDiff = remaining - openActual;
+            const openLoss = openDiff > 0 ? openDiff * p.price : 0;
+            doc.setTextColor(180, 100, 20);
+            doc.setFontSize(7);
+            const label = openInfo.type === "bottle" ? "🍾 Open bottle" : "🚬 Open pack";
+            doc.text(`  ↳ ${label}`, COL.name, y);
+            doc.text(String(remaining), COL.qty, y, { align: "right" });
+            doc.text(String(openActual), COL.actual, y, { align: "right" });
+            if (openLoss > 0) {
+              doc.setTextColor(220, 38, 38);
+              doc.text(`-$${openLoss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            } else {
+              doc.setTextColor(180, 100, 20);
+              doc.text("—", COL.loss, y, { align: "right" });
+            }
+            doc.setTextColor(0, 0, 0);
+            y += ROW_H;
+          }
+        }
+        y += 4;
+      }
+
+      addFootersToAllPages(doc);
+      const filename = `stock-check-${catFilter ?? "all"}-${dateStr.replace(/\//g, "-")}.pdf`;
+      await downloadPdf(filename, doc.output("datauristring"));
+    } catch (e: any) {
+      toast.error("PDF failed: " + (e?.message ?? "unknown"));
+    } finally {
+      setPdfBusy(null);
+    }
+  };
 
   return (
     <div>
@@ -509,158 +630,192 @@ function StockCheckPage() {
         </div>
       ) : (
         <>
-          {/* ── Column header now lives in the sticky wrapper above ── */}
-
           {/* ── Item groups ─────────────────────────────────────────────── */}
           <div className="pb-10">
-            {grouped.map(({ cat, products }) => (
+            {grouped.map(({ cat, products }, groupIdx) => (
               <React.Fragment key={cat.value}>
-                {/* Category section header */}
-                <div className="flex items-center gap-1.5 px-3 pt-5 pb-2">
-                  <span className="text-base leading-none">{cat.icon}</span>
-                  <span
-                    className="text-xs font-black uppercase tracking-widest"
-                    style={{ color: "var(--primary)" }}
-                  >
-                    {cat.label}
-                  </span>
+                {/* Category section header with PDF button(s) */}
+                <div className="flex items-center justify-between px-3 pt-5 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base leading-none">{cat.icon}</span>
+                    <span
+                      className="text-xs font-black uppercase tracking-widest"
+                      style={{ color: "var(--primary)" }}
+                    >
+                      {cat.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {/* Beer gets an extra "All" PDF button */}
+                    {groupIdx === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => generatePdf(null)}
+                        disabled={pdfBusy !== null}
+                        className="flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50"
+                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                      >
+                        {pdfBusy === "all" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                        All
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => generatePdf(cat.value)}
+                      disabled={pdfBusy !== null}
+                      className="flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50"
+                      style={{ background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.35)", color: "var(--primary)" }}
+                    >
+                      {pdfBusy === cat.value ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                      {cat.label}
+                    </button>
+                  </div>
                 </div>
 
                 {products.map((p) => {
-                  // If no actual has been set yet, mirror current qty so loss starts at $0
                   const actual = actuals[p.id] ?? p.stock_qty;
-                  const diff = p.stock_qty - actual; // positive = missing from bar
+                  const diff = p.stock_qty - actual;
                   const loss = diff > 0 ? diff * p.price : 0;
                   const isActive = activeNumpadId === p.id;
                   const hasLoss = loss > 0;
-
-                  // Open bottle / pack — show read-only remaining instead of editable actual
                   const openInfo = openItems[p.id];
-                  const remaining = openInfo
-                    ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold)
-                    : null;
-                  const isOpen = openInfo != null;
+
+                  // Open item actuals keyed separately so sealed and open track independently
+                  const openKey = `${p.id}_open`;
+                  const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
+                  const openActual = openInfo ? (actuals[openKey] ?? remaining ?? 0) : null;
+                  const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
+                  const openLoss = openDiff > 0 ? openDiff * p.price : 0;
+                  const isOpenActive = activeNumpadId === openKey;
 
                   return (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-2 px-3 py-2 border-t border-border/40 transition"
-                      style={hasLoss && !isOpen ? { background: "rgba(239,68,68,0.04)" } : {}}
-                    >
-                      {/* Thumbnail */}
+                    <React.Fragment key={p.id}>
+                      {/* ── Sealed item row ── */}
                       <div
-                        className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
-                        style={{ background: "var(--gradient-card)" }}
+                        className="flex items-center gap-2 px-3 py-2 border-t border-border/40 transition"
+                        style={hasLoss ? { background: "rgba(239,68,68,0.04)" } : {}}
                       >
-                        {p.image_url ? (
-                          <img
-                            src={productImageUrl(p.image_url)!}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          categoryIcon(p.category ?? "drinks")
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <div className="flex-1 min-w-0">
-                        <span className="font-bold text-sm leading-tight line-clamp-2">
-                          {p.name}
-                        </span>
-                        {isOpen && (
-                          <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: "var(--primary)" }}>
-                            {openInfo.type === "bottle" ? "🍾 Open" : openInfo.packType === "retail" ? "🚬 Open" : "📦 Open"}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Qty — read only, colour-coded */}
-                      <div className="w-[52px] flex justify-center">
-                        <span
-                          className={`font-black text-sm ${
-                            p.stock_qty === 0
-                              ? "text-red-400"
-                              : p.stock_qty <= 5
-                              ? "text-yellow-400"
-                              : "text-green-400"
-                          }`}
+                        {/* Thumbnail */}
+                        <div
+                          className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
+                          style={{ background: "var(--gradient-card)" }}
                         >
-                          {p.stock_qty}
-                        </span>
-                      </div>
+                          {p.image_url ? (
+                            <img
+                              src={productImageUrl(p.image_url)!}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          ) : (
+                            categoryIcon(p.category ?? "drinks")
+                          )}
+                        </div>
 
-                      {/* Actual — editable if normal, read-only remaining if open */}
-                      <div className="w-[64px] flex justify-center">
-                        {isOpen ? (
-                          <div
-                            className="flex flex-col items-center justify-center h-9 px-2 rounded-xl border"
-                            style={{
-                              background: "rgba(251,146,60,0.10)",
-                              borderColor: "rgba(251,146,60,0.40)",
-                              minWidth: "48px",
-                            }}
-                          >
-                            <span className="font-black text-sm" style={{ color: "var(--primary)" }}>
-                              {remaining}
-                            </span>
-                            <span className="text-[9px] text-muted-foreground leading-none">
-                              {openInfo.type === "bottle" ? "drinks" : "retail"}
-                            </span>
-                          </div>
-                        ) : (
+                        {/* Name */}
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-sm leading-tight line-clamp-2">{p.name}</span>
+                        </div>
+
+                        {/* Qty — sealed bottles in stock */}
+                        <div className="w-[52px] flex justify-center">
+                          <span className={`font-black text-sm ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                            {p.stock_qty}
+                          </span>
+                        </div>
+
+                        {/* Actual — always editable */}
+                        <div className="w-[64px] flex justify-center">
                           <button
                             type="button"
                             onClick={() => setActiveNumpadId(isActive ? null : p.id)}
                             className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
                             style={{
-                              background: isActive
-                                ? "rgba(251,146,60,0.15)"
-                                : "var(--gradient-card)",
-                              borderColor: isActive
-                                ? "var(--primary)"
-                                : hasLoss
-                                ? "rgba(239,68,68,0.50)"
-                                : "var(--border)",
-                              color: isActive
-                                ? "var(--primary)"
-                                : hasLoss
-                                ? "#f87171"
-                                : "var(--foreground)",
+                              background: isActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
+                              borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : "var(--border)",
+                              color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : "var(--foreground)",
                               minWidth: "48px",
                             }}
                           >
                             <span>{actual}</span>
                             <Pencil className="h-2.5 w-2.5 shrink-0 opacity-60" />
                           </button>
-                        )}
+                        </div>
+
+                        {/* Price */}
+                        <div className="w-[58px] text-center">
+                          <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
+                        </div>
+
+                        {/* Loss */}
+                        <div className="w-[62px] text-right">
+                          {hasLoss
+                            ? <span className="font-black text-xs text-red-400">−${loss.toFixed(2)}</span>
+                            : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                        </div>
                       </div>
 
-                      {/* Sale Price */}
-                      <div className="w-[58px] text-center">
-                        <span className="font-bold text-xs text-muted-foreground">
-                          ${p.price.toFixed(2)}
-                        </span>
-                      </div>
+                      {/* ── Open sub-row (indented, below sealed) ── */}
+                      {openInfo && remaining !== null && openActual !== null && (
+                        <div
+                          className="flex items-center gap-2 px-3 py-1.5 border-t border-dashed border-border/30"
+                          style={{ background: openLoss > 0 ? "rgba(239,68,68,0.04)" : "rgba(251,146,60,0.04)", paddingLeft: "24px" }}
+                        >
+                          {/* Indent spacer + open label */}
+                          <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                            style={{ background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.25)" }}>
+                            {openInfo.type === "bottle" ? "🍾" : "🚬"}
+                          </div>
 
-                      {/* Loss */}
-                      <div className="w-[62px] text-right">
-                        {isOpen ? (
-                          <span className="font-black text-xs text-muted-foreground/40">—</span>
-                        ) : hasLoss ? (
-                          <span className="font-black text-xs text-red-400">
-                            −${loss.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="font-black text-xs text-muted-foreground/40">
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                          {/* Name */}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
+                              {openInfo.type === "bottle" ? "Open bottle" : openInfo.packType === "retail" ? "Open pack" : "Open papers"}
+                            </span>
+                            <p className="text-[10px] text-muted-foreground">
+                              {openInfo.unitsSold} sold · {remaining} left
+                            </p>
+                          </div>
+
+                          {/* Qty = remaining drinks */}
+                          <div className="w-[52px] flex justify-center">
+                            <span className={`font-black text-sm ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`}>
+                              {remaining}
+                            </span>
+                          </div>
+
+                          {/* Actual — editable, tracks open bottle loss */}
+                          <div className="w-[64px] flex justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setActiveNumpadId(isOpenActive ? null : openKey)}
+                              className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
+                              style={{
+                                background: isOpenActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
+                                borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : "var(--border)",
+                                color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : "var(--foreground)",
+                                minWidth: "48px",
+                              }}
+                            >
+                              <span>{openActual}</span>
+                              <Pencil className="h-2.5 w-2.5 shrink-0 opacity-60" />
+                            </button>
+                          </div>
+
+                          {/* Price */}
+                          <div className="w-[58px] text-center">
+                            <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
+                          </div>
+
+                          {/* Loss */}
+                          <div className="w-[62px] text-right">
+                            {openLoss > 0
+                              ? <span className="font-black text-xs text-red-400">−${openLoss.toFixed(2)}</span>
+                              : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </React.Fragment>
@@ -685,12 +840,23 @@ function StockCheckPage() {
       )}
 
       {/* ── Numpad Modal ─────────────────────────────────────────────────── */}
-      {activeProduct && (
+      {activeProductForNumpad && (
         <ActualNumpad
-          product={activeProduct}
-          currentActual={actuals[activeProduct.id] ?? activeProduct.stock_qty}
+          product={activeIsOpen
+            ? {
+                ...activeProductForNumpad,
+                // For open row: system qty = remaining drinks
+                stock_qty: Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - ((openItems[activeProductForNumpad.id]?.unitsSold) ?? 0)),
+              }
+            : activeProductForNumpad
+          }
+          currentActual={
+            activeIsOpen
+              ? (actuals[activeNumpadId!] ?? Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - ((openItems[activeProductForNumpad.id]?.unitsSold) ?? 0)))
+              : (actuals[activeNumpadId!] ?? activeProductForNumpad.stock_qty)
+          }
           onClose={() => setActiveNumpadId(null)}
-          onSave={(newActual) => saveActual(activeProduct.id, newActual)}
+          onSave={(newActual) => saveActual(activeNumpadId!, newActual)}
         />
       )}
     </div>
