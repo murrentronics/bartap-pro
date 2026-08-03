@@ -1076,7 +1076,7 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
               <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
                 style={{ background: "var(--gradient-card)" }}>
                 {preview
-                  ? <img src={preview} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                  ? <img src={preview} className="absolute inset-0 w-full h-full object-contain" alt="preview" />
                   : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
                 }
                 {preview && (
@@ -1141,7 +1141,8 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
                   <div key={idx} className="flex items-center gap-2 rounded-xl border border-border p-2"
                     style={{ background: "oklch(0.18 0.015 60)" }}>
                     <img src={it.previewUrl} alt={it.name}
-                      className="h-14 w-10 rounded-lg object-cover shrink-0 border border-border" />
+                      className="h-14 w-10 rounded-lg object-contain shrink-0 border border-border"
+                      style={{ background: "var(--gradient-card)" }} />
                     <input
                       value={it.name}
                       onChange={(e) => updateBulkName(idx, e.target.value)}
