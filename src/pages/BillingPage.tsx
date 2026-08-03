@@ -87,12 +87,39 @@ export default function BillingPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "billing_payments", filter: `owner_id=eq.${profile.id}` },
-        () => { loadPayments(); }
+        async (payload: any) => {
+          await Promise.all([refreshProfile(), loadPayments()]);
+          // DELETE = payment was revoked; INSERT = new payment submitted; UPDATE = approved/rejected
+          if (payload.eventType === "DELETE") {
+            // Revoke — let the profile update handler drive the step via billing_status
+            return;
+          }
+          const newStatus = payload.new?.status;
+          if (newStatus === "paid") {
+            setStep("status"); // approved — show active dashboard
+          } else if (newStatus === "pending") {
+            setStep("status"); // new submission — show status with pending banner
+          }
+        }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${profile.id}` },
-        () => { refreshProfile(); loadPayments(); }
+        async (payload: any) => {
+          await Promise.all([refreshProfile(), loadPayments()]);
+          const newBillingStatus = payload.new?.billing_status;
+          const newStatus        = payload.new?.status;
+          if (newBillingStatus === "active" || newStatus === "approved") {
+            // Admin approved — show the active dashboard
+            setStep("status");
+          } else if (
+            newBillingStatus === "pending_setup" ||
+            newStatus === "pending"
+          ) {
+            // Admin revoked or sent back to pending — show the choose-a-plan flow
+            setStep("choose");
+          }
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -805,12 +832,12 @@ export default function BillingPage() {
                         <button
                           onClick={() => {
                             setAddonAskType("machines_10");
-                            setAddonDestination("new");
+                            setAddonDestination(null);
                             setOverrideAmount(PRICE_MACHINES_10);
                             setSelectedPlan(machinesBarAddonPlan ?? null);
                             setAddonBarCount(1);
                             setAddonBars([{ name: "", location: "", type: "machines_only" }]);
-                            setStep("addon-bars");
+                            setStep("addon-ask");
                           }}
                           className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
@@ -820,12 +847,12 @@ export default function BillingPage() {
                         <button
                           onClick={() => {
                             setAddonAskType("machines_20");
-                            setAddonDestination("new");
+                            setAddonDestination(null);
                             setOverrideAmount(PRICE_MACHINES_20);
                             setSelectedPlan(machinesBarAddonPlan20 ?? machinesBarAddonPlan ?? null);
                             setAddonBarCount(1);
                             setAddonBars([{ name: "", location: "", type: "machines_only_20" }]);
-                            setStep("addon-bars");
+                            setStep("addon-ask");
                           }}
                           className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
@@ -1159,12 +1186,15 @@ export default function BillingPage() {
             </div>
             <h3 className="font-black text-gray-900 text-lg mb-1">
               {addonAskType === "machines_10" ? "+ 10 Screens" :
+               addonAskType === "machines_20" ? "+ 20 Screens" :
                addonAskType === "bar_machines_10" ? "Bar + 10 Machines" :
                addonAskType === "bar_machines_20" ? "Bar + 20 Machines" : "New Account"}
             </h3>
             <p className="text-sm text-gray-500">
               {addonAskType === "machines_10"
-                ? "Do you want to add 10 more screens to an existing bar (making it 20), or create a new account with 10 screens?"
+                ? "Do you want to add 10 more screens to an existing account (making it 20), or create a new account with 10 screens?"
+                : addonAskType === "machines_20"
+                ? "Do you want to upgrade an existing 10-screen account to 20 screens, or create a brand new 20-screen account?"
                 : "Do you want to add this to an existing machine account, or create a brand new account?"}
             </p>
           </div>
@@ -1173,7 +1203,7 @@ export default function BillingPage() {
           <button
             onClick={async () => {
               setAddonDestination("existing");
-              if (addonAskType === "machines_10") {
+              if (addonAskType === "machines_10" || addonAskType === "machines_20") {
                 await loadEligibleBars("machines_upgrade");
               } else {
                 await loadEligibleBars("bar_upgrade");
@@ -1184,11 +1214,15 @@ export default function BillingPage() {
             className="w-full rounded-2xl border-2 border-orange-300 bg-white p-4 text-left active:scale-[0.98] transition shadow-sm"
           >
             <p className="font-black text-gray-900 text-sm">
-              {addonAskType === "machines_10" ? "Add to existing bar (→ 20 screens)" : "Add to existing machine account"}
+              {addonAskType === "machines_10" ? "Add to existing account (→ 20 screens)" :
+               addonAskType === "machines_20" ? "Upgrade existing 10-screen account to 20" :
+               "Add to existing machine account"}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {addonAskType === "machines_10"
-                ? "Upgrade a bar from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
+                ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
+                : addonAskType === "machines_20"
+                ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_20 + " TT"
                 : "Add bar features to an existing machine account — prorated $" + (overrideAmount ?? 0) + " TT"}
             </p>
           </button>

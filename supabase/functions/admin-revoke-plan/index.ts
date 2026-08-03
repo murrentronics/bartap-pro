@@ -61,68 +61,78 @@ serve(async (req) => {
     // ── 1. Delete all cashiers belonging to this owner ────────────────────────
     const { data: cashiers } = await serviceClient
       .from("profiles")
-      .select("id, wallet_balance, parent_id")
+      .select("id")
       .eq("parent_id", ownerId)
       .eq("role", "cashier");
 
     for (const cashier of (cashiers ?? [])) {
-      // Reassign credit_transactions to owner so NOT NULL constraint doesn't fail
       await serviceClient
         .from("credit_transactions")
         .update({ cashier_id: ownerId })
         .eq("cashier_id", cashier.id);
-
-      // Delete cashier profile (cascade handles wallet_transactions, orders etc.)
       await serviceClient.from("profiles").delete().eq("id", cashier.id);
-
-      // Delete auth user
       await serviceClient.auth.admin.deleteUser(cashier.id);
     }
 
     // ── 2. Reset owner profile based on plan being revoked ───────────────────
-    if (planType === "basic" || planType === "machines_only") {
-      // Full reset — owner goes back to pending with no plan
-      await serviceClient.from("profiles").update({
-        status:                        "pending",
-        billing_status:                "pending_setup",
-        plan_type:                     "basic",
-        subscription_start_date:       null,
-        subscription_end_date:         null,
-        machines_addon_active:         false,
-        machines_addon_start_date:     null,
-        machines_addon_end_date:       null,
-        bar_addon_active:              false,
-        chain_addon_active:            false,
-        music_addon:                   false,
-        wallet_balance:                0,
-      }).eq("id", ownerId);
+    //
+    // FULL RESET plans — owner returns to pending with no active plan
+    // Covers: basic, machines_only, machines_only_20, chain, premium, premium_20
+    //
+    // PARTIAL RESET plans — only strip the specific addon; base plan stays
+    // Covers: bar_only_addon, machines_bar_addon, machines_bar_addon_20,
+    //         premium_addon, premium_addon_20, machines_addon
 
-    } else if (planType === "premium") {
+    const fullResetTypes = [
+      "basic", "machines_only", "machines_only_20", "chain", "premium", "premium_20",
+    ];
+
+    if (fullResetTypes.includes(planType)) {
       await serviceClient.from("profiles").update({
+        status:                              "pending",
+        billing_status:                      "pending_setup",
         plan_type:                           "basic",
+        subscription_start_date:             null,
+        subscription_end_date:               null,
         premium_subscription_start_date:     null,
         premium_subscription_end_date:       null,
+        machines_addon_active:               false,
+        machines_addon_start_date:           null,
+        machines_addon_end_date:             null,
+        bar_addon_active:                    false,
+        chain_addon_active:                  false,
+        chain_bar_count:                     0,
+        addon_bar_count:                     0,
+        is_multi_bar:                        false,
         music_addon:                         false,
+        wallet_balance:                      0,
       }).eq("id", ownerId);
 
     } else if (planType === "machines_addon") {
+      // Legacy addon type — just strip machines
       await serviceClient.from("profiles").update({
         machines_addon_active:     false,
         machines_addon_start_date: null,
         machines_addon_end_date:   null,
       }).eq("id", ownerId);
 
-    } else if (planType === "chain") {
+    } else if (
+      planType === "bar_only_addon" ||
+      planType === "machines_bar_addon" ||
+      planType === "machines_bar_addon_20" ||
+      planType === "premium_addon" ||
+      planType === "premium_addon_20"
+    ) {
+      // Extra account addon — decrement addon_bar_count by 1 (min 0)
+      const { data: ownerRow } = await serviceClient
+        .from("profiles")
+        .select("addon_bar_count")
+        .eq("id", ownerId)
+        .single();
+      const newCount = Math.max(0, (ownerRow?.addon_bar_count ?? 1) - 1);
       await serviceClient.from("profiles").update({
-        status:             "pending",
-        billing_status:     "pending_setup",
-        plan_type:          "basic",
-        chain_addon_active: false,
-        chain_bar_count:    0,
-        music_addon:        false,
-        wallet_balance:     0,
-        subscription_start_date: null,
-        subscription_end_date:   null,
+        addon_bar_count: newCount,
+        is_multi_bar:    newCount > 0,
       }).eq("id", ownerId);
     }
 
