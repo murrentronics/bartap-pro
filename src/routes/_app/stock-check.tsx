@@ -34,6 +34,7 @@ type OpenItemInfo = {
   packType?: string; // 'retail' | 'paper'
   unitsSold: number;
   unitsPerItem: number; // from products.units_per_item
+  shotPrice?: number;   // per-drink selling price (bottles only)
 };
 
 // ─── Numpad Modal ─────────────────────────────────────────────────────────────
@@ -43,11 +44,13 @@ function ActualNumpad({
   currentActual,
   onClose,
   onSave,
+  priceOverride,
 }: {
   product: Product;
   currentActual: number;
   onClose: () => void;
   onSave: (newActual: number) => void;
+  priceOverride?: number;
 }) {
   const [inputVal, setInputVal] = useState(String(currentActual));
   const [busy, setBusy] = useState(false);
@@ -55,9 +58,10 @@ function ActualNumpad({
   const parsed = parseInt(inputVal, 10);
   const isValid = !isNaN(parsed) && parsed >= 0;
 
+  const unitPrice = priceOverride ?? product.price;
   const qty = product.stock_qty;
   const diff = isValid ? qty - parsed : 0;
-  const loss = isValid ? diff * product.price : 0;
+  const loss = isValid ? diff * unitPrice : 0;
 
   const NUMPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
@@ -147,7 +151,7 @@ function ActualNumpad({
         {/* Sale price hint */}
         <p className="text-center text-xs text-muted-foreground mb-3 px-5">
           Sale price:{" "}
-          <span className="font-black text-foreground">${product.price.toFixed(2)}</span>
+          <span className="font-black text-foreground">${unitPrice.toFixed(2)}</span>
           {diff > 0 && isValid && (
             <>
               {" "}· Missing:{" "}
@@ -264,7 +268,7 @@ function StockCheckPage() {
     const [bottlesRes, packsRes] = await Promise.all([
       (supabase as any)
         .from("opened_bottles")
-        .select("product_id, shots_sold")
+        .select("product_id, shots_sold, shot_price")
         .eq("owner_id", ownerIdForQuery)
         .eq("status", "open"),
       (supabase as any)
@@ -282,6 +286,7 @@ function StockCheckPage() {
           type: "bottle",
           unitsSold: row.shots_sold,
           unitsPerItem: product?.units_per_item ?? 0,
+          shotPrice: row.shot_price ?? undefined,
         };
       }
     }
@@ -436,7 +441,19 @@ function StockCheckPage() {
   const totalLoss = items.reduce((sum, p) => {
     const actual = actuals[p.id] ?? p.stock_qty;
     const diff = p.stock_qty - actual;
-    return sum + (diff > 0 ? diff * p.price : 0);
+    let loss = diff > 0 ? diff * p.price : 0;
+
+    // Add open item loss using per-drink price
+    const openInfo = openItems[p.id];
+    if (openInfo) {
+      const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
+      const openActual = actuals[`${p.id}_open`] ?? remaining;
+      const openDiff = remaining - openActual;
+      const openPrice = openInfo.type === "bottle" && openInfo.shotPrice != null ? openInfo.shotPrice : p.price;
+      loss += openDiff > 0 ? openDiff * openPrice : 0;
+    }
+
+    return sum + loss;
   }, 0);
 
   const totalMissing = items.reduce((sum, p) => {
@@ -535,7 +552,8 @@ function StockCheckPage() {
             const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
             const openActual = actuals[`${p.id}_open`] ?? remaining;
             const openDiff = remaining - openActual;
-            const openLoss = openDiff > 0 ? openDiff * p.price : 0;
+            const openPrice = openInfo.type === "bottle" && openInfo.shotPrice != null ? openInfo.shotPrice : p.price;
+            const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
             doc.setTextColor(180, 100, 20);
             doc.setFontSize(7);
             const label = openInfo.type === "bottle" ? "🍾 Open bottle" : "🚬 Open pack";
@@ -686,7 +704,8 @@ function StockCheckPage() {
                   const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
                   const openActual = openInfo ? (actuals[openKey] ?? remaining ?? 0) : null;
                   const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
-                  const openLoss = openDiff > 0 ? openDiff * p.price : 0;
+                  const openPrice = openInfo?.type === "bottle" && openInfo.shotPrice != null ? openInfo.shotPrice : p.price;
+                  const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
                   const isOpenActive = activeNumpadId === openKey;
 
                   return (
@@ -805,7 +824,7 @@ function StockCheckPage() {
 
                           {/* Price */}
                           <div className="w-[52px] text-right">
-                            <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
+                            <span className="font-bold text-xs text-muted-foreground">${openPrice.toFixed(2)}</span>
                           </div>
 
                           {/* Loss */}
@@ -858,6 +877,14 @@ function StockCheckPage() {
           }
           onClose={() => setActiveNumpadId(null)}
           onSave={(newActual) => saveActual(activeNumpadId!, newActual)}
+          priceOverride={
+            activeIsOpen
+              ? (() => {
+                  const info = openItems[activeProductForNumpad.id];
+                  return info?.type === "bottle" && info.shotPrice != null ? info.shotPrice : undefined;
+                })()
+              : undefined
+          }
         />
       )}
     </div>
