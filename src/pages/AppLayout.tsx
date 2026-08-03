@@ -170,9 +170,9 @@ export default function AppLayout() {
       // then overwrite once the Supabase fetch resolves.
       const seedPlan = profile.plan_type ?? "basic";
       const seedAddon = profile.machines_addon_active ?? false;
-      const seedMachinesOnly = seedPlan === "machines_only";
+      const seedMachinesOnly = seedPlan === "machines_only" || seedPlan === "machines_only_20";
       setIsMachinesOnlyUser(seedMachinesOnly);
-      setOwnerHasMachines(seedPlan === "premium" || seedPlan === "chain" || seedAddon || seedMachinesOnly || isMasterAccount);
+      setOwnerHasMachines(seedPlan === "premium" || seedPlan === "premium_20" || seedPlan === "chain" || seedAddon || seedMachinesOnly || isMasterAccount);
       setOwnerHasBar(!seedMachinesOnly || isMasterAccount);
 
       // Then fetch the definitive plan from the owner profile row
@@ -181,9 +181,9 @@ export default function AppLayout() {
       if (!data) return; // offline — keep the seeded values above
       const planType = data.plan_type ?? "basic";
       const addonActive = data.machines_addon_active ?? false;
-      const machinesOnly = planType === "machines_only";
+      const machinesOnly = planType === "machines_only" || planType === "machines_only_20";
       setIsMachinesOnlyUser(machinesOnly);
-      setOwnerHasMachines(planType === "premium" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
+      setOwnerHasMachines(planType === "premium" || planType === "premium_20" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
       setOwnerHasBar(!machinesOnly || isMasterAccount);
     };
     load();

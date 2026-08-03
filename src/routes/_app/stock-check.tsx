@@ -609,11 +609,12 @@ function StockCheckPage() {
         </div>
         {/* Column header row — orange */}
         <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
+          <div className="w-8 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
-          <div className="w-[52px] text-center">Qty</div>
-          <div className="w-[64px] text-center">Actual</div>
-          <div className="w-[58px] text-center">Price</div>
-          <div className="w-[62px] text-right">Loss</div>
+          <div className="w-[46px] text-right">Qty</div>
+          <div className="w-[60px] text-right">Actual</div>
+          <div className="w-[52px] text-right">Price</div>
+          <div className="w-[56px] text-right">Loss</div>
         </div>
       </div>
 
@@ -697,7 +698,7 @@ function StockCheckPage() {
                       >
                         {/* Thumbnail */}
                         <div
-                          className="h-10 w-10 rounded-xl overflow-hidden border border-border shrink-0 flex items-center justify-center text-lg"
+                          className="h-8 w-8 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base"
                           style={{ background: "var(--gradient-card)" }}
                         >
                           {p.image_url ? (
@@ -714,27 +715,27 @@ function StockCheckPage() {
 
                         {/* Name */}
                         <div className="flex-1 min-w-0">
-                          <span className="font-bold text-sm leading-tight line-clamp-2">{p.name}</span>
+                          <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
                         </div>
 
                         {/* Qty — sealed bottles in stock */}
-                        <div className="w-[52px] flex justify-center">
-                          <span className={`font-black text-sm ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                        <div className="w-[46px] flex justify-end">
+                          <span className={`font-black text-xs ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`}>
                             {p.stock_qty}
                           </span>
                         </div>
 
                         {/* Actual — always editable */}
-                        <div className="w-[64px] flex justify-center">
+                        <div className="w-[60px] flex justify-end">
                           <button
                             type="button"
                             onClick={() => setActiveNumpadId(isActive ? null : p.id)}
-                            className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
+                            className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                             style={{
                               background: isActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
                               borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : "var(--border)",
                               color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : "var(--foreground)",
-                              minWidth: "48px",
+                              minWidth: "44px",
                             }}
                           >
                             <span>{actual}</span>
@@ -743,14 +744,14 @@ function StockCheckPage() {
                         </div>
 
                         {/* Price */}
-                        <div className="w-[58px] text-center">
+                        <div className="w-[52px] text-right">
                           <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
                         </div>
 
                         {/* Loss */}
-                        <div className="w-[62px] text-right">
+                        <div className="w-[56px] text-right">
                           {hasLoss
-                            ? <span className="font-black text-xs text-red-400">−${loss.toFixed(2)}</span>
+                            ? <span className="font-black text-xs text-red-400 tabular-nums">−${loss.toFixed(2)}</span>
                             : <span className="font-black text-xs text-muted-foreground/40">—</span>}
                         </div>
                       </div>
@@ -778,23 +779,23 @@ function StockCheckPage() {
                           </div>
 
                           {/* Qty = remaining drinks */}
-                          <div className="w-[52px] flex justify-center">
-                            <span className={`font-black text-sm ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`}>
+                          <div className="w-[46px] flex justify-end">
+                            <span className={`font-black text-xs ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`}>
                               {remaining}
                             </span>
                           </div>
 
                           {/* Actual — editable, tracks open bottle loss */}
-                          <div className="w-[64px] flex justify-center">
+                          <div className="w-[60px] flex justify-end">
                             <button
                               type="button"
                               onClick={() => setActiveNumpadId(isOpenActive ? null : openKey)}
-                              className="flex items-center gap-1 h-9 px-2 rounded-xl border font-black text-sm transition active:scale-95"
+                              className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                               style={{
                                 background: isOpenActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
                                 borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : "var(--border)",
                                 color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : "var(--foreground)",
-                                minWidth: "48px",
+                                minWidth: "44px",
                               }}
                             >
                               <span>{openActual}</span>
@@ -803,14 +804,14 @@ function StockCheckPage() {
                           </div>
 
                           {/* Price */}
-                          <div className="w-[58px] text-center">
+                          <div className="w-[52px] text-right">
                             <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
                           </div>
 
                           {/* Loss */}
-                          <div className="w-[62px] text-right">
+                          <div className="w-[56px] text-right">
                             {openLoss > 0
-                              ? <span className="font-black text-xs text-red-400">−${openLoss.toFixed(2)}</span>
+                              ? <span className="font-black text-xs text-red-400 tabular-nums">−${openLoss.toFixed(2)}</span>
                               : <span className="font-black text-xs text-muted-foreground/40">—</span>}
                           </div>
                         </div>

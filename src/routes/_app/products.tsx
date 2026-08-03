@@ -1001,11 +1001,11 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
               <tr>
                 <th className="text-left pl-3 pr-2 py-2 font-black text-xs text-muted-foreground w-10 sm:w-14"></th>
                 <th className="text-left px-2 py-2 font-black text-xs text-muted-foreground">Name</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Cost</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[72px]">Sell</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[52px] leading-tight">Drink/<br/>Retail</th>
-                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[44px]">Qty</th>
-                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[72px]" style={{ color: "var(--primary)" }}>Add</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Cost</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[76px] sm:w-[96px]">Sell</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[56px] leading-tight">Drink/<br/>Retail</th>
+                <th className="text-right px-2 py-2 font-black text-xs text-muted-foreground w-[46px] sm:w-[60px]">Qty</th>
+                <th className="text-right pr-4 pl-2 py-2 font-black text-xs w-[76px] sm:w-[96px]" style={{ color: "var(--primary)" }}>+ Add</th>
               </tr>
             </thead>
             <tbody>

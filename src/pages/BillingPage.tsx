@@ -304,12 +304,12 @@ export default function BillingPage() {
   // ── Derived ──────────────────────────────────────────────────────────────
   const pendingPayment  = payments.find(p => p.status === "pending");
   const hasActive       = profile?.billing_status === "active" ||
-    (profile?.plan_type === "machines_only" && !!profile?.machines_addon_active);
+    ((profile?.plan_type === "machines_only" || (profile?.plan_type as string) === "machines_only_20") && !!profile?.machines_addon_active);
   const isSpecial       = userEmail === SPECIAL_EMAIL;
   const isBasic         = profile?.plan_type === "basic";
-  const isPremium       = profile?.plan_type === "premium";
+  const isPremium       = profile?.plan_type === "premium" || (profile?.plan_type as string) === "premium_20";
   const isChain         = false; // chain plan retired — premium handles multi-bar
-  const isMachinesOnly  = profile?.plan_type === "machines_only";
+  const isMachinesOnly  = profile?.plan_type === "machines_only" || (profile?.plan_type as string) === "machines_only_20";
 
   const basicPlan             = plans.find(p => p.plan_type === "basic");
   const premiumPlan           = plans.find(p => p.plan_type === "premium");
@@ -323,7 +323,7 @@ export default function BillingPage() {
   const premiumAddonPlan         = plans.find(p => p.plan_type === "premium_addon");
   const premiumAddonPlan20       = plans.find(p => p.plan_type === "premium_addon_20");
 
-  // Detect 20-screen variant for current machines-only owner (stored as plan_type = "machines_only_20" in future)
+  // Detect 20-screen variant for current machines-only owner
   const isMachinesOnly20 = (profile?.plan_type as string) === "machines_only_20";
 
   // Total machine screens across all accounts
@@ -699,7 +699,7 @@ export default function BillingPage() {
                     </div>
                     {!pendingPayment && (
                       addonCanRenew ? (
-                        <button onClick={() => { setSelectedPlan(machinesOnlyPlan ?? null); setRenewMode(null); setStep("payment"); }}
+                        <button onClick={() => { setSelectedPlan(isMachinesOnly20 ? (machinesOnlyPlan20 ?? machinesOnlyPlan ?? null) : (machinesOnlyPlan ?? null)); setRenewMode(null); setStep("payment"); }}
                           disabled={!machinesOnlyPlan}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition text-white disabled:opacity-50 ${addonOverdue ? "bg-red-500" : ""}`}
                           style={!addonOverdue ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}>

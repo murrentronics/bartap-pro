@@ -126,54 +126,63 @@ export default function AdminBillingManagementPage() {
     ]);
     const revenue = (paidData ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
 
-    // Due soon: approved owners whose subscription_end_date is within 7 days
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    const { data: dueSoonProfiles } = await supabase
-      .from("profiles")
-      .select("id, subscription_end_date")
-      .eq("status", "approved")
-      .eq("role", "owner")
-      .lte("subscription_end_date", sevenDaysFromNow.toISOString())
-      .gte("subscription_end_date", new Date().toISOString());
+    const now = new Date().toISOString();
+    const soon = sevenDaysFromNow.toISOString();
 
-    // Get their latest paid payment amounts
-    let dueSoonTotal = 0;
-    const dueSoonCount = (dueSoonProfiles ?? []).length;
-    if (dueSoonCount > 0) {
-      for (const p of dueSoonProfiles ?? []) {
-        const { data: lastPayment } = await supabase
-          .from("billing_payments")
-          .select("amount")
-          .eq("owner_id", p.id)
-          .eq("status", "paid")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (lastPayment) dueSoonTotal += Number(lastPayment.amount);
+    // Fetch all approved owners with enough columns to handle every plan type
+    const { data: allOwners } = await supabase
+      .from("profiles")
+      .select("id, username, plan_type, subscription_end_date, machines_addon_end_date, premium_subscription_end_date")
+      .eq("status", "approved")
+      .eq("role", "owner");
+
+    // Pick the relevant expiry column per plan type
+    type DueRow = { id: string; username: string; endDate: Date };
+    const dueRows: DueRow[] = [];
+    for (const owner of allOwners ?? []) {
+      const pt = owner.plan_type ?? "basic";
+      let endDateStr: string | null = null;
+      if (pt === "machines_only" || pt === "machines_only_20") {
+        endDateStr = owner.machines_addon_end_date ?? null;
+      } else if (pt === "premium" || pt === "premium_20") {
+        endDateStr = owner.premium_subscription_end_date ?? owner.subscription_end_date ?? null;
+      } else {
+        // basic, chain, bar_only and everything else uses subscription_end_date
+        endDateStr = owner.subscription_end_date ?? null;
+      }
+      if (!endDateStr) continue;
+      if (endDateStr >= now && endDateStr <= soon) {
+        dueRows.push({ id: owner.id, username: owner.username ?? "Unknown", endDate: new Date(endDateStr) });
       }
     }
-    setStats({ pending: pendingCount ?? 0, paid: paidCount ?? 0, revenue, dueSoonCount, dueSoonTotal });
 
-    // Build due-soon list for the Due tab
+    // Build due-soon list with last-paid amount per owner
+    let dueSoonTotal = 0;
     const list: { username: string; amount: number; dueDate: string; daysLeft: number }[] = [];
-    for (const p of dueSoonProfiles ?? []) {
-      const { data: ownerProfile } = await supabase
-        .from("profiles").select("username").eq("id", p.id).single();
+    for (const row of dueRows) {
       const { data: lastPayment } = await supabase
-        .from("billing_payments").select("amount")
-        .eq("owner_id", p.id).eq("status", "paid")
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      const dueDate = new Date(p.subscription_end_date!);
-      const daysLeft = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
+        .from("billing_payments")
+        .select("amount")
+        .eq("owner_id", row.id)
+        .eq("status", "paid")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const amount = lastPayment ? Number(lastPayment.amount) : 0;
+      dueSoonTotal += amount;
+      const daysLeft = Math.ceil((row.endDate.getTime() - Date.now()) / 86400000);
       list.push({
-        username: ownerProfile?.username ?? "Unknown",
-        amount: lastPayment ? Number(lastPayment.amount) : 0,
-        dueDate: dueDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+        username: row.username,
+        amount,
+        dueDate: row.endDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
         daysLeft,
       });
     }
     list.sort((a, b) => a.daysLeft - b.daysLeft);
+
+    setStats({ pending: pendingCount ?? 0, paid: paidCount ?? 0, revenue, dueSoonCount: dueRows.length, dueSoonTotal });
     setDueSoonList(list);
   };
 
@@ -234,13 +243,14 @@ export default function AdminBillingManagementPage() {
 
         } else if (isMachinesOnly) {
           // Machines Only: activate machines, hide bar features
+          // Preserve the exact variant (machines_only or machines_only_20)
           const endDate = new Date(startDate);
           endDate.setMonth(endDate.getMonth() + plan.duration_months);
 
           await supabase.from("profiles").update({
             status: "approved",
             billing_status: "active",
-            plan_type: "machines_only",
+            plan_type: (plan as any).plan_type, // "machines_only" or "machines_only_20"
             machines_addon_active: true,
             machines_addon_start_date: startDate.toISOString(),
             machines_addon_end_date: endDate.toISOString(),
@@ -262,7 +272,7 @@ export default function AdminBillingManagementPage() {
           await supabase.from("profiles").update({
             status: "approved",
             billing_status: "active",
-            plan_type: "premium",
+            plan_type: (plan as any).plan_type, // "premium" or "premium_20"
             premium_subscription_start_date: startDate.toISOString(),
             premium_subscription_end_date: premiumEnd.toISOString(),
             music_addon: true,
