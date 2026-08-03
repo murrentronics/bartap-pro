@@ -127,11 +127,17 @@ serve(async (req) => {
         }).eq("id", targetAccountId).eq("parent_id", ownerId);
       }
 
-      // Mark owner as multi-bar
+      // Mark owner as multi-bar and increment addon_bar_count
+      const { data: ownerNow } = await supabase
+        .from("profiles")
+        .select("addon_bar_count")
+        .eq("id", ownerId)
+        .single();
       await supabase.from("profiles").update({
-        is_multi_bar:   true,
-        billing_status: "active",
-        status:         "approved",
+        is_multi_bar:    true,
+        billing_status:  "active",
+        status:          "approved",
+        addon_bar_count: (ownerNow?.addon_bar_count ?? 0) + 1,
       }).eq("id", ownerId);
 
       return new Response(
@@ -210,11 +216,20 @@ serve(async (req) => {
     // for all bars (base plan + all addons) in one bulk annual payment.
     // We only update the bar counts and status flags.
 
+    // Re-count actual sub-accounts from DB to avoid stale cached counts
+    const { count: actualSubCount } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", ownerId)
+      .eq("is_bar_account", true);
+
+    const newAddonCount = actualSubCount ?? createdIds.length;
+
     // Determine which date column(s) to update based on owner plan
     const profileUpdates: Record<string, unknown> = {
       is_multi_bar:    true,
-      addon_bar_count: (ownerProfile.addon_bar_count ?? 0) + barData.length,
-      chain_bar_count: (ownerProfile.chain_bar_count ?? 1) + createdIds.length,
+      addon_bar_count: newAddonCount,
+      chain_bar_count: (ownerProfile.chain_bar_count ?? 0),
       billing_status:  "active",
       status:          "approved",
     };

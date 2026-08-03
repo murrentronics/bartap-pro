@@ -58,20 +58,20 @@ serve(async (req) => {
     const ownerId: string = payment.owner_id;
     const planType: string = (payment.billing_plans as any)?.plan_type ?? "basic";
 
-    // ── 1. Delete all cashiers belonging to this owner ────────────────────────
-    const { data: cashiers } = await serviceClient
+    // ── 1. Delete all cashiers AND managers belonging to this owner ──────────
+    const { data: subAccounts } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("parent_id", ownerId)
-      .eq("role", "cashier");
+      .in("role", ["cashier", "manager"]);
 
-    for (const cashier of (cashiers ?? [])) {
+    for (const account of (subAccounts ?? [])) {
       await serviceClient
         .from("credit_transactions")
         .update({ cashier_id: ownerId })
-        .eq("cashier_id", cashier.id);
-      await serviceClient.from("profiles").delete().eq("id", cashier.id);
-      await serviceClient.auth.admin.deleteUser(cashier.id);
+        .eq("cashier_id", account.id);
+      await serviceClient.from("profiles").delete().eq("id", account.id);
+      await serviceClient.auth.admin.deleteUser(account.id);
     }
 
     // ── 2. Reset owner profile based on plan being revoked ───────────────────

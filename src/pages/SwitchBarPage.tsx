@@ -17,9 +17,14 @@ export default function SwitchBarPage() {
   // Delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Track which bar IDs have been locally deleted so the card vanishes immediately
+  // without waiting for the ChainContext refresh cycle
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
   // Guard: only chain owners or multi-bar addon owners can access this page
-  if (!isChainOwner && !isMultiBarOwner && profile) {
+  // Use chainBars length as a fallback — if bars still exist locally, stay on page
+  const hasLocalBars = chainBars.filter(b => !deletedIds.has(b.id)).length > 0;
+  if (!barsLoading && !isChainOwner && !isMultiBarOwner && !hasLocalBars && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
         {t("multibar_only", "This page is only available for multi-bar plan owners.")}
@@ -44,9 +49,17 @@ export default function SwitchBarPage() {
       });
       if (error) throw error;
       if (activeBarId === deleteTarget.id) setActiveBarId(null);
+      // Mark as deleted locally immediately so the card vanishes and guard stays quiet
+      setDeletedIds(prev => new Set(prev).add(deleteTarget.id));
+      setDeleteTarget(null);
+      // Refresh in background — page stays stable via deletedIds
       await Promise.all([refreshBars(), refreshProfile()]);
       toast.success(`"${deleteTarget.name}" deleted`);
-      setDeleteTarget(null);
+      // If no addon bars remain (check against refreshed profile), navigate home
+      const updatedAddonCount = (profile?.addon_bar_count ?? 1) - 1;
+      if (updatedAddonCount <= 0 && !isChainOwner) {
+        nav("/register");
+      }
     } catch (err: any) {
       toast.error("Failed to delete bar: " + (err?.message ?? "unknown error"));
     } finally {
@@ -72,7 +85,7 @@ export default function SwitchBarPage() {
       <div className="flex items-center gap-2">
         <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 text-primary"
           style={{ background: "rgba(251,146,60,0.08)" }}>
-          {chainBars.length} {isMachinesOnlyOwner ? t("account_number_lbl", "account") : t("bar_number_lbl", "bar")}{chainBars.length !== 1 ? "s" : ""}
+          {chainBars.filter(b => !deletedIds.has(b.id)).length} {isMachinesOnlyOwner ? t("account_number_lbl", "account") : t("bar_number_lbl", "bar")}{chainBars.filter(b => !deletedIds.has(b.id)).length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -104,7 +117,7 @@ export default function SwitchBarPage() {
             </div>
           )}
 
-          {chainBars.map((bar, idx) => {
+          {chainBars.filter(b => !deletedIds.has(b.id)).map((bar, idx) => {
             const isActive = bar.id === activeBarId;
             // Bar 1 (master's own profile) cannot be deleted — it IS the master account
             const isDeletable = idx > 0;

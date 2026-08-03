@@ -274,20 +274,26 @@ function StockCheckPage() {
     const map: Record<string, OpenItemInfo> = {};
     for (const row of bottlesRes.data ?? []) {
       const product = items.find((p) => p.id === row.product_id);
-      map[row.product_id] = {
-        type: "bottle",
-        unitsSold: row.shots_sold,
-        unitsPerItem: product?.units_per_item ?? 0,
-      };
+      // Only write if no pack entry already claimed this product_id
+      if (!map[row.product_id]) {
+        map[row.product_id] = {
+          type: "bottle",
+          unitsSold: row.shots_sold,
+          unitsPerItem: product?.units_per_item ?? 0,
+        };
+      }
     }
     for (const row of packsRes.data ?? []) {
       const product = items.find((p) => p.id === row.product_id);
-      map[row.product_id] = {
-        type: "pack",
-        packType: row.pack_type,
-        unitsSold: row.units_sold,
-        unitsPerItem: product?.units_per_item ?? 0,
-      };
+      // Only write if no bottle entry already claimed this product_id
+      if (!map[row.product_id]) {
+        map[row.product_id] = {
+          type: "pack",
+          packType: row.pack_type,
+          unitsSold: row.units_sold,
+          unitsPerItem: product?.units_per_item ?? 0,
+        };
+      }
     }
     setOpenItems(map);
   }, [ownerIdForQuery, items]);

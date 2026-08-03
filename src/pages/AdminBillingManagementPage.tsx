@@ -579,13 +579,13 @@ export default function AdminBillingManagementPage() {
 
         {/* Payment Details Dialog */}
         <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Payment Details</DialogTitle>
             </DialogHeader>
 
             {selectedPayment && (
-              <div className="space-y-4">
+              <div className="overflow-y-auto flex-1 space-y-4 pr-1">
                 <div>
                   <Label>Reference Number</Label>
                   <p className="font-mono font-bold text-lg">{selectedPayment.reference_number}</p>
@@ -635,7 +635,7 @@ export default function AdminBillingManagementPage() {
                       />
                     </div>
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 pt-2 border-t border-border mt-2">
                       <Button
                         variant="destructive"
                         onClick={() => updatePaymentStatus("rejected")}
