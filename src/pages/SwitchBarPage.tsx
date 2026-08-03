@@ -55,9 +55,15 @@ export default function SwitchBarPage() {
       // Refresh in background — page stays stable via deletedIds
       await Promise.all([refreshBars(), refreshProfile()]);
       toast.success(`"${deleteTarget.name}" deleted`);
+<<<<<<< HEAD
       // If no addon bars remain (check against refreshed profile), navigate home
       const updatedAddonCount = (profile?.addon_bar_count ?? 1) - 1;
       if (updatedAddonCount <= 0 && !isChainOwner) {
+=======
+      // If no bars remain after delete, navigate home
+      const remaining = chainBars.filter(b => b.id !== deleteTarget.id);
+      if (remaining.length === 0) {
+>>>>>>> 9d1867dc6b0783f44ec9ed310cad0dd9d8816b23
         nav("/register");
       }
     } catch (err: any) {
