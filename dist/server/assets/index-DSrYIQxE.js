@@ -1,5 +1,5 @@
-import { H as registerPlugin } from "./router-BVkVTQ1g.js";
-import "./server-Cy59YT7_.js";
+import { K as registerPlugin } from "./router-B8ZM6qMb.js";
+import "./server-ChNZdpo3.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -14,7 +14,7 @@ var Weekday;
   Weekday2[Weekday2["Saturday"] = 7] = "Saturday";
 })(Weekday || (Weekday = {}));
 const LocalNotifications = registerPlugin("LocalNotifications", {
-  web: () => import("./web-CZ9K-GPa.js").then((m) => new m.LocalNotificationsWeb())
+  web: () => import("./web-CECJSvmf.js").then((m) => new m.LocalNotificationsWeb())
 });
 export {
   LocalNotifications,

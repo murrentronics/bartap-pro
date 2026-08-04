@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-Cy59YT7_.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-ChNZdpo3.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -2230,7 +2230,7 @@ var Link = reactExports.forwardRef((props, ref) => {
   }
   return reactExports.createElement(_asChild, linkProps, children);
 });
-var Route$a = class Route extends BaseRoute {
+var Route$b = class Route extends BaseRoute {
   /**
   * @deprecated Use the `createRoute` function instead.
   */
@@ -2288,7 +2288,7 @@ var Route$a = class Route extends BaseRoute {
   }
 };
 function createRoute(options) {
-  return new Route$a(options);
+  return new Route$b(options);
 }
 function createRootRouteWithContext() {
   return (options) => {
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-tTdt7d6d.js");
+          const { PushNotifications } = await import("./index-CSjEGTJS.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-C_2HUE1j.css";
+const appCss = "/assets/styles--7CBsue1.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -27138,7 +27138,7 @@ function NotFound$1() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: "/", className: "mt-6 inline-block rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground", children: "Go home" })
   ] }) });
 }
-const Route$9 = createRootRouteWithContext()({
+const Route$a = createRootRouteWithContext()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -27184,7 +27184,7 @@ function RootShell({ children }) {
   ] });
 }
 function RootComponent$1() {
-  const { queryClient } = Route$9.useRouteContext();
+  const { queryClient } = Route$a.useRouteContext();
   const [splashDone, setSplashDone] = reactExports.useState(false);
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -27205,12 +27205,12 @@ function NotFound() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: "/", className: "mt-6 inline-block rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground", children: "Go home" })
   ] }) });
 }
-const Route$8 = createRootRouteWithContext()({
+const Route$9 = createRootRouteWithContext()({
   component: RootComponent,
   notFoundComponent: NotFound
 });
 function RootComponent() {
-  const { queryClient } = Route$8.useRouteContext();
+  const { queryClient } = Route$9.useRouteContext();
   const [splashDone, setSplashDone] = reactExports.useState(false);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(AuthProvider, { children: [
     !splashDone && /* @__PURE__ */ jsxRuntimeExports.jsx(SplashScreen, { onDone: () => setSplashDone(true) }),
@@ -30761,12 +30761,12 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$2, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$2.displayName;
-const $$splitComponentImporter$3 = () => import("./login-D7SBqklY.js");
-const Route$7 = createFileRoute("/login")({
+const $$splitComponentImporter$3 = () => import("./login-DkqEekDi.js");
+const Route$8 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-DzGC_A9H.js");
-const Route$6 = createFileRoute("/_app")({
+const $$splitComponentImporter$2 = () => import("./_app-CKjqluUg.js");
+const Route$7 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
 const ChainCtx = reactExports.createContext(null);
@@ -30851,7 +30851,7 @@ const createLucideIcon = (iconName, iconNode) => {
   Component.displayName = toPascalCase(iconName);
   return Component;
 };
-const __iconNode$i = [
+const __iconNode$k = [
   ["path", { d: "M10.268 21a2 2 0 0 0 3.464 0", key: "vwvbt9" }],
   [
     "path",
@@ -30861,15 +30861,15 @@ const __iconNode$i = [
     }
   ]
 ];
-const Bell = createLucideIcon("bell", __iconNode$i);
-const __iconNode$h = [
+const Bell = createLucideIcon("bell", __iconNode$k);
+const __iconNode$j = [
   ["path", { d: "M8 2v4", key: "1cmpym" }],
   ["path", { d: "M16 2v4", key: "4m81vk" }],
   ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
   ["path", { d: "M3 10h18", key: "8toen8" }]
 ];
-const Calendar$1 = createLucideIcon("calendar", __iconNode$h);
-const __iconNode$g = [
+const Calendar$1 = createLucideIcon("calendar", __iconNode$j);
+const __iconNode$i = [
   [
     "path",
     {
@@ -30879,29 +30879,57 @@ const __iconNode$g = [
   ],
   ["circle", { cx: "12", cy: "13", r: "3", key: "1vg3eu" }]
 ];
-const Camera = createLucideIcon("camera", __iconNode$g);
-const __iconNode$f = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$f);
-const __iconNode$e = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$e);
-const __iconNode$d = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$d);
-const __iconNode$c = [
+const Camera = createLucideIcon("camera", __iconNode$i);
+const __iconNode$h = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$h);
+const __iconNode$g = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$g);
+const __iconNode$f = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$f);
+const __iconNode$e = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$c);
-const __iconNode$b = [
+const CircleCheck = createLucideIcon("circle-check", __iconNode$e);
+const __iconNode$d = [
+  ["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1", key: "tgr4d6" }],
+  [
+    "path",
+    {
+      d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2",
+      key: "116196"
+    }
+  ],
+  ["path", { d: "M12 11h4", key: "1jrz19" }],
+  ["path", { d: "M12 16h4", key: "n85exb" }],
+  ["path", { d: "M8 11h.01", key: "1dfujw" }],
+  ["path", { d: "M8 16h.01", key: "18s6g9" }]
+];
+const ClipboardList = createLucideIcon("clipboard-list", __iconNode$d);
+const __iconNode$c = [
   ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
   ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Copy = createLucideIcon("copy", __iconNode$b);
-const __iconNode$a = [
+const Copy = createLucideIcon("copy", __iconNode$c);
+const __iconNode$b = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Download = createLucideIcon("download", __iconNode$a);
+const Download = createLucideIcon("download", __iconNode$b);
+const __iconNode$a = [
+  [
+    "path",
+    {
+      d: "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z",
+      key: "1oefj6"
+    }
+  ],
+  ["path", { d: "M14 2v5a1 1 0 0 0 1 1h5", key: "wfsgrz" }],
+  ["path", { d: "M12 18v-6", key: "17g6i2" }],
+  ["path", { d: "m9 15 3 3 3-3", key: "1npd3o" }]
+];
+const FileDown = createLucideIcon("file-down", __iconNode$a);
 const __iconNode$9 = [
   ["line", { x1: "6", x2: "10", y1: "11", y2: "11", key: "1gktln" }],
   ["line", { x1: "8", x2: "8", y1: "9", y2: "13", key: "qnk9ow" }],
@@ -30984,7 +31012,7 @@ const __iconNode = [
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
 const X = createLucideIcon("x", __iconNode);
-const Route$5 = createFileRoute("/_app/switch-bar")({
+const Route$6 = createFileRoute("/_app/switch-bar")({
   component: SwitchBarPage
 });
 function SwitchBarPage() {
@@ -31201,7 +31229,842 @@ function SwitchBarPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-waTUTddN.js");
+function productImageUrl(url) {
+  return url ?? null;
+}
+const CATEGORIES = [
+  { value: "beers", label: "Beer", icon: "🍺" },
+  { value: "liquor", label: "Rum", icon: "🍾" },
+  { value: "drinks", label: "Soft Drinks", icon: "🧃" },
+  { value: "cigarettes", label: "Cigs", icon: "🚬" },
+  { value: "snacks", label: "Snacks", icon: "🍟" },
+  { value: "food", label: "Food", icon: "🍽️" },
+  { value: "miscellaneous", label: "Misc", icon: "📦" }
+];
+CATEGORIES.map((c) => c.value);
+function categoryIcon(value) {
+  return CATEGORIES.find((c) => c.value === value)?.icon ?? "🍹";
+}
+function categoryLabel(value) {
+  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+async function downloadPdf(filename, pdfBase64) {
+  if (Capacitor.isNativePlatform()) {
+    const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
+    if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
+    const { Filesystem, Directory } = await import("./index-yVbWVase.js");
+    const { Share } = await import("./index-D-TmoQzL.js");
+    const result = await Filesystem.writeFile({
+      path: filename,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true
+    });
+    await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
+  } else {
+    const dataUri = pdfBase64;
+    let blob;
+    if (dataUri.startsWith("data:")) {
+      const [, b64] = dataUri.split(",");
+      if (!b64) throw new Error("PDF generation produced empty output");
+      const binStr = atob(b64);
+      const bytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+      blob = new Blob([bytes], { type: "application/pdf" });
+    } else {
+      throw new Error("PDF generation produced unexpected output");
+    }
+    const url = URL.createObjectURL(blob);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isSafari || isIOS) {
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 1e4);
+    } else {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+    }
+  }
+}
+const BRAND_ORANGE = [232, 146, 42];
+const PAGE_H = 297;
+const LM = 15;
+const RM = 195;
+async function getLogoDataUrl() {
+  try {
+    const logoUrl = Capacitor.isNativePlatform() ? Capacitor.convertFileSrc("public/logo.png") : "/logo.png";
+    const res = await fetch(logoUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+async function drawHeader(doc, businessName, docTitle, period, generated) {
+  const logoSize = 18;
+  const logoX = LM;
+  const logoY = 10;
+  const logoDataUrl = await getLogoDataUrl();
+  if (logoDataUrl && logoDataUrl.startsWith("data:image/png")) {
+    try {
+      doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+    } catch {
+    }
+  }
+  const textX = logoX + logoSize + 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(businessName, textX, logoY + 6);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.text("Powered by Bartendaz Pro", textX, logoY + 11);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...BRAND_ORANGE);
+  doc.text(docTitle, RM, logoY + 6, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Period: " + period, RM, logoY + 11, { align: "right" });
+  doc.text("Generated: " + generated, RM, logoY + 15, { align: "right" });
+  const y = logoY + logoSize + 4;
+  doc.setDrawColor(...BRAND_ORANGE);
+  doc.setLineWidth(0.5);
+  doc.line(LM, y, RM, y);
+  doc.setTextColor(0, 0, 0);
+  doc.setLineWidth(0.2);
+  return y + 5;
+}
+function drawFooter(doc, pageNum, totalPages) {
+  const footerY = PAGE_H - 8;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(LM, footerY - 3, RM, footerY - 3);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(6.5);
+  doc.setTextColor(130, 130, 130);
+  doc.text("Official document generated by Bartendaz Pro", LM, footerY);
+  doc.setFont("helvetica", "normal");
+  doc.text("Page " + pageNum + " of " + totalPages, RM, footerY, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  doc.setLineWidth(0.2);
+}
+function addFootersToAllPages(doc) {
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    drawFooter(doc, i, total);
+  }
+}
+const CONTENT_BOTTOM = PAGE_H - 15;
+const Route$5 = createFileRoute("/_app/stock-check")({
+  component: StockCheckPage
+});
+function ActualNumpad({
+  product,
+  currentActual,
+  onClose,
+  onSave,
+  priceOverride
+}) {
+  const [inputVal, setInputVal] = reactExports.useState(String(currentActual));
+  const [busy, setBusy] = reactExports.useState(false);
+  const parsed = parseInt(inputVal, 10);
+  const isValid2 = !isNaN(parsed) && parsed >= 0;
+  const unitPrice = priceOverride ?? product.price;
+  const qty = product.stock_qty;
+  const diff = isValid2 ? qty - parsed : 0;
+  const loss = isValid2 ? diff * unitPrice : 0;
+  const NUMPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
+  const handleKey = (k) => {
+    if (k === "⌫") {
+      setInputVal((v) => v.length > 1 ? v.slice(0, -1) : "0");
+      return;
+    }
+    setInputVal((v) => {
+      if (v === "0") return k;
+      return v + k;
+    });
+  };
+  const handleSave = async () => {
+    if (!isValid2) return;
+    setBusy(true);
+    await onSave(parsed);
+    setBusy(false);
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: "fixed inset-0 z-[70] flex items-end justify-center bg-black/70 backdrop-blur-sm",
+      onClick: onClose,
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden",
+          style: { background: "var(--gradient-card)" },
+          onClick: (e) => e.stopPropagation(),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-5 pt-5 pb-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-base font-black", children: "Set Actual Count" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]", children: product.name })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: onClose,
+                  className: "h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4" })
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-5 mb-4 grid grid-cols-3 gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 rounded-xl bg-muted/30 text-center", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: "System Qty" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: `text-xl font-black ${qty === 0 ? "text-red-400" : qty <= 5 ? "text-yellow-400" : "text-green-400"}`,
+                    children: qty
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 rounded-xl bg-muted/30 text-center border border-primary/30", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: "Actual" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xl font-black text-primary", children: isValid2 ? parsed : "—" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  className: "px-3 py-2 rounded-xl text-center",
+                  style: {
+                    background: loss > 0 ? "rgba(239,68,68,0.10)" : "rgba(255,255,255,0.04)",
+                    border: loss > 0 ? "1px solid rgba(239,68,68,0.30)" : "1px solid rgba(255,255,255,0.08)"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: "Loss" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: `text-base font-black leading-tight ${loss > 0 ? "text-red-400" : "text-muted-foreground"}`,
+                        children: loss > 0 ? `-$${loss.toFixed(2)}` : "$0.00"
+                      }
+                    )
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mx-5 mb-3 h-14 rounded-2xl flex items-center justify-center border border-border bg-background/60", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-3xl font-black", style: { color: "var(--primary)" }, children: inputVal }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-center text-xs text-muted-foreground mb-3 px-5", children: [
+              "Sale price:",
+              " ",
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-foreground", children: [
+                "$",
+                unitPrice.toFixed(2)
+              ] }),
+              diff > 0 && isValid2 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                " ",
+                "· Missing:",
+                " ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-red-400", children: diff })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-5 pb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-2", children: NUMPAD_KEYS.map(
+              (k, i) => k === "" ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}, i) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => handleKey(k),
+                  className: "h-14 rounded-2xl flex items-center justify-center font-black text-xl transition active:scale-95",
+                  style: {
+                    background: k === "⌫" ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: k === "⌫" ? "#f87171" : "var(--foreground)"
+                  },
+                  children: k
+                },
+                i
+              )
+            ) }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-5 pb-6 pt-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleSave,
+                disabled: busy || !isValid2,
+                className: "w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2 py-4",
+                style: { background: "var(--gradient-hero)" },
+                children: busy ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : `Save Actual: ${isValid2 ? parsed : "—"}`
+              }
+            ) })
+          ]
+        }
+      )
+    }
+  );
+}
+function StockCheckPage() {
+  const { profile } = useAuth();
+  const { effectiveOwnerId } = useChain();
+  const [items, setItems] = reactExports.useState([]);
+  const [actuals, setActuals] = reactExports.useState({});
+  const [openItems, setOpenItems] = reactExports.useState({});
+  const [loading, setLoading] = reactExports.useState(true);
+  const [activeNumpadId, setActiveNumpadId] = reactExports.useState(null);
+  const profileRef = reactExports.useRef(profile);
+  reactExports.useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
+  const isManager = profile?.role === "manager" || profile?.job_title === "manager";
+  const ownerIdForQuery = profile ? effectiveOwnerId(isManager ? profile.parent_id ?? profile.id : profile.id) : null;
+  const loadProducts = reactExports.useCallback(async () => {
+    const p = profileRef.current;
+    if (!p) return;
+    const oid = effectiveOwnerId(
+      p.role === "manager" || p.job_title === "manager" ? p.parent_id ?? p.id : p.id
+    );
+    const { data } = await supabase.from("products").select("id, name, price, image_url, category, stock_qty, units_per_item").eq("owner_id", oid).order("name", { ascending: true });
+    setItems(data ?? []);
+    setLoading(false);
+  }, [effectiveOwnerId]);
+  const loadActuals = reactExports.useCallback(async () => {
+    if (!ownerIdForQuery) return;
+    const { data } = await supabase.from("stock_check_actuals").select("product_id, actual_qty").eq("owner_id", ownerIdForQuery);
+    if (data) {
+      const map = {};
+      for (const row of data) map[row.product_id] = row.actual_qty;
+      setActuals(map);
+    }
+  }, [ownerIdForQuery]);
+  const loadOpenItems = reactExports.useCallback(async () => {
+    if (!ownerIdForQuery) return;
+    const [bottlesRes, packsRes] = await Promise.all([
+      supabase.from("opened_bottles").select("product_id, shots_sold, shot_price").eq("owner_id", ownerIdForQuery).eq("status", "open"),
+      supabase.from("opened_packs").select("product_id, units_sold, pack_type, unit_price").eq("owner_id", ownerIdForQuery).eq("status", "open")
+    ]);
+    const map = {};
+    for (const row of bottlesRes.data ?? []) {
+      const product = items.find((p) => p.id === row.product_id);
+      if (!map[row.product_id]) {
+        map[row.product_id] = {
+          type: "bottle",
+          unitsSold: row.shots_sold,
+          unitsPerItem: product?.units_per_item ?? 0,
+          shotPrice: row.shot_price ?? void 0
+        };
+      }
+    }
+    for (const row of packsRes.data ?? []) {
+      const product = items.find((p) => p.id === row.product_id);
+      if (!map[row.product_id]) {
+        map[row.product_id] = {
+          type: "pack",
+          packType: row.pack_type,
+          unitsSold: row.units_sold,
+          unitsPerItem: product?.units_per_item ?? 0,
+          shotPrice: row.unit_price ?? void 0
+        };
+      }
+    }
+    setOpenItems(map);
+  }, [ownerIdForQuery, items]);
+  reactExports.useEffect(() => {
+    if (!profile?.id) return;
+    loadProducts();
+    loadActuals();
+    if (!ownerIdForQuery) return;
+    const prodCh = supabase.channel(`stock-check-products-${ownerIdForQuery}`).on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "products",
+        filter: `owner_id=eq.${ownerIdForQuery}`
+      },
+      (payload) => {
+        const rec = payload.new;
+        if (payload.eventType === "DELETE") {
+          setItems((prev) => prev.filter((p) => p.id !== rec.id));
+          return;
+        }
+        setItems((prev) => {
+          const exists = prev.find((p) => p.id === rec.id);
+          if (!exists) {
+            loadProducts();
+            return prev;
+          }
+          return prev.map((p) => {
+            if (p.id !== rec.id) return p;
+            return {
+              ...p,
+              stock_qty: rec.stock_qty ?? p.stock_qty,
+              price: rec.price ?? p.price,
+              name: rec.name ?? p.name,
+              image_url: rec.image_url !== void 0 ? rec.image_url : p.image_url,
+              category: rec.category ?? p.category
+            };
+          });
+        });
+      }
+    ).subscribe();
+    const actualsCh = supabase.channel(`stock-check-actuals-${ownerIdForQuery}`).on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "stock_check_actuals",
+        filter: `owner_id=eq.${ownerIdForQuery}`
+      },
+      (payload) => {
+        const rec = payload.new;
+        if (payload.eventType === "DELETE") {
+          const old = payload.old;
+          setActuals((prev) => {
+            const next = { ...prev };
+            delete next[old.product_id];
+            return next;
+          });
+          return;
+        }
+        if (rec) {
+          setActuals((prev) => ({ ...prev, [rec.product_id]: rec.actual_qty }));
+        }
+      }
+    ).subscribe();
+    return () => {
+      supabase.removeChannel(prodCh);
+      supabase.removeChannel(actualsCh);
+    };
+  }, [profile?.id, ownerIdForQuery, loadProducts, loadActuals, loadOpenItems]);
+  reactExports.useEffect(() => {
+    if (items.length > 0) loadOpenItems();
+  }, [items, loadOpenItems]);
+  const saveActual = async (productId, newActual) => {
+    if (!ownerIdForQuery) return;
+    const { error } = await supabase.from("stock_check_actuals").upsert(
+      {
+        owner_id: ownerIdForQuery,
+        product_id: productId,
+        actual_qty: newActual,
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      { onConflict: "owner_id,product_id" }
+    );
+    if (error) {
+      toast.error("Failed to save: " + error.message);
+      return;
+    }
+    setActuals((prev) => ({ ...prev, [productId]: newActual }));
+    setActiveNumpadId(null);
+    toast.success("Actual count saved");
+  };
+  if (profile?.role !== "owner" && profile?.role !== "manager" && profile?.job_title !== "manager") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-muted-foreground py-20", children: "Only owners and managers can access Stock Check." });
+  }
+  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+  const grouped = CATEGORIES.map((cat) => ({
+    cat,
+    products: sorted.filter((p) => (p.category || "beers") === cat.value)
+  })).filter((g) => g.products.length > 0);
+  const totalLoss = items.reduce((sum, p) => {
+    const actual = actuals[p.id] ?? p.stock_qty;
+    const diff = p.stock_qty - actual;
+    let loss = diff > 0 ? diff * p.price : 0;
+    const openInfo = openItems[p.id];
+    if (openInfo) {
+      const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
+      const openActual = actuals[`${p.id}_open`] ?? remaining;
+      const openDiff = remaining - openActual;
+      const openPrice = openInfo.shotPrice != null && openInfo.shotPrice > 0 ? openInfo.shotPrice : p.price;
+      loss += openDiff > 0 ? openDiff * openPrice : 0;
+    }
+    return sum + loss;
+  }, 0);
+  const totalMissing = items.reduce((sum, p) => {
+    const actual = actuals[p.id] ?? p.stock_qty;
+    const diff = p.stock_qty - actual;
+    return sum + (diff > 0 ? diff : 0);
+  }, 0);
+  activeNumpadId ? items.find((p) => p.id === activeNumpadId || activeNumpadId === `${p.id}_open`) : null;
+  const activeIsOpen = activeNumpadId?.endsWith("_open") ?? false;
+  const activeProductId = activeIsOpen && activeNumpadId ? activeNumpadId.replace("_open", "") : activeNumpadId;
+  const activeProductForNumpad = activeProductId ? items.find((p) => p.id === activeProductId) : null;
+  const [pdfBusy, setPdfBusy] = reactExports.useState(null);
+  const generatePdf = async (catFilter) => {
+    const key = catFilter ?? "all";
+    setPdfBusy(key);
+    try {
+      const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const now = /* @__PURE__ */ new Date();
+      const dateStr = now.toLocaleDateString("en-GB");
+      const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      const title = catFilter ? `Stock Check — ${categoryLabel(catFilter)}` : "Stock Check — All Items";
+      let y = await drawHeader(doc, profile?.username ?? "Stock Check", title, dateStr, `${dateStr} ${timeStr}`);
+      const COL = { name: LM, qty: 110, actual: 135, price: 160, loss: 185 };
+      const ROW_H = 7;
+      const checkPage = () => {
+        if (y > CONTENT_BOTTOM - ROW_H) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+      const sectionsToDraw = catFilter ? grouped.filter((g) => g.cat.value === catFilter) : grouped;
+      for (const { cat, products } of sectionsToDraw) {
+        checkPage();
+        doc.setFillColor(232, 146, 42);
+        doc.rect(LM, y - 4, RM - LM, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${cat.icon}  ${cat.label.toUpperCase()}`, LM + 2, y);
+        y += 5;
+        checkPage();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        doc.text("Name", COL.name, y);
+        doc.text("QTY", COL.qty, y, { align: "right" });
+        doc.text("Actual", COL.actual, y, { align: "right" });
+        doc.text("Price", COL.price, y, { align: "right" });
+        doc.text("Loss", COL.loss, y, { align: "right" });
+        y += 4;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(LM, y - 1, RM, y - 1);
+        for (const p of products) {
+          checkPage();
+          const actual = actuals[p.id] ?? p.stock_qty;
+          const diff = p.stock_qty - actual;
+          const loss = diff > 0 ? diff * p.price : 0;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(0, 0, 0);
+          const nameLines = doc.splitTextToSize(p.name, 85);
+          doc.text(nameLines, COL.name, y);
+          doc.text(String(p.stock_qty), COL.qty, y, { align: "right" });
+          doc.text(String(actual), COL.actual, y, { align: "right" });
+          doc.text(`$${p.price.toFixed(2)}`, COL.price, y, { align: "right" });
+          if (loss > 0) {
+            doc.setTextColor(220, 38, 38);
+            doc.text(`-$${loss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            doc.setTextColor(0, 0, 0);
+          } else {
+            doc.text("—", COL.loss, y, { align: "right" });
+          }
+          y += nameLines.length > 1 ? nameLines.length * 4.5 : ROW_H;
+          const openInfo = openItems[p.id];
+          if (openInfo) {
+            checkPage();
+            const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
+            const openActual = actuals[`${p.id}_open`] ?? remaining;
+            const openDiff = remaining - openActual;
+            const openPrice = openInfo.shotPrice != null && openInfo.shotPrice > 0 ? openInfo.shotPrice : p.price;
+            const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
+            doc.setTextColor(180, 100, 20);
+            doc.setFontSize(7);
+            const label = openInfo.type === "bottle" ? "🍾 Open bottle" : "🚬 Open pack";
+            doc.text(`  ↳ ${label}`, COL.name, y);
+            doc.text(String(remaining), COL.qty, y, { align: "right" });
+            doc.text(String(openActual), COL.actual, y, { align: "right" });
+            if (openLoss > 0) {
+              doc.setTextColor(220, 38, 38);
+              doc.text(`-$${openLoss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            } else {
+              doc.setTextColor(180, 100, 20);
+              doc.text("—", COL.loss, y, { align: "right" });
+            }
+            doc.setTextColor(0, 0, 0);
+            y += ROW_H;
+          }
+        }
+        y += 4;
+      }
+      addFootersToAllPages(doc);
+      const filename = `stock-check-${catFilter ?? "all"}-${dateStr.replace(/\//g, "-")}.pdf`;
+      await downloadPdf(filename, doc.output("datauristring"));
+    } catch (e) {
+      toast.error("PDF failed: " + (e?.message ?? "unknown"));
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-30 -mx-3 -mt-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-3 py-2 bg-background border-b border-border", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-5 w-5", style: { color: "var(--primary)" } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-black leading-tight", children: "Stock Check" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-muted-foreground text-xs", children: [
+              items.length,
+              " items"
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          totalMissing > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-1.5 rounded-xl text-xs font-black",
+              style: {
+                background: "rgba(239,68,68,0.12)",
+                border: "1px solid rgba(239,68,68,0.30)",
+                color: "#f87171"
+              },
+              children: [
+                totalMissing,
+                " missing"
+              ]
+            }
+          ),
+          totalLoss > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-1.5 rounded-xl text-xs font-black",
+              style: {
+                background: "rgba(239,68,68,0.12)",
+                border: "1px solid rgba(239,68,68,0.30)",
+                color: "#f87171"
+              },
+              children: [
+                "−$",
+                totalLoss.toFixed(2)
+              ]
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20", style: { background: "var(--gradient-hero)" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 shrink-0" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: "Name" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[46px] text-right", children: "Qty" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[60px] text-right", children: "Actual" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[52px] text-right", children: "Price" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[56px] text-right", children: "Loss" })
+      ] })
+    ] }),
+    loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-8 w-8 animate-spin text-primary" }) }) : items.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center text-muted-foreground py-20", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-bold", children: "No items found." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Add items from the Items page first." })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pb-10", children: grouped.map(({ cat, products }, groupIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(React2.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-3 pt-5 pb-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-base leading-none", children: cat.icon }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "text-xs font-black uppercase tracking-widest",
+                style: { color: "var(--primary)" },
+                children: cat.label
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5", children: [
+            groupIdx === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                type: "button",
+                onClick: () => generatePdf(null),
+                disabled: pdfBusy !== null,
+                className: "flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50",
+                style: { background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)", color: "var(--foreground)" },
+                children: [
+                  pdfBusy === "all" ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-3 w-3" }),
+                  "All"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                type: "button",
+                onClick: () => generatePdf(cat.value),
+                disabled: pdfBusy !== null,
+                className: "flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50",
+                style: { background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.35)", color: "var(--primary)" },
+                children: [
+                  pdfBusy === cat.value ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileDown, { className: "h-3 w-3" }),
+                  cat.label
+                ]
+              }
+            )
+          ] })
+        ] }),
+        products.map((p) => {
+          const actual = actuals[p.id] ?? p.stock_qty;
+          const diff = p.stock_qty - actual;
+          const loss = diff > 0 ? diff * p.price : 0;
+          const isActive = activeNumpadId === p.id;
+          const hasLoss = loss > 0;
+          const openInfo = openItems[p.id];
+          const openKey = `${p.id}_open`;
+          const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
+          const openActual = openInfo ? actuals[openKey] ?? remaining ?? 0 : null;
+          const openDiff = openInfo && openActual !== null ? remaining - openActual : 0;
+          const openPrice = openInfo?.shotPrice != null && openInfo.shotPrice > 0 ? openInfo.shotPrice : p.price;
+          const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
+          const isOpenActive = activeNumpadId === openKey;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(React2.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-2 border-t border-border/40 transition",
+                style: hasLoss ? { background: "rgba(239,68,68,0.04)" } : {},
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "h-8 w-8 rounded-lg overflow-hidden border border-border shrink-0 flex items-center justify-center text-base",
+                      style: { background: "var(--gradient-card)" },
+                      children: p.image_url ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "img",
+                        {
+                          src: productImageUrl(p.image_url),
+                          alt: "",
+                          className: "h-full w-full object-cover",
+                          onError: (e) => {
+                            e.currentTarget.style.display = "none";
+                          }
+                        }
+                      ) : categoryIcon(p.category ?? "drinks")
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-xs leading-tight line-clamp-2", children: p.name }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[46px] flex justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-black text-xs ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`, children: p.stock_qty }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[60px] flex justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => setActiveNumpadId(isActive ? null : p.id),
+                      className: "flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95",
+                      style: {
+                        background: isActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
+                        borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : "var(--border)",
+                        color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : "var(--foreground)",
+                        minWidth: "44px"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: actual }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-2.5 w-2.5 shrink-0 opacity-60" })
+                      ]
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[52px] text-right", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-xs text-muted-foreground", children: [
+                    "$",
+                    p.price.toFixed(2)
+                  ] }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[56px] text-right", children: hasLoss ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-xs text-red-400 tabular-nums", children: [
+                    "−$",
+                    loss.toFixed(2)
+                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-xs text-muted-foreground/40", children: "—" }) })
+                ]
+              }
+            ),
+            openInfo && remaining !== null && openActual !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-1.5 border-t border-dashed border-border/30",
+                style: { background: openLoss > 0 ? "rgba(239,68,68,0.04)" : "rgba(251,146,60,0.04)", paddingLeft: "24px" },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm",
+                      style: { background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.25)" },
+                      children: openInfo.type === "bottle" ? "🍾" : "🚬"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-black", style: { color: "var(--primary)" }, children: openInfo.type === "bottle" ? "Open bottle" : openInfo.packType === "retail" ? "Open pack" : "Open papers" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
+                      openInfo.unitsSold,
+                      " sold · ",
+                      remaining,
+                      " left"
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[46px] flex justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `font-black text-xs ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`, children: remaining }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[60px] flex justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => setActiveNumpadId(isOpenActive ? null : openKey),
+                      className: "flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95",
+                      style: {
+                        background: isOpenActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
+                        borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : "var(--border)",
+                        color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : "var(--foreground)",
+                        minWidth: "44px"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: openActual }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(Pencil, { className: "h-2.5 w-2.5 shrink-0 opacity-60" })
+                      ]
+                    }
+                  ) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[52px] text-right", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-xs text-muted-foreground", children: [
+                    "$",
+                    openPrice.toFixed(2)
+                  ] }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[56px] text-right", children: openLoss > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-xs text-red-400 tabular-nums", children: [
+                    "−$",
+                    openLoss.toFixed(2)
+                  ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-xs text-muted-foreground/40", children: "—" }) })
+                ]
+              }
+            )
+          ] }, p.id);
+        })
+      ] }, cat.value)) }),
+      totalLoss > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "fixed bottom-0 inset-x-0 mx-auto max-w-2xl px-4 py-3 border-t border-border flex items-center justify-between",
+          style: { background: "var(--background)" },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm font-black text-muted-foreground", children: "Total estimated loss" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-lg font-black text-red-400", children: [
+              "−$",
+              totalLoss.toFixed(2)
+            ] })
+          ]
+        }
+      )
+    ] }),
+    activeProductForNumpad && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ActualNumpad,
+      {
+        product: activeIsOpen ? {
+          ...activeProductForNumpad,
+          // For open row: system qty = remaining drinks
+          stock_qty: Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - (openItems[activeProductForNumpad.id]?.unitsSold ?? 0))
+        } : activeProductForNumpad,
+        currentActual: activeIsOpen ? actuals[activeNumpadId] ?? Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - (openItems[activeProductForNumpad.id]?.unitsSold ?? 0)) : actuals[activeNumpadId] ?? activeProductForNumpad.stock_qty,
+        onClose: () => setActiveNumpadId(null),
+        onSave: (newActual) => saveActual(activeNumpadId, newActual),
+        priceOverride: activeIsOpen ? (() => {
+          const info = openItems[activeProductForNumpad.id];
+          return info?.shotPrice != null && info.shotPrice > 0 ? info.shotPrice : void 0;
+        })() : void 0
+      }
+    )
+  ] });
+}
+const $$splitComponentImporter$1 = () => import("./manager-DF7C4ZVi.js");
 const Route$4 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -51531,128 +52394,6 @@ const PopoverContent = reactExports.forwardRef(({ className, align = "center", s
   }
 ) }));
 PopoverContent.displayName = Content2.displayName;
-async function downloadPdf(filename, pdfBase64) {
-  if (Capacitor.isNativePlatform()) {
-    const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
-    if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-ldikHdhk.js");
-    const { Share } = await import("./index-Bso0JKhV.js");
-    const result = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true
-    });
-    await Share.share({ title: filename, url: result.uri, dialogTitle: "Save PDF" });
-  } else {
-    const dataUri = pdfBase64;
-    let blob;
-    if (dataUri.startsWith("data:")) {
-      const [, b64] = dataUri.split(",");
-      if (!b64) throw new Error("PDF generation produced empty output");
-      const binStr = atob(b64);
-      const bytes = new Uint8Array(binStr.length);
-      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-      blob = new Blob([bytes], { type: "application/pdf" });
-    } else {
-      throw new Error("PDF generation produced unexpected output");
-    }
-    const url = URL.createObjectURL(blob);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isSafari || isIOS) {
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 1e4);
-    } else {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1e3);
-    }
-  }
-}
-const BRAND_ORANGE = [232, 146, 42];
-const PAGE_H = 297;
-const LM = 15;
-const RM = 195;
-async function getLogoDataUrl() {
-  try {
-    const logoUrl = Capacitor.isNativePlatform() ? Capacitor.convertFileSrc("public/logo.png") : "/logo.png";
-    const res = await fetch(logoUrl);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-async function drawHeader(doc, businessName, docTitle, period, generated) {
-  const logoSize = 18;
-  const logoX = LM;
-  const logoY = 10;
-  const logoDataUrl = await getLogoDataUrl();
-  if (logoDataUrl && logoDataUrl.startsWith("data:image/png")) {
-    try {
-      doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
-    } catch {
-    }
-  }
-  const textX = logoX + logoSize + 4;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(0, 0, 0);
-  doc.text(businessName, textX, logoY + 6);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.text("Powered by Bartendaz Pro", textX, logoY + 11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...BRAND_ORANGE);
-  doc.text(docTitle, RM, logoY + 6, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Period: " + period, RM, logoY + 11, { align: "right" });
-  doc.text("Generated: " + generated, RM, logoY + 15, { align: "right" });
-  const y = logoY + logoSize + 4;
-  doc.setDrawColor(...BRAND_ORANGE);
-  doc.setLineWidth(0.5);
-  doc.line(LM, y, RM, y);
-  doc.setTextColor(0, 0, 0);
-  doc.setLineWidth(0.2);
-  return y + 5;
-}
-function drawFooter(doc, pageNum, totalPages) {
-  const footerY = PAGE_H - 8;
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.line(LM, footerY - 3, RM, footerY - 3);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(6.5);
-  doc.setTextColor(130, 130, 130);
-  doc.text("Official document generated by Bartendaz Pro", LM, footerY);
-  doc.setFont("helvetica", "normal");
-  doc.text("Page " + pageNum + " of " + totalPages, RM, footerY, { align: "right" });
-  doc.setTextColor(0, 0, 0);
-  doc.setLineWidth(0.2);
-}
-function addFootersToAllPages(doc) {
-  const total = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    drawFooter(doc, i, total);
-  }
-}
-const CONTENT_BOTTOM = PAGE_H - 15;
 const STORAGE_KEY = "machine_alert_settings";
 const storageKey = (barId) => `machine_alert_settings_${barId}`;
 const THRESHOLD_OPTIONS = [300, 500, 1e3];
@@ -51694,7 +52435,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C6bA11DQ.js");
+      const { LocalNotifications } = await import("./index-DSrYIQxE.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -51713,7 +52454,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-C6bA11DQ.js");
+    const { LocalNotifications } = await import("./index-DSrYIQxE.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -51748,7 +52489,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C6bA11DQ.js");
+      const { LocalNotifications } = await import("./index-DSrYIQxE.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -52215,6 +52956,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorInputsLocked, setMonitorInputsLocked] = reactExports.useState(false);
   const [monitorCardIn, setMonitorCardIn] = reactExports.useState(null);
   const [monitorCardOut, setMonitorCardOut] = reactExports.useState(null);
+  const [firstEntryLastIn, setFirstEntryLastIn] = reactExports.useState("");
+  const [firstEntryLastOut, setFirstEntryLastOut] = reactExports.useState("");
   reactExports.useEffect(() => {
     setMonitorUpdateDone(false);
   }, [monitorIn, monitorOut]);
@@ -52226,6 +52969,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [editLogIn, setEditLogIn] = reactExports.useState("");
   const [editLogOut, setEditLogOut] = reactExports.useState("");
   const [savingLogEdit, setSavingLogEdit] = reactExports.useState(false);
+  const [openMonthKeys, setOpenMonthKeys] = reactExports.useState(() => /* @__PURE__ */ new Set());
+  const [downloadingMonthKey, setDownloadingMonthKey] = reactExports.useState(null);
   const loadLogs = reactExports.useCallback(async () => {
     setLogsLoading(true);
     const { data } = await sb.from("machine_monitor_logs").select("*").eq("machine_id", machine.id).order("seq", { ascending: false });
@@ -52393,12 +53138,144 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }, { onConflict: "machine_id,owner_id" });
   };
+  const handleDownloadMonthMonitorPdf = async (monthKey, logs) => {
+    if (logs.length === 0) return;
+    setDownloadingMonthKey(monthKey);
+    try {
+      const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const TZ = "America/Port_of_Spain";
+      const fmt2 = (n) => n.toFixed(2);
+      const sign = (n) => (n >= 0 ? "+" : "") + fmt2(n);
+      const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+      const [yr, mo] = monthKey.split("-");
+      const monthLabel = new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      let y = await drawHeader(doc, machine.name, "Machine Monitor Log", monthLabel, generated);
+      const bw = RM - LM;
+      const latestLog2 = logs[0];
+      const monthProfit = latestLog2.in_diff - latestLog2.out_diff;
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(LM, y, bw, 28, 2, 2, "F");
+      doc.setDrawColor(60, 60, 60);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, 28, 2, 2, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(60, 60, 60);
+      doc.text("MONTH SUMMARY — " + monthLabel.toUpperCase(), LM + bw / 2, y + 7, { align: "center" });
+      const summCols = [
+        { label: "Latest IN Present", value: fmt2(latestLog2.in_present) },
+        { label: "Latest OUT Present", value: fmt2(latestLog2.out_present) },
+        { label: "Latest Profit", value: sign(monthProfit) }
+      ];
+      const cw = bw / 3;
+      summCols.forEach((c, i) => {
+        const cx2 = LM + i * cw + cw / 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(c.label, cx2, y + 14, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(30, 30, 30);
+        doc.text(c.value, cx2, y + 23, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0);
+      y += 34;
+      for (const log of logs) {
+        const cardH = 58;
+        if (y + cardH > CONTENT_BOTTOM) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(LM, y, bw, cardH, 2, 2, "FD");
+        const dt = new Date(log.logged_at);
+        const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
+        const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
+        const logProfit = log.in_diff - log.out_diff;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(30, 30, 30);
+        doc.text(dateStr, LM + 4, y + 7);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(120, 120, 120);
+        doc.text(timeStr, LM + 4, y + 12);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(30, 100, 30);
+        doc.text("IN " + sign(log.in_diff), RM - 4, y + 7, { align: "right" });
+        doc.setTextColor(140, 40, 40);
+        doc.text("OUT " + sign(log.out_diff), RM - 4, y + 13, { align: "right" });
+        doc.setTextColor(logProfit >= 0 ? 30 : 160, logProfit >= 0 ? 100 : 30, 30);
+        doc.text("PROFIT " + sign(logProfit), RM - 4, y + 19, { align: "right" });
+        y += 22;
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.line(LM + 2, y, LM + bw - 2, y);
+        y += 4;
+        const colW = (bw - 8) / 2;
+        const leftX = LM + 4;
+        const rightX = LM + 4 + colW + 4;
+        const inRows = [
+          { label: "Present", val: fmt2(log.in_present) },
+          { label: "Last", val: fmt2(log.in_last) },
+          { label: "Total", val: sign(log.in_diff) }
+        ];
+        const outRows = [
+          { label: "Present", val: fmt2(log.out_present) },
+          { label: "Last", val: fmt2(log.out_last) },
+          { label: "Total", val: sign(log.out_diff) }
+        ];
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(30, 30, 30);
+        doc.text("IN", leftX + colW / 2, y, { align: "center" });
+        doc.text("OUT", rightX + colW / 2, y, { align: "center" });
+        y += 4;
+        inRows.forEach((row, ri) => {
+          doc.setFillColor(248, 248, 248);
+          doc.setDrawColor(210, 210, 210);
+          doc.setLineWidth(0.15);
+          doc.roundedRect(leftX, y - 3, colW, 6, 1, 1, "FD");
+          doc.roundedRect(rightX, y - 3, colW, 6, 1, 1, "FD");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(5.5);
+          doc.setTextColor(130, 130, 130);
+          doc.text(row.label.toUpperCase(), leftX + 2, y);
+          doc.text(outRows[ri].label.toUpperCase(), rightX + 2, y);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7.5);
+          doc.setTextColor(30, 30, 30);
+          doc.text(row.val, leftX + colW - 2, y + 0.5, { align: "right" });
+          doc.text(outRows[ri].val, rightX + colW - 2, y + 0.5, { align: "right" });
+          y += 7;
+        });
+        y += 3;
+      }
+      addFootersToAllPages(doc);
+      const safeMonth = monthLabel.replace(/\s+/g, "-");
+      await downloadPdf(`monitor-${machine.name.replace(/\s+/g, "-")}-${safeMonth}.pdf`, doc.output("datauristring"));
+    } finally {
+      setDownloadingMonthKey(null);
+    }
+  };
   const handleMonitorUpdate = async () => {
     const inVal = parseFloat(monitorIn) || 0;
     const outVal = parseFloat(monitorOut) || 0;
     const { data: prevLog } = await sb.from("machine_monitor_logs").select("in_present, out_present").eq("machine_id", machine.id).order("seq", { ascending: false }).limit(1).maybeSingle();
-    const inLast = prevLog ? prevLog.in_present : parseFloat(monitorInTotal) || 0;
-    const outLast = prevLog ? prevLog.out_present : parseFloat(monitorOutTotal) || 0;
+    const inLast = prevLog ? prevLog.in_present : parseFloat(firstEntryLastIn) || parseFloat(monitorInTotal) || 0;
+    const outLast = prevLog ? prevLog.out_present : parseFloat(firstEntryLastOut) || parseFloat(monitorOutTotal) || 0;
     const inDiff = inVal - inLast;
     const outDiff = outVal - outLast;
     const inDiffStr = inDiff.toFixed(2);
@@ -52437,6 +53314,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setMonitorFocus(null);
     setMonitorCardIn(inVal);
     setMonitorCardOut(outVal);
+    setFirstEntryLastIn("");
+    setFirstEntryLastOut("");
     onMonitorLogChange?.();
   };
   const handleNewEntry = async () => {
@@ -52676,7 +53555,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-D08al7de.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -52781,7 +53660,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-D08al7de.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -52963,7 +53842,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
-                      label: t("session_income", "All Session Cash In"),
+                      label: t("session_income", "Session Cash In"),
                       value: "$" + fmtWhole(sessionIncome),
                       color: "#86efac"
                     }
@@ -52971,7 +53850,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     SmallStat,
                     {
-                      label: t("session_payout", "All Session Payout"),
+                      label: t("session_payout", "Session Payout"),
                       value: "$" + fmtWhole(sessionPayouts),
                       color: "#fca5a5"
                     }
@@ -53003,7 +53882,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     StatCard,
                     {
-                      label: t("all_time_profit", "Gross Profit"),
+                      label: t("all_time_profit", "Profit"),
                       value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit),
                       color: totalProfit >= 0 ? "#86efac" : "#fca5a5"
                     }
@@ -53015,10 +53894,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1 rounded-2xl p-1", style: { background: "var(--gradient-card)" }, children: [...isOwner || isManager ? ["income"] : [], "payout", ...isOwner || isManager ? ["history"] : [], ...isOwner || isManager ? ["monitor"] : []].map((tabKey) => /* @__PURE__ */ jsxRuntimeExports.jsx(
             "button",
             {
-              onClick: () => setTab(tabKey),
-              className: `flex-1 py-2.5 rounded-xl text-xs font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`,
+              onClick: () => {
+                if (tabKey === "payout" && !barIsOpen) return;
+                setTab(tabKey);
+              },
+              disabled: tabKey === "payout" && !barIsOpen,
+              className: `flex-1 py-2.5 rounded-xl text-xs font-black capitalize transition ${tab === tabKey ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"} disabled:opacity-40 disabled:cursor-not-allowed`,
               style: tab === tabKey ? { background: "var(--gradient-hero)" } : {},
-              children: tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Monitor"
+              children: tabKey === "payout" ? t("payout", "Payout") : tabKey === "income" ? t("income", "Income") : tabKey === "history" ? t("history", "History") : "Meters"
             },
             tabKey
           )) }),
@@ -53276,200 +54159,283 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 )
               ] }),
               monitorLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          onClick: () => !monitorInputsLocked && setMonitorFocus(monitorFocus === "in" ? null : "in"),
-                          disabled: monitorInputsLocked,
-                          className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
-                          style: {
-                            background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
-                            borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
-                            color: "oklch(0.72 0.18 145)"
-                          },
-                          children: monitorIn || "0"
-                        }
-                      )
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Last" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
-                          style: { color: "oklch(0.72 0.18 145)" },
-                          children: monitorInTotal || "—"
-                        }
-                      )
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
-                          style: { color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
-                          children: monitorInDiff || "—"
-                        }
-                      )
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          onClick: () => !monitorInputsLocked && setMonitorFocus(monitorFocus === "out" ? null : "out"),
-                          disabled: monitorInputsLocked,
-                          className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
-                          style: {
-                            background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
-                            borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
-                            color: "oklch(0.65 0.22 25)"
-                          },
-                          children: monitorOut || "0"
-                        }
-                      )
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Last" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
-                          style: { color: "oklch(0.65 0.22 25)" },
-                          children: monitorOutTotal || "—"
-                        }
-                      )
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "div",
-                        {
-                          className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
-                          style: { color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" },
-                          children: monitorOutDiff || "—"
-                        }
-                      )
-                    ] })
-                  ] })
-                ] }),
-                (() => {
-                  const calcInDiff = monitorIn !== "" ? (parseFloat(monitorIn) || 0) - (parseFloat(monitorInTotal) || 0) : monitorInDiff !== "" ? parseFloat(monitorInDiff) : null;
-                  const calcOutDiff = monitorOut !== "" ? (parseFloat(monitorOut) || 0) - (parseFloat(monitorOutTotal) || 0) : monitorOutDiff !== "" ? parseFloat(monitorOutDiff) : null;
-                  const profitVal = calcInDiff !== null || calcOutDiff !== null ? (calcInDiff ?? 0) - (calcOutDiff ?? 0) : null;
-                  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-3 flex justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full max-w-[200px] space-y-1 text-center", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider block", children: "Profit" }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "div",
-                      {
-                        className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
-                        style: { color: profitVal === null ? "var(--muted-foreground)" : profitVal >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
-                        children: profitVal === null ? "—" : `${profitVal >= 0 ? "+" : ""}${profitVal.toFixed(2)}`
-                      }
-                    )
-                  ] }) });
-                })(),
-                monitorFocus && !monitorInputsLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "p",
-                    {
-                      className: "text-[10px] font-black uppercase tracking-widest text-center mb-2",
-                      style: { color: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
-                      children: [
-                        "Entering ",
-                        monitorFocus.toUpperCase()
-                      ]
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
-                    ["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        type: "button",
-                        onClick: () => {
-                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                          const val = monitorFocus === "in" ? monitorIn : monitorOut;
-                          const parts = val.split(".");
-                          if (parts[1] !== void 0 && parts[1].length >= 2) return;
-                          setter(val + k);
-                        },
-                        className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
-                        style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
-                        children: k
-                      },
-                      k
-                    )),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        type: "button",
-                        onClick: () => {
-                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                          const val = monitorFocus === "in" ? monitorIn : monitorOut;
-                          if (!val.includes(".")) setter(val + ".");
-                        },
-                        className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
-                        style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
-                        children: "."
-                      }
-                    ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        type: "button",
-                        onClick: () => {
-                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                          const val = monitorFocus === "in" ? monitorIn : monitorOut;
-                          const parts = val.split(".");
-                          if (parts[1] !== void 0 && parts[1].length >= 2) return;
-                          setter(val + "0");
-                        },
-                        className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
-                        style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
-                        children: "0"
-                      }
-                    ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        type: "button",
-                        onClick: () => {
-                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                          const val = monitorFocus === "in" ? monitorIn : monitorOut;
-                          setter(val.slice(0, -1));
-                        },
-                        className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
-                        style: { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" },
-                        children: "⌫"
-                      }
-                    )
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
+                monitorLogs.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
                   {
-                    onClick: () => {
-                      setShowConfirmUpdate(true);
-                      setMonitorFocus(null);
-                    },
-                    disabled: monitorSaving || monitorUpdateDone || monitorInputsLocked || monitorIn === "" || monitorOut === "",
-                    className: "mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2",
-                    style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
-                    children: monitorSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
-                      " Saving…"
-                    ] }) : monitorUpdateDone ? "✓ Saved" : "Update"
+                    className: "mb-3 rounded-xl px-3 py-2.5 text-[11px] font-bold leading-snug",
+                    style: { background: "oklch(0.20 0.05 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" },
+                    children: [
+                      "First entry — tap ",
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "oklch(0.72 0.18 145)" }, children: "Last" }),
+                      " to seed prior values for an existing machine, or leave blank for a brand-new machine."
+                    ]
                   }
                 ),
+                (() => {
+                  const isFirstEntry = monitorLogs.length === 0;
+                  const focus2 = monitorFocus;
+                  const focusSetter = (f) => {
+                    if (f === "in") return setMonitorIn;
+                    if (f === "out") return setMonitorOut;
+                    if (f === "lastIn") return setFirstEntryLastIn;
+                    return setFirstEntryLastOut;
+                  };
+                  const focusVal = (f) => {
+                    if (f === "in") return monitorIn;
+                    if (f === "out") return monitorOut;
+                    if (f === "lastIn") return firstEntryLastIn;
+                    return firstEntryLastOut;
+                  };
+                  const focusColor = (f) => f === "in" || f === "lastIn" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)";
+                  const focusLabel = (f) => {
+                    if (f === "in") return "Present IN";
+                    if (f === "out") return "Present OUT";
+                    if (f === "lastIn") return "Last IN";
+                    return "Last OUT";
+                  };
+                  const effectiveLastIn = isFirstEntry ? parseFloat(firstEntryLastIn) || 0 : parseFloat(monitorInTotal) || 0;
+                  const effectiveLastOut = isFirstEntry ? parseFloat(firstEntryLastOut) || 0 : parseFloat(monitorOutTotal) || 0;
+                  const calcInDiff = monitorIn !== "" ? (parseFloat(monitorIn) || 0) - effectiveLastIn : monitorInDiff !== "" ? parseFloat(monitorInDiff) : null;
+                  const calcOutDiff = monitorOut !== "" ? (parseFloat(monitorOut) || 0) - effectiveLastOut : monitorOutDiff !== "" ? parseFloat(monitorOutDiff) : null;
+                  const profitVal = calcInDiff !== null || calcOutDiff !== null ? (calcInDiff ?? 0) - (calcOutDiff ?? 0) : null;
+                  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              onClick: () => !monitorInputsLocked && setMonitorFocus(focus2 === "in" ? null : "in"),
+                              disabled: monitorInputsLocked,
+                              className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
+                              style: {
+                                background: monitorInputsLocked ? "var(--muted)" : focus2 === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                                borderColor: monitorInputsLocked ? "var(--border)" : focus2 === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
+                                color: "oklch(0.72 0.18 145)"
+                              },
+                              children: monitorIn || "0"
+                            }
+                          )
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                            "label",
+                            {
+                              className: "text-[10px] font-bold uppercase tracking-wider",
+                              style: { color: isFirstEntry ? "oklch(0.72 0.18 145 / 0.8)" : "var(--muted-foreground)" },
+                              children: [
+                                "Last",
+                                isFirstEntry ? " ✎" : ""
+                              ]
+                            }
+                          ),
+                          isFirstEntry ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              onClick: () => !monitorInputsLocked && setMonitorFocus(focus2 === "lastIn" ? null : "lastIn"),
+                              disabled: monitorInputsLocked,
+                              className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
+                              style: {
+                                background: monitorInputsLocked ? "var(--muted)" : focus2 === "lastIn" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                                borderColor: monitorInputsLocked ? "var(--border)" : focus2 === "lastIn" ? "oklch(0.72 0.18 145)" : "oklch(0.72 0.18 145 / 0.35)",
+                                color: "oklch(0.72 0.18 145)"
+                              },
+                              children: firstEntryLastIn || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--muted-foreground)" }, children: "optional" })
+                            }
+                          ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                              style: { color: "oklch(0.72 0.18 145)" },
+                              children: monitorInTotal || "—"
+                            }
+                          )
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                              style: { color: calcInDiff != null && calcInDiff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                              children: calcInDiff == null ? "—" : `${calcInDiff >= 0 ? "+" : ""}${calcInDiff.toFixed(2)}`
+                            }
+                          )
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Present" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              onClick: () => !monitorInputsLocked && setMonitorFocus(focus2 === "out" ? null : "out"),
+                              disabled: monitorInputsLocked,
+                              className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
+                              style: {
+                                background: monitorInputsLocked ? "var(--muted)" : focus2 === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                                borderColor: monitorInputsLocked ? "var(--border)" : focus2 === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
+                                color: "oklch(0.65 0.22 25)"
+                              },
+                              children: monitorOut || "0"
+                            }
+                          )
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                            "label",
+                            {
+                              className: "text-[10px] font-bold uppercase tracking-wider",
+                              style: { color: isFirstEntry ? "oklch(0.65 0.22 25 / 0.8)" : "var(--muted-foreground)" },
+                              children: [
+                                "Last",
+                                isFirstEntry ? " ✎" : ""
+                              ]
+                            }
+                          ),
+                          isFirstEntry ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              onClick: () => !monitorInputsLocked && setMonitorFocus(focus2 === "lastOut" ? null : "lastOut"),
+                              disabled: monitorInputsLocked,
+                              className: "w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed",
+                              style: {
+                                background: monitorInputsLocked ? "var(--muted)" : focus2 === "lastOut" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                                borderColor: monitorInputsLocked ? "var(--border)" : focus2 === "lastOut" ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25 / 0.35)",
+                                color: "oklch(0.65 0.22 25)"
+                              },
+                              children: firstEntryLastOut || /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--muted-foreground)" }, children: "optional" })
+                            }
+                          ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                              style: { color: "oklch(0.65 0.22 25)" },
+                              children: monitorOutTotal || "—"
+                            }
+                          )
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: "Total" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                              style: { color: "oklch(0.65 0.22 25)" },
+                              children: calcOutDiff == null ? "—" : `${calcOutDiff >= 0 ? "+" : ""}${calcOutDiff.toFixed(2)}`
+                            }
+                          )
+                        ] })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-3 flex justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full max-w-[200px] space-y-1 text-center", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider block", children: "Profit" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "div",
+                        {
+                          className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none",
+                          style: { color: profitVal === null ? "var(--muted-foreground)" : profitVal >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                          children: profitVal === null ? "—" : `${profitVal >= 0 ? "+" : ""}${profitVal.toFixed(2)}`
+                        }
+                      )
+                    ] }) }),
+                    focus2 && !monitorInputsLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "p",
+                        {
+                          className: "text-[10px] font-black uppercase tracking-widest text-center mb-2",
+                          style: { color: focusColor(focus2) },
+                          children: [
+                            "Entering ",
+                            focusLabel(focus2)
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+                        ["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => {
+                              const setter = focusSetter(focus2);
+                              const val = focusVal(focus2);
+                              const parts = val.split(".");
+                              if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                              setter(val + k);
+                            },
+                            className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                            style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                            children: k
+                          },
+                          k
+                        )),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => {
+                              const setter = focusSetter(focus2);
+                              const val = focusVal(focus2);
+                              if (!val.includes(".")) setter(val + ".");
+                            },
+                            className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                            style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                            children: "."
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => {
+                              const setter = focusSetter(focus2);
+                              const val = focusVal(focus2);
+                              const parts = val.split(".");
+                              if (parts[1] !== void 0 && parts[1].length >= 2) return;
+                              setter(val + "0");
+                            },
+                            className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                            style: { background: "oklch(0.20 0.05 60)", color: "#fff" },
+                            children: "0"
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => {
+                              const setter = focusSetter(focus2);
+                              const val = focusVal(focus2);
+                              setter(val.slice(0, -1));
+                            },
+                            className: "rounded-2xl py-4 text-xl font-black active:scale-95 transition",
+                            style: { background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" },
+                            children: "⌫"
+                          }
+                        )
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: () => {
+                          setShowConfirmUpdate(true);
+                          setMonitorFocus(null);
+                        },
+                        disabled: monitorSaving || monitorUpdateDone || monitorInputsLocked || monitorIn === "" || monitorOut === "",
+                        className: "mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2",
+                        style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
+                        children: monitorSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
+                          " Saving…"
+                        ] }) : monitorUpdateDone ? "✓ Saved" : "Update"
+                      }
+                    )
+                  ] });
+                })(),
                 showConfirmUpdate && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden", style: { background: "var(--gradient-card)" }, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 pt-7 pb-4 text-center space-y-2", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-4xl", children: "📋" }),
@@ -53530,166 +54496,237 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   )
                 ] })
               ] }) }),
-              logsLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : monitorLogs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center py-10 text-muted-foreground text-sm", children: "No logs yet. Press Update on the monitor to create entries." }) : monitorLogs.map((log) => {
-                const isOpen = openLogId === log.id;
-                const isEditing = editingLogId === log.id;
-                const dt = new Date(log.logged_at);
-                const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/Port_of_Spain" });
-                const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" });
-                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", style: { background: "var(--gradient-card)" }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-3", children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "flex-1 flex items-start gap-3 text-left", onClick: () => setOpenLogId(isOpen ? null : log.id), children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm", children: dateStr }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: timeStr })
-                      ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex flex-col items-end pr-2 gap-0.5", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2.5 items-center", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-black", style: { color: "oklch(0.72 0.18 145)" }, children: [
-                            "IN ",
-                            log.in_diff >= 0 ? "+" : "",
-                            log.in_diff.toFixed(2)
-                          ] }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-black", style: { color: "oklch(0.65 0.22 25)" }, children: [
-                            "OUT ",
-                            log.out_diff >= 0 ? "+" : "",
-                            log.out_diff.toFixed(2)
-                          ] })
-                        ] }),
-                        (() => {
-                          const logProfit = log.in_diff - log.out_diff;
-                          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[11px] font-black", style: { color: logProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }, children: [
-                            "PROFIT ",
-                            logProfit >= 0 ? "+" : "",
-                            logProfit.toFixed(2)
-                          ] });
-                        })()
-                      ] })
+              logsLoading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-8", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : monitorLogs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center py-10 text-muted-foreground text-sm", children: "No logs yet. Press Update on the monitor to create entries." }) : (() => {
+                const TZ = "America/Port_of_Spain";
+                const grouped = [];
+                const seenMonths = /* @__PURE__ */ new Map();
+                for (const log of monitorLogs) {
+                  const dt = new Date(log.logged_at);
+                  const key = dt.toLocaleDateString("en-CA", { year: "numeric", month: "2-digit", timeZone: TZ });
+                  if (!seenMonths.has(key)) seenMonths.set(key, []);
+                  seenMonths.get(key).push(log);
+                }
+                seenMonths.forEach((logs, key) => {
+                  const [yr, mo] = key.split("-");
+                  const label = new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+                  grouped.push({ monthKey: key, label, logs });
+                });
+                grouped.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+                return grouped.map(({ monthKey, label, logs: mLogs }) => {
+                  const isMonthOpen = openMonthKeys.has(monthKey);
+                  const isDownloading = downloadingMonthKey === monthKey;
+                  const latest = mLogs[0];
+                  const mProfit = latest.in_diff - latest.out_diff;
+                  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", style: { background: "var(--gradient-card)" }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 px-4 py-3", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "button",
+                        {
+                          className: "flex-1 flex items-center gap-3 text-left min-w-0",
+                          onClick: () => setOpenMonthKeys((prev) => {
+                            const next = new Set(prev);
+                            next.has(monthKey) ? next.delete(monthKey) : next.add(monthKey);
+                            return next;
+                          }),
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: `h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isMonthOpen ? "rotate-180" : ""}`, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "6 9 12 15 18 9" }) }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm truncate", style: { color: "oklch(0.82 0.18 65)" }, children: label }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[10px] text-muted-foreground", children: [
+                                mLogs.length,
+                                " ",
+                                mLogs.length === 1 ? "entry" : "entries"
+                              ] })
+                            ] }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex flex-col items-end pr-1 gap-0.5 shrink-0", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2 items-center", children: [
+                                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black", style: { color: "oklch(0.72 0.18 145)" }, children: [
+                                  "IN ",
+                                  latest.in_present.toFixed(2)
+                                ] }),
+                                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black", style: { color: "oklch(0.65 0.22 25)" }, children: [
+                                  "OUT ",
+                                  latest.out_present.toFixed(2)
+                                ] })
+                              ] }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[10px] font-black", style: { color: mProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }, children: [
+                                "PROFIT ",
+                                mProfit >= 0 ? "+" : "",
+                                mProfit.toFixed(2)
+                              ] })
+                            ] })
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          onClick: () => handleDownloadMonthMonitorPdf(monthKey, mLogs),
+                          disabled: isDownloading,
+                          className: "shrink-0 h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 disabled:opacity-50",
+                          style: { background: "oklch(0.22 0.04 60)", color: "oklch(0.82 0.18 65)" },
+                          title: `Download ${label} PDF`,
+                          children: isDownloading ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Download, { className: "h-3.5 w-3.5" })
+                        }
+                      )
                     ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "button",
-                      {
-                        onClick: () => {
-                          setOpenLogId(log.id);
-                          if (editingLogId === log.id) {
-                            setEditingLogId(null);
-                          } else {
-                            setEditingLogId(log.id);
-                            setEditLogIn(String(log.in_present));
-                            setEditLogOut(String(log.out_present));
-                          }
-                        },
-                        className: "h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 ml-1",
-                        style: { background: isEditing ? "var(--gradient-hero)" : "oklch(0.22 0.04 60)", color: isEditing ? "var(--primary-foreground)" : "oklch(0.72 0.18 145)" },
-                        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { className: "h-3.5 w-3.5", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })
-                        ] })
-                      }
-                    )
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "button",
-                    {
-                      onClick: () => setOpenLogId(isOpen ? null : log.id),
-                      className: "w-full flex justify-center pb-1 -mt-1",
-                      children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: `h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "6 9 12 15 18 9" }) })
-                    }
-                  ),
-                  isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border px-4 pb-4 pt-3 space-y-3", children: isEditing ? (
-                    /* Edit mode — only in_present and out_present are editable */
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] font-black uppercase tracking-widest text-muted-foreground", children: "Edit Present Values" }),
-                        log.id === monitorLogs[0]?.id && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                          "button",
-                          {
-                            onClick: () => setConfirmDeleteLogId(log.id),
-                            disabled: deletingLogId === log.id,
-                            className: "h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40",
-                            style: { background: "rgba(239,68,68,0.08)", color: "#f87171" },
-                            children: deletingLogId === log.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3 w-3" })
-                          }
-                        )
-                      ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-black uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN Present" }),
+                    isMonthOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border px-2 pb-2 pt-2 space-y-2", children: mLogs.map((log) => {
+                      const isOpen = openLogId === log.id;
+                      const isEditing = editingLogId === log.id;
+                      const dt = new Date(log.logged_at);
+                      const dateStr = dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
+                      const timeStr = dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
+                      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl border border-border overflow-hidden", style: { background: "var(--background)" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-3", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "flex-1 flex items-start gap-3 text-left", onClick: () => setOpenLogId(isOpen ? null : log.id), children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-black text-sm", children: dateStr }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: timeStr })
+                            ] }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex flex-col items-end pr-2 gap-0.5", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2.5 items-center", children: [
+                                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-black", style: { color: "oklch(0.72 0.18 145)" }, children: [
+                                  "IN ",
+                                  log.in_diff >= 0 ? "+" : "",
+                                  log.in_diff.toFixed(2)
+                                ] }),
+                                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-black", style: { color: "oklch(0.65 0.22 25)" }, children: [
+                                  "OUT ",
+                                  log.out_diff >= 0 ? "+" : "",
+                                  log.out_diff.toFixed(2)
+                                ] })
+                              ] }),
+                              (() => {
+                                const logProfit = log.in_diff - log.out_diff;
+                                return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-[11px] font-black", style: { color: logProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }, children: [
+                                  "PROFIT ",
+                                  logProfit >= 0 ? "+" : "",
+                                  logProfit.toFixed(2)
+                                ] });
+                              })()
+                            ] })
+                          ] }),
                           /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            "input",
+                            "button",
                             {
-                              type: "number",
-                              value: editLogIn,
-                              onChange: (e) => setEditLogIn(e.target.value),
-                              className: "w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center",
-                              style: { color: "oklch(0.72 0.18 145)" }
+                              onClick: () => {
+                                setOpenLogId(log.id);
+                                if (editingLogId === log.id) {
+                                  setEditingLogId(null);
+                                } else {
+                                  setEditingLogId(log.id);
+                                  setEditLogIn(String(log.in_present));
+                                  setEditLogOut(String(log.out_present));
+                                }
+                              },
+                              className: "h-8 w-8 rounded-xl flex items-center justify-center transition active:scale-95 ml-1",
+                              style: { background: isEditing ? "var(--gradient-hero)" : "oklch(0.22 0.04 60)", color: isEditing ? "var(--primary-foreground)" : "oklch(0.72 0.18 145)" },
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { className: "h-3.5 w-3.5", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }),
+                                /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })
+                              ] })
                             }
                           )
                         ] }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-black uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT Present" }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(
-                            "input",
-                            {
-                              type: "number",
-                              value: editLogOut,
-                              onChange: (e) => setEditLogOut(e.target.value),
-                              className: "w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center",
-                              style: { color: "oklch(0.65 0.22 25)" }
-                            }
-                          )
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
                         /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
-                            onClick: () => setEditingLogId(null),
-                            className: "flex-1 h-10 rounded-xl font-black text-xs border border-border transition",
-                            children: "Cancel"
+                            onClick: () => setOpenLogId(isOpen ? null : log.id),
+                            className: "w-full flex justify-center pb-1 -mt-1",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { className: `h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsxRuntimeExports.jsx("polyline", { points: "6 9 12 15 18 9" }) })
                           }
                         ),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(
-                          "button",
-                          {
-                            onClick: () => handleSaveLogEdit(log),
-                            disabled: savingLogEdit,
-                            className: "flex-1 h-10 rounded-xl font-black text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5",
-                            style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
-                            children: savingLogEdit ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : "Save & Recalculate"
-                          }
-                        )
-                      ] })
-                    ] })
-                  ) : (
-                    /* View mode — same card layout as the monitor */
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
-                        [
-                          { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
-                          { label: "Last", value: log.in_last.toFixed(2), color: "oklch(0.72 0.18 145)" },
-                          { label: "Total", value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }
-                        ].map(({ label, value, color }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: label }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center", style: { color }, children: value })
-                        ] }, label))
-                      ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
-                        [
-                          { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
-                          { label: "Last", value: log.out_last.toFixed(2), color: "oklch(0.65 0.22 25)" },
-                          { label: "Total", value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: log.out_diff >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }
-                        ].map(({ label, value, color }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: label }),
-                          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center", style: { color }, children: value })
-                        ] }, label))
-                      ] })
-                    ] }) })
-                  ) })
-                ] }, log.id);
-              })
+                        isOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border px-4 pb-4 pt-3 space-y-3", children: isEditing ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] font-black uppercase tracking-widest text-muted-foreground", children: "Edit Present Values" }),
+                            log.id === monitorLogs[0]?.id && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                onClick: () => setConfirmDeleteLogId(log.id),
+                                disabled: deletingLogId === log.id,
+                                className: "h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-95 disabled:opacity-50 border border-red-500/40",
+                                style: { background: "rgba(239,68,68,0.08)", color: "#f87171" },
+                                children: deletingLogId === log.id ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3 w-3 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3 w-3" })
+                              }
+                            )
+                          ] }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-black uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN Present" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                "input",
+                                {
+                                  type: "number",
+                                  value: editLogIn,
+                                  onChange: (e) => setEditLogIn(e.target.value),
+                                  className: "w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center",
+                                  style: { color: "oklch(0.72 0.18 145)" }
+                                }
+                              )
+                            ] }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-black uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT Present" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                "input",
+                                {
+                                  type: "number",
+                                  value: editLogOut,
+                                  onChange: (e) => setEditLogOut(e.target.value),
+                                  className: "w-full h-10 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary text-center",
+                                  style: { color: "oklch(0.65 0.22 25)" }
+                                }
+                              )
+                            ] })
+                          ] }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                onClick: () => setEditingLogId(null),
+                                className: "flex-1 h-10 rounded-xl font-black text-xs border border-border transition",
+                                children: "Cancel"
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                onClick: () => handleSaveLogEdit(log),
+                                disabled: savingLogEdit,
+                                className: "flex-1 h-10 rounded-xl font-black text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5",
+                                style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
+                                children: savingLogEdit ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : "Save & Recalculate"
+                              }
+                            )
+                          ] })
+                        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-4", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.72 0.18 145)" }, children: "IN" }),
+                            [
+                              { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
+                              { label: "Last", value: log.in_last.toFixed(2), color: "oklch(0.72 0.18 145)" },
+                              { label: "Total", value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }
+                            ].map(({ label: label2, value, color }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: label2 }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center", style: { color }, children: value })
+                            ] }, label2))
+                          ] }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-black text-center uppercase tracking-widest", style: { color: "oklch(0.65 0.22 25)" }, children: "OUT" }),
+                            [
+                              { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                              { label: "Last", value: log.out_last.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                              { label: "Total", value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: "oklch(0.65 0.22 25)" }
+                            ].map(({ label: label2, value, color }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-[10px] font-bold text-muted-foreground uppercase tracking-wider", children: label2 }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center", style: { color }, children: value })
+                            ] }, label2))
+                          ] })
+                        ] }) }) })
+                      ] }, log.id);
+                    }) })
+                  ] }, monthKey);
+                });
+              })()
             ] })
           ] })
         ] }),
@@ -53787,15 +54824,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     }
   );
 }
-function CreateTab({ ownerId, machineCount, onCreated }) {
+function CreateTab({ ownerId, machineCount, maxScreens, onCreated }) {
   const { t } = useTranslation();
   const [name, setName] = reactExports.useState("");
   const [busy, setBusy] = reactExports.useState(false);
   const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (machineCount >= 20) {
-      toast.error("Maximum 20 screens reached for this account");
+    if (machineCount >= maxScreens) {
+      toast.error(`Maximum ${maxScreens} screens reached for this account`);
       return;
     }
     setBusy(true);
@@ -53847,7 +54884,7 @@ function CreateTab({ ownerId, machineCount, onCreated }) {
     }
   );
 }
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, monitorRefreshKey }) {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, barIsOpen, monitorRefreshKey }) {
   const { t } = useTranslation();
   const [monitorTotals, setMonitorTotals] = reactExports.useState({ totalIn: 0, totalOut: 0, totalProfit: 0 });
   const [monitorPerMachine, setMonitorPerMachine] = reactExports.useState({});
@@ -54054,10 +55091,10 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
         style: { background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" },
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative text-xs font-black uppercase tracking-widest text-center", style: { color: "rgba(0,0,0,0.55)" }, children: t("screen_totals", "Screen Totals") }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative text-xs font-black uppercase tracking-widest text-center", style: { color: "rgba(0,0,0,0.55)" }, children: t("screen_totals", "Machine Totals") }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative grid grid-cols-3 gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "All Session Cash In"), value: "$" + fmtWhole(sessionIncome), color: "#86efac" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "All Session Payout"), value: "$" + fmtWhole(sessionPayouts), color: "#fca5a5" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_income", "Session Cash In"), value: "$" + fmtWhole(sessionIncome), color: "#86efac" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(StatCard, { label: t("session_payout", "Session Payout"), value: "$" + fmtWhole(sessionPayouts), color: "#fca5a5" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               StatCard,
               {
@@ -54085,7 +55122,7 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               StatCard,
               {
-                label: t("all_time_gross_profit", "Gross Profit"),
+                label: t("all_time_gross_profit", "Profit"),
                 value: (grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit),
                 color: grossProfit >= 0 ? "#86efac" : "#fca5a5"
               }
@@ -54106,7 +55143,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
             "button",
             {
               onClick: () => onAddExpense(),
-              className: "w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition",
+              disabled: !barIsOpen,
+              className: "w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed",
               style: { background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" },
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(Receipt, { className: "h-4 w-4" }),
@@ -54309,7 +55347,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-D08al7de.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -54739,7 +55777,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-D08al7de.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-B9xws57m.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -55463,8 +56501,9 @@ function MachinesPage() {
     ] });
   }
   const screenNumber = selectedScreenNum;
+  const maxScreens = ownerPlanType === "premium_20" || ownerPlanType === "machines_only_20" ? 20 : 10;
   const tabs = [
-    { key: "screens", label: `${t("screens", "Screens")}${machines.length ? ` (${machines.length})` : ""}` },
+    { key: "screens", label: `${t("screens", "Screens")} ${machines.length}/${maxScreens}` },
     ...isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : [],
     ...isOwner ? [{ key: "summary", label: t("summary", "Summary") }] : [],
     ...isOwner ? [{ key: "create", label: t("create_machine", "Create") }] : []
@@ -55565,6 +56604,7 @@ function MachinesPage() {
             isOwner,
             isManager,
             barSessionStart,
+            barIsOpen: barIsOpenMachines,
             monitorRefreshKey,
             onSetFloat: () => {
               setFloatAmount("");
@@ -55583,7 +56623,7 @@ function MachinesPage() {
         ),
         tab === "allHistory" && /* @__PURE__ */ jsxRuntimeExports.jsx(AllHistoryTab, { entries, machines }),
         tab === "summary" && /* @__PURE__ */ jsxRuntimeExports.jsx(SummaryTab, { entries, machines, ownerId }),
-        tab === "create" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreateTab, { ownerId, machineCount: machines.length, onCreated: (m) => {
+        tab === "create" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreateTab, { ownerId, machineCount: machines.length, maxScreens, onCreated: (m) => {
           setMachines((p) => [...p, m].sort((a, b) => a.name.localeCompare(b.name)));
           setTab("screens");
         } })
@@ -56377,7 +57417,7 @@ function FactoryResetPage() {
     supabase.from("profiles").select("plan_type, machines_addon_active").eq("id", profile.id).single().then(({ data }) => {
       const machOnly = data?.plan_type === "machines_only";
       setIsMachinesOnlyPlan(machOnly);
-      setHasMachines(data?.plan_type === "premium" || machOnly || !!data?.machines_addon_active);
+      setHasMachines(data?.plan_type === "premium" || data?.plan_type === "chain" || machOnly || !!data?.machines_addon_active);
     });
   }, [profile?.id]);
   if (profile?.role !== "owner") {
@@ -56692,7 +57732,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-DvlQKW0g.js");
+const $$splitComponentImporter = () => import("./credit-BAXYHb3a.js");
 const Route$1 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });
@@ -56905,23 +57945,28 @@ function CreateBarPage() {
     ] })
   ] });
 }
-const _rootCapacitorRoute = Route$8.update({
+const _rootCapacitorRoute = Route$9.update({
   id: "/__root/capacitor",
   path: "/capacitor",
-  getParentRoute: () => Route$9
+  getParentRoute: () => Route$a
 });
-const LoginRoute = Route$7.update({
+const LoginRoute = Route$8.update({
   id: "/login",
   path: "/login",
-  getParentRoute: () => Route$9
+  getParentRoute: () => Route$a
 });
-const AppRoute = Route$6.update({
+const AppRoute = Route$7.update({
   id: "/_app",
-  getParentRoute: () => Route$9
+  getParentRoute: () => Route$a
 });
-const AppSwitchBarRoute = Route$5.update({
+const AppSwitchBarRoute = Route$6.update({
   id: "/switch-bar",
   path: "/switch-bar",
+  getParentRoute: () => AppRoute
+});
+const AppStockCheckRoute = Route$5.update({
+  id: "/stock-check",
+  path: "/stock-check",
   getParentRoute: () => AppRoute
 });
 const AppManagerRoute = Route$4.update({
@@ -56955,6 +58000,7 @@ const AppRouteChildren = {
   AppFactoryResetRoute,
   AppMachinesRoute,
   AppManagerRoute,
+  AppStockCheckRoute,
   AppSwitchBarRoute
 };
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
@@ -56963,7 +58009,7 @@ const rootRouteChildren = {
   LoginRoute,
   _rootCapacitorRoute
 };
-const routeTree = Route$9._addFileChildren(rootRouteChildren)._addFileTypes();
+const routeTree = Route$a._addFileChildren(rootRouteChildren)._addFileTypes();
 const getRouter = () => {
   const queryClient = new QueryClient();
   const router2 = createRouter({
@@ -56979,19 +58025,21 @@ const router = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   getRouter
 }, Symbol.toStringTag, { value: "Module" }));
 export {
-  RM as A,
+  LM as A,
   Button$1 as B,
   Capacitor as C,
-  CONTENT_BOTTOM as D,
-  addFootersToAllPages as E,
-  downloadPdf as F,
+  RM as D,
+  CONTENT_BOTTOM as E,
+  FileDown as F,
   Gamepad2 as G,
-  registerPlugin as H,
+  addFootersToAllPages as H,
   Input as I,
-  WebPlugin as J,
-  buildRequestInit as K,
+  downloadPdf as J,
+  registerPlugin as K,
   Label as L,
-  router as M,
+  WebPlugin as M,
+  buildRequestInit as N,
+  router as O,
   Primitive as P,
   Receipt as R,
   TriangleAlert as T,
@@ -57012,15 +58060,15 @@ export {
   createLucideIcon as m,
   useChain as n,
   LoaderCircle as o,
-  Link as p,
-  useTranslation as q,
-  Pencil as r,
+  ClipboardList as p,
+  Link as q,
+  useTranslation as r,
   supabase as s,
   toast as t,
   useComposedRefs as u,
-  Trash2 as v,
-  ChevronRight as w,
-  CircleCheck as x,
-  drawHeader as y,
-  LM as z
+  Pencil as v,
+  Trash2 as w,
+  ChevronRight as x,
+  CircleCheck as y,
+  drawHeader as z
 };

@@ -1384,6 +1384,12 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const [monitorCardIn,  setMonitorCardIn]  = useState<number | null>(null);
   const [monitorCardOut, setMonitorCardOut] = useState<number | null>(null);
 
+  // First-entry "seed" values — only used when there are no logs yet
+  // The user can optionally enter the machine's previous Last IN / OUT so the
+  // first log diff is accurate for an already-running machine.
+  const [firstEntryLastIn,  setFirstEntryLastIn]  = useState<string>("");
+  const [firstEntryLastOut, setFirstEntryLastOut] = useState<string>("");
+
   // Reset the "already saved" lock whenever the owner changes an input
   useEffect(() => { setMonitorUpdateDone(false); }, [monitorIn, monitorOut]);
 
@@ -1740,8 +1746,14 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       .order("seq", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const inLast  = prevLog ? (prevLog.in_present  as number) : (parseFloat(monitorInTotal)  || 0);
-    const outLast = prevLog ? (prevLog.out_present as number) : (parseFloat(monitorOutTotal) || 0);
+    // On first entry (no prev log) use the user-seeded "last" values if they provided them,
+    // otherwise fall back to the monitorInTotal state (which will be 0 for a brand-new machine).
+    const inLast  = prevLog
+      ? (prevLog.in_present  as number)
+      : (parseFloat(firstEntryLastIn)  || parseFloat(monitorInTotal)  || 0);
+    const outLast = prevLog
+      ? (prevLog.out_present as number)
+      : (parseFloat(firstEntryLastOut) || parseFloat(monitorOutTotal) || 0);
 
     const inDiff  = inVal  - inLast;
     const outDiff = outVal - outLast;
@@ -1780,6 +1792,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setMonitorFocus(null); // close numpad
     setMonitorCardIn(inVal);   // show PRESENT IN value in Total Income card
     setMonitorCardOut(outVal); // show PRESENT OUT value in Total Expense card
+    // Clear first-entry seed values — no longer needed after first save
+    setFirstEntryLastIn("");
+    setFirstEntryLastOut("");
     onMonitorLogChange?.(); // refresh all-screens totals
   };
 
@@ -3570,95 +3585,167 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
               ) : (
               <>
-              <div className="grid grid-cols-2 gap-4">
-
-                {/* ── IN column ── */}
-                <div className="space-y-3">
-                  <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
-
-                  {/* Box 1 — new entry (tap to focus numpad) */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
-                    <button
-                      onClick={() => !monitorInputsLocked && setMonitorFocus(monitorFocus === "in" ? null : "in")}
-                      disabled={monitorInputsLocked}
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
-                        borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
-                        color: "oklch(0.72 0.18 145)",
-                      }}>
-                      {monitorIn || "0"}
-                    </button>
-                  </div>
-
-                  {/* Box 2 — running total */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Last</label>
-                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
-                      style={{ color: "oklch(0.72 0.18 145)" }}>
-                      {monitorInTotal || "—"}
-                    </div>
-                  </div>
-
-                  {/* Box 3 — difference */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
-                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
-                      style={{ color: monitorInDiff && parseFloat(monitorInDiff) >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
-                      {monitorInDiff || "—"}
-                    </div>
-                  </div>
+              {/* ── First-entry helper notice ── */}
+              {monitorLogs.length === 0 && (
+                <div className="mb-3 rounded-xl px-3 py-2.5 text-[11px] font-bold leading-snug"
+                  style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.82 0.18 65)", border: "1px solid oklch(0.35 0.10 60)" }}>
+                  First entry — tap <span style={{ color: "oklch(0.72 0.18 145)" }}>Last</span> to seed prior values for an existing machine, or leave blank for a brand-new machine.
                 </div>
-
-                {/* ── OUT column ── */}
-                <div className="space-y-3">
-                  <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
-
-                  {/* Box 1 — new entry (tap to focus numpad) */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
-                    <button
-                      onClick={() => !monitorInputsLocked && setMonitorFocus(monitorFocus === "out" ? null : "out")}
-                      disabled={monitorInputsLocked}
-                      className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        background: monitorInputsLocked ? "var(--muted)" : monitorFocus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
-                        borderColor: monitorInputsLocked ? "var(--border)" : monitorFocus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
-                        color: "oklch(0.65 0.22 25)",
-                      }}>
-                      {monitorOut || "0"}
-                    </button>
-                  </div>
-
-                  {/* Box 2 — running total */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Last</label>
-                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
-                      style={{ color: "oklch(0.65 0.22 25)" }}>
-                      {monitorOutTotal || "—"}
-                    </div>
-                  </div>
-
-                  {/* Box 3 — difference */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
-                    <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
-                      style={{ color: monitorOutDiff && parseFloat(monitorOutDiff) >= 0 ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25)" }}>
-                      {monitorOutDiff || "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Profit card (centered below IN & OUT totals) ── */}
+              )}
               {(() => {
-                const calcInDiff  = monitorIn  !== "" ? (parseFloat(monitorIn)  || 0) - (parseFloat(monitorInTotal)  || 0) : (monitorInDiff  !== "" ? parseFloat(monitorInDiff)  : null);
-                const calcOutDiff = monitorOut !== "" ? (parseFloat(monitorOut) || 0) - (parseFloat(monitorOutTotal) || 0) : (monitorOutDiff !== "" ? parseFloat(monitorOutDiff) : null);
+                const isFirstEntry = monitorLogs.length === 0;
+                // For the numpad, focus can now be "in" | "out" | "lastIn" | "lastOut"
+                type MonFocus = "in" | "out" | "lastIn" | "lastOut";
+                const focus = monitorFocus as MonFocus | null;
+
+                // Helpers that route numpad input to the right state setter
+                const focusSetter = (f: MonFocus): ((v: string) => void) => {
+                  if (f === "in")     return setMonitorIn;
+                  if (f === "out")    return setMonitorOut;
+                  if (f === "lastIn") return setFirstEntryLastIn;
+                  return setFirstEntryLastOut;
+                };
+                const focusVal = (f: MonFocus): string => {
+                  if (f === "in")     return monitorIn;
+                  if (f === "out")    return monitorOut;
+                  if (f === "lastIn") return firstEntryLastIn;
+                  return firstEntryLastOut;
+                };
+                const focusColor = (f: MonFocus) =>
+                  f === "in" || f === "lastIn" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)";
+                const focusLabel = (f: MonFocus) => {
+                  if (f === "in")     return "Present IN";
+                  if (f === "out")    return "Present OUT";
+                  if (f === "lastIn") return "Last IN";
+                  return "Last OUT";
+                };
+
+                // Profit preview — when first entry use the editable last fields as baseline
+                const effectiveLastIn  = isFirstEntry ? (parseFloat(firstEntryLastIn)  || 0) : (parseFloat(monitorInTotal)  || 0);
+                const effectiveLastOut = isFirstEntry ? (parseFloat(firstEntryLastOut) || 0) : (parseFloat(monitorOutTotal) || 0);
+                const calcInDiff  = monitorIn  !== "" ? (parseFloat(monitorIn)  || 0) - effectiveLastIn  : (monitorInDiff  !== "" ? parseFloat(monitorInDiff)  : null);
+                const calcOutDiff = monitorOut !== "" ? (parseFloat(monitorOut) || 0) - effectiveLastOut : (monitorOutDiff !== "" ? parseFloat(monitorOutDiff) : null);
                 const profitVal   = (calcInDiff !== null || calcOutDiff !== null)
-                  ? (calcInDiff ?? 0) - (calcOutDiff ?? 0)
-                  : null;
+                  ? (calcInDiff ?? 0) - (calcOutDiff ?? 0) : null;
+
                 return (
+                  <>
+                  <div className="grid grid-cols-2 gap-4">
+
+                    {/* ── IN column ── */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
+
+                      {/* Present IN — always editable when not locked */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
+                        <button
+                          onClick={() => !monitorInputsLocked && setMonitorFocus(focus === "in" ? null : "in")}
+                          disabled={monitorInputsLocked}
+                          className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            background: monitorInputsLocked ? "var(--muted)" : focus === "in" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                            borderColor: monitorInputsLocked ? "var(--border)" : focus === "in" ? "oklch(0.72 0.18 145)" : "var(--border)",
+                            color: "oklch(0.72 0.18 145)",
+                          }}>
+                          {monitorIn || "0"}
+                        </button>
+                      </div>
+
+                      {/* Last IN — editable on first entry, read-only otherwise */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider"
+                          style={{ color: isFirstEntry ? "oklch(0.72 0.18 145 / 0.8)" : "var(--muted-foreground)" }}>
+                          Last{isFirstEntry ? " ✎" : ""}
+                        </label>
+                        {isFirstEntry ? (
+                          <button
+                            onClick={() => !monitorInputsLocked && setMonitorFocus(focus === "lastIn" ? null : "lastIn")}
+                            disabled={monitorInputsLocked}
+                            className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                              background: monitorInputsLocked ? "var(--muted)" : focus === "lastIn" ? "oklch(0.22 0.06 145 / 0.3)" : "var(--background)",
+                              borderColor: monitorInputsLocked ? "var(--border)" : focus === "lastIn" ? "oklch(0.72 0.18 145)" : "oklch(0.72 0.18 145 / 0.35)",
+                              color: "oklch(0.72 0.18 145)",
+                            }}>
+                            {firstEntryLastIn || <span style={{ color: "var(--muted-foreground)" }}>optional</span>}
+                          </button>
+                        ) : (
+                          <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                            style={{ color: "oklch(0.72 0.18 145)" }}>
+                            {monitorInTotal || "—"}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total diff */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
+                        <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                          style={{ color: calcInDiff != null && calcInDiff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
+                          {calcInDiff == null ? "—" : `${calcInDiff >= 0 ? "+" : ""}${calcInDiff.toFixed(2)}`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── OUT column ── */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
+
+                      {/* Present OUT — always editable when not locked */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Present</label>
+                        <button
+                          onClick={() => !monitorInputsLocked && setMonitorFocus(focus === "out" ? null : "out")}
+                          disabled={monitorInputsLocked}
+                          className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            background: monitorInputsLocked ? "var(--muted)" : focus === "out" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                            borderColor: monitorInputsLocked ? "var(--border)" : focus === "out" ? "oklch(0.65 0.22 25)" : "var(--border)",
+                            color: "oklch(0.65 0.22 25)",
+                          }}>
+                          {monitorOut || "0"}
+                        </button>
+                      </div>
+
+                      {/* Last OUT — editable on first entry, read-only otherwise */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider"
+                          style={{ color: isFirstEntry ? "oklch(0.65 0.22 25 / 0.8)" : "var(--muted-foreground)" }}>
+                          Last{isFirstEntry ? " ✎" : ""}
+                        </label>
+                        {isFirstEntry ? (
+                          <button
+                            onClick={() => !monitorInputsLocked && setMonitorFocus(focus === "lastOut" ? null : "lastOut")}
+                            disabled={monitorInputsLocked}
+                            className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold text-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                              background: monitorInputsLocked ? "var(--muted)" : focus === "lastOut" ? "oklch(0.22 0.05 25 / 0.3)" : "var(--background)",
+                              borderColor: monitorInputsLocked ? "var(--border)" : focus === "lastOut" ? "oklch(0.65 0.22 25)" : "oklch(0.65 0.22 25 / 0.35)",
+                              color: "oklch(0.65 0.22 25)",
+                            }}>
+                            {firstEntryLastOut || <span style={{ color: "var(--muted-foreground)" }}>optional</span>}
+                          </button>
+                        ) : (
+                          <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                            style={{ color: "oklch(0.65 0.22 25)" }}>
+                            {monitorOutTotal || "—"}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total diff */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</label>
+                        <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 text-sm font-bold text-center select-none"
+                          style={{ color: "oklch(0.65 0.22 25)" }}>
+                          {calcOutDiff == null ? "—" : `${calcOutDiff >= 0 ? "+" : ""}${calcOutDiff.toFixed(2)}`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Profit card ── */}
                   <div className="mt-3 flex justify-center">
                     <div className="w-full max-w-[200px] space-y-1 text-center">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Profit</label>
@@ -3668,76 +3755,80 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Inline numpad — shown when a field is focused and not locked ── */}
+                  {focus && !monitorInputsLocked && (
+                    <div className="mt-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-center mb-2"
+                        style={{ color: focusColor(focus) }}>
+                        Entering {focusLabel(focus)}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {["7","8","9","4","5","6","1","2","3"].map(k => (
+                          <button key={k} type="button"
+                            onClick={() => {
+                              const setter = focusSetter(focus);
+                              const val    = focusVal(focus);
+                              const parts  = val.split(".");
+                              if (parts[1] !== undefined && parts[1].length >= 2) return;
+                              setter(val + k);
+                            }}
+                            className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                            style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                            {k}
+                          </button>
+                        ))}
+                        <button type="button"
+                          onClick={() => {
+                            const setter = focusSetter(focus);
+                            const val    = focusVal(focus);
+                            if (!val.includes(".")) setter(val + ".");
+                          }}
+                          className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                          style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                          .
+                        </button>
+                        <button type="button"
+                          onClick={() => {
+                            const setter = focusSetter(focus);
+                            const val    = focusVal(focus);
+                            const parts  = val.split(".");
+                            if (parts[1] !== undefined && parts[1].length >= 2) return;
+                            setter(val + "0");
+                          }}
+                          className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                          style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
+                          0
+                        </button>
+                        <button type="button"
+                          onClick={() => {
+                            const setter = focusSetter(focus);
+                            const val    = focusVal(focus);
+                            setter(val.slice(0, -1));
+                          }}
+                          className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
+                          style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
+                          ⌫
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Update button */}
+                  <button
+                    onClick={() => { setShowConfirmUpdate(true); setMonitorFocus(null); }}
+                    disabled={
+                      monitorSaving || monitorUpdateDone || monitorInputsLocked ||
+                      monitorIn === "" || monitorOut === ""
+                    }
+                    className="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  >
+                    {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : monitorUpdateDone ? "✓ Saved" : "Update"}
+                  </button>
+                  </>
                 );
               })()}
-
-              {/* ── Inline numpad — shown when a field is focused and not locked ── */}
-              {monitorFocus && !monitorInputsLocked && (
-                <div className="mt-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-center mb-2"
-                    style={{ color: monitorFocus === "in" ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>
-                    Entering {monitorFocus.toUpperCase()}
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["7","8","9","4","5","6","1","2","3"].map(k => (
-                      <button key={k} type="button"
-                        onClick={() => {
-                          const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                          const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
-                          const parts  = val.split(".");
-                          if (parts[1] !== undefined && parts[1].length >= 2) return;
-                          setter(val + k);
-                        }}
-                        className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                        style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                        {k}
-                      </button>
-                    ))}
-                    <button type="button"
-                      onClick={() => {
-                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
-                        if (!val.includes(".")) setter(val + ".");
-                      }}
-                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                      style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                      .
-                    </button>
-                    <button type="button"
-                      onClick={() => {
-                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
-                        const parts  = val.split(".");
-                        if (parts[1] !== undefined && parts[1].length >= 2) return;
-                        setter(val + "0");
-                      }}
-                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                      style={{ background: "oklch(0.20 0.05 60)", color: "#fff" }}>
-                      0
-                    </button>
-                    <button type="button"
-                      onClick={() => {
-                        const setter = monitorFocus === "in" ? setMonitorIn : setMonitorOut;
-                        const val    = monitorFocus === "in" ? monitorIn    : monitorOut;
-                        setter(val.slice(0, -1));
-                      }}
-                      className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
-                      style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}>
-                      ⌫
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Update button */}
-              <button
-                onClick={() => { setShowConfirmUpdate(true); setMonitorFocus(null); }}
-                disabled={monitorSaving || monitorUpdateDone || monitorInputsLocked || monitorIn === "" || monitorOut === ""}
-                className="mt-4 w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-              >
-                {monitorSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : monitorUpdateDone ? "✓ Saved" : "Update"}
-              </button>
 
               {/* Confirm Update modal */}
               {showConfirmUpdate && (

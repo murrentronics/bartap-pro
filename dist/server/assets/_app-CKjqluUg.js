@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-Cy59YT7_.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, R as Receipt, G as Gamepad2, p as Link, B as Button, t as toast } from "./router-BVkVTQ1g.js";
-import { T as TrendingDown } from "./trending-down-Dh8UZzfh.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-ChNZdpo3.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, R as Receipt, q as Link, B as Button, t as toast } from "./router-B8ZM6qMb.js";
+import { T as TrendingDown } from "./trending-down-Acp3uv5m.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -118,9 +118,12 @@ function AppLayout() {
   }, [session, loading, nav]);
   reactExports.useEffect(() => {
     if (!loading && session && !profile) {
-      signOut().then(() => nav({
-        to: "/login"
-      }));
+      const t = setTimeout(() => {
+        signOut().then(() => nav({
+          to: "/login"
+        }));
+      }, 3e3);
+      return () => clearTimeout(t);
     }
   }, [loading, session, profile]);
   reactExports.useEffect(() => {
@@ -132,9 +135,14 @@ function AppLayout() {
   }, [loading, profile, loc.pathname, nav]);
   reactExports.useEffect(() => {
     const isMgr = profile?.role === "manager" || profile?.job_title === "manager";
+    const isMachinesOnly = profile?.is_machines_account || profile?.plan_type === "machines_only";
     if (!loading && isMgr && loc.pathname === "/register") {
       nav({
-        to: "/manager"
+        to: "/products"
+      });
+    } else if (!loading && isMachinesOnly && loc.pathname === "/register") {
+      nav({
+        to: "/machines"
       });
     }
   }, [loading, profile, loc.pathname, nav]);
@@ -152,19 +160,20 @@ function AppLayout() {
   }, [loc.pathname]);
   reactExports.useEffect(() => {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
-    const ownerId = effectiveOwnerId(profile.id);
-    if (!ownerId) return;
-    supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", ownerId).single().then(({
+    const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
+    const barOwnerId = effectiveOwnerId(isManagerProfile ? profile.parent_id ?? profile.id : profile.id);
+    if (!barOwnerId) return;
+    supabase.from("profiles").select("bar_session_start, bar_closed_at").eq("id", barOwnerId).single().then(({
       data
     }) => {
       setBarSessionStart(data?.bar_session_start ?? null);
       setBarClosedAt(data?.bar_closed_at ?? null);
     });
-    const ch = supabase.channel(`bar-session-layout-${ownerId}`).on("postgres_changes", {
+    const ch = supabase.channel(`bar-session-layout-${barOwnerId}`).on("postgres_changes", {
       event: "UPDATE",
       schema: "public",
       table: "profiles",
-      filter: `id=eq.${ownerId}`
+      filter: `id=eq.${barOwnerId}`
     }, (payload) => {
       const rec = payload.new;
       if ("bar_session_start" in rec) setBarSessionStart(rec.bar_session_start ?? null);
@@ -176,14 +185,19 @@ function AppLayout() {
   }, [profile]);
   const handleOpenBar = async () => {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? profile.parent_id ?? profile.id : profile.id);
     const {
       data: ownerProfile
-    } = await supabase.from("profiles").select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
-    const machinesEnabled = !!ownerProfile?.machines_addon_active || ownerProfile?.plan_type === "premium";
-    const machinesOnly = !!ownerProfile?.is_machines_account;
-    setHasMachines(machinesEnabled);
-    setIsMachinesAccount(machinesOnly);
+    } = await supabase.from("profiles").select("machines_addon_active, plan_type, is_machines_account, bar_addon_active").eq("id", ownerId).single();
+    const planType = ownerProfile?.plan_type ?? "";
+    const isMachinesOnlyPlan = planType === "machines_only" || !!ownerProfile?.is_machines_account;
+    const hasBarAddon = !!ownerProfile?.bar_addon_active;
+    const hasMachinesAddon = !!ownerProfile?.machines_addon_active || planType === "premium" || planType === "chain" || isMachinesOnlyPlan;
+    const showBarFloat = !isMachinesOnlyPlan || hasBarAddon;
+    const showMachineFloat = hasMachinesAddon;
+    setHasMachines(showMachineFloat);
+    setIsMachinesAccount(!showBarFloat);
     setOpenBarFloat("");
     setOpenMachineFloat("");
     setActiveOpenBarField(null);
@@ -191,7 +205,8 @@ function AppLayout() {
   };
   const confirmOpenBar = async () => {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? profile.parent_id ?? profile.id : profile.id);
     const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) {
       toast.error("Enter a valid bar float amount");
@@ -257,7 +272,8 @@ function AppLayout() {
   };
   const handleCloseBar = async () => {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? profile.parent_id ?? profile.id : profile.id);
     setBarToggleBusy(true);
     const now = (/* @__PURE__ */ new Date()).toISOString();
     await supabase.from("bar_sub_sessions").update({
@@ -279,6 +295,18 @@ function AppLayout() {
     setBarClosedAt(now);
     toast.success("🔴 Bar closed");
   };
+  const [managerHasMachinesNav, setManagerHasMachinesNav] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    const isMgr = profile?.role === "manager" || profile?.job_title === "manager";
+    if (!profile || !isMgr) return;
+    const ownerId = effectiveOwnerId(profile.parent_id ?? profile.id);
+    if (!ownerId) return;
+    supabase.from("profiles").select("machines_addon_active, plan_type").eq("id", ownerId).single().then(({
+      data
+    }) => {
+      setManagerHasMachinesNav(!!data?.machines_addon_active || data?.plan_type === "premium" || data?.plan_type === "chain");
+    });
+  }, [profile]);
   if (loading || !session || !profile) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-8 w-8 animate-spin text-primary" }) });
   }
@@ -323,10 +351,18 @@ function AppLayout() {
     label: "Items",
     icon: Package
   }, {
+    to: "/stock-check",
+    label: "Stock Check",
+    icon: ClipboardList
+  }, {
     to: "/manager",
     label: "Manage",
     icon: TrendingDown
-  }] : [{
+  }, ...managerHasMachinesNav ? [{
+    to: "/machines",
+    label: "Machines",
+    icon: Gamepad2
+  }] : []] : [{
     to: "/register",
     label: "Cashier",
     icon: Wine
@@ -342,6 +378,10 @@ function AppLayout() {
     to: "/products",
     label: "Items",
     icon: Package
+  }] : [], ...isOwner ? [{
+    to: "/stock-check",
+    label: "Stock Check",
+    icon: ClipboardList
   }] : [], ...isOwner ? [{
     to: "/cashiers",
     label: "Staff",
