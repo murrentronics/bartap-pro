@@ -898,36 +898,10 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const [bulkProgress, setBulkProgress] = useState(0);
   const bulkFileRef = useRef<HTMLInputElement>(null);
 
-  const compressImage = (f: File): Promise<File> =>
-    new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(f);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const MAX = 400;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
-          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => resolve(blob ? new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : f),
-          "image/jpeg", 0.82
-        );
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
-      img.src = url;
-    });
-
-  const onPick = async (f: File | undefined | null) => {
+  const onPick = (f: File | undefined | null) => {
     if (!f) return;
-    const compressed = await compressImage(f);
-    setFile(compressed);
-    setPreview(URL.createObjectURL(compressed));
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
   };
 
   const clearImage = () => { setFile(null); setPreview(null); };
@@ -936,11 +910,12 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const nameFromFile = (f: File) =>
     f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
 
-  const onBulkPick = async (files: FileList | null) => {
+  const onBulkPick = (files: FileList | null) => {
     if (!files) return;
-    const incoming: BulkItem[] = await Promise.all(Array.from(files).map(async f => {
-      const compressed = await compressImage(f);
-      return { file: compressed, previewUrl: URL.createObjectURL(compressed), name: nameFromFile(f) };
+    const incoming: BulkItem[] = Array.from(files).map(f => ({
+      file: f,
+      previewUrl: URL.createObjectURL(f),
+      name: nameFromFile(f),
     }));
     setBulkItems(prev => [...prev, ...incoming]);
   };
@@ -961,7 +936,8 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     setBusy(true);
     let url: string | null = null;
     if (file) {
-      const path = `templates/manual/${crypto.randomUUID()}.jpg`;
+      const ext = file.name.split(".").pop() || "png";
+      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
         .upload(path, file, { upsert: false });

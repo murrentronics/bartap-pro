@@ -2,28 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Wine, Gamepad2, Plus, CheckCircle2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Wine, Gamepad2, Plus, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n";
 
 export default function SwitchBarPage() {
-  const { profile, refreshProfile } = useAuth();
-  const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner, refreshBars } = useChain();
+  const { profile } = useAuth();
+  const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner } = useChain();
   const nav = useNavigate();
   const { t } = useTranslation();
 
-  // Delete confirm state
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  // Track which bar IDs have been locally deleted so the card vanishes immediately
-  // without waiting for the ChainContext refresh cycle
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-
   // Guard: only chain owners or multi-bar addon owners can access this page
-  // Use chainBars length as a fallback — if bars still exist locally, stay on page
-  const hasLocalBars = chainBars.filter(b => !deletedIds.has(b.id)).length > 0;
+  const hasLocalBars = chainBars.length > 0;
   if (!barsLoading && !isChainOwner && !isMultiBarOwner && !hasLocalBars && profile) {
     return (
       <div className="text-center text-muted-foreground py-20">
@@ -37,34 +27,6 @@ export default function SwitchBarPage() {
   const handleSelect = (barId: string) => {
     setActiveBarId(barId);
     nav(isMachinesOnlyOwner ? "/machines" : "/register");
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget || !profile?.id) return;
-    setDeleting(true);
-    try {
-      const { error } = await (supabase as any).rpc("delete_bar_account", {
-        p_bar_id:   deleteTarget.id,
-        p_owner_id: profile.id,
-      });
-      if (error) throw error;
-      if (activeBarId === deleteTarget.id) setActiveBarId(null);
-      // Mark as deleted locally immediately so the card vanishes and guard stays quiet
-      setDeletedIds(prev => new Set(prev).add(deleteTarget.id));
-      setDeleteTarget(null);
-      // Refresh in background — page stays stable via deletedIds
-      await Promise.all([refreshBars(), refreshProfile()]);
-      toast.success(`"${deleteTarget.name}" deleted`);
-      // If no addon bars remain (check against refreshed profile), navigate home
-      const updatedAddonCount = (profile?.addon_bar_count ?? 1) - 1;
-      if (updatedAddonCount <= 0 && !isChainOwner) {
-        nav("/register");
-      }
-    } catch (err: any) {
-      toast.error("Failed to delete bar: " + (err?.message ?? "unknown error"));
-    } finally {
-      setDeleting(false);
-    }
   };
 
   return (
@@ -85,7 +47,7 @@ export default function SwitchBarPage() {
       <div className="flex items-center gap-2">
         <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 text-primary"
           style={{ background: "rgba(251,146,60,0.08)" }}>
-          {chainBars.filter(b => !deletedIds.has(b.id)).length} {isMachinesOnlyOwner ? t("account_number_lbl", "account") : t("bar_number_lbl", "bar")}{chainBars.filter(b => !deletedIds.has(b.id)).length !== 1 ? "s" : ""}
+          {chainBars.length} {isMachinesOnlyOwner ? t("account_number_lbl", "account") : t("bar_number_lbl", "bar")}{chainBars.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -117,10 +79,8 @@ export default function SwitchBarPage() {
             </div>
           )}
 
-          {chainBars.filter(b => !deletedIds.has(b.id)).map((bar, idx) => {
+          {chainBars.map((bar, idx) => {
             const isActive = bar.id === activeBarId;
-            // Bar 1 (master's own profile) cannot be deleted — it IS the master account
-            const isDeletable = idx > 0;
 
             return (
               <div
@@ -166,18 +126,6 @@ export default function SwitchBarPage() {
                     </div>
                   </div>
                 </button>
-
-                {/* ── Delete button — top-right, outside the main click zone ── */}
-                {isDeletable && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: bar.id, name: bar.bar_name }); }}
-                    className="absolute top-3 right-3 h-9 w-9 rounded-xl flex items-center justify-center transition active:scale-90"
-                    style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)" }}
-                    title="Delete bar"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-400" />
-                  </button>
-                )}
 
                 {/* ── Switch / Active badge centered at bottom ── */}
                 <button
@@ -234,42 +182,7 @@ export default function SwitchBarPage() {
         </div>
       )}
 
-      {/* ── Delete confirm modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-red-500/40 shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
-            <div className="px-6 pt-6 pb-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-red-500/15 border border-red-500/30 shrink-0">
-                  <AlertTriangle className="h-5 w-5 text-red-400" />
-                </div>
-                <h2 className="font-black text-lg text-red-400">{t("delete_bar_title", "Delete Bar?")}</h2>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                <span className="font-black text-foreground">"{deleteTarget.name}"</span> {t("delete_bar_msg", "and all its data — items, orders, wallet, cashiers, credit — will be permanently deleted. This cannot be undone.")}
-              </p>
-            </div>
-            <div className="flex gap-3 px-6 pb-6">
-              <Button
-                variant="outline"
-                className="flex-1 h-12 font-black"
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-              >
-                {t("cancel", "Cancel")}
-              </Button>
-              <Button
-                className="flex-1 h-12 font-black bg-red-600 hover:bg-red-700 text-white"
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-              >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("delete", "Delete")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Delete confirm modal removed ── */}
     </div>
   );
 }

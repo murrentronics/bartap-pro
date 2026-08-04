@@ -1844,37 +1844,13 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     );
   };
 
-  const compressImage = (f: File): Promise<File> =>
-    new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(f);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const MAX = 400;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
-          else                { width  = Math.round((width  * MAX) / height); height = MAX; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => resolve(blob ? new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : f),
-          "image/jpeg", 0.82
-        );
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
-      img.src = url;
-    });
+  const compressImage = (f: File): Promise<File> => Promise.resolve(f);
 
-  const onPick = async (f: File | undefined | null) => {
+  const onPick = (f: File | undefined | null) => {
     if (!f) return;
-    const compressed = await compressImage(f);
-    setFile(compressed);
+    setFile(f);
     setTemplateUrl(null);
-    setPreview(URL.createObjectURL(compressed));
+    setPreview(URL.createObjectURL(f));
   };
 
   const onTemplateSelect = (url: string, label: string, templateCategory: string) => {
@@ -1949,7 +1925,8 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     if (templateUrl) {
       image_url = templateUrl;
     } else if (file) {
-      const path = `${profile.id}/${crypto.randomUUID()}.jpg`;
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
