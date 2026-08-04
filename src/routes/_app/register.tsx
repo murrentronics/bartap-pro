@@ -140,13 +140,20 @@ export default function RegisterPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: ownerRow } = await (supabase as any)
       .from("profiles")
-      .select("machines_addon_active, plan_type, is_machines_account")
+      .select("machines_addon_active, plan_type, is_machines_account, bar_addon_active")
       .eq("id", ownerId)
       .single();
-    const machinesActive = !!(ownerRow?.machines_addon_active) || ownerRow?.plan_type === "premium" || ownerRow?.plan_type === "chain";
-    const machinesOnly = !!(ownerRow?.is_machines_account);
-    setHasMachinesAddon(machinesActive);
-    setIsMachinesAccount(machinesOnly);
+
+    const planType: string = ownerRow?.plan_type ?? "";
+    const isMachinesOnlyPlan = planType === "machines_only" || !!(ownerRow?.is_machines_account);
+    const hasBarAddon        = !!(ownerRow?.bar_addon_active);
+    const hasMachinesAddon   = !!(ownerRow?.machines_addon_active) || planType === "premium" || planType === "chain" || isMachinesOnlyPlan;
+
+    const showBarFloat     = !isMachinesOnlyPlan || hasBarAddon;
+    const showMachineFloat = hasMachinesAddon;
+
+    setHasMachinesAddon(showMachineFloat);
+    setIsMachinesAccount(!showBarFloat);
     setFloatBarAmount("");
     setFloatMachineAmount("");
     setShowFloatModal(true);

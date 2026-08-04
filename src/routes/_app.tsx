@@ -91,20 +91,22 @@ function AppLayout() {
   // Load bar session state for owner/manager toggle
   useEffect(() => {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
-    const ownerId = effectiveOwnerId(profile.id);
-    if (!ownerId) return;
+    // Managers operate on the owner's profile row (parent_id), not their own
+    const isManagerProfile = profile.role === "manager" || (profile as any).job_title === "manager";
+    const barOwnerId = effectiveOwnerId(isManagerProfile ? (profile.parent_id ?? profile.id) : profile.id);
+    if (!barOwnerId) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("profiles")
       .select("bar_session_start, bar_closed_at")
-      .eq("id", ownerId)
+      .eq("id", barOwnerId)
       .single()
       .then(({ data }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null }) => {
         setBarSessionStart(data?.bar_session_start ?? null);
         setBarClosedAt(data?.bar_closed_at ?? null);
       });
     const ch = supabase
-      .channel(`bar-session-layout-${ownerId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+      .channel(`bar-session-layout-${barOwnerId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${barOwnerId}` },
         (payload) => {
           const rec = payload.new as Record<string, unknown>;
           if ("bar_session_start" in rec) setBarSessionStart((rec.bar_session_start as string | null) ?? null);
@@ -117,14 +119,26 @@ function AppLayout() {
 
   const handleOpenBar = async () => {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
-    const ownerId = effectiveOwnerId(profile.id);
-    // Check if owner has machines enabled
+    const isManagerProfile = profile.role === "manager" || (profile as any).job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? (profile.parent_id ?? profile.id) : profile.id);
+    // Fetch owner's full plan info to determine which float fields to show
     const { data: ownerProfile } = await (supabase as any)
-      .from("profiles").select("machines_addon_active, plan_type, is_machines_account").eq("id", ownerId).single();
-    const machinesEnabled = !!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium" || ownerProfile?.plan_type === "chain";
-    const machinesOnly = !!(ownerProfile?.is_machines_account);
-    setHasMachines(machinesEnabled);
-    setIsMachinesAccount(machinesOnly);
+      .from("profiles").select("machines_addon_active, plan_type, is_machines_account, bar_addon_active").eq("id", ownerId).single();
+
+    const planType: string = ownerProfile?.plan_type ?? "";
+    const isMachinesOnlyPlan = planType === "machines_only" || !!(ownerProfile?.is_machines_account);
+    const hasBarAddon        = !!(ownerProfile?.bar_addon_active);
+    const hasMachinesAddon   = !!(ownerProfile?.machines_addon_active) || planType === "premium" || planType === "chain" || isMachinesOnlyPlan;
+
+    // machines-only owner without bar add-on → machines float only, no bar float
+    // machines-only owner with bar add-on    → both floats
+    // bar-only owner                         → bar float only
+    // bar + machines owner                   → both floats
+    const showBarFloat     = !isMachinesOnlyPlan || hasBarAddon;
+    const showMachineFloat = hasMachinesAddon;
+
+    setHasMachines(showMachineFloat);
+    setIsMachinesAccount(!showBarFloat); // reuse this flag: true = skip bar float
     setOpenBarFloat("");
     setOpenMachineFloat("");
     setActiveOpenBarField(null);
@@ -133,7 +147,8 @@ function AppLayout() {
 
   const confirmOpenBar = async () => {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const isManagerProfile = profile.role === "manager" || (profile as any).job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? (profile.parent_id ?? profile.id) : profile.id);
     const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachines) {
@@ -195,7 +210,8 @@ function AppLayout() {
 
   const handleCloseBar = async () => {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const isManagerProfile = profile.role === "manager" || (profile as any).job_title === "manager";
+    const ownerId = effectiveOwnerId(isManagerProfile ? (profile.parent_id ?? profile.id) : profile.id);
     setBarToggleBusy(true);
     const now = new Date().toISOString();
     // 1. Close any open sub-sessions for this owner
@@ -224,7 +240,7 @@ function AppLayout() {
   useEffect(() => {
     const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
     if (!profile || !isMgr) return;
-    const ownerId = effectiveOwnerId(profile.id);
+    const ownerId = effectiveOwnerId(profile.parent_id ?? profile.id);
     if (!ownerId) return;
     (supabase as any).from("profiles")
       .select("machines_addon_active, plan_type")

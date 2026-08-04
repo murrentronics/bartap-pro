@@ -36,7 +36,11 @@ serve(async (req) => {
       });
     }
 
-    const { payment_id } = await req.json();
+    const body = await req.json();
+    const payment_id: string | undefined = body.payment_id;
+    // force=true means admin acknowledged the addon warning and wants the full wipe
+    const force: boolean = body.force === true;
+
     if (!payment_id) {
       return new Response(JSON.stringify({ error: "payment_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,6 +61,39 @@ serve(async (req) => {
 
     const ownerId: string = payment.owner_id;
     const planType: string = (payment.billing_plans as any)?.plan_type ?? "basic";
+
+    // ── Addon guard for base/main plan revokes ───────────────────────────────
+    // If revoking a main plan (full reset), check whether the owner has addons.
+    // - If they asked admin to remove the base and KEEP addons → block entirely
+    //   (they must close their account and re-register for the plan they want).
+    // - If they want everything wiped (force=true) → proceed with full reset.
+    // - If addons are active but force is not set → return has_addons so the UI
+    //   can show a warning confirmation before proceeding.
+    const fullResetTypes = [
+      "basic", "machines_only", "machines_only_20", "chain", "premium", "premium_20",
+    ];
+
+    if (fullResetTypes.includes(planType) && !force) {
+      const { data: ownerRow } = await serviceClient
+        .from("profiles")
+        .select("machines_addon_active, bar_addon_active, chain_addon_active, music_addon")
+        .eq("id", ownerId)
+        .single();
+
+      const activeAddons: string[] = [];
+      if (ownerRow?.machines_addon_active) activeAddons.push("Machines");
+      if (ownerRow?.bar_addon_active)       activeAddons.push("Bar add-on");
+      if (ownerRow?.chain_addon_active)     activeAddons.push("Chain add-on");
+      if (ownerRow?.music_addon)            activeAddons.push("Music add-on");
+
+      if (activeAddons.length > 0) {
+        // Return a special response — UI uses this to show the right warning
+        return new Response(
+          JSON.stringify({ has_addons: true, addons: activeAddons }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // ── 1. Delete all cashiers AND managers belonging to this owner ──────────
     const { data: subAccounts } = await serviceClient
@@ -82,10 +119,6 @@ serve(async (req) => {
     // PARTIAL RESET plans — only strip the specific addon; base plan stays
     // Covers: bar_only_addon, machines_bar_addon, machines_bar_addon_20,
     //         premium_addon, premium_addon_20, machines_addon
-
-    const fullResetTypes = [
-      "basic", "machines_only", "machines_only_20", "chain", "premium", "premium_20",
-    ];
 
     if (fullResetTypes.includes(planType)) {
       await serviceClient.from("profiles").update({

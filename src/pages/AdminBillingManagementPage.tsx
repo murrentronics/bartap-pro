@@ -34,6 +34,7 @@ export default function AdminBillingManagementPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({ pending: 0, paid: 0, revenue: 0, dueSoonCount: 0, dueSoonTotal: 0 });
   const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revokeAddonWarning, setRevokeAddonWarning] = useState<string[] | null>(null); // active addons on the account
   const [dueSoonList, setDueSoonList] = useState<{ username: string; amount: number; dueDate: string; daysLeft: number }[]>([]);
   
   const PAGE_SIZE = 100;
@@ -380,6 +381,8 @@ export default function AdminBillingManagementPage() {
     toast.success(`Payment ${status === "paid" ? "approved" : "rejected"}`);
     setSelectedPayment(null);
     setNotes("");
+    setConfirmRevoke(false);
+    setRevokeAddonWarning(null);
     loadPayments();
     loadStats();
   };
@@ -388,9 +391,10 @@ export default function AdminBillingManagementPage() {
     setSelectedPayment(payment);
     setNotes(payment.notes || "");
     setConfirmRevoke(false);
+    setRevokeAddonWarning(null);
   };
 
-  const revokePayment = async () => {
+  const revokePayment = async (force = false) => {
     if (!selectedPayment) return;
     setLoading(true);
 
@@ -406,11 +410,20 @@ export default function AdminBillingManagementPage() {
         "Authorization": `Bearer ${session?.access_token}`,
         "apikey": supabaseKey,
       },
-      body: JSON.stringify({ payment_id: selectedPayment.id }),
+      body: JSON.stringify({ payment_id: selectedPayment.id, force }),
     });
 
     setLoading(false);
     const json = await res.json();
+
+    // ── Addon warning: base plan has addons active ───────────────────────────
+    // The edge function returns has_addons=true when a main plan revoke would
+    // also wipe addons. Show a second confirmation so admin can acknowledge.
+    if (res.ok && json.has_addons) {
+      setRevokeAddonWarning(json.addons as string[]);
+      return;
+    }
+
     if (!res.ok) { toast.error("Revoke failed: " + (json.error ?? "unknown error")); return; }
 
     const planType = selectedPayment.billing_plans?.plan_type ?? "basic";
@@ -430,6 +443,7 @@ export default function AdminBillingManagementPage() {
     );
     setSelectedPayment(null);
     setConfirmRevoke(false);
+    setRevokeAddonWarning(null);
     loadPayments();
     loadStats();
   };
@@ -588,7 +602,7 @@ export default function AdminBillingManagementPage() {
         </div>
 
         {/* Payment Details Dialog */}
-        <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
+        <Dialog open={!!selectedPayment} onOpenChange={() => { setSelectedPayment(null); setConfirmRevoke(false); setRevokeAddonWarning(null); }}>
           <DialogContent className="max-w-md flex flex-col max-h-[90vh]" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Payment Details</DialogTitle>
@@ -669,7 +683,8 @@ export default function AdminBillingManagementPage() {
 
                 {selectedPayment.status === "paid" && (
                   <div className="space-y-3 pt-2 border-t border-border">
-                    {!confirmRevoke ? (
+                    {/* ── Step 1: initial revoke button ── */}
+                    {!confirmRevoke && !revokeAddonWarning && (
                       <Button
                         variant="destructive"
                         className="w-full"
@@ -679,7 +694,10 @@ export default function AdminBillingManagementPage() {
                         <Trash2 className="h-4 w-4 mr-2" />
                         Revoke &amp; Reset Subscription
                       </Button>
-                    ) : (
+                    )}
+
+                    {/* ── Step 2: standard confirm (no addons) ── */}
+                    {confirmRevoke && !revokeAddonWarning && (
                       <div className="space-y-2">
                         <p className="text-sm text-destructive font-bold text-center">
                           This will delete this payment and reset {selectedPayment.profiles?.username ?? "this user"} back to pending. They must re-subscribe. Cannot be undone.
@@ -690,8 +708,49 @@ export default function AdminBillingManagementPage() {
                             Cancel
                           </Button>
                           <Button variant="destructive" className="flex-1" disabled={loading}
-                            onClick={revokePayment}>
-                            {loading ? "Revoking…" : "Yes, Revoke"}
+                            onClick={() => revokePayment(false)}>
+                            {loading ? "Checking…" : "Yes, Revoke"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Step 3: addon warning — shown when base plan has active addons ── */}
+                    {revokeAddonWarning && (
+                      <div className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-black text-destructive">
+                              This account has active addons
+                            </p>
+                            <p className="text-xs text-destructive/80">
+                              Active: {revokeAddonWarning.join(", ")}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          <strong>If the user wants to keep their addons</strong> — this is not possible. They must close their account and re-register for the plan they want instead.
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          <strong>If they want everything removed</strong> — confirm below. This will clear the main plan AND all addons, remove all staff accounts, and set the account back to Pending.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 text-xs"
+                            disabled={loading}
+                            onClick={() => { setRevokeAddonWarning(null); setConfirmRevoke(false); }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="flex-1 text-xs"
+                            disabled={loading}
+                            onClick={() => revokePayment(true)}
+                          >
+                            {loading ? "Revoking…" : "Wipe Everything"}
                           </Button>
                         </div>
                       </div>
