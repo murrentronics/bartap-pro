@@ -1563,8 +1563,9 @@ export default function RegisterPage() {
                             setBottleBusy(true);
                             const ownId = ownerIdRef.current;
                             if (!ownId) { setBottleBusy(false); return; }
+                            const shotVariation = (p.bottle_variations ?? []).find((v: BottleVariation) => v.key === "shot");
                             const { error } = await supabase.rpc("open_bottle", {
-                              p_owner_id: ownId, p_product_id: p.id, p_shot_price: 0,
+                              p_owner_id: ownId, p_product_id: p.id, p_shot_price: shotVariation?.price ?? 0,
                             });
                             if (error) { toast.error(error.message); setBottleBusy(false); return; }
                             await fetchOpenedBottles();
@@ -1763,8 +1764,9 @@ export default function RegisterPage() {
                         onClick={async () => {
                           if (!product || !bottle) return;
                           setBottleBusy(true);
+                          const shotVar = (product.bottle_variations ?? []).find((v: BottleVariation) => v.key === "shot");
                           const { error } = await supabase.rpc("open_bottle", {
-                            p_owner_id: ownerIdRef.current, p_product_id: product.id, p_shot_price: 0,
+                            p_owner_id: ownerIdRef.current, p_product_id: product.id, p_shot_price: shotVar?.price ?? 0,
                           });
                           setBottleBusy(false);
                           if (error) { toast.error(error.message); return; }

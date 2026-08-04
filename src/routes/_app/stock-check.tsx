@@ -450,7 +450,7 @@ function StockCheckPage() {
       const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
       const openActual = actuals[`${p.id}_open`] ?? remaining;
       const openDiff = remaining - openActual;
-      const openPrice = openInfo.shotPrice != null ? openInfo.shotPrice : p.price;
+      const openPrice = (openInfo.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
       loss += openDiff > 0 ? openDiff * openPrice : 0;
     }
 
@@ -553,7 +553,7 @@ function StockCheckPage() {
             const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
             const openActual = actuals[`${p.id}_open`] ?? remaining;
             const openDiff = remaining - openActual;
-            const openPrice = openInfo.shotPrice != null ? openInfo.shotPrice : p.price;
+            const openPrice = (openInfo.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
             const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
             doc.setTextColor(180, 100, 20);
             doc.setFontSize(7);
@@ -705,7 +705,7 @@ function StockCheckPage() {
                   const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
                   const openActual = openInfo ? (actuals[openKey] ?? remaining ?? 0) : null;
                   const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
-                  const openPrice = openInfo?.shotPrice != null ? openInfo.shotPrice : p.price;
+                  const openPrice = (openInfo?.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
                   const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
                   const isOpenActive = activeNumpadId === openKey;
 
@@ -882,7 +882,7 @@ function StockCheckPage() {
             activeIsOpen
               ? (() => {
                   const info = openItems[activeProductForNumpad.id];
-                  return info?.shotPrice != null ? info.shotPrice : undefined;
+                  return (info?.shotPrice != null && info.shotPrice > 0) ? info.shotPrice : undefined;
                 })()
               : undefined
           }
