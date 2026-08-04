@@ -178,14 +178,6 @@ function SubscriptionBadge({ ownerId }: {
   );
 }
 
-type ImportedImage = {
-  url: string;
-  label: string;
-  category: TemplateCategory;
-  selected: boolean;
-  duplicate: boolean;
-};
-
 const TEMPLATE_CATEGORIES = CATEGORIES.filter(c => c.value !== "miscellaneous" && c.value !== "food").map(c => c.value) as CategoryValue[];
 type TemplateCategory = CategoryValue;
 
@@ -235,65 +227,47 @@ function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
   return s || "Untitled";
 }
 
-// ─── Template Import Panel ────────────────────────────────────────────────────
+// ─── Template Import Panel (Image Link Scraper style) ────────────────────────
+//
+// How it works:
+//  1. User pastes image URLs (one per line) or drags/pastes actual image files
+//  2. All images land in a grid; each gets an editable name and a category badge
+//  3. "Auto-Label All" calls @huggingface/transformers in the browser — no API key,
+//     no server, no limits. Model (~40MB) downloads once and is cached forever.
+//  4. Master category picker assigns every image at once; per-card picker overrides
+//  5. "Add to Templates" saves selected images to template_images via cache-template-image
+//
+// Google Cloud Vision is the most reliable choice:
+//  - WEB_DETECTION returns actual product names ("Heineken 330ml", "Marlboro Red")
+//  - Works from public URLs and base64 data URIs (for local file drops)
+//  - 1 000 free requests/month; ~$1.50/1 000 after — negligible for admin use
+//  - No SDK, single REST call, no CORS (called via edge function)
+
+type ScrapeItem = {
+  id: string;           // local uuid — React key
+  url: string;          // remote URL or object-URL for local files
+  dataUri?: string;     // base64 data URI (for local files, sent to Vision)
+  label: string;
+  category: TemplateCategory;
+  selected: boolean;
+  duplicate: boolean;
+  labeling: boolean;    // auto-label in progress
+  labelSource?: "web" | "label" | "fallback"; // which Vision signal won
+};
+
 function TemplateImportPanel() {
-  const [pageUrl, setPageUrl] = useState("");
-  const [defaultCategory, setDefaultCategory] = useState<TemplateCategory>("beers");
-  const [importing, setImporting] = useState(false);
-  const [importCount, setImportCount] = useState(0);
-  const [importStatus, setImportStatus] = useState<"idle" | "fetching" | "parsing" | "done">("idle");
-  const [saving, setSaving] = useState(false);
-  const [images, setImages] = useState<ImportedImage[]>([]);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [items, setItems] = useState<ScrapeItem[]>([]);
   const [existingUrls, setExistingUrls] = useState<Set<string>>(new Set());
-  const [clipboardText, setClipboardText] = useState<string>("");
+  const [masterCategory, setMasterCategory] = useState<TemplateCategory>("beers");
+  const [saving, setSaving] = useState(false);
+  const [autoLabelingAll, setAutoLabelingAll] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Check clipboard content — runs on mount and whenever app regains focus
-  const checkClipboard = async () => {
-    try {
-      const { Capacitor } = await import("@capacitor/core");
-      if (Capacitor.isNativePlatform()) {
-        const { Clipboard } = await import("@capacitor/clipboard");
-        const { value } = await Clipboard.read();
-        setClipboardText(value?.trim() ?? "");
-      } else if (navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        setClipboardText(text?.trim() ?? "");
-      }
-    } catch {
-      setClipboardText("");
-    }
-  };
-
-  useEffect(() => {
-    checkClipboard();
-    const onFocus = () => checkClipboard();
-    const onVisible = () => { if (document.visibilityState === "visible") checkClipboard(); };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
-
-  // Paste from clipboard into the URL field
-  const pasteFromClipboard = async () => {
-    try {
-      const { Capacitor } = await import("@capacitor/core");
-      if (Capacitor.isNativePlatform()) {
-        const { Clipboard } = await import("@capacitor/clipboard");
-        const { value } = await Clipboard.read();
-        if (value) { setPageUrl(value.trim()); setClipboardText(value.trim()); }
-      } else if (navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text) { setPageUrl(text.trim()); setClipboardText(text.trim()); }
-      }
-    } catch {
-      toast.error("Could not read clipboard");
-    }
-  };
-
-  // Load existing template URLs to detect duplicates
+  // ── Load existing template URLs to detect duplicates ─────────────────────
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
@@ -304,179 +278,202 @@ function TemplateImportPanel() {
       });
   }, []);
 
-  // Call the Supabase Edge Function — runs server-side, no CORS/proxy issues
-  const fetchViaEdgeFunction = async (targetUrl: string, onProgress: (n: number) => void): Promise<{ url: string; label: string }[]> => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-
-    const res = await fetch(`${supabaseUrl}/functions/v1/scrape-images`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseKey}`,
-        "apikey": supabaseKey,
-      },
-      body: JSON.stringify({ url: targetUrl }),
-      signal: AbortSignal.timeout(30000),
+  // ── Convert a file to base64 data URI (for Vision API) ────────────────────
+  const fileToDataUri = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
-      throw new Error(err.error ?? `Server error ${res.status}`);
-    }
-
-    const data = await res.json() as { images: { url: string; label: string }[]; count: number; error?: string };
-    if (data.error) throw new Error(data.error);
-
-    // Simulate live count ticking up as we process results
-    const results = data.images ?? [];
-    for (let i = 1; i <= results.length; i++) {
-      onProgress(i);
-      // Small yield so React can re-render the counter
-      if (i % 5 === 0) await new Promise((r) => setTimeout(r, 0));
-    }
-
-    return results;
+  // ── Add items from image files (dropped or picked) ────────────────────────
+  const addFiles = async (files: FileList | File[]) => {
+    const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (arr.length === 0) return;
+    const newItems: ScrapeItem[] = await Promise.all(arr.map(async (f) => {
+      const objectUrl = URL.createObjectURL(f);
+      const dataUri = await fileToDataUri(f);
+      const nameFromFile = f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+      return {
+        id: crypto.randomUUID(),
+        url: objectUrl,
+        dataUri,
+        label: nameFromFile || "Untitled",
+        category: masterCategory,
+        selected: true,
+        duplicate: false,
+        labeling: false,
+      };
+    }));
+    setItems((prev) => [...prev, ...newItems]);
   };
 
-  // Clean up scraped product titles — strip site names, pack counts, keep size/weight
-  const cleanLabel = (raw: string, fallbackUrl: string): string => {
-    let s = raw.trim();
-    if (!s) {
-      s = fallbackUrl.split("/").pop()?.split("?")[0]?.replace(/[-_]/g, " ").replace(/\.\w+$/, "") ?? "";
-    }
-    // Decode HTML entities
-    s = s
-      .replace(/&#39;/g, "'")
-      .replace(/&apos;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-    // Strip site name after separators: " - Caribshopper", " | Site", " – "
-    s = s.replace(/\s*[-–|]\s*[A-Z][^|–\-]{2,}$/, "").trim();
-    // Strip pack/count quantities — but NOT size/weight like 330ml, 12oz, 1.4oz
-    // Matches: (3 Pack), (6 Pack), (3 or 6 Pack), (12 Count), (Pack of 4), (Case of 24)
-    s = s.replace(/\s*\(\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\)/gi, "").trim();
-    s = s.replace(/\s*\[\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\]/gi, "").trim();
-    // Strip bare "X Pack" / "Pack of X" not in parens
-    s = s.replace(/\s*[-,]?\s*\d+\s*(?:pack|count|ct|pk)\b/gi, "").trim();
-    s = s.replace(/\s*[-,]?\s*pack\s+of\s+\d+\b/gi, "").trim();
-    // Strip empty parens/brackets left behind: "()", "[]", "( )"
-    s = s.replace(/\s*[(\[]\s*[)\]]\s*/g, "").trim();
-    // Collapse spaces
-    s = s.replace(/\s+/g, " ").trim();
-    return s || "Untitled";
-  };
-
-  const handleImport = async () => {
-    const input = pageUrl.trim();
-    if (!input) { toast.error("Enter a URL"); return; }
-    
-    // Only allow URLs
-    if (!input.startsWith("http://") && !input.startsWith("https://")) {
-      toast.error("Please enter a valid URL (must start with http:// or https://)");
+  // ── Add items from pasted / typed image URLs ───────────────────────────────
+  const addUrls = (raw: string) => {
+    const urls = raw
+      .split(/[\n,\s]+/)
+      .map((u) => u.trim())
+      .filter((u) => u.startsWith("http") && /\.(jpg|jpeg|png|webp|gif|avif)(\?|$)/i.test(u));
+    if (urls.length === 0) {
+      toast.error("No image URLs found. URLs must end in .jpg/.png/.webp etc.");
       return;
     }
-    
-    setImporting(true);
-    setImportCount(0);
-    setImportStatus("fetching");
-    setImages([]);
+    const newItems: ScrapeItem[] = urls.map((u) => ({
+      id: crypto.randomUUID(),
+      url: u,
+      label: u.split("/").pop()?.split("?")[0]?.replace(/[-_]/g, " ").replace(/\.\w+$/, "") || "Untitled",
+      category: masterCategory,
+      selected: !existingUrls.has(u),
+      duplicate: existingUrls.has(u),
+      labeling: false,
+    }));
+    setItems((prev) => [...prev, ...newItems]);
+    toast.success(`Added ${newItems.length} image${newItems.length !== 1 ? "s" : ""}`);
+  };
 
-    try {
-      setImportStatus("parsing");
-      
-      // URL scraping only
-      const rawImages = await fetchViaEdgeFunction(input, (n) => setImportCount(n));
-
-      const found: ImportedImage[] = rawImages.map((img) => ({
-        url: img.url,
-        label: decodeAndCleanLabel(img.label, img.url),
-        category: defaultCategory,
-        selected: !existingUrls.has(img.url),
-        duplicate: existingUrls.has(img.url),
-      }));
-
-      setImportStatus("done");
-
-      if (found.length === 0) {
-        toast.error("No product images found on that page.");
-      } else {
-        setImages(found);
-        toast.success(`Found ${found.length} images — ${found.filter(i => !i.duplicate).length} new`);
+  // ── Global paste handler ───────────────────────────────────────────────────
+  useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      // Files pasted (e.g. right-click copy image → paste)
+      const imageFiles = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        await addFiles(imageFiles);
+        return;
       }
-    } catch (e) {
-      toast.error((e as Error).message || "Failed to fetch images.");
-      console.error(e);
-      setImportStatus("idle");
-    } finally {
-      setImporting(false);
+      // Text pasted — could be image URLs
+      const text = e.clipboardData?.getData("text") ?? "";
+      if (text && (text.includes("http") || text.includes("data:image"))) {
+        e.preventDefault();
+        addUrls(text);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterCategory, existingUrls]);
+
+  // ── Auto-label one image — runs 100% in the browser, no API key needed ──
+  // Uses @huggingface/transformers (ONNX/WASM) — same approach as Lovable's
+  // "Auto-correct all names". Model downloads once (~40MB) then cached forever.
+  const labelOneItem = async (id: string, url: string, dataUri?: string): Promise<void> => {
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, labeling: true } : i));
+    try {
+      const { labelImage } = await import("@/lib/labelImage");
+      // Prefer the object URL (works for both local files and remote URLs).
+      // dataUri is only passed when we have a base64 version — use url instead
+      // since transformers.js handles blob: and https: URLs natively.
+      const label = await labelImage(url);
+      setItems((prev) => prev.map((i) => i.id === id
+        ? { ...i, label: decodeAndCleanLabel(label, url), labelSource: "web", labeling: false }
+        : i
+      ));
+    } catch {
+      setItems((prev) => prev.map((i) => i.id === id ? { ...i, labeling: false } : i));
     }
   };
 
-  const toggleAll = (val: boolean) =>
-    setImages((imgs) => imgs.map((i) => ({ ...i, selected: i.duplicate ? false : val })));
+  // ── Auto-label ALL images in parallel (3 at a time) ─────────────────────
+  const handleAutoLabelAll = async () => {
+    const toLabel = items.filter((i) => !i.duplicate && !i.labeling);
+    if (toLabel.length === 0) { toast.error("No images to label"); return; }
+    setAutoLabelingAll(true);
+    const BATCH = 3;
+    for (let idx = 0; idx < toLabel.length; idx += BATCH) {
+      await Promise.all(toLabel.slice(idx, idx + BATCH).map((item) => labelOneItem(item.id, item.url, item.dataUri)));
+    }
+    setAutoLabelingAll(false);
+    toast.success("Auto-label complete");
+  };
 
+  // ── Remove BG + resize + center + sharpen (full pipeline) ────────────────
+  const handleRemoveBgAll = async () => {
+    const toProcess = items.filter((i) => i.selected && !i.duplicate && i.url.startsWith("blob:"));
+    if (toProcess.length === 0) { toast.error("Select local images first (dragged/pasted files)"); return; }
+    setRemovingBg(true);
+    for (const item of toProcess) {
+      try {
+        const { processProductImage } = await import("@/lib/processProductImage");
+        const blob = await fetch(item.url).then((r) => r.blob());
+        const file = new File([blob], `img_${item.id}.${blob.type === "image/png" ? "png" : "jpg"}`, { type: blob.type || "image/png" });
+        // Full pipeline: remove BG → tight crop → center on 500×500 → sharpen
+        const result = await processProductImage(file, { removeBg: true });
+        const newObjectUrl = URL.createObjectURL(result);
+        const newDataUri = await fileToDataUri(result);
+        setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, url: newObjectUrl, dataUri: newDataUri } : i));
+      } catch { /* skip — keeps original if pipeline fails */ }
+    }
+    setRemovingBg(false);
+    toast.success("Done — backgrounds removed, images centered & sharpened");
+  };
+
+  // ── Save selected items to template_images ────────────────────────────────
   const handleSave = async () => {
-    const toSave = images.filter((i) => i.selected && !i.duplicate);
+    const toSave = items.filter((i) => i.selected && !i.duplicate);
     if (toSave.length === 0) { toast.error("No images selected"); return; }
     setSaving(true);
-
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-
-    // Download and store each image in Supabase storage so broken source URLs can't affect us
-    const rows = await Promise.all(toSave.map(async (i) => {
+    const rows = await Promise.all(toSave.map(async (item) => {
       try {
+        if (item.url.startsWith("blob:")) {
+          // Local file — run through full pipeline: crop, center, sharpen, then upload
+          const blob = await fetch(item.url).then((r) => r.blob());
+          const isPng = blob.type === "image/png";
+          const ext = isPng ? "png" : "jpg";
+          const { processProductImage } = await import("@/lib/processProductImage");
+          const processed = await processProductImage(
+            new File([blob], `img.${ext}`, { type: blob.type }),
+            { removeBg: false }, // BG already removed if user ran Remove BG; skip re-processing
+          );
+          const path = `templates/import/${crypto.randomUUID()}.png`;
+          const { error: upErr } = await supabase.storage.from("product-images").upload(path, processed, { upsert: false });
+          if (upErr) throw upErr;
+          const storedUrl = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+          return { url: storedUrl, label: item.label, category: item.category };
+        }
+        // Remote URL — cache via edge function
         const res = await fetch(`${supabaseUrl}/functions/v1/cache-template-image`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}`, "apikey": supabaseKey },
-          body: JSON.stringify({ url: i.url }),
+          body: JSON.stringify({ url: item.url }),
           signal: AbortSignal.timeout(20000),
         });
         const json = await res.json() as { storedUrl?: string; error?: string };
-        return {
-          url: json.storedUrl ?? i.url, // fall back to original if caching failed
-          label: i.label,
-          category: i.category,
-          source_url: pageUrl.trim(),
-        };
+        return { url: json.storedUrl ?? item.url, label: item.label, category: item.category };
       } catch {
-        // Network error — fall back to original URL
-        return { url: i.url, label: i.label, category: i.category, source_url: pageUrl.trim() };
+        return { url: item.url, label: item.label, category: item.category };
       }
     }));
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from("template_images")
-      .upsert(rows, { onConflict: "url", ignoreDuplicates: true });
-
+    const { error } = await (supabase as any).from("template_images").upsert(rows, { onConflict: "url", ignoreDuplicates: true });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-
-    toast.success(`Saved ${toSave.length} templates`);
-    setExistingUrls((prev) => {
-      const next = new Set(prev);
-      toSave.forEach((i) => next.add(i.url));
-      return next;
-    });
-    setImages((imgs) =>
-      imgs.map((i) => i.selected ? { ...i, duplicate: true, selected: false } : i)
-    );
+    toast.success(`${toSave.length} template${toSave.length !== 1 ? "s" : ""} added`);
+    setExistingUrls((prev) => { const next = new Set(prev); toSave.forEach((i) => next.add(i.url)); return next; });
+    setItems((prev) => prev.map((i) => i.selected ? { ...i, duplicate: true, selected: false } : i));
   };
 
-  const selectedCount = images.filter((i) => i.selected).length;
-  const newCount = images.filter((i) => !i.duplicate).length;
+  // ── Drag-and-drop handlers ────────────────────────────────────────────────
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave = () => setIsDragging(false);
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+    if (files.length > 0) { await addFiles(files); return; }
+    const text = e.dataTransfer.getData("text");
+    if (text) addUrls(text);
+  };
 
-  const CAT_EMOJI = Object.fromEntries(CATEGORIES.map(c => [c.value, c.icon])) as Record<TemplateCategory, string>;
+  // ── Derived counts ────────────────────────────────────────────────────────
+  const selectedCount = items.filter((i) => i.selected && !i.duplicate).length;
+  const newCount = items.filter((i) => !i.duplicate).length;
+  const labelingCount = items.filter((i) => i.labeling).length;
 
+  // ── Maintenance state ─────────────────────────────────────────────────────
   const [recaching, setRecaching] = useState(false);
   const [recacheResult, setRecacheResult] = useState<string | null>(null);
-
   const [compressing, setCompressing] = useState(false);
   const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(null);
   const [compressResult, setCompressResult] = useState<string | null>(null);
@@ -485,83 +482,38 @@ function TemplateImportPanel() {
     setCompressing(true);
     setCompressResult(null);
     setCompressProgress(null);
-
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-
     try {
-      // Fetch all template rows that have a Supabase storage URL
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from("template_images")
-        .select("id, url")
-        .order("id");
-
+      const { data, error } = await (supabase as any).from("template_images").select("id, url").order("id");
       if (error) { toast.error(error.message); return; }
-
-      const rows = (data as { id: string; url: string }[]).filter(
-        (r) => r.url && r.url.startsWith(supabaseUrl)
-      );
-
-      if (rows.length === 0) {
-        setCompressResult("No Supabase-hosted template images found to compress.");
-        return;
-      }
-
-      setCompressProgress({ done: 0, total: rows.length });
-      let succeeded = 0;
-      let skipped = 0;
-
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+      const dbRows = (data as { id: string; url: string }[]).filter((r) => r.url?.startsWith(supabaseUrl));
+      if (dbRows.length === 0) { setCompressResult("No Supabase-hosted images to compress."); return; }
+      setCompressProgress({ done: 0, total: dbRows.length });
+      let succeeded = 0; let skipped = 0;
+      for (let i = 0; i < dbRows.length; i++) {
+        const row = dbRows[i];
         try {
-          // Download the current image as a blob
           const fetchRes = await fetch(row.url, { cache: "no-store" });
           if (!fetchRes.ok) { skipped++; continue; }
           const blob = await fetchRes.blob();
-
-          // Determine type from blob / URL
-          const isPng =
-            blob.type === "image/png" ||
-            row.url.toLowerCase().includes(".png");
+          const isPng = blob.type === "image/png" || row.url.toLowerCase().includes(".png");
           const ext = isPng ? "png" : "jpg";
-          const originalFile = new File([blob], `original.${ext}`, { type: blob.type || (isPng ? "image/png" : "image/jpeg") });
-
-          // Run through the same compressor
-          const compressed = await compressImageFile(originalFile);
-
-          // If size didn't shrink meaningfully (within 5%), skip re-upload to avoid churn
-          if (compressed.size >= originalFile.size * 0.95) { skipped++; setCompressProgress({ done: i + 1, total: rows.length }); continue; }
-
-          // Extract the storage path from the existing URL so we can overwrite in place
-          // URL shape: https://<project>.supabase.co/storage/v1/object/public/product-images/<path>
-          const storagePathMatch = row.url.match(/\/object\/public\/product-images\/(.+?)(\?|$)/);
-          if (!storagePathMatch) { skipped++; continue; }
-          const storagePath = storagePathMatch[1];
-
-          const { error: upErr } = await supabase.storage
-            .from("product-images")
-            .upload(storagePath, compressed, { upsert: true, contentType: compressed.type });
-
+          const orig = new File([blob], `original.${ext}`, { type: blob.type || (isPng ? "image/png" : "image/jpeg") });
+          const compressed = await compressImageFile(orig);
+          if (compressed.size >= orig.size * 0.95) { skipped++; setCompressProgress({ done: i + 1, total: dbRows.length }); continue; }
+          const match = row.url.match(/\/object\/public\/product-images\/(.+?)(\?|$)/);
+          if (!match) { skipped++; continue; }
+          const { error: upErr } = await supabase.storage.from("product-images").upload(match[1], compressed, { upsert: true, contentType: compressed.type });
           if (upErr) { skipped++; continue; }
-
-          // If the extension changed (e.g. was .png but now .jpg — won't happen here, but safe guard)
-          // we'd need to update the URL. Since we preserve the original format, URL stays the same.
-
           succeeded++;
-        } catch {
-          skipped++;
-        }
-        setCompressProgress({ done: i + 1, total: rows.length });
+        } catch { skipped++; }
+        setCompressProgress({ done: i + 1, total: dbRows.length });
       }
-
-      setCompressResult(`Done — ${succeeded} compressed, ${skipped} skipped (already small or failed).`);
+      setCompressResult(`Done — ${succeeded} compressed, ${skipped} skipped.`);
       toast.success("Compression complete");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setCompressing(false);
-      setCompressProgress(null);
-    }
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setCompressing(false); setCompressProgress(null); }
   };
 
   const handleRecacheAll = async () => {
@@ -580,266 +532,179 @@ function TemplateImportPanel() {
       const p = json.products  ?? { total: 0, success: 0, failed: 0 };
       setRecacheResult(`Templates: ${t.success}/${t.total} fixed. Products: ${p.success}/${p.total} fixed.`);
       toast.success("Re-cache complete");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setRecaching(false);
-    }
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRecaching(false); }
   };
 
   return (
     <div className="space-y-5">
-      {/* ── Re-cache broken images ── */}
-      <div className="rounded-2xl p-4 border border-amber-500/30 space-y-3" style={{ background: "rgba(245,158,11,0.06)" }}>
-        <h2 className="font-black text-sm flex items-center gap-2 text-amber-400">
-          <RefreshCw className="h-4 w-4" /> Fix Broken Images
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Re-downloads all external template and product images into Supabase storage. Run this once to fix images that show broken on devices.
-        </p>
-        <Button
-          onClick={handleRecacheAll}
-          disabled={recaching}
-          variant="outline"
-          className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold"
-        >
-          {recaching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Re-caching all images…</> : "Re-cache All Images Now"}
-        </Button>
-        {recacheResult && <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>}
-      </div>
 
-      {/* ── Compress existing template images ── */}
-      <div className="rounded-2xl p-4 border border-blue-500/30 space-y-3" style={{ background: "rgba(59,130,246,0.06)" }}>
-        <h2 className="font-black text-sm flex items-center gap-2 text-blue-400">
-          <ImagePlus className="h-4 w-4" /> Compress Existing Templates
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Re-compresses all template images already in storage down to max 500px. Run once — images that are already small are skipped automatically.
-        </p>
-        <Button
-          onClick={handleCompressAll}
-          disabled={compressing}
-          variant="outline"
-          className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-bold"
-        >
-          {compressing
-            ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Compressing… {compressProgress ? `${compressProgress.done}/${compressProgress.total}` : ""}
-              </>
-            : "Compress All Template Images"}
-        </Button>
-        {compressResult && <p className="text-xs text-green-400 font-semibold">{compressResult}</p>}
-      </div>
-
-      <div className="rounded-2xl p-4 border border-border space-y-4" style={{ background: "var(--gradient-card)" }}>
-        <h2 className="font-black text-lg flex items-center gap-2">
-          <ImagePlus className="h-5 w-5 text-primary" /> Import Templates from URL
-        </h2>
-
-        {/* URL or Search input */}
-        <div>
-          <Label className="text-xs">URL or Search Term</Label>
-          <div className="flex gap-2 mt-1">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={pageUrl}
-                onChange={(e) => setPageUrl(e.target.value)}
-                onPaste={async (e) => {
-                  // Try native clipboard data first
-                  const text = e.clipboardData?.getData("text");
-                  if (text) {
-                    e.preventDefault();
-                    setPageUrl(text.trim());
-                    return;
-                  }
-                  // Fallback: Capacitor clipboard (Android WebView often has empty clipboardData)
-                  e.preventDefault();
-                  await pasteFromClipboard();
-                }}
-                placeholder="https://example.com/products"
-                className="pl-9"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                onKeyDown={(e) => e.key === "Enter" && handleImport()}
-              />
-            </div>
-            {/* Explicit Paste button for Android users — only enabled when clipboard has content */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={pasteFromClipboard}
-              disabled={!clipboardText}
-              className="shrink-0 px-3"
-              title={clipboardText ? `Paste: ${clipboardText.slice(0, 40)}${clipboardText.length > 40 ? "…" : ""}` : "Nothing copied"}
-            >
-              <LinkIcon className="h-4 w-4" />
-            </Button>
-            <Button onClick={handleImport} disabled={importing || !pageUrl.trim()}>
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
-            </Button>
+      {/* ══ DROP ZONE ══ */}
+      <div
+        ref={dropRef}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className="relative rounded-2xl border-2 border-dashed transition-all cursor-pointer select-none"
+        style={{
+          borderColor: isDragging ? "var(--primary)" : "rgba(255,255,255,0.15)",
+          background: isDragging ? "oklch(0.22 0.06 260 / 0.5)" : "oklch(0.16 0.02 260 / 0.6)",
+          minHeight: 140,
+        }}
+      >
+        <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
+          onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+        <div className="flex flex-col items-center justify-center gap-2 py-8 px-4 pointer-events-none">
+          <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: "oklch(0.24 0.04 260)" }}>
+            <ImagePlus className="h-5 w-5 text-primary" />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Paste a URL to scrape product images from a website
+          <p className="font-black text-sm text-center">Paste or drag images here</p>
+          <p className="text-xs text-muted-foreground text-center">
+            Ctrl/Cmd + V · drag from any site · or click to pick files
           </p>
+          <p className="text-xs font-bold text-primary/60">{items.length} / 500 added</p>
         </div>
-
-        {/* Live import progress */}
-        {importing && (
-          <div className="rounded-xl border border-primary/30 px-4 py-3 flex items-center gap-3" style={{ background: "oklch(0.18 0.04 260 / 0.5)" }}>
-            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-primary/80 uppercase tracking-wider">
-                {importStatus === "fetching" ? (pageUrl.startsWith("http") ? "Fetching page…" : "Searching images…") : "Processing results…"}
-              </div>
-              {importStatus === "parsing" && importCount > 0 && (
-                <div className="text-2xl font-black text-primary mt-0.5">{importCount} found</div>
-              )}
-            </div>
+        {isDragging && (
+          <div className="absolute inset-0 rounded-2xl flex items-center justify-center pointer-events-none"
+            style={{ background: "oklch(0.24 0.08 260 / 0.4)", border: "2px solid var(--primary)" }}>
+            <p className="font-black text-primary text-lg">Drop here</p>
           </div>
         )}
-        {!importing && importStatus === "done" && images.length > 0 && (
-          <div className="rounded-xl border border-green-500/30 px-4 py-2 flex items-center gap-2" style={{ background: "oklch(0.18 0.06 145 / 0.4)" }}>
-            <Check className="h-4 w-4 text-green-400 shrink-0" />
-            <span className="text-sm font-bold text-green-300">Import complete — {images.length} images found</span>
-          </div>
-        )}
-
-        {/* Default category selector */}
-        <div>
-          <Label className="text-xs">Default Category (can change per image below)</Label>
-          <div className="grid grid-cols-5 gap-2 mt-1">
-            {TEMPLATE_CATEGORIES.map((cat) => {
-              const catDef = CATEGORIES.find(c => c.value === cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setDefaultCategory(cat);
-                    setImages((imgs) => imgs.map((i) => i.duplicate ? i : { ...i, category: cat }));
-                  }}
-                  className={`h-10 rounded-xl font-bold text-xs transition border ${
-                    defaultCategory === cat
-                      ? "text-primary-foreground border-transparent"
-                      : "bg-muted text-muted-foreground border-border hover:text-foreground"
-                  }`}
-                  style={defaultCategory === cat ? { background: "var(--gradient-hero)" } : {}}
-                >
-                  {catDef?.label ?? cat}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
-      {/* Image grid */}
-      {images.length > 0 && (
+      {/* ══ ACTION BAR — only shown when images are loaded ══ */}
+      {items.length > 0 && (
         <div className="space-y-3">
+
+          {/* Bulk action buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={handleAutoLabelAll}
+              disabled={autoLabelingAll || newCount === 0}
+              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/10 font-bold">
+              {autoLabelingAll
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Labeling {labelingCount}…</>
+                : <><Zap className="h-3.5 w-3.5" />Auto-label all ({newCount})</>}
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleRemoveBgAll}
+              disabled={removingBg || selectedCount === 0}
+              className="gap-1.5 border-pink-500/40 text-pink-300 hover:bg-pink-500/10 font-bold">
+              {removingBg
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Removing BG…</>
+                : <><Camera className="h-3.5 w-3.5" />Remove BG ({selectedCount})</>}
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, selected: true }))}>
+              Select All
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => setItems((prev) => prev.map((i) => ({ ...i, selected: false })))}>
+              Deselect All
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setItems([])}
+              className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+              Clear All
+            </Button>
+          </div>
+
+          {/* Master category picker */}
+          <div className="rounded-xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Master Category</p>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px] font-black text-primary px-2"
+                onClick={() => setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, category: masterCategory }))}>
+                Apply to all
+              </Button>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {TEMPLATE_CATEGORIES.map((cat) => {
+                const catDef = CATEGORIES.find((c) => c.value === cat);
+                return (
+                  <button key={cat}
+                    onClick={() => { setMasterCategory(cat); setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, category: cat })); }}
+                    className={`h-9 rounded-xl font-black text-xs transition border ${masterCategory === cat ? "text-primary-foreground border-transparent" : "bg-muted text-muted-foreground border-border hover:text-foreground"}`}
+                    style={masterCategory === cat ? { background: "var(--gradient-hero)" } : {}}>
+                    {catDef?.icon} {catDef?.label ?? cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stats + Add to Templates CTA */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="text-sm text-muted-foreground">
               <span className="font-black text-foreground">{selectedCount}</span> selected ·{" "}
               <span className="font-black text-primary">{newCount}</span> new ·{" "}
-              <span className="text-muted-foreground">{images.filter(i => i.duplicate).length} duplicates</span>
+              <span>{items.filter((i) => i.duplicate).length} already saved</span>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => toggleAll(true)}>Select All New</Button>
-              <Button size="sm" variant="outline" onClick={() => toggleAll(false)}>Deselect All</Button>
-              <Button
-                size="sm"
-                disabled={selectedCount === 0 || saving}
-                onClick={handleSave}
-                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-              >
-                {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Caching images…</> : `Save ${selectedCount}`}
-              </Button>
-            </div>
+            <Button disabled={selectedCount === 0 || saving} onClick={handleSave}
+              className="gap-2 font-black"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              {saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : <><Plus className="h-4 w-4" />Add {selectedCount} to Templates</>}
+            </Button>
           </div>
 
+          {/* Image grid */}
           <div className="grid grid-cols-3 gap-2">
-            {images.map((img, idx) => (
-              <div
-                key={img.url}
-                className={`relative rounded-xl overflow-hidden border-2 transition ${
-                  img.duplicate
-                    ? "border-muted opacity-40"
-                    : img.selected
-                    ? "border-primary"
-                    : "border-border"
-                }`}
-                style={{ background: "var(--gradient-card)" }}
-              >
-                {/* Image — tapping toggles selection */}
-                <button
-                  className="block w-full aspect-[3/4] relative"
-                  style={{ background: "var(--gradient-card)" }}
-                  onClick={() => {
-                    if (img.duplicate) return;
-                    setImages((imgs) =>
-                      imgs.map((i, i2) => i2 === idx ? { ...i, selected: !i.selected } : i)
-                    );
-                  }}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.label}
-                    loading="lazy"
-                    decoding="async"
+            {items.map((item) => (
+              <div key={item.id}
+                className={`relative rounded-xl overflow-hidden border-2 transition ${item.duplicate ? "border-muted opacity-40" : item.selected ? "border-primary" : "border-border"}`}
+                style={{ background: "var(--gradient-card)" }}>
+                {/* Tap to toggle */}
+                <button className="block w-full aspect-[3/4] relative" style={{ background: "oklch(0.14 0.01 260)" }}
+                  onClick={() => { if (item.duplicate) return; setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, selected: !i.selected } : i)); }}>
+                  <img src={item.url} alt={item.label} loading="lazy" decoding="async"
                     className="absolute inset-0 w-full h-full object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                  {!img.duplicate && (
-                    <div className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition ${
-                      img.selected ? "bg-primary border-primary" : "bg-black/50 border-white/50"
-                    }`}>
-                      {img.selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                  {!item.duplicate && (
+                    <div className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition ${item.selected ? "bg-primary border-primary" : "bg-black/50 border-white/40"}`}>
+                      {item.selected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                   )}
-                  {img.duplicate && (
-                    <div className="absolute top-1.5 right-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                      DUP
-                    </div>
-                  )}
+                  {item.duplicate && <div className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SAVED</div>}
+                  {item.labeling && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>}
                 </button>
-
-                {/* Label + category controls below image */}
-                <div className="p-1.5 space-y-1 bg-black/80">
-                  <input
-                    className="w-full bg-transparent text-white text-xs font-bold truncate outline-none"
-                    value={img.label}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setImages((imgs) =>
-                      imgs.map((i, i2) => i2 === idx ? { ...i, label: e.target.value } : i)
+                {/* Info panel */}
+                <div className="px-1.5 pt-1 pb-1.5 space-y-1" style={{ background: "rgba(0,0,0,0.85)" }}>
+                  <div className="flex items-center gap-1">
+                    <input className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
+                      value={item.label} onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, label: e.target.value } : i))} />
+                    {!item.duplicate && (
+                      <button onClick={(e) => { e.stopPropagation(); labelOneItem(item.id, item.url, item.dataUri); }}
+                        disabled={item.labeling} title="Auto-label this image"
+                        className="shrink-0 h-5 w-5 rounded flex items-center justify-center hover:bg-violet-500/20">
+                        {item.labeling ? <Loader2 className="h-3 w-3 animate-spin text-violet-400" /> : <Zap className="h-3 w-3 text-violet-400/70" />}
+                      </button>
                     )}
-                  />
-                  {/* Per-image category selector */}
-                  {!img.duplicate && (
-                    <div className="grid grid-cols-5 gap-0.5">
-                      {TEMPLATE_CATEGORIES.map((cat) => {
-                        const catDef = CATEGORIES.find(c => c.value === cat);
-                        return (
-                          <button
-                            key={cat}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setImages((imgs) =>
-                                imgs.map((i, i2) => i2 === idx ? { ...i, category: cat } : i)
-                              );
-                            }}
-                            className={`h-6 rounded text-[9px] font-black transition leading-none ${
-                              img.category === cat
-                                ? "text-primary-foreground"
-                                : "bg-white/10 text-white/50 hover:text-white/80"
-                            }`}
-                            style={img.category === cat ? { background: "var(--gradient-hero)" } : {}}
-                          >
-                            {catDef?.label ?? cat}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  </div>
+                  {!item.duplicate && (
+                    <>
+                      {/* Category badge */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Cat:</span>
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                          style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                          {CATEGORIES.find((c) => c.value === item.category)?.icon}{" "}
+                          {CATEGORIES.find((c) => c.value === item.category)?.label ?? item.category}
+                        </span>
+                      </div>
+                      {/* Per-image category mini-picker */}
+                      <div className="grid grid-cols-5 gap-0.5">
+                        {TEMPLATE_CATEGORIES.map((cat) => {
+                          const catDef = CATEGORIES.find((c) => c.value === cat);
+                          return (
+                            <button key={cat}
+                              onClick={(e) => { e.stopPropagation(); setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, category: cat } : i)); }}
+                              className={`h-6 rounded text-[9px] font-black transition leading-none ${item.category === cat ? "text-primary-foreground" : "bg-white/10 text-white/50 hover:text-white/80"}`}
+                              style={item.category === cat ? { background: "var(--gradient-hero)" } : {}}>
+                              {catDef?.label ?? cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -847,6 +712,32 @@ function TemplateImportPanel() {
           </div>
         </div>
       )}
+
+      {/* ══ MAINTENANCE (collapsed) ══ */}
+      <details>
+        <summary className="cursor-pointer text-xs font-black text-muted-foreground/60 uppercase tracking-wider flex items-center gap-2 select-none list-none">
+          <RefreshCw className="h-3.5 w-3.5" /> Maintenance Tools
+          <span className="text-[10px] font-normal normal-case">(fix broken / compress images)</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div className="rounded-2xl p-4 border border-amber-500/30 space-y-3" style={{ background: "rgba(245,158,11,0.06)" }}>
+            <h2 className="font-black text-sm flex items-center gap-2 text-amber-400"><RefreshCw className="h-4 w-4" /> Fix Broken Images</h2>
+            <p className="text-xs text-muted-foreground">Re-downloads all external images into Supabase storage.</p>
+            <Button onClick={handleRecacheAll} disabled={recaching} variant="outline" className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold">
+              {recaching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Re-caching…</> : "Re-cache All Images Now"}
+            </Button>
+            {recacheResult && <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>}
+          </div>
+          <div className="rounded-2xl p-4 border border-blue-500/30 space-y-3" style={{ background: "rgba(59,130,246,0.06)" }}>
+            <h2 className="font-black text-sm flex items-center gap-2 text-blue-400"><ImagePlus className="h-4 w-4" /> Compress Existing Templates</h2>
+            <p className="text-xs text-muted-foreground">Re-compresses all template images to max 500px.</p>
+            <Button onClick={handleCompressAll} disabled={compressing} variant="outline" className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-bold">
+              {compressing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Compressing… {compressProgress ? `${compressProgress.done}/${compressProgress.total}` : ""}</> : "Compress All Template Images"}
+            </Button>
+            {compressResult && <p className="text-xs text-green-400 font-semibold">{compressResult}</p>}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -1091,12 +982,13 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     setBusy(true);
     let url: string | null = null;
     if (file) {
-      const compressed = await compressImageFile(file);
-      const ext = compressed.name.split(".").pop() || "png";
-      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
+      // Full pipeline: remove BG → tight crop → center 500×500 → sharpen
+      const { processProductImage } = await import("@/lib/processProductImage");
+      const processed = await processProductImage(file, { removeBg: true });
+      const path = `templates/manual/${crypto.randomUUID()}.png`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, compressed, { upsert: false });
+        .upload(path, processed, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
@@ -1121,12 +1013,12 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     let saved = 0;
     for (let i = 0; i < bulkItems.length; i++) {
       const it = bulkItems[i];
-      const compressed = await compressImageFile(it.file);
-      const ext  = compressed.name.split(".").pop() || "jpg";
-      const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
+      const { processProductImage } = await import("@/lib/processProductImage");
+      const processed = await processProductImage(it.file, { removeBg: true });
+      const path = `templates/manual/${crypto.randomUUID()}.png`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, compressed, { upsert: false });
+        .upload(path, processed, { upsert: false });
       if (upErr) { toast.error(`${it.name}: ${upErr.message}`); continue; }
       const url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

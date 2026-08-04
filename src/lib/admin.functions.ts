@@ -143,7 +143,8 @@ export async function revokeSubscription(owner_id: string): Promise<RevokeResult
   }
 
   // 4. Full profile reset — status → pending, all billing fields cleared
-  const { error: updateErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateErr } = await (supabase as any)
     .from("profiles")
     .update({
       status:                              "pending",

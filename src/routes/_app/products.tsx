@@ -2049,47 +2049,13 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
   };
 
   /**
-   * Resize an image file so its longest edge is at most MAX_PX pixels.
-   * - PNG input → PNG output  (alpha channel / transparency preserved)
-   * - Everything else → JPEG at 82% quality
-   * Already-small images are returned as-is without re-encoding.
+   * Process a product image: remove background, tight-crop, center on 500×500
+   * transparent canvas, sharpen — mirrors the Bartendaz Pro Bottle-Only Toolkit.
+   * Falls back to simple resize if the pipeline fails.
    */
-  const compressImage = (f: File): Promise<File> => {
-    const MAX_PX = 500;
-    const isPng = f.type === "image/png" || f.name.toLowerCase().endsWith(".png");
-    return new Promise((resolve) => {
-      const url = URL.createObjectURL(f);
-      const img = new Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const { naturalWidth: w, naturalHeight: h } = img;
-        // Skip resize if already within limits
-        if (w <= MAX_PX && h <= MAX_PX) { resolve(f); return; }
-        const scale = MAX_PX / Math.max(w, h);
-        const canvas = document.createElement("canvas");
-        canvas.width  = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        const ctx = canvas.getContext("2d")!;
-        if (isPng) {
-          // clearRect ensures the canvas stays fully transparent before drawing
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const mimeType = isPng ? "image/png" : "image/jpeg";
-        const quality  = isPng ? undefined : 0.82;
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) { resolve(f); return; }
-            const ext = isPng ? "png" : "jpg";
-            resolve(new File([blob], `${f.name.replace(/\.[^.]+$/, "")}.${ext}`, { type: mimeType }));
-          },
-          mimeType,
-          quality,
-        );
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
-      img.src = url;
-    });
+  const compressImage = async (f: File): Promise<File> => {
+    const { processProductImage } = await import("@/lib/processProductImage");
+    return processProductImage(f, { removeBg: true });
   };
 
   const onPick = (f: File | undefined | null) => {
