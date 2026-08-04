@@ -4023,7 +4023,8 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
                                   {/* Expanded detail */}
                                   {isOpen && (
-                                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+                                    <div className="px-4 pb-4 pt-3 space-y-3"
+                                      style={{ background: "oklch(0.20 0.035 60)", borderTop: "1px solid oklch(0.82 0.18 65 / 0.2)" }}>
                                       {isEditing ? (
                                         <div className="space-y-3">
                                           <div className="flex items-center justify-between">
