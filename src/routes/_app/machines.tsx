@@ -4382,7 +4382,7 @@ function CreateTab({ ownerId, machineCount, maxScreens, onCreated }: { ownerId: 
     if (!name.trim()) return;
 
 
-    if (machineCount >= maxScreens) { toast.error(`Maximum ${maxScreens} screens reached for this account`); return; }
+    if (machineCount >= maxScreens) { toast.error(`Maximum ${maxScreens} machines reached for this account`); return; }
 
 
     setBusy(true);
@@ -7937,7 +7937,7 @@ export default function MachinesPage() {
   const tabs = [
 
 
-    { key: "screens", label: `${t("screens", "Screens")} ${machines.length}/${maxScreens}` },
+    { key: "screens", label: `${t("screens", "Machines")} ${machines.length}/${maxScreens}` },
 
 
     ...(isOwner ? [{ key: "allHistory", label: t("all_history", "All History") }] : []),
