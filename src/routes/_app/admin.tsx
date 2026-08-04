@@ -477,6 +477,93 @@ function TemplateImportPanel() {
   const [recaching, setRecaching] = useState(false);
   const [recacheResult, setRecacheResult] = useState<string | null>(null);
 
+  const [compressing, setCompressing] = useState(false);
+  const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(null);
+  const [compressResult, setCompressResult] = useState<string | null>(null);
+
+  const handleCompressAll = async () => {
+    setCompressing(true);
+    setCompressResult(null);
+    setCompressProgress(null);
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+
+    try {
+      // Fetch all template rows that have a Supabase storage URL
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("template_images")
+        .select("id, url")
+        .order("id");
+
+      if (error) { toast.error(error.message); return; }
+
+      const rows = (data as { id: string; url: string }[]).filter(
+        (r) => r.url && r.url.startsWith(supabaseUrl)
+      );
+
+      if (rows.length === 0) {
+        setCompressResult("No Supabase-hosted template images found to compress.");
+        return;
+      }
+
+      setCompressProgress({ done: 0, total: rows.length });
+      let succeeded = 0;
+      let skipped = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          // Download the current image as a blob
+          const fetchRes = await fetch(row.url, { cache: "no-store" });
+          if (!fetchRes.ok) { skipped++; continue; }
+          const blob = await fetchRes.blob();
+
+          // Determine type from blob / URL
+          const isPng =
+            blob.type === "image/png" ||
+            row.url.toLowerCase().includes(".png");
+          const ext = isPng ? "png" : "jpg";
+          const originalFile = new File([blob], `original.${ext}`, { type: blob.type || (isPng ? "image/png" : "image/jpeg") });
+
+          // Run through the same compressor
+          const compressed = await compressImageFile(originalFile);
+
+          // If size didn't shrink meaningfully (within 5%), skip re-upload to avoid churn
+          if (compressed.size >= originalFile.size * 0.95) { skipped++; setCompressProgress({ done: i + 1, total: rows.length }); continue; }
+
+          // Extract the storage path from the existing URL so we can overwrite in place
+          // URL shape: https://<project>.supabase.co/storage/v1/object/public/product-images/<path>
+          const storagePathMatch = row.url.match(/\/object\/public\/product-images\/(.+?)(\?|$)/);
+          if (!storagePathMatch) { skipped++; continue; }
+          const storagePath = storagePathMatch[1];
+
+          const { error: upErr } = await supabase.storage
+            .from("product-images")
+            .upload(storagePath, compressed, { upsert: true, contentType: compressed.type });
+
+          if (upErr) { skipped++; continue; }
+
+          // If the extension changed (e.g. was .png but now .jpg — won't happen here, but safe guard)
+          // we'd need to update the URL. Since we preserve the original format, URL stays the same.
+
+          succeeded++;
+        } catch {
+          skipped++;
+        }
+        setCompressProgress({ done: i + 1, total: rows.length });
+      }
+
+      setCompressResult(`Done — ${succeeded} compressed, ${skipped} skipped (already small or failed).`);
+      toast.success("Compression complete");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setCompressing(false);
+      setCompressProgress(null);
+    }
+  };
+
   const handleRecacheAll = async () => {
     setRecaching(true);
     setRecacheResult(null);
@@ -519,6 +606,29 @@ function TemplateImportPanel() {
           {recaching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Re-caching all images…</> : "Re-cache All Images Now"}
         </Button>
         {recacheResult && <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>}
+      </div>
+
+      {/* ── Compress existing template images ── */}
+      <div className="rounded-2xl p-4 border border-blue-500/30 space-y-3" style={{ background: "rgba(59,130,246,0.06)" }}>
+        <h2 className="font-black text-sm flex items-center gap-2 text-blue-400">
+          <ImagePlus className="h-4 w-4" /> Compress Existing Templates
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Re-compresses all template images already in storage down to max 500px. Run once — images that are already small are skipped automatically.
+        </p>
+        <Button
+          onClick={handleCompressAll}
+          disabled={compressing}
+          variant="outline"
+          className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-bold"
+        >
+          {compressing
+            ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Compressing… {compressProgress ? `${compressProgress.done}/${compressProgress.total}` : ""}
+              </>
+            : "Compress All Template Images"}
+        </Button>
+        {compressResult && <p className="text-xs text-green-400 font-semibold">{compressResult}</p>}
       </div>
 
       <div className="rounded-2xl p-4 border border-border space-y-4" style={{ background: "var(--gradient-card)" }}>
@@ -675,6 +785,8 @@ function TemplateImportPanel() {
                   <img
                     src={img.url}
                     alt={img.label}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-contain"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
@@ -805,6 +917,8 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
         <img
           src={t.url}
           alt={label}
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-contain"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
@@ -877,6 +991,47 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
   );
 }
 
+// ─── Image compression helper ─────────────────────────────────────────────────
+/**
+ * Resize an image file so its longest edge is at most MAX_PX pixels.
+ * - PNG input → PNG output  (alpha channel / transparency preserved)
+ * - Everything else → JPEG at 82% quality
+ * Already-small images are returned as-is without re-encoding.
+ */
+function compressImageFile(f: File): Promise<File> {
+  const MAX_PX = 500;
+  const isPng = f.type === "image/png" || f.name.toLowerCase().endsWith(".png");
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= MAX_PX && h <= MAX_PX) { resolve(f); return; }
+      const scale = MAX_PX / Math.max(w, h);
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      const ctx = canvas.getContext("2d")!;
+      if (isPng) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const mimeType = isPng ? "image/png" : "image/jpeg";
+      const quality  = isPng ? undefined : 0.82;
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(f); return; }
+          const ext = isPng ? "png" : "jpg";
+          resolve(new File([blob], `${f.name.replace(/\.[^.]+$/, "")}.${ext}`, { type: mimeType }));
+        },
+        mimeType,
+        quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+    img.src = url;
+  });
+}
+
 // ─── Add Template Modal ───────────────────────────────────────────────────────
 function AddTemplateModal({ onDone }: { onDone: () => void }) {
   const [mode, setMode]         = useState<"single" | "bulk">("single");
@@ -936,11 +1091,12 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     setBusy(true);
     let url: string | null = null;
     if (file) {
-      const ext = file.name.split(".").pop() || "png";
+      const compressed = await compressImageFile(file);
+      const ext = compressed.name.split(".").pop() || "png";
       const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, file, { upsert: false });
+        .upload(path, compressed, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
@@ -965,11 +1121,12 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     let saved = 0;
     for (let i = 0; i < bulkItems.length; i++) {
       const it = bulkItems[i];
-      const ext  = it.file.name.split(".").pop() || "jpg";
+      const compressed = await compressImageFile(it.file);
+      const ext  = compressed.name.split(".").pop() || "jpg";
       const path = `templates/manual/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, it.file, { upsert: false });
+        .upload(path, compressed, { upsert: false });
       if (upErr) { toast.error(`${it.name}: ${upErr.message}`); continue; }
       const url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1476,7 +1633,7 @@ export default function AdminPage() {
 
   const buckets = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const MASTER_ACCOUNT_EMAILS = ["renard.sankersingh@gmail.com"];
+    const MASTER_ACCOUNT_EMAILS = ["renard.sankersingh@gmail.com", "isabel@gmail.com"];
     const filtered = needle
       ? rows.filter((r) =>
           r.username.toLowerCase().includes(needle) ||
@@ -1598,7 +1755,7 @@ export default function AdminPage() {
                 </div>
                 <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
                   <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
-                  <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account).length}</p>
+                  <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account && !["renard.sankersingh@gmail.com", "isabel@gmail.com"].includes(r.email)).length}</p>
                 </div>
               </div>
 

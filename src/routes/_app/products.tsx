@@ -637,6 +637,8 @@ function TemplatePicker({ onSelect, onToggle, selectedUrls, ownerId, category, s
               src={t.url}
               alt=""
               draggable={false}
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-contain pointer-events-none"
               onLoad={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
@@ -1844,7 +1846,49 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     );
   };
 
-  const compressImage = (f: File): Promise<File> => Promise.resolve(f);
+  /**
+   * Resize an image file so its longest edge is at most MAX_PX pixels.
+   * - PNG input → PNG output  (alpha channel / transparency preserved)
+   * - Everything else → JPEG at 82% quality
+   * Already-small images are returned as-is without re-encoding.
+   */
+  const compressImage = (f: File): Promise<File> => {
+    const MAX_PX = 500;
+    const isPng = f.type === "image/png" || f.name.toLowerCase().endsWith(".png");
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const { naturalWidth: w, naturalHeight: h } = img;
+        // Skip resize if already within limits
+        if (w <= MAX_PX && h <= MAX_PX) { resolve(f); return; }
+        const scale = MAX_PX / Math.max(w, h);
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext("2d")!;
+        if (isPng) {
+          // clearRect ensures the canvas stays fully transparent before drawing
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const mimeType = isPng ? "image/png" : "image/jpeg";
+        const quality  = isPng ? undefined : 0.82;
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(f); return; }
+            const ext = isPng ? "png" : "jpg";
+            resolve(new File([blob], `${f.name.replace(/\.[^.]+$/, "")}.${ext}`, { type: mimeType }));
+          },
+          mimeType,
+          quality,
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+      img.src = url;
+    });
+  };
 
   const onPick = (f: File | undefined | null) => {
     if (!f) return;
@@ -1925,9 +1969,10 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
     if (templateUrl) {
       image_url = templateUrl;
     } else if (file) {
-      const ext = file.name.split(".").pop() || "png";
+      const compressed = await compressImage(file);
+      const ext = compressed.name.split(".").pop() || "png";
       const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from("product-images").upload(path, compressed, { upsert: false });
       if (upErr) { toast.error(upErr.message); setBusy(false); return; }
       image_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     } else if (isEdit) {
