@@ -1021,8 +1021,36 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
           price: parseFloat(varPrices[`${p.id}__localVar__${idx}`] ?? "") || lv.price,
         }))
         .filter((lv) => lv.units_consumed > 0 && lv.price > 0);
-      if (!varUpdates.some((v) => v.changed) && newLocalVars.length === 0) continue;
-      const merged = [...varUpdates.map(({ changed: _c, ...rest }) => rest), ...newLocalVars];
+      // Cig retail / special changes for items that also had qty updates
+      let cigMerged: BottleVariation[] | null = null;
+      if (p.category === "cigarettes") {
+        const newRetail = parseFloat(cigRetailPrices[p.id] ?? "");
+        const newSqty   = parseInt(cigSpecialData[p.id]?.qty ?? "", 10);
+        const newSpr    = parseFloat(cigSpecialData[p.id]?.price ?? "");
+        const existRetail  = (p.bottle_variations ?? []).find((bv) => bv.key === "retail");
+        const existSpecial = (p.bottle_variations ?? []).find((bv) => bv.key === "special");
+        const retailChanged  = !isNaN(newRetail) && newRetail !== Number(existRetail?.price ?? 0);
+        const specialChanged = (!isNaN(newSqty) && newSqty !== Number(existSpecial?.units_consumed ?? 0)) ||
+                               (!isNaN(newSpr)  && newSpr  !== Number(existSpecial?.price ?? 0));
+        if (retailChanged || specialChanged) {
+          const retailEntry: BottleVariation | null = (!isNaN(newRetail) && newRetail > 0)
+            ? { key: "retail", label: "Retail", units_consumed: 1, price: newRetail }
+            : existRetail ?? null;
+          const sqty = !isNaN(newSqty) ? newSqty : Number(existSpecial?.units_consumed ?? 0);
+          const spr  = !isNaN(newSpr)  ? newSpr  : Number(existSpecial?.price ?? 0);
+          const specialEntry: BottleVariation | null = (sqty > 0 && spr > 0)
+            ? { key: "special", label: `${sqty} for $${spr.toFixed(2)}`, units_consumed: sqty, price: spr }
+            : existSpecial ?? null;
+          cigMerged = [
+            ...(retailEntry ? [retailEntry] : []),
+            ...(specialEntry ? [specialEntry] : []),
+          ];
+        }
+      }
+      if (!varUpdates.some((v) => v.changed) && newLocalVars.length === 0 && !cigMerged) continue;
+      const merged = cigMerged
+        ? cigMerged
+        : [...varUpdates.map(({ changed: _c, ...rest }) => rest), ...newLocalVars];
       await supabase.from("products").update({ bottle_variations: merged }).eq("id", p.id);
     }
 
@@ -1333,7 +1361,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                         const sppVal = sd?.price ?? "";
                         const isSqActive  = activeNumpad?.id === p.id && activeNumpad.field === "sq";
                         const isSppActive = activeNumpad?.id === p.id && activeNumpad.field === "spp";
-                        const hasSpecial = (parseInt(sqVal) > 0 && parseFloat(sppVal) > 0) ||
+                        const hasSpecial = p.id in cigSpecialData ||
+                          (parseInt(sqVal) > 0 && parseFloat(sppVal) > 0) ||
                           !!(p.bottle_variations ?? []).find((bv) => bv.key === "special");
                         return (
                           <>
