@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -34,6 +34,162 @@ type OpenedBottle = {
   units_consumed: number;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Memoized product card — only re-renders when its own data actually changes.
+// Keeping this outside RegisterPage means category tab switches don't touch
+// cards that haven't changed at all.
+// ─────────────────────────────────────────────────────────────────────────────
+type ProductCardProps = {
+  p: Product;
+  inCartQty: number; // 0 = not in cart
+  imgSrc: (url: string | null | undefined) => string | null;
+  onAdd: (p: Product) => void;
+  onRemove: (id: string) => void;
+  onDec: (id: string) => void;
+};
+const ProductCard = React.memo(function ProductCard({ p, inCartQty, imgSrc, onAdd, onRemove, onDec }: ProductCardProps) {
+  const outOfStock  = (p.stock_qty ?? 1) === 0;
+  const incomplete  = !p.price || Number(p.price) <= 0;
+  const inCart      = inCartQty > 0;
+  return (
+    <div data-bar-id={p.id} className="relative">
+      <button
+        onClick={() => !outOfStock && !incomplete && onAdd(p)}
+        disabled={outOfStock || incomplete}
+        className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock || incomplete ? "cursor-not-allowed opacity-50 grayscale" : "active:scale-95"}`}
+        style={{
+          background: "var(--gradient-card)",
+          boxShadow: "var(--shadow-elegant)",
+          borderColor: inCart ? "var(--primary)" : "var(--border)",
+        }}
+      >
+        <div className="aspect-[3/4] relative w-full">
+          {p.image_url ? (
+            <img
+              src={imgSrc(p.image_url) ?? p.image_url}
+              alt=""
+              loading="eager"
+              decoding="sync"
+              fetchPriority="high"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                img.style.display = "none";
+                const fb = img.nextElementSibling as HTMLElement | null;
+                if (fb) fb.style.display = "flex";
+              }}
+            />
+          ) : null}
+          <div className="absolute inset-0 items-center justify-center text-4xl"
+            style={{ display: p.image_url ? "none" : "flex" }}>
+            {categoryIcon(p.category ?? "drinks")}
+          </div>
+          {p.stock_qty !== undefined && !outOfStock && (
+            <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
+              <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
+            </div>
+          )}
+          {inCart && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(p.id); }}
+              className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
+              style={{ background: "#dc2626" }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {inCart && (
+            <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+              style={{ background: "rgba(0,0,0,0.75)" }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDec(p.id); }}
+                className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
+                style={{ background: "#ef4444" }}
+              >
+                <Minus className="h-4 w-4 text-black" />
+              </button>
+              <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
+                style={{ background: "var(--gradient-hero)" }}>
+                {inCartQty}
+              </div>
+            </div>
+          )}
+          {outOfStock && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
+              <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+              </div>
+            </div>
+          )}
+          {!outOfStock && incomplete && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[1px]">
+              <div className="rounded-xl px-2 py-1 shadow-lg" style={{ background: "#92400e" }}>
+                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">No Price</span>
+              </div>
+            </div>
+          )}
+          {!outOfStock && !incomplete && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
+            <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+              <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
+            </div>
+          )}
+        </div>
+        <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
+          <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+          <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
+        </div>
+      </button>
+    </div>
+  );
+});
+
+type ProductGridProps = {
+  barOrdered: Product[];
+  cartQtyMap: Record<string, number>; // productId → qty in cart (0 = not in cart)
+  imgSrc: (url: string | null | undefined) => string | null;
+  onAdd: (p: Product) => void;
+  onRemove: (id: string) => void;
+  onDec: (id: string) => void;
+  onEnterEditMode: () => void;
+  showSortButton: boolean;
+  sortLabel: string;
+};
+const ProductGrid = React.memo(function ProductGrid({
+  barOrdered, cartQtyMap, imgSrc, onAdd, onRemove, onDec,
+  onEnterEditMode, showSortButton, sortLabel,
+}: ProductGridProps) {
+  return (
+    <>
+      <div
+        className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2"
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {barOrdered.map((p) => (
+          <ProductCard
+            key={p.id}
+            p={p}
+            inCartQty={cartQtyMap[p.id] ?? 0}
+            imgSrc={imgSrc}
+            onAdd={onAdd}
+            onRemove={onRemove}
+            onDec={onDec}
+          />
+        ))}
+      </div>
+      {showSortButton && (
+        <div className="pt-3 pb-1">
+          <button
+            onClick={onEnterEditMode}
+            className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border"
+            style={{ background: "rgba(251,146,60,0.08)", color: "var(--primary)", borderColor: "rgba(251,146,60,0.30)" }}
+          >
+            {sortLabel}
+          </button>
+        </div>
+      )}
+    </>
+  );
+});
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
@@ -261,6 +417,14 @@ export default function RegisterPage() {
     }
   }, [cart, ownerId]);
 
+  // Stable map of productId → qty for passing to memoized ProductCard/ProductGrid
+  // without triggering full re-renders on every cart change
+  const cartQtyMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    cart.forEach((i) => { m[i.id] = i.qty; });
+    return m;
+  }, [cart]);
+
   // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);
   useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
@@ -396,11 +560,11 @@ export default function RegisterPage() {
     });
   }
 
-  const barEnterEditMode = () => {
+  const barEnterEditMode = useCallback(() => {
     if (barEditModeRef.current) return;
     barEditModeRef.current = true;
     setBarEditMode(true);
-  };
+  }, []);
 
   const handleBarDone = () => {
     barEditModeRef.current = false;
@@ -516,7 +680,7 @@ export default function RegisterPage() {
     if (cashOpen && cart.length === 0) setCashOpen(false);
   }, [cart, cashOpen]);
 
-  const addToCart = (p: Product) => {
+  const addToCart = useCallback((p: Product) => {
     // Block items with no price or no cost price set
     if (!p.price || Number(p.price) <= 0) {
       toast.error(`${p.name} has no sale price set. Ask the owner to update it in Items.`);
@@ -539,12 +703,12 @@ export default function RegisterPage() {
       
       return ex ? c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i)) : [...c, { ...p, qty: 1 }];
     });
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dec = (id: string) =>
-    setCart((c) => c.flatMap((i) => (i.id === id ? (i.qty > 1 ? [{ ...i, qty: i.qty - 1 }] : []) : [i])));
+  const dec = useCallback((id: string) =>
+    setCart((c) => c.flatMap((i) => (i.id === id ? (i.qty > 1 ? [{ ...i, qty: i.qty - 1 }] : []) : [i]))), []);
 
-  const removeItem = (id: string) => setCart((c) => c.filter((i) => i.id !== id));
+  const removeItem = useCallback((id: string) => setCart((c) => c.filter((i) => i.id !== id)), []);
 
   // ΓöÇΓöÇ Opened Bottles state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
@@ -1307,108 +1471,18 @@ export default function RegisterPage() {
                 </div>
               </div>
             ) : (
-              /* ── Normal mode: plain grid ── */
-              <>
-                <div
-                  className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2"
-                  onContextMenu={(e) => e.preventDefault()}
-                >
-                  {barOrdered.map((p) => {
-                    const inCart = cart.find((i) => i.id === p.id);
-                    const outOfStock = (p.stock_qty ?? 1) === 0;
-                    const missingPrice = !p.price || Number(p.price) <= 0;
-                    const incomplete   = missingPrice;
-                    return (
-                      <div key={p.id} data-bar-id={p.id} className="relative">
-                        <button
-                          onClick={() => !outOfStock && !incomplete && addToCart(p)}
-                          disabled={outOfStock || incomplete}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock || incomplete ? "cursor-not-allowed opacity-50 grayscale" : "active:scale-95"}`}
-                          style={{
-                            background: "var(--gradient-card)",
-                            boxShadow: "var(--shadow-elegant)",
-                            borderColor: inCart ? "var(--primary)" : "var(--border)",
-                          }}
-                        >
-                          <div className="aspect-[3/4] relative w-full">
-                            {p.image_url ? (
-                              <img src={imgSrc(p.image_url) ?? productImageUrl(p.image_url)!} alt="" loading="eager" decoding="sync" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
-                            ) : null}
-                            <div className="absolute inset-0 items-center justify-center text-4xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>
-                              {categoryIcon(p.category ?? "drinks")}
-                            </div>
-                            {p.stock_qty !== undefined && !outOfStock && (
-                              <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
-                                <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
-                              </div>
-                            )}
-                            {inCart && (
-                              <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                                className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
-                                style={{ background: "#dc2626" }}>
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                            {inCart && (
-                              <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
-                                style={{ background: "rgba(0,0,0,0.75)" }}>
-                                <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                                  className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
-                                  style={{ background: "#ef4444" }}>
-                                  <Minus className="h-4 w-4 text-black" />
-                                </button>
-                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
-                                  style={{ background: "var(--gradient-hero)" }}>
-                                  {inCart.qty}
-                                </div>
-                              </div>
-                            )}
-                            {outOfStock && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
-                                <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                                  <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
-                                </div>
-                              </div>
-                            )}
-                            {!outOfStock && incomplete && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[1px]">
-                                <div className="rounded-xl px-2 py-1 shadow-lg" style={{ background: "#92400e" }}>
-                                  <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
-                                    No Price
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {!outOfStock && !incomplete && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-                                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
-                            <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Footer — Sort Item Order button, only when cart is empty */}
-                {cart.length === 0 && (
-                  <div className="pt-3 pb-1">
-                    <button
-                      onClick={barEnterEditMode}
-                      className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border"
-                      style={{ background: "rgba(251,146,60,0.08)", color: "var(--primary)", borderColor: "rgba(251,146,60,0.30)" }}
-                    >
-                      {t("sort_item_order", "⇅ Sort Item Order")}
-                    </button>
-                  </div>
-                )}
-              </>
+              /* ── Normal mode: memoized grid — only re-renders when barOrdered/cart changes ── */
+              <ProductGrid
+                barOrdered={barOrdered}
+                cartQtyMap={cartQtyMap}
+                imgSrc={imgSrc}
+                onAdd={addToCart}
+                onRemove={removeItem}
+                onDec={dec}
+                onEnterEditMode={barEnterEditMode}
+                showSortButton={cart.length === 0}
+                sortLabel={t("sort_item_order", "⇅ Sort Item Order")}
+              />
             )}
           </div>
             )}
