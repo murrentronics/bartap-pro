@@ -133,6 +133,7 @@ export default function RegisterPage() {
   const [floatMachineAmount, setFloatMachineAmount] = useState("");
   const [hasMachinesAddon, setHasMachinesAddon] = useState(false);
   const [isMachinesAccount, setIsMachinesAccount] = useState(false);
+  const [activeFloatField, setActiveFloatField] = useState<"bar" | "machine" | null>(null);
   const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
 
   const handleOpenBar = async () => {
@@ -156,14 +157,15 @@ export default function RegisterPage() {
     setIsMachinesAccount(!showBarFloat);
     setFloatBarAmount("");
     setFloatMachineAmount("");
+    setActiveFloatField(null);
     setShowFloatModal(true);
   };
 
   const confirmOpenBarWithFloat = async () => {
-    const barFloatVal = isMachinesAccount ? 0 : parseFloat(floatBarAmount);
+    const barFloatVal = isMachinesAccount ? 0 : parseInt(floatBarAmount, 10);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachinesAddon) {
-      const machineFloatVal = parseFloat(floatMachineAmount);
+      const machineFloatVal = parseInt(floatMachineAmount, 10);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
     }
     setBarToggleBusy(true);
@@ -187,7 +189,7 @@ export default function RegisterPage() {
 
     // Insert machine float session if machines addon active
     if (hasMachinesAddon) {
-      const machineAmt = parseFloat(floatMachineAmount) || 0;
+      const machineAmt = parseInt(floatMachineAmount, 10) || 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("machine_float_sessions").insert({ owner_id: ownerId, amount: machineAmt, set_at: now });
     }
@@ -903,22 +905,52 @@ export default function RegisterPage() {
               {!isMachinesAccount && (
                 <div className="space-y-1">
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
-                  <input
-                    type="number" min="0" step="0.01" placeholder="e.g. 500.00"
-                    value={floatBarAmount} onChange={e => setFloatBarAmount(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                    autoFocus
-                  />
+                  <div
+                    onClick={() => setActiveFloatField(activeFloatField === "bar" ? null : "bar")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeFloatField === "bar" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeFloatField === "bar" ? "text-primary" : floatBarAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                      {floatBarAmount || "0"}
+                    </span>
+                  </div>
                 </div>
               )}
               {hasMachinesAddon && (
                 <div className="space-y-1">
                   <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
-                  <input
-                    type="number" min="0" step="0.01" placeholder="e.g. 200.00"
-                    value={floatMachineAmount} onChange={e => setFloatMachineAmount(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border bg-background px-4 text-base font-black outline-none focus:ring-1 focus:ring-primary"
-                  />
+                  <div
+                    onClick={() => setActiveFloatField(activeFloatField === "machine" ? null : "machine")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeFloatField === "machine" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeFloatField === "machine" ? "text-primary" : floatMachineAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                      {floatMachineAmount || "0"}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Inline numpad — integers only */}
+              {activeFloatField !== null && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
+                    k === "" ? <div key={i} /> :
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        const current = activeFloatField === "bar" ? floatBarAmount : floatMachineAmount;
+                        const setter  = activeFloatField === "bar" ? setFloatBarAmount : setFloatMachineAmount;
+                        if (k === "⌫") { setter(current.slice(0, -1)); return; }
+                        setter(current === "0" || current === "" ? k : current + k);
+                      }}
+                      className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                        k === "⌫"
+                          ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                          : "bg-muted hover:bg-muted/70 text-foreground"
+                      }`}
+                    >{k}</button>
+                  ))}
                 </div>
               )}
               <div className="flex gap-3 pt-2">
