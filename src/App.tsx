@@ -26,7 +26,6 @@ import FactoryResetPage from "@/pages/FactoryResetPage";
 import LanguagePage from "@/pages/LanguagePage";
 import SpecialsPage from "@/pages/SpecialsPage";
 import SwitchBarPage from "@/pages/SwitchBarPage";
-import CreateBarPage from "@/pages/CreateBarPage";
 import SummaryPage from "@/pages/SummaryPage";
 import ManagerPage from "@/pages/ManagerPage";
 import StockCheckPage from "@/pages/StockCheckPage";
@@ -105,7 +104,6 @@ function AppWithUpdateCheck() {
             <Route path="language" element={<LanguagePage />} />
             <Route path="specials" element={<SpecialsPage />} />
             <Route path="switch-bar" element={<SwitchBarPage />} />
-            <Route path="create-bar" element={<CreateBarPage />} />
             <Route path="summary" element={<SummaryPage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="stock-check" element={<StockCheckPage />} />

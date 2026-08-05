@@ -62,7 +62,7 @@ export default function AppLayout() {
     }
     // Multi-bar owner or chain owner with no bar selected → force them to pick a bar first
     // Allow billing page so they can manage subscriptions
-    if (!loading && hasMultipleBars && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/create-bar" && loc.pathname !== "/billing") {
+    if (!loading && hasMultipleBars && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/billing") {
       nav("/switch-bar", { replace: true });
     }
   }, [loading, profile, loc.pathname, nav, isChainOwner, activeBarId]);

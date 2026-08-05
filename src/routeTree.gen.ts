@@ -12,13 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppSwitchBarRouteImport } from './routes/_app/switch-bar'
 import { Route as AppStockCheckRouteImport } from './routes/_app/stock-check'
 import { Route as AppManagerRouteImport } from './routes/_app/manager'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
-import { Route as AppCreateBarRouteImport } from './routes/_app/create-bar'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
   id: '/__root/capacitor',
@@ -33,11 +31,6 @@ const LoginRoute = LoginRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AppSwitchBarRoute = AppSwitchBarRouteImport.update({
-  id: '/switch-bar',
-  path: '/switch-bar',
-  getParentRoute: () => AppRoute,
 } as any)
 const AppStockCheckRoute = AppStockCheckRouteImport.update({
   id: '/stock-check',
@@ -64,48 +57,37 @@ const AppCreditRoute = AppCreditRouteImport.update({
   path: '/credit',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCreateBarRoute = AppCreateBarRouteImport.update({
-  id: '/create-bar',
-  path: '/create-bar',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
-  '/create-bar': typeof AppCreateBarRoute
   '/credit': typeof AppCreditRoute
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
   '/stock-check': typeof AppStockCheckRoute
-  '/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/capacitor': typeof _rootCapacitorRoute
-  '/create-bar': typeof AppCreateBarRoute
   '/credit': typeof AppCreditRoute
   '/factory-reset': typeof AppFactoryResetRoute
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
   '/stock-check': typeof AppStockCheckRoute
-  '/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/__root/capacitor': typeof _rootCapacitorRoute
-  '/_app/create-bar': typeof AppCreateBarRoute
   '/_app/credit': typeof AppCreditRoute
   '/_app/factory-reset': typeof AppFactoryResetRoute
   '/_app/machines': typeof AppMachinesRoute
   '/_app/manager': typeof AppManagerRoute
   '/_app/stock-check': typeof AppStockCheckRoute
-  '/_app/switch-bar': typeof AppSwitchBarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -113,37 +95,31 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/capacitor'
-    | '/create-bar'
     | '/credit'
     | '/factory-reset'
     | '/machines'
     | '/manager'
     | '/stock-check'
-    | '/switch-bar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/capacitor'
-    | '/create-bar'
     | '/credit'
     | '/factory-reset'
     | '/machines'
     | '/manager'
     | '/stock-check'
-    | '/switch-bar'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/__root/capacitor'
-    | '/_app/create-bar'
     | '/_app/credit'
     | '/_app/factory-reset'
     | '/_app/machines'
     | '/_app/manager'
     | '/_app/stock-check'
-    | '/_app/switch-bar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -174,13 +150,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_app/switch-bar': {
-      id: '/_app/switch-bar'
-      path: '/switch-bar'
-      fullPath: '/switch-bar'
-      preLoaderRoute: typeof AppSwitchBarRouteImport
-      parentRoute: typeof AppRoute
     }
     '/_app/stock-check': {
       id: '/_app/stock-check'
@@ -217,34 +186,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCreditRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/create-bar': {
-      id: '/_app/create-bar'
-      path: '/create-bar'
-      fullPath: '/create-bar'
-      preLoaderRoute: typeof AppCreateBarRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
-  AppCreateBarRoute: typeof AppCreateBarRoute
   AppCreditRoute: typeof AppCreditRoute
   AppFactoryResetRoute: typeof AppFactoryResetRoute
   AppMachinesRoute: typeof AppMachinesRoute
   AppManagerRoute: typeof AppManagerRoute
   AppStockCheckRoute: typeof AppStockCheckRoute
-  AppSwitchBarRoute: typeof AppSwitchBarRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppCreateBarRoute: AppCreateBarRoute,
   AppCreditRoute: AppCreditRoute,
   AppFactoryResetRoute: AppFactoryResetRoute,
   AppMachinesRoute: AppMachinesRoute,
   AppManagerRoute: AppManagerRoute,
   AppStockCheckRoute: AppStockCheckRoute,
-  AppSwitchBarRoute: AppSwitchBarRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
