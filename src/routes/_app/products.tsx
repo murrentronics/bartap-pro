@@ -1453,11 +1453,12 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                                 <td className="px-2 py-1">
                                   <div
                                     onClick={() => setActiveNumpad(isSqActive ? null : { id: rowId, field: "sq" })}
-                                    className="h-7 rounded-lg border text-right pr-2 text-xs font-black bg-muted/50 flex items-center justify-end cursor-pointer active:bg-muted/70 transition"
-                                    style={{ borderColor: isSqActive ? "var(--primary)" : "var(--border)", color: "var(--muted-foreground)" }}
+                                    className="h-7 rounded-lg border pr-2 text-xs font-black bg-muted/50 flex items-center cursor-pointer active:bg-muted/70 transition"
+                                    style={{ borderColor: isSqActive ? "var(--primary)" : "var(--border)" }}
                                     title="Qty in bundle"
                                   >
-                                    {sd.qty || "0"}
+                                    <span className="pl-2 text-muted-foreground/60 font-semibold shrink-0">qty:</span>
+                                    <span className="flex-1 text-right" style={{ color: "var(--muted-foreground)" }}>{sd.qty || "0"}</span>
                                   </div>
                                 </td>
                                 {/* Price */}
@@ -1489,7 +1490,7 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                                 style={{ color: "var(--primary)" }}
                               >
                                 <span className="h-4 w-4 rounded-full flex items-center justify-center text-black text-[10px] font-black" style={{ background: "var(--gradient-hero)" }}>+</span>
-                                Add Variation
+                                Add Special
                               </button>
                             </td>
                           </tr>

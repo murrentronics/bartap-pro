@@ -115,7 +115,9 @@ function AppLayout() {
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Use stable primitives (not the whole profile object) so the channel isn't
+  // torn down and recreated every time auth.tsx merges a realtime profile update.
+  }, [profile?.id, profile?.parent_id, profile?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenBar = async () => {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
