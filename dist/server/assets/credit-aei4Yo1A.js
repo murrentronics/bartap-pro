@@ -1,8 +1,13 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-DwZtvdF3.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, y as CircleCheck, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, z as drawHeader, A as LM, D as RM, E as CONTENT_BOTTOM, H as addFootersToAllPages, J as downloadPdf } from "./router-CerKS5nD.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-CvPu0oa7.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, H as downloadPdf } from "./router-KQFuUJeL.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
+const __iconNode$2 = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
+];
+const CircleCheck = createLucideIcon("circle-check", __iconNode$2);
 const __iconNode$1 = [
   ["line", { x1: "12", x2: "12", y1: "2", y2: "22", key: "7eqyqh" }],
   ["path", { d: "M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6", key: "1b0p4s" }]
@@ -33,7 +38,7 @@ async function printBill(account, ownerName) {
   new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"

@@ -42,12 +42,15 @@ type OpenedBottle = {
 type ProductCardProps = {
   p: Product;
   inCartQty: number; // 0 = not in cart
-  imgSrc: (url: string | null | undefined) => string | null;
+  // Resolved image src string — passed as a plain value so React.memo can do
+  // a simple equality check. Each card re-renders only when its own image
+  // resolves, not when any other product's image finishes loading.
+  resolvedImgSrc: string | null;
   onAdd: (p: Product) => void;
   onRemove: (id: string) => void;
   onDec: (id: string) => void;
 };
-const ProductCard = React.memo(function ProductCard({ p, inCartQty, imgSrc, onAdd, onRemove, onDec }: ProductCardProps) {
+const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgSrc, onAdd, onRemove, onDec }: ProductCardProps) {
   const outOfStock  = (p.stock_qty ?? 1) === 0;
   const incomplete  = !p.price || Number(p.price) <= 0;
   const inCart      = inCartQty > 0;
@@ -66,12 +69,11 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, imgSrc, onAd
         <div className="aspect-[3/4] relative w-full">
           {p.image_url ? (
             <img
-              src={imgSrc(p.image_url) ?? p.image_url}
+              src={resolvedImgSrc ?? p.image_url}
               alt=""
               loading="eager"
-              decoding="sync"
-              fetchPriority="high"
-              className="absolute inset-0 w-full h-full object-cover"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-contain"
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
                 img.style.display = "none";
@@ -146,7 +148,10 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, imgSrc, onAd
 type ProductGridProps = {
   barOrdered: Product[];
   cartQtyMap: Record<string, number>; // productId → qty in cart (0 = not in cart)
-  imgSrc: (url: string | null | undefined) => string | null;
+  // Map of productId → resolved image src string (objectURL or original URL).
+  // Passing pre-resolved strings lets React.memo do a cheap string equality
+  // check per card instead of comparing a shared function reference.
+  resolvedImgMap: Record<string, string | null>;
   onAdd: (p: Product) => void;
   onRemove: (id: string) => void;
   onDec: (id: string) => void;
@@ -155,7 +160,7 @@ type ProductGridProps = {
   sortLabel: string;
 };
 const ProductGrid = React.memo(function ProductGrid({
-  barOrdered, cartQtyMap, imgSrc, onAdd, onRemove, onDec,
+  barOrdered, cartQtyMap, resolvedImgMap, onAdd, onRemove, onDec,
   onEnterEditMode, showSortButton, sortLabel,
 }: ProductGridProps) {
   return (
@@ -169,7 +174,7 @@ const ProductGrid = React.memo(function ProductGrid({
             key={p.id}
             p={p}
             inCartQty={cartQtyMap[p.id] ?? 0}
-            imgSrc={imgSrc}
+            resolvedImgSrc={resolvedImgMap[p.id] ?? null}
             onAdd={onAdd}
             onRemove={onRemove}
             onDec={onDec}
@@ -394,9 +399,33 @@ export default function RegisterPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
+  // Stable array reference — only changes when the product list actually changes,
+  // not on every cart state update. Without useMemo, every tap (cart change) would
+  // create a new array and re-trigger the entire IndexedDB read pipeline.
+  const productImageUrls = useMemo(
+    () => products.map((p) => productImageUrl(p.image_url)),
+    [products]
+  );
   // Preload all product images — returns imgSrc() helper that serves objectURLs
   // from IndexedDB instantly, falling back to the network URL while loading.
-  const imgSrc = useImageCache(products.map((p) => productImageUrl(p.image_url)));
+  const imgSrc = useImageCache(productImageUrls);
+
+  // Pre-resolve image sources into a plain id→src map so ProductGrid/ProductCard
+  // receive stable string values. React.memo can then do a simple string equality
+  // check per card — a card only re-renders when its own image resolves, not when
+  // any other image finishes loading.
+  const resolvedImgMap = useMemo(() => {
+    const m: Record<string, string | null> = {};
+    products.forEach((p) => {
+      const url = productImageUrl(p.image_url);
+      m[p.id] = url ? imgSrc(url) : null;
+    });
+    return m;
+  // imgSrc is stable (empty deps []); products changes trigger productImageUrls
+  // → useImageCache effect → new objectUrlMap → imgSrc reads fresh ref value.
+  // We rebuild this map whenever either products or the imgSrc function changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, imgSrc]);
   // Initialize cart from localStorage on mount
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -1475,7 +1504,7 @@ export default function RegisterPage() {
               <ProductGrid
                 barOrdered={barOrdered}
                 cartQtyMap={cartQtyMap}
-                imgSrc={imgSrc}
+                resolvedImgMap={resolvedImgMap}
                 onAdd={addToCart}
                 onRemove={removeItem}
                 onDec={dec}

@@ -119,22 +119,25 @@ async function fetchDecodeAndStore(url: string): Promise<string | null> {
 export function useImageCache(
   imageUrls: (string | null | undefined)[]
 ): (url: string | null | undefined) => string | null {
-  // Map from original URL → objectURL (local blob)
-  const [objectUrlMap, setObjectUrlMap] = useState<Map<string, string>>(new Map());
+  // Render-trigger counter — incremented whenever new objectURLs are stored.
+  // Consumers that memoize derived data (e.g. resolvedImgMap) will re-compute
+  // when this bumps, picking up fresh values from objectUrlMapRef.
+  const [, setVersion] = useState(0);
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const assetsWarmedRef = useRef(false);
   // Track which objectURLs we created so we can revoke them on unmount
   const ownedObjectUrls = useRef<Set<string>>(new Set());
 
-  // Stable helper: returns objectURL if available, else original URL
+  // Stable helper: returns objectURL if available, else original URL.
+  // Reads directly from the ref (always current) so the callback reference
+  // never changes — React.memo'd consumers (ProductCard) won't re-render just
+  // because a background image finished loading for a different product.
   const imgSrc = useCallback(
     (url: string | null | undefined): string | null => {
       if (!url) return null;
       return objectUrlMapRef.current.get(url) ?? url;
     },
-    // objectUrlMap in deps so the callback ref updates when map changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [objectUrlMap]
+    [] // stable forever — ref reads are always fresh without a new closure
   );
 
   useEffect(() => {
@@ -157,7 +160,7 @@ export function useImageCache(
           objectUrlMapRef.current.set(url, oUrl);
           ownedObjectUrls.current.add(oUrl);
         });
-        setObjectUrlMap(new Map(objectUrlMapRef.current));
+        setVersion((v) => v + 1);
       }
 
       // ── Layer 2: background-fetch URLs not yet in IndexedDB ──────────────
@@ -202,7 +205,7 @@ export function useImageCache(
             changed = true;
           }
         });
-        if (changed) setObjectUrlMap(new Map(objectUrlMapRef.current));
+        if (changed) setVersion((v) => v + 1);
       }
 
       // ── Cleanup: prune blobs for images no longer in the product list ─────

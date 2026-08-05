@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-DwZtvdF3.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-CvPu0oa7.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -2230,7 +2230,7 @@ var Link = reactExports.forwardRef((props, ref) => {
   }
   return reactExports.createElement(_asChild, linkProps, children);
 });
-var Route$b = class Route extends BaseRoute {
+var Route$9 = class Route extends BaseRoute {
   /**
   * @deprecated Use the `createRoute` function instead.
   */
@@ -2288,7 +2288,7 @@ var Route$b = class Route extends BaseRoute {
   }
 };
 function createRoute(options) {
-  return new Route$b(options);
+  return new Route$9(options);
 }
 function createRootRouteWithContext() {
   return (options) => {
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BRZTO6yN.js");
+          const { PushNotifications } = await import("./index-DV4i4meM.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-Su67lz92.css";
+const appCss = "/assets/styles-DpuzfL5Q.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -27138,7 +27138,7 @@ function NotFound$1() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: "/", className: "mt-6 inline-block rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground", children: "Go home" })
   ] }) });
 }
-const Route$a = createRootRouteWithContext()({
+const Route$8 = createRootRouteWithContext()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -27184,7 +27184,7 @@ function RootShell({ children }) {
   ] });
 }
 function RootComponent$1() {
-  const { queryClient } = Route$a.useRouteContext();
+  const { queryClient } = Route$8.useRouteContext();
   const [splashDone, setSplashDone] = reactExports.useState(false);
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -27205,12 +27205,12 @@ function NotFound() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { to: "/", className: "mt-6 inline-block rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground", children: "Go home" })
   ] }) });
 }
-const Route$9 = createRootRouteWithContext()({
+const Route$7 = createRootRouteWithContext()({
   component: RootComponent,
   notFoundComponent: NotFound
 });
 function RootComponent() {
-  const { queryClient } = Route$9.useRouteContext();
+  const { queryClient } = Route$7.useRouteContext();
   const [splashDone, setSplashDone] = reactExports.useState(false);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(AuthProvider, { children: [
     !splashDone && /* @__PURE__ */ jsxRuntimeExports.jsx(SplashScreen, { onDone: () => setSplashDone(true) }),
@@ -30761,20 +30761,14 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$2, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$2.displayName;
-const $$splitComponentImporter$3 = () => import("./login-CLid5Duz.js");
-const Route$8 = createFileRoute("/login")({
+const $$splitComponentImporter$3 = () => import("./login-B31Q8pr2.js");
+const Route$6 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-BXhwf5mZ.js");
-const Route$7 = createFileRoute("/_app")({
+const $$splitComponentImporter$2 = () => import("./_app-DmLY8dW9.js");
+const Route$5 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
-const ChainCtx = reactExports.createContext(null);
-function useChain() {
-  const ctx = reactExports.useContext(ChainCtx);
-  if (!ctx) throw new Error("useChain must be inside ChainProvider");
-  return ctx;
-}
 const mergeClasses = (...classes) => classes.filter((className, index2, array) => {
   return Boolean(className) && className.trim() !== "" && array.indexOf(className) === index2;
 }).join(" ").trim();
@@ -30851,7 +30845,7 @@ const createLucideIcon = (iconName, iconNode) => {
   Component.displayName = toPascalCase(iconName);
   return Component;
 };
-const __iconNode$k = [
+const __iconNode$i = [
   ["path", { d: "M10.268 21a2 2 0 0 0 3.464 0", key: "vwvbt9" }],
   [
     "path",
@@ -30861,15 +30855,15 @@ const __iconNode$k = [
     }
   ]
 ];
-const Bell = createLucideIcon("bell", __iconNode$k);
-const __iconNode$j = [
+const Bell = createLucideIcon("bell", __iconNode$i);
+const __iconNode$h = [
   ["path", { d: "M8 2v4", key: "1cmpym" }],
   ["path", { d: "M16 2v4", key: "4m81vk" }],
   ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
   ["path", { d: "M3 10h18", key: "8toen8" }]
 ];
-const Calendar$1 = createLucideIcon("calendar", __iconNode$j);
-const __iconNode$i = [
+const Calendar$1 = createLucideIcon("calendar", __iconNode$h);
+const __iconNode$g = [
   [
     "path",
     {
@@ -30879,19 +30873,14 @@ const __iconNode$i = [
   ],
   ["circle", { cx: "12", cy: "13", r: "3", key: "1vg3eu" }]
 ];
-const Camera = createLucideIcon("camera", __iconNode$i);
-const __iconNode$h = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$h);
-const __iconNode$g = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$g);
-const __iconNode$f = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$f);
-const __iconNode$e = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
-];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$e);
-const __iconNode$d = [
+const Camera = createLucideIcon("camera", __iconNode$g);
+const __iconNode$f = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$f);
+const __iconNode$e = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$e);
+const __iconNode$d = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$d);
+const __iconNode$c = [
   ["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1", key: "tgr4d6" }],
   [
     "path",
@@ -30905,12 +30894,7 @@ const __iconNode$d = [
   ["path", { d: "M8 11h.01", key: "1dfujw" }],
   ["path", { d: "M8 16h.01", key: "18s6g9" }]
 ];
-const ClipboardList = createLucideIcon("clipboard-list", __iconNode$d);
-const __iconNode$c = [
-  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
-  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
-];
-const Copy = createLucideIcon("copy", __iconNode$c);
+const ClipboardList = createLucideIcon("clipboard-list", __iconNode$c);
 const __iconNode$b = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
@@ -31012,222 +30996,11 @@ const __iconNode = [
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ];
 const X = createLucideIcon("x", __iconNode);
-const Route$6 = createFileRoute("/_app/switch-bar")({
-  component: SwitchBarPage
-});
-function SwitchBarPage() {
-  const { profile } = useAuth();
-  const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, refreshBars } = useChain();
-  const nav = useNavigate$1();
-  const [deleteTarget, setDeleteTarget] = reactExports.useState(null);
-  const [deleting, setDeleting] = reactExports.useState(false);
-  if (!isChainOwner && profile) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-muted-foreground py-20", children: "This page is only available for Chain of Bars plan owners." });
-  }
-  const handleSelect = (barId) => {
-    setActiveBarId(barId);
-    nav({ to: "/register" });
-  };
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget || !profile?.id) return;
-    setDeleting(true);
-    try {
-      const { error } = await supabase.rpc("delete_bar_account", {
-        p_bar_id: deleteTarget.id,
-        p_owner_id: profile.id
-      });
-      if (error) throw error;
-      if (activeBarId === deleteTarget.id) setActiveBarId(null);
-      await refreshBars();
-      toast.success(`"${deleteTarget.name}" deleted`);
-      setDeleteTarget(null);
-    } catch (err) {
-      toast.error("Failed to delete bar: " + (err?.message ?? "unknown error"));
-    } finally {
-      setDeleting(false);
-    }
-  };
-  const canAddBar = chainBars.length < 10;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen px-4 py-6 space-y-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: "Tus Bares" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Selecciona un bar para gestionar, o agrega uno nuevo." })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "span",
-      {
-        className: "text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 text-primary",
-        style: { background: "rgba(251,146,60,0.08)" },
-        children: [
-          chainBars.length,
-          " / 10 bars"
-        ]
-      }
-    ) }),
-    barsLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-16", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-8 w-8 animate-spin text-primary" }) }),
-    !barsLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-      chainBars.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-16 space-y-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: "inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-border",
-            style: { background: "var(--gradient-card)" },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(Wine, { className: "h-8 w-8 text-muted-foreground" })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground text-sm font-semibold", children: "Sin bares aún" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Agrega tu primer bar para comenzar." })
-      ] }),
-      chainBars.map((bar, idx) => {
-        const isActive = bar.id === activeBarId;
-        const isDeletable = idx > 0;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "relative w-full rounded-2xl border overflow-hidden transition active:scale-[0.98]",
-            style: {
-              background: isActive ? "rgba(251,146,60,0.10)" : "var(--gradient-card)",
-              borderColor: isActive ? "var(--primary)" : "var(--border)"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  onClick: () => handleSelect(bar.id),
-                  className: "w-full flex items-center gap-4 px-5 pt-5 pb-3 text-left",
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "div",
-                      {
-                        className: "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 font-black text-base",
-                        style: {
-                          background: isActive ? "var(--gradient-hero)" : "rgba(255,255,255,0.08)",
-                          color: isActive ? "var(--primary-foreground)" : "var(--muted-foreground)"
-                        },
-                        children: idx + 1
-                      }
-                    ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0 pr-10", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-base truncate", children: bar.bar_name }),
-                        isActive && /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheck, { className: "h-4 w-4 shrink-0 text-primary" })
-                      ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mt-0.5", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-muted-foreground truncate", children: bar.bar_location }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0", children: bar.is_machines_account ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 text-xs font-bold text-primary", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(Gamepad2, { className: "h-3 w-3" }),
-                          "Solo Máquinas"
-                        ] }) : bar.has_machines ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 text-xs font-bold text-amber-400", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(Gamepad2, { className: "h-3 w-3" }),
-                          "Bar + Máquinas"
-                        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 text-xs font-bold text-muted-foreground", children: [
-                          /* @__PURE__ */ jsxRuntimeExports.jsx(Wine, { className: "h-3 w-3" }),
-                          "Solo Bar"
-                        ] }) })
-                      ] })
-                    ] })
-                  ]
-                }
-              ),
-              isDeletable && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    setDeleteTarget({ id: bar.id, name: bar.bar_name });
-                  },
-                  className: "absolute top-3 right-3 h-9 w-9 rounded-xl flex items-center justify-center transition active:scale-90",
-                  style: { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)" },
-                  title: "Delete bar",
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-4 w-4 text-red-400" })
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: () => handleSelect(bar.id),
-                  className: "w-full flex justify-center pb-3 pt-1",
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "span",
-                    {
-                      className: "px-4 py-1 rounded-full text-xs font-black tracking-wide transition",
-                      style: {
-                        background: isActive ? "var(--gradient-hero)" : "rgba(255,255,255,0.07)",
-                        color: isActive ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                        border: isActive ? "none" : "1px solid var(--border)"
-                      },
-                      children: isActive ? "● Activo" : "Cambiar"
-                    }
-                  )
-                }
-              )
-            ]
-          },
-          bar.id
-        );
-      })
-    ] }),
-    !barsLoading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pt-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Button$1,
-        {
-          onClick: () => nav({ to: "/create-bar" }),
-          disabled: !canAddBar,
-          className: "w-full h-12 font-black text-sm gap-2",
-          style: { background: canAddBar ? "var(--gradient-hero)" : void 0 },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "h-4 w-4" }),
-            canAddBar ? "Agregar Nuevo Bar" : "Máximo de 10 bares alcanzado"
-          ]
-        }
-      ),
-      !canAddBar && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-center text-xs text-muted-foreground mt-2", children: "Has alcanzado el máximo de 10 bares en tu plan Chain." })
-    ] }),
-    deleteTarget && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "w-full max-w-sm rounded-3xl border border-red-500/40 shadow-2xl overflow-hidden",
-        style: { background: "var(--gradient-card)" },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-6 pt-6 pb-4 space-y-3", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-11 w-11 rounded-xl flex items-center justify-center bg-red-500/15 border border-red-500/30 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(TriangleAlert, { className: "h-5 w-5 text-red-400" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "font-black text-lg text-red-400", children: "Delete Bar?" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm text-muted-foreground leading-relaxed", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-foreground", children: [
-                '"',
-                deleteTarget.name,
-                '"'
-              ] }),
-              " and all its data — items, orders, wallet, cashiers, credit — will be permanently deleted. This cannot be undone."
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 px-6 pb-6", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button$1,
-              {
-                variant: "outline",
-                className: "flex-1 h-12 font-black",
-                onClick: () => setDeleteTarget(null),
-                disabled: deleting,
-                children: "Cancel"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Button$1,
-              {
-                className: "flex-1 h-12 font-black bg-red-600 hover:bg-red-700 text-white",
-                onClick: handleDeleteConfirm,
-                disabled: deleting,
-                children: deleting ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }) : "Delete"
-              }
-            )
-          ] })
-        ]
-      }
-    ) })
-  ] });
+const ChainCtx = reactExports.createContext(null);
+function useChain() {
+  const ctx = reactExports.useContext(ChainCtx);
+  if (!ctx) throw new Error("useChain must be inside ChainProvider");
+  return ctx;
 }
 function productImageUrl(url) {
   return url ?? null;
@@ -31252,8 +31025,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-DKkkdanW.js");
-    const { Share } = await import("./index-ouFlNbB2.js");
+    const { Filesystem, Directory } = await import("./index-DZblEkJe.js");
+    const { Share } = await import("./index-BtSAzh5c.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -31370,7 +31143,7 @@ function addFootersToAllPages(doc) {
   }
 }
 const CONTENT_BOTTOM = PAGE_H - 15;
-const Route$5 = createFileRoute("/_app/stock-check")({
+const Route$4 = createFileRoute("/_app/stock-check")({
   component: StockCheckPage
 });
 function ActualNumpad({
@@ -31706,7 +31479,7 @@ function StockCheckPage() {
     const key = catFilter ?? "all";
     setPdfBusy(key);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const now = /* @__PURE__ */ new Date();
       const dateStr = now.toLocaleDateString("en-GB");
@@ -31801,7 +31574,7 @@ function StockCheckPage() {
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-30 -mx-3 -mt-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-30 -mt-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-3 py-2 bg-background border-b border-border", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-5 w-5", style: { color: "var(--primary)" } }),
@@ -31846,7 +31619,7 @@ function StockCheckPage() {
           )
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20", style: { background: "var(--gradient-hero)" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "-mx-3 flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20", style: { background: "var(--gradient-hero)" }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 shrink-0" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 min-w-0", children: "Name" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[46px] text-right", children: "Qty" }),
@@ -32064,8 +31837,8 @@ function StockCheckPage() {
     )
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-Bb4jZLac.js");
-const Route$4 = createFileRoute("/_app/manager")({
+const $$splitComponentImporter$1 = () => import("./manager-B9TTtmP4.js");
+const Route$3 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
 const Ctx = reactExports.createContext(null);
@@ -52435,7 +52208,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C9OlAnw8.js");
+      const { LocalNotifications } = await import("./index-B-uHkTTy.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -52454,7 +52227,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-C9OlAnw8.js");
+    const { LocalNotifications } = await import("./index-B-uHkTTy.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -52489,7 +52262,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C9OlAnw8.js");
+      const { LocalNotifications } = await import("./index-B-uHkTTy.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -52524,7 +52297,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }
 }
 const sb = supabase;
-const Route$3 = createFileRoute("/_app/machines")({
+const Route$2 = createFileRoute("/_app/machines")({
   component: MachinesPage
 });
 function isoToDateM(iso) {
@@ -53142,7 +52915,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (logs.length === 0) return;
     setDownloadingMonthKey(monthKey);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const TZ = "America/Port_of_Spain";
       const fmt2 = (n) => n.toFixed(2);
@@ -53555,7 +53328,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -53660,7 +53433,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -55364,7 +55137,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -55794,7 +55567,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-ClvEtAZI.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -57415,7 +57188,7 @@ const deleteCashier = async (data) => {
   if (!res.ok) throw new Error(json.error ?? "Failed to delete cashier");
   return json;
 };
-const Route$2 = createFileRoute("/_app/factory-reset")({
+const Route$1 = createFileRoute("/_app/factory-reset")({
   component: FactoryResetPage
 });
 function FactoryResetPage() {
@@ -57749,276 +57522,55 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-BHubPWi-.js");
-const Route$1 = createFileRoute("/_app/credit")({
+const $$splitComponentImporter = () => import("./credit-aei4Yo1A.js");
+const Route2 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });
-const Route2 = createFileRoute("/_app/create-bar")({
-  component: CreateBarPage
-});
-function CreateBarPage() {
-  const { profile } = useAuth();
-  const { isChainOwner, chainBars, refreshBars, setActiveBarId } = useChain();
-  const nav = useNavigate$1();
-  const [barName, setBarName] = reactExports.useState("");
-  const [barLocation, setBarLocation] = reactExports.useState("");
-  const [hasMachines, setHasMachines] = reactExports.useState(false);
-  const [copyItems, setCopyItems] = reactExports.useState(null);
-  const [busy, setBusy] = reactExports.useState(false);
-  if (!isChainOwner && profile) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center text-muted-foreground py-20", children: "This page is only available for Chain of Bars plan owners." });
-  }
-  if (chainBars.length >= 10) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center py-20 space-y-4 px-6", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-lg font-black", children: "Maximum 10 bars reached" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Your Chain plan supports up to 10 bars. Remove an existing bar to add a new one." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Button$1, { variant: "outline", onClick: () => nav({ to: "/switch-bar" }), children: "Back to My Bars" })
-    ] });
-  }
-  const needsCopyAnswer = chainBars.length > 0;
-  const canCreate = barName.trim().length >= 2 && barLocation.trim().length >= 2 && (!needsCopyAnswer || copyItems !== null);
-  const handleCreate = async () => {
-    if (!profile?.id || !canCreate) return;
-    setBusy(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUrl = "https://vavfsgbrfpvolskscolf.supabase.co";
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-bar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token ?? ""}`,
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhdmZzZ2JyZnB2b2xza3Njb2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODcyNDAsImV4cCI6MjA5Mzk2MzI0MH0.DNNQJ8sHPWljEpYuRoyXtCmR6QCkKmAzfyd08C6kovI"
-        },
-        body: JSON.stringify({
-          p_name: barName.trim(),
-          p_location: barLocation.trim(),
-          p_has_machines: hasMachines,
-          p_copy_items: copyItems === true
-        })
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        toast.error(data.error ?? "Failed to create bar");
-        return;
-      }
-      await refreshBars();
-      if (data.bar_id) {
-        setActiveBarId(data.bar_id);
-        toast.success(`"${barName.trim()}" created — switched to this bar`);
-        nav({ to: "/register" });
-        toast.success("Bar created");
-        nav({ to: "/switch-bar" });
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create bar");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen px-4 py-6 space-y-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "button",
-      {
-        onClick: () => nav({ to: "/switch-bar" }),
-        className: "flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "h-4 w-4" }),
-          "Back to My Bars"
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-2xl font-black", children: "Add New Bar" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Each bar is a fully independent account — its own items, wallet, cashiers, and records." })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "space-y-5 rounded-2xl border border-border p-5",
-        style: { background: "var(--gradient-card)" },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "Bar Name" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Input,
-              {
-                placeholder: "e.g. The Rusty Nail",
-                value: barName,
-                onChange: (e) => setBarName(e.target.value),
-                maxLength: 60,
-                className: "h-11 font-bold"
-              }
-            )
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "District / Location" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              Input,
-              {
-                placeholder: "e.g. Port of Spain",
-                value: barLocation,
-                onChange: (e) => setBarLocation(e.target.value),
-                maxLength: 60,
-                className: "h-11 font-bold"
-              }
-            )
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "Bar Type" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setHasMachines(false),
-                  className: "h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]",
-                  style: {
-                    background: !hasMachines ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                    borderColor: !hasMachines ? "var(--primary)" : "var(--border)"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Wine, { className: `h-5 w-5 ${!hasMachines ? "text-primary" : "text-muted-foreground"}` }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-xs font-black ${!hasMachines ? "text-primary" : "text-muted-foreground"}`, children: "Bar only" })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setHasMachines(true),
-                  className: "h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]",
-                  style: {
-                    background: hasMachines ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                    borderColor: hasMachines ? "var(--primary)" : "var(--border)"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Gamepad2, { className: `h-5 w-5 ${hasMachines ? "text-primary" : "text-muted-foreground"}` }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-xs font-black ${hasMachines ? "text-primary" : "text-muted-foreground"}`, children: "Bar + Machines" })
-                  ]
-                }
-              )
-            ] })
-          ] }),
-          chainBars.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs font-black text-muted-foreground uppercase tracking-widest", children: "Copy Items from Bar 1?" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground -mt-1", children: "Start this bar with the same product list as your first bar." }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setCopyItems(true),
-                  className: "h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]",
-                  style: {
-                    background: copyItems === true ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                    borderColor: copyItems === true ? "var(--primary)" : "var(--border)"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: `h-5 w-5 ${copyItems === true ? "text-primary" : "text-muted-foreground"}` }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-xs font-black ${copyItems === true ? "text-primary" : "text-muted-foreground"}`, children: "Yes, copy items" })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setCopyItems(false),
-                  className: "h-16 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition active:scale-[0.98]",
-                  style: {
-                    background: copyItems === false ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.03)",
-                    borderColor: copyItems === false ? "var(--primary)" : "var(--border)"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(Wine, { className: `h-5 w-5 ${copyItems === false ? "text-primary" : "text-muted-foreground"}` }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-xs font-black ${copyItems === false ? "text-primary" : "text-muted-foreground"}`, children: "Start fresh" })
-                  ]
-                }
-              )
-            ] })
-          ] })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      Button$1,
-      {
-        onClick: handleCreate,
-        disabled: !canCreate || busy,
-        className: "w-full h-12 font-black text-sm gap-2",
-        style: { background: canCreate && !busy ? "var(--gradient-hero)" : void 0 },
-        children: busy ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-4 w-4 animate-spin" }),
-          " Creating bar…"
-        ] }) : "Create Bar"
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-center text-xs text-muted-foreground", children: [
-      "Bar ",
-      chainBars.length + 1,
-      " of 10"
-    ] })
-  ] });
-}
-const _rootCapacitorRoute = Route$9.update({
+const _rootCapacitorRoute = Route$7.update({
   id: "/__root/capacitor",
   path: "/capacitor",
-  getParentRoute: () => Route$a
+  getParentRoute: () => Route$8
 });
-const LoginRoute = Route$8.update({
+const LoginRoute = Route$6.update({
   id: "/login",
   path: "/login",
-  getParentRoute: () => Route$a
+  getParentRoute: () => Route$8
 });
-const AppRoute = Route$7.update({
+const AppRoute = Route$5.update({
   id: "/_app",
-  getParentRoute: () => Route$a
+  getParentRoute: () => Route$8
 });
-const AppSwitchBarRoute = Route$6.update({
-  id: "/switch-bar",
-  path: "/switch-bar",
-  getParentRoute: () => AppRoute
-});
-const AppStockCheckRoute = Route$5.update({
+const AppStockCheckRoute = Route$4.update({
   id: "/stock-check",
   path: "/stock-check",
   getParentRoute: () => AppRoute
 });
-const AppManagerRoute = Route$4.update({
+const AppManagerRoute = Route$3.update({
   id: "/manager",
   path: "/manager",
   getParentRoute: () => AppRoute
 });
-const AppMachinesRoute = Route$3.update({
+const AppMachinesRoute = Route$2.update({
   id: "/machines",
   path: "/machines",
   getParentRoute: () => AppRoute
 });
-const AppFactoryResetRoute = Route$2.update({
+const AppFactoryResetRoute = Route$1.update({
   id: "/factory-reset",
   path: "/factory-reset",
   getParentRoute: () => AppRoute
 });
-const AppCreditRoute = Route$1.update({
+const AppCreditRoute = Route2.update({
   id: "/credit",
   path: "/credit",
   getParentRoute: () => AppRoute
 });
-const AppCreateBarRoute = Route2.update({
-  id: "/create-bar",
-  path: "/create-bar",
-  getParentRoute: () => AppRoute
-});
 const AppRouteChildren = {
-  AppCreateBarRoute,
   AppCreditRoute,
   AppFactoryResetRoute,
   AppMachinesRoute,
   AppManagerRoute,
-  AppStockCheckRoute,
-  AppSwitchBarRoute
+  AppStockCheckRoute
 };
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
 const rootRouteChildren = {
@@ -58026,7 +57578,7 @@ const rootRouteChildren = {
   LoginRoute,
   _rootCapacitorRoute
 };
-const routeTree = Route$a._addFileChildren(rootRouteChildren)._addFileTypes();
+const routeTree = Route$8._addFileChildren(rootRouteChildren)._addFileTypes();
 const getRouter = () => {
   const queryClient = new QueryClient();
   const router2 = createRouter({
@@ -58042,21 +57594,20 @@ const router = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   getRouter
 }, Symbol.toStringTag, { value: "Module" }));
 export {
-  LM as A,
+  RM as A,
   Button$1 as B,
   Capacitor as C,
-  RM as D,
-  CONTENT_BOTTOM as E,
+  CONTENT_BOTTOM as D,
+  addFootersToAllPages as E,
   FileDown as F,
   Gamepad2 as G,
-  addFootersToAllPages as H,
+  downloadPdf as H,
   Input as I,
-  downloadPdf as J,
-  registerPlugin as K,
+  registerPlugin as J,
+  WebPlugin as K,
   Label as L,
-  WebPlugin as M,
-  buildRequestInit as N,
-  router as O,
+  buildRequestInit as M,
+  router as N,
   Primitive as P,
   Receipt as R,
   TriangleAlert as T,
@@ -58086,6 +57637,6 @@ export {
   Pencil as v,
   Trash2 as w,
   ChevronRight as x,
-  CircleCheck as y,
-  drawHeader as z
+  drawHeader as y,
+  LM as z
 };

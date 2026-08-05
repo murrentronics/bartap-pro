@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports, V as React2 } from "./server-DwZtvdF3.js";
-import { c as composeRefs, a as createContextScope, u as useComposedRefs, b as useId, P as Primitive, d as composeEventHandlers, e as useControllableState, f as useCallbackRef, g as Presence, h as cn, i as useAuth, j as useNavigate, W as Wine, L as Label, I as Input, B as Button, k as usernameToEmail, s as supabase, t as toast, l as friendlyError, C as Capacitor } from "./router-CerKS5nD.js";
+import { r as reactExports, W as jsxRuntimeExports, V as React2 } from "./server-CvPu0oa7.js";
+import { c as composeRefs, a as createContextScope, u as useComposedRefs, b as useId, P as Primitive, d as composeEventHandlers, e as useControllableState, f as useCallbackRef, g as Presence, h as cn, i as useAuth, j as useNavigate, W as Wine, L as Label, I as Input, B as Button, k as usernameToEmail, s as supabase, t as toast, l as friendlyError, C as Capacitor } from "./router-KQFuUJeL.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -654,7 +654,7 @@ function OtpInput({
         if (Capacitor.isNativePlatform()) {
           const {
             Clipboard
-          } = await import("./index-elI88Stl.js");
+          } = await import("./index-CLPtw2Nk.js");
           const {
             value: text
           } = await Clipboard.read();

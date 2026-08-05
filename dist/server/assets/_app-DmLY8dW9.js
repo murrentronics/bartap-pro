@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-DwZtvdF3.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, R as Receipt, q as Link, B as Button, t as toast } from "./router-CerKS5nD.js";
-import { T as TrendingDown } from "./trending-down-hUEhDHaI.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-CvPu0oa7.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, R as Receipt, q as Link, B as Button, t as toast } from "./router-KQFuUJeL.js";
+import { T as TrendingDown } from "./trending-down-CY4BS10g.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -103,13 +103,7 @@ function AppLayout() {
       setter(current.slice(0, -1));
       return;
     }
-    if (k === ".") {
-      if (!current.includes(".")) setter(current + ".");
-      return;
-    }
-    const dotIdx = current.indexOf(".");
-    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
-    setter(current === "0" ? k : current + k);
+    setter(current === "0" || current === "" ? k : current + k);
   };
   reactExports.useEffect(() => {
     if (!loading && !session) nav({
@@ -182,7 +176,7 @@ function AppLayout() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [profile]);
+  }, [profile?.id, profile?.parent_id, profile?.role]);
   const handleOpenBar = async () => {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
@@ -207,13 +201,13 @@ function AppLayout() {
     if (!profile || profile.role !== "owner" && !(profile.role === "manager" || profile.job_title === "manager")) return;
     const isManagerProfile = profile.role === "manager" || profile.job_title === "manager";
     const ownerId = effectiveOwnerId(isManagerProfile ? profile.parent_id ?? profile.id : profile.id);
-    const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
+    const barFloatVal = isMachinesAccount ? 0 : parseInt(openBarFloat, 10);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) {
       toast.error("Enter a valid bar float amount");
       return;
     }
     if (hasMachines) {
-      const machineFloatVal = parseFloat(openMachineFloat);
+      const machineFloatVal = parseInt(openMachineFloat, 10);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) {
         toast.error("Enter a valid machine float amount");
         return;
@@ -484,15 +478,15 @@ function AppLayout() {
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-black text-muted-foreground uppercase tracking-wider", children: "Bar Float" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { onClick: () => setActiveOpenBarField(activeOpenBarField === "bar" ? null : "bar"), className: "w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition", style: {
             borderColor: activeOpenBarField === "bar" ? "var(--primary)" : "var(--border)"
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`, children: openBarFloat || "0.00" }) })
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`, children: openBarFloat || "0" }) })
         ] }),
         hasMachines && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs font-black text-muted-foreground uppercase tracking-wider", children: "Machine Float" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { onClick: () => setActiveOpenBarField(activeOpenBarField === "machine" ? null : "machine"), className: "w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition", style: {
             borderColor: activeOpenBarField === "machine" ? "var(--primary)" : "var(--border)"
-          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`, children: openMachineFloat || "0.00" }) })
+          }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`, children: openMachineFloat || "0" }) })
         ] }),
-        activeOpenBarField !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => handleOpenBarNumpad(activeOpenBarField, k), className: `h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`, children: k }, i)) }),
+        activeOpenBarField !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((k, i) => k === "" ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}, i) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => handleOpenBarNumpad(activeOpenBarField, k), className: `h-12 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`, children: k }, i)) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3 pt-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowOpenBarModal(false), className: "flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition", children: "Cancel" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: confirmOpenBar, disabled: !isMachinesAccount && !openBarFloat || hasMachines && !openMachineFloat, className: "flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50", style: {
