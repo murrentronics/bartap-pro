@@ -218,7 +218,7 @@ const STOCK_BTNS = [
   { qty: 10 }, { qty: 6  }, { qty: 1  },
 ];
 
-function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, stockQtyUndo, stockQtyUndoSaved, lastExpenseId, onClose, onSaved }: {
+function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, stockQtyUndo, stockQtyUndoSaved, lastExpenseId, onClose, onBack, onSaved }: {
   productId: string;
   productName: string;
   ownerId: string;
@@ -228,6 +228,7 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
   stockQtyUndoSaved: number | null;
   lastExpenseId: string | null;
   onClose: () => void;
+  onBack?: () => void;
   onSaved: (patch: Partial<Pick<Product, "stock_qty" | "stock_qty_undo" | "stock_qty_undo_saved" | "stock_last_expense_id">>) => void;
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
@@ -322,7 +323,7 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex items-center justify-center px-5 pt-5 pb-3">
-          <button onClick={onClose} className="absolute left-5 flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition">
+          <button onClick={onBack ?? onClose} className="absolute left-5 flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition">
             <ChevronLeft className="h-4 w-4" /> Back
           </button>
           <span className="text-base font-black">Add Stock</span>
@@ -1692,6 +1693,11 @@ export default function ProductsPage() {
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [category, setCategory] = useState<string>("beers");
   const [stockNumpadId, setStockNumpadId] = useState<string | null>(null);
+  // Tracks the source that opened StockNumpad so Back can return to it:
+  // "addDialog" = came from the "+ Add Items" dialog (reopen it)
+  // "editDialog" = came from editing an existing item (reopen it)
+  // null = opened directly from product list card
+  const [stockNumpadSource, setStockNumpadSource] = useState<"addDialog" | "editDialog" | null>(null);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [bulkAddItems, setBulkAddItems] = useState<Product[] | null>(null);
   // Preload product images so the grid renders instantly and works offline
@@ -1781,6 +1787,7 @@ export default function ProductsPage() {
                 onSaved={(product) => {
                   // inject the new product into items immediately so the numpad can find it
                   setItems((prev) => [...prev, product]);
+                  setStockNumpadSource("addDialog");
                   setStockNumpadId(product.id);
                 }}
                 onBulkSelect={async (templates) => {
@@ -1997,7 +2004,14 @@ export default function ProductsPage() {
           stockQtyUndo={stockNumpadProduct.stock_qty_undo ?? null}
           stockQtyUndoSaved={stockNumpadProduct.stock_qty_undo_saved ?? null}
           lastExpenseId={stockNumpadProduct.stock_last_expense_id ?? null}
-          onClose={() => setStockNumpadId(null)}
+          onClose={() => { setStockNumpadId(null); setStockNumpadSource(null); }}
+          onBack={
+            stockNumpadSource === "addDialog"
+              ? () => { setStockNumpadId(null); setStockNumpadSource(null); setOpen(true); }
+              : stockNumpadSource === "editDialog"
+              ? () => { setStockNumpadId(null); setStockNumpadSource(null); /* editItem stays set, dialog reopens */ }
+              : undefined
+          }
           onSaved={(patch) => {
             setItems((prev) => prev.map((p) => p.id === stockNumpadId ? { ...p, ...patch } : p));
           }}
@@ -2014,7 +2028,8 @@ export default function ProductsPage() {
             onDone={() => { setEditItem(null); load(); }}
             onSaved={(updated) => {
               setItems((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p));
-              setEditItem(null);
+              // Keep editItem set so Back can reopen the edit dialog; numpad will hide it via z-index
+              setStockNumpadSource("editDialog");
               // Open the stock numpad so the user can add new stock at the updated cost price
               setStockNumpadId(updated.id);
             }}

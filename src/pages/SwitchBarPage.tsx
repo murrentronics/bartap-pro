@@ -8,11 +8,11 @@ import { useTranslation } from "@/lib/i18n";
 const DEMO_EMAILS = ["isabel@gmail.com"];
 
 export default function SwitchBarPage() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { chainBars, activeBarId, setActiveBarId, barsLoading, isChainOwner, isMultiBarOwner } = useChain();
   const nav = useNavigate();
   const { t } = useTranslation();
-  const isDemoAccount = DEMO_EMAILS.includes(profile?.email ?? "");
+  const isDemoAccount = DEMO_EMAILS.includes(user?.email ?? "");
 
   // Guard: only chain owners or multi-bar addon owners can access this page
   const hasLocalBars = chainBars.length > 0;

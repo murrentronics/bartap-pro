@@ -369,11 +369,19 @@ export default function RegisterPage() {
     setBarSortMap(map);
   };
 
-  const saveBarSortIds = (ids: string[]) => {
+  const saveBarSortIds = (newCatIds: string[]) => {
     const pid = profileIdRef.current;
     if (!pid) return;
+    // Merge the new category order into the full map, keeping all other categories' positions
+    const currentMap = barSortMapRef.current;
+    const newMap = { ...currentMap };
+    newCatIds.forEach((id, idx) => { newMap[id] = idx; });
+    // Rebuild a flat ordered array: all ids sorted by their position in the map
+    const allIds = Object.entries(newMap)
+      .sort(([, a], [, b]) => a - b)
+      .map(([id]) => id);
     (supabase as any).from("bar_sort_order").upsert(
-      { owner_id: pid, order_json: ids, updated_at: new Date().toISOString() },
+      { owner_id: pid, order_json: allIds, updated_at: new Date().toISOString() },
       { onConflict: "owner_id" }
     ).then(() => {}).catch(() => {});
   };
@@ -1195,8 +1203,7 @@ export default function RegisterPage() {
                     const inCart = cart.find((i) => i.id === p.id);
                     const outOfStock = (p.stock_qty ?? 1) === 0;
                     const missingPrice = !p.price || Number(p.price) <= 0;
-                    const missingCost  = !p.cost_price || Number(p.cost_price) <= 0;
-                    const incomplete   = missingPrice || missingCost;
+                    const incomplete   = missingPrice;
                     const isSelected = barSelectedId === p.id;
                     return (
                       <div key={p.id}
@@ -1225,6 +1232,11 @@ export default function RegisterPage() {
                             next.splice(to, 0, moved);
                             barOrderedRef.current = next;
                             setBarOrdered(next);
+                            // Rebuild the full sort map: keep other categories' positions, update this category
+                            const newMap = { ...barSortMapRef.current };
+                            next.forEach((item, idx) => { newMap[item.id] = idx; });
+                            barSortMapRef.current = newMap;
+                            setBarSortMap(newMap);
                             saveBarSortIds(next.map(x => x.id));
                             setBarSelectedId(null);
                           }}
@@ -1304,8 +1316,7 @@ export default function RegisterPage() {
                     const inCart = cart.find((i) => i.id === p.id);
                     const outOfStock = (p.stock_qty ?? 1) === 0;
                     const missingPrice = !p.price || Number(p.price) <= 0;
-                    const missingCost  = !p.cost_price || Number(p.cost_price) <= 0;
-                    const incomplete   = missingPrice || missingCost;
+                    const incomplete   = missingPrice;
                     return (
                       <div key={p.id} data-bar-id={p.id} className="relative">
                         <button
@@ -1364,7 +1375,7 @@ export default function RegisterPage() {
                               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[1px]">
                                 <div className="rounded-xl px-2 py-1 shadow-lg" style={{ background: "#92400e" }}>
                                   <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
-                                    {missingPrice ? "No Price" : "No Cost"}
+                                    No Price
                                   </span>
                                 </div>
                               </div>
