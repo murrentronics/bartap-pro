@@ -95,6 +95,7 @@ function ManagerMain({
   const [hasMachines, setHasMachines] = useState(false);
   const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = useState(false);
+  const [activeOpenBarField, setActiveOpenBarField] = useState<"bar" | "machine" | null>(null);
   const barIsOpen = !!barSessionStart && !barClosedAt;
 
   useEffect(() => {
@@ -133,14 +134,15 @@ function ManagerMain({
     setHasMachines(!!(ownerProfile?.machines_addon_active) || ownerProfile?.plan_type === "premium" || ownerProfile?.plan_type === "chain");
     setIsMachinesAccount(!!(ownerProfile?.is_machines_account));
     setOpenBarFloat(""); setOpenMachineFloat("");
+    setActiveOpenBarField(null);
     setShowOpenBarModal(true);
   };
 
   const confirmOpenBar = async () => {
-    const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
+    const barFloatVal = isMachinesAccount ? 0 : parseInt(openBarFloat, 10);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachines) {
-      const mf = parseFloat(openMachineFloat);
+      const mf = parseInt(openMachineFloat, 10);
       if (isNaN(mf) || mf < 0) { toast.error("Enter a valid machine float amount"); return; }
     }
     setBarToggleBusy(true); setShowOpenBarModal(false);
@@ -158,7 +160,7 @@ function ManagerMain({
       await sb.from("bar_sub_sessions").insert({ owner_id: ownerId, bar_session_id: newSession.id, opened_at: now, cashier_float: barFloatVal });
     }
     if (hasMachines) {
-      await sb.from("machine_float_sessions").insert({ owner_id: ownerId, amount: parseFloat(openMachineFloat) || 0, set_at: now });
+      await sb.from("machine_float_sessions").insert({ owner_id: ownerId, amount: parseInt(openMachineFloat, 10) || 0, set_at: now });
     }
     setBarToggleBusy(false); setBarSessionStart(now); setBarClosedAt(null);
     toast.success("🟢 Bar opened");
@@ -261,17 +263,54 @@ function ManagerMain({
             </div>
             <div className="px-6 pb-6 pt-4 space-y-3">
               {!isMachinesAccount && (
-                <div>
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Bar Float ($)</label>
-                  <input value={openBarFloat} onChange={(e) => setOpenBarFloat(e.target.value)} type="number" min="0" step="0.01" placeholder="0.00"
-                    className="w-full h-11 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Bar Float ($)</label>
+                  <div
+                    onClick={() => setActiveOpenBarField(activeOpenBarField === "bar" ? null : "bar")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeOpenBarField === "bar" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`}>
+                      {openBarFloat || "0"}
+                    </span>
+                  </div>
                 </div>
               )}
               {hasMachines && (
-                <div>
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">Machine Float ($)</label>
-                  <input value={openMachineFloat} onChange={(e) => setOpenMachineFloat(e.target.value)} type="number" min="0" step="0.01" placeholder="0.00"
-                    className="w-full h-11 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Machine Float ($)</label>
+                  <div
+                    onClick={() => setActiveOpenBarField(activeOpenBarField === "machine" ? null : "machine")}
+                    className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
+                    style={{ borderColor: activeOpenBarField === "machine" ? "var(--primary)" : "var(--border)" }}
+                  >
+                    <span className={`text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`}>
+                      {openMachineFloat || "0"}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Inline numpad — integers only, no decimal */}
+              {activeOpenBarField !== null && (
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
+                    k === "" ? <div key={i} /> :
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        const current = activeOpenBarField === "bar" ? openBarFloat : openMachineFloat;
+                        const setter  = activeOpenBarField === "bar" ? setOpenBarFloat : setOpenMachineFloat;
+                        if (k === "⌫") { setter(current.slice(0, -1)); return; }
+                        setter(current === "0" || current === "" ? k : current + k);
+                      }}
+                      className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                        k === "⌫"
+                          ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                          : "bg-muted hover:bg-muted/70 text-foreground"
+                      }`}
+                    >{k}</button>
+                  ))}
                 </div>
               )}
               <div className="flex gap-3 pt-1">

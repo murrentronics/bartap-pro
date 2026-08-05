@@ -588,7 +588,7 @@ function StockCheckPage() {
   return (
     <div>
       {/* ── Sticky sub-header ─────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 -mx-3 -mt-3">
+      <div className="sticky top-0 z-30 -mt-3">
         {/* Title row with pills inline */}
         <div className="flex items-center justify-between px-3 py-2 bg-background border-b border-border">
           <div className="flex items-center gap-2">
@@ -626,8 +626,8 @@ function StockCheckPage() {
             )}
           </div>
         </div>
-        {/* Column header row — orange */}
-        <div className="flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
+        {/* Column header row — orange, full bleed */}
+        <div className="-mx-3 flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
           <div className="w-8 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
           <div className="w-[46px] text-right">Qty</div>

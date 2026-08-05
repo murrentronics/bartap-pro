@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wine, Eye, EyeOff } from "lucide-react";
+import { Wine, Eye, EyeOff, X, FileText } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { friendlyError } from "@/lib/network-error";
 import { useTranslation } from "@/lib/i18n";
@@ -426,6 +426,76 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ── Inline terms content for the signup popup ──────────────────────────────
+function TermsConditionsContent() {
+  const p: React.CSSProperties = { fontSize: "0.82rem", color: "#c8b090", lineHeight: 1.7, margin: "0 0 10px" };
+  const h: React.CSSProperties = { fontSize: "0.85rem", fontWeight: 900, color: "#F0A030", margin: "18px 0 6px" };
+  const li: React.CSSProperties = { fontSize: "0.82rem", color: "#c8b090", lineHeight: 1.7, marginBottom: 3 };
+  return (
+    <div style={{ color: "#e8d5b0" }}>
+      <p style={{ ...p, marginBottom: 16 }}>Last updated: August 2026. By creating an account you agree to these Terms.</p>
+      <p style={h}>1. Account Registration</p>
+      <ul style={{ paddingLeft: 18, margin: "0 0 10px" }}>
+        <li style={li}>You must provide accurate information during registration.</li>
+        <li style={li}>You are responsible for all activity under your account, including actions by staff you create.</li>
+        <li style={li}>Notify us immediately of any unauthorized account use.</li>
+      </ul>
+      <p style={h}>2. Subscription & Billing</p>
+      <ul style={{ paddingLeft: 18, margin: "0 0 10px" }}>
+        <li style={li}>Access requires a paid subscription. Plans are listed within the app.</li>
+        <li style={li}>Failure to renew results in suspension. Data is held 30 days then deleted.</li>
+        <li style={li}>All payments are final unless a technical failure on our end is documented.</li>
+      </ul>
+      <p style={h}>3. Permitted Use</p>
+      <ul style={{ paddingLeft: 18, margin: "0 0 10px" }}>
+        <li style={li}>For legitimate bar/hospitality business operations only.</li>
+        <li style={li}>No reselling, reverse engineering, or illegal transactions.</li>
+        <li style={li}>No circumventing security or accessing other users' data.</li>
+      </ul>
+      <p style={h}>4. Data Ownership</p>
+      <p style={p}>You retain full ownership of your business data. We process it only to deliver the service.</p>
+      <p style={h}>5. Limitation of Liability</p>
+      <p style={p}>Bartendaz Pro is not liable for indirect, incidental, or consequential damages arising from your use of the platform.</p>
+      <p style={h}>6. Governing Law</p>
+      <p style={p}>These Terms are governed by the laws of Trinidad and Tobago.</p>
+      <p style={h}>7. Contact</p>
+      <p style={p}>Questions? Email <span style={{ color: "#F0A030" }}>support@bartendazpro.com</span></p>
+    </div>
+  );
+}
+
+function TermsOfUseContent() {
+  const p: React.CSSProperties = { fontSize: "0.82rem", color: "#c8b090", lineHeight: 1.7, margin: "0 0 10px" };
+  const h: React.CSSProperties = { fontSize: "0.85rem", fontWeight: 900, color: "#F0A030", margin: "18px 0 6px" };
+  const li: React.CSSProperties = { fontSize: "0.82rem", color: "#c8b090", lineHeight: 1.7, marginBottom: 3 };
+  return (
+    <div style={{ color: "#e8d5b0" }}>
+      <p style={{ ...p, marginBottom: 16 }}>Last updated: August 2026. These Terms govern your day-to-day use of Bartendaz Pro.</p>
+      <p style={h}>1. Acceptable Use</p>
+      <ul style={{ paddingLeft: 18, margin: "0 0 10px" }}>
+        <li style={li}>Use the app only for lawful purposes consistent with all applicable laws.</li>
+        <li style={li}>Ensure your business is licensed to sell the products you manage.</li>
+        <li style={li}>Keep your account credentials secure — do not share your owner login.</li>
+      </ul>
+      <p style={h}>2. Prohibited Conduct</p>
+      <ul style={{ paddingLeft: 18, margin: "0 0 10px" }}>
+        <li style={li}>No illegal transactions, money laundering, or false financial records.</li>
+        <li style={li}>No uploading malicious software or scripts.</li>
+        <li style={li}>No unauthorized access to other accounts or system infrastructure.</li>
+        <li style={li}>No scraping or bulk extraction of data without written permission.</li>
+      </ul>
+      <p style={h}>3. Content You Submit</p>
+      <p style={p}>You are solely responsible for all product images, names, prices, and customer data you upload. You confirm you have rights to all submitted content.</p>
+      <p style={h}>4. Intellectual Property</p>
+      <p style={p}>All software, design, graphics, and trademarks belong to Bartendaz Pro. These Terms grant only a limited license to use the platform as described.</p>
+      <p style={h}>5. Disclaimer of Warranties</p>
+      <p style={p}>Bartendaz Pro is provided "as is" without warranties of any kind. We do not guarantee the app will be error-free or uninterrupted.</p>
+      <p style={h}>6. Contact</p>
+      <p style={p}>Violations or questions? Email <span style={{ color: "#F0A030" }}>support@bartendazpro.com</span></p>
+    </div>
+  );
+}
+
 function SignUpForm() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -436,6 +506,9 @@ function SignUpForm() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsPopup, setShowTermsPopup] = useState(false);
+  const [termsTab, setTermsTab] = useState<"conditions" | "use">("conditions");
   const { t } = useTranslation();
 
   const scrollIntoView = (e: React.FocusEvent<HTMLElement>) => {
@@ -567,9 +640,112 @@ function SignUpForm() {
           </button>
         </div>
       </div>
-      <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
+      <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy || !agreedToTerms}>
         {busy ? t("creating_acct", "Creating...") : t("create_owner_acct", "Create owner account")}
       </Button>
+
+      {/* Terms agreement checkbox */}
+      <div className="flex items-start gap-3 pt-1">
+        <button
+          type="button"
+          onClick={() => setAgreedToTerms(v => !v)}
+          className="mt-0.5 h-5 w-5 rounded flex items-center justify-center shrink-0 border-2 transition-all"
+          style={{
+            background: agreedToTerms ? "var(--gradient-hero)" : "transparent",
+            borderColor: agreedToTerms ? "var(--primary)" : "rgba(255,255,255,0.25)",
+          }}
+          aria-checked={agreedToTerms}
+          role="checkbox"
+        >
+          {agreedToTerms && (
+            <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+              <path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          I have read and agree to the{" "}
+          <button
+            type="button"
+            onClick={() => { setTermsTab("conditions"); setShowTermsPopup(true); }}
+            className="font-bold underline underline-offset-2 transition-colors"
+            style={{ color: "var(--primary)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            Terms &amp; Conditions
+          </button>
+          {" "}and{" "}
+          <button
+            type="button"
+            onClick={() => { setTermsTab("use"); setShowTermsPopup(true); }}
+            className="font-bold underline underline-offset-2 transition-colors"
+            style={{ color: "var(--primary)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          >
+            Terms of Use
+          </button>
+          {" "}of Bartendaz Pro.
+        </p>
+      </div>
+
+      {/* Terms inline popup */}
+      {showTermsPopup && (
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+          <div
+            className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl flex flex-col overflow-hidden"
+            style={{ background: "#0f0a04", maxHeight: "88dvh" }}
+          >
+            {/* Popup header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                <span className="font-black text-base" style={{ color: "#e8d5b0" }}>
+                  {termsTab === "conditions" ? "Terms & Conditions" : "Terms of Use"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsPopup(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="flex gap-2 px-5 py-3 border-b border-border/40 shrink-0">
+              {(["conditions", "use"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setTermsTab(tab)}
+                  className="flex-1 h-9 rounded-xl font-black text-xs transition active:scale-95"
+                  style={termsTab === tab
+                    ? { background: "linear-gradient(135deg, #F0A030, #C0441A)", color: "#fff", border: "none" }
+                    : { background: "rgba(255,255,255,0.06)", color: "#a08060", border: "none" }}
+                >
+                  {tab === "conditions" ? "Terms & Conditions" : "Terms of Use"}
+                </button>
+              ))}
+            </div>
+
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 px-5 py-4" style={{ scrollbarWidth: "thin" }}>
+              {termsTab === "conditions" ? <TermsConditionsContent /> : <TermsOfUseContent />}
+            </div>
+
+            {/* Agree button */}
+            <div className="px-5 py-4 border-t border-border/40 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setAgreedToTerms(true); setShowTermsPopup(false); }}
+                className="w-full h-12 rounded-2xl font-black text-sm transition active:scale-95"
+                style={{ background: "linear-gradient(135deg, #F0A030, #C0441A)", color: "#fff", border: "none" }}
+              >
+                I Agree — Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -9,7 +9,7 @@ import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
 import { useOffline } from "@/lib/OfflineProvider";
 import { OfflinePageGuard } from "@/components/OfflinePageGuard";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown, ClipboardList, BookOpen } from "lucide-react";
+import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown, ClipboardList, BookOpen, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
@@ -521,6 +521,17 @@ export default function AppLayout() {
                       <RotateCcw className="h-6 w-6 text-primary" />
                     </div>
                     <span className="text-xs font-black text-center leading-tight text-foreground">{t("factory_reset", "Factory Reset")}</span>
+                  </button>
+                )}
+                {(isOwner || isManager) && (
+                  <button onClick={() => { setMenuOpen(false); nav("/privacy"); }}
+                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                    style={{ background: loc.pathname === "/privacy" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/privacy" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/privacy" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: loc.pathname === "/privacy" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                      <ShieldCheck className={`h-6 w-6 ${loc.pathname === "/privacy" ? "text-white" : "text-primary"}`} />
+                    </div>
+                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/privacy" ? "text-white" : "text-foreground"}`}>Privacy</span>
                   </button>
                 )}
                 {(isOwner || isManager) && (

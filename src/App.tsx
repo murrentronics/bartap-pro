@@ -31,6 +31,8 @@ import SummaryPage from "@/pages/SummaryPage";
 import ManagerPage from "@/pages/ManagerPage";
 import StockCheckPage from "@/pages/StockCheckPage";
 import ManualPage from "@/pages/ManualPage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import TermsPage from "@/pages/TermsPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
 import { YouTubeProvider } from "@/lib/YouTubeContext";
 import { ChainProvider } from "@/lib/ChainContext";
@@ -111,6 +113,8 @@ function AppWithUpdateCheck() {
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />
+            <Route path="privacy" element={<PrivacyPolicyPage />} />
+            <Route path="terms" element={<TermsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

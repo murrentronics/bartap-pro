@@ -38,10 +38,7 @@ function AppLayout() {
     const current = field === "bar" ? openBarFloat : openMachineFloat;
     const setter  = field === "bar" ? setOpenBarFloat : setOpenMachineFloat;
     if (k === "⌫") { setter(current.slice(0, -1)); return; }
-    if (k === ".") { if (!current.includes(".")) setter(current + "."); return; }
-    const dotIdx = current.indexOf(".");
-    if (dotIdx !== -1 && current.length - dotIdx > 2) return;
-    setter(current === "0" ? k : current + k);
+    setter(current === "0" || current === "" ? k : current + k);
   };
 
   useEffect(() => {
@@ -151,10 +148,10 @@ function AppLayout() {
     if (!profile || (profile.role !== "owner" && !(profile.role === "manager" || (profile as any).job_title === "manager"))) return;
     const isManagerProfile = profile.role === "manager" || (profile as any).job_title === "manager";
     const ownerId = effectiveOwnerId(isManagerProfile ? (profile.parent_id ?? profile.id) : profile.id);
-    const barFloatVal = isMachinesAccount ? 0 : parseFloat(openBarFloat);
+    const barFloatVal = isMachinesAccount ? 0 : parseInt(openBarFloat, 10);
     if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
     if (hasMachines) {
-      const machineFloatVal = parseFloat(openMachineFloat);
+      const machineFloatVal = parseInt(openMachineFloat, 10);
       if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
     }
     setBarToggleBusy(true);
@@ -443,7 +440,7 @@ function AppLayout() {
                     style={{ borderColor: activeOpenBarField === "bar" ? "var(--primary)" : "var(--border)" }}
                   >
                     <span className={`text-base font-black ${activeOpenBarField === "bar" ? "text-primary" : openBarFloat ? "text-foreground" : "text-muted-foreground"}`}>
-                      {openBarFloat || "0.00"}
+                      {openBarFloat || "0"}
                     </span>
                   </div>
                 </div>
@@ -459,16 +456,17 @@ function AppLayout() {
                     style={{ borderColor: activeOpenBarField === "machine" ? "var(--primary)" : "var(--border)" }}
                   >
                     <span className={`text-base font-black ${activeOpenBarField === "machine" ? "text-primary" : openMachineFloat ? "text-foreground" : "text-muted-foreground"}`}>
-                      {openMachineFloat || "0.00"}
+                      {openMachineFloat || "0"}
                     </span>
                   </div>
                 </div>
               )}
 
-              {/* Inline numpad */}
+              {/* Inline numpad — integers only */}
               {activeOpenBarField !== null && (
                 <div className="grid grid-cols-3 gap-1.5">
-                  {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k, i) => (
+                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
+                    k === "" ? <div key={i} /> :
                     <button
                       key={i}
                       type="button"
