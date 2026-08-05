@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, Pencil, ListChecks, CheckCircle2 } from "lucide-react";
+import { Camera, ImagePlus, Plus, Trash2, Loader2, LayoutGrid, ArrowLeft, X, Search, ChevronDown, ChevronLeft, Pencil, ListChecks, CheckCircle2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
@@ -321,11 +321,11 @@ function StockNumpad({ productId, productName, ownerId, currentQty, costPrice, s
         style={{ background: "var(--gradient-card)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <span className="text-base font-black">Add Stock</span>
-          <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
-            <X className="h-4 w-4" />
+        <div className="relative flex items-center justify-center px-5 pt-5 pb-3">
+          <button onClick={onClose} className="absolute left-5 flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition">
+            <ChevronLeft className="h-4 w-4" /> Back
           </button>
+          <span className="text-base font-black">Add Stock</span>
         </div>
 
         {/* Stats row */}
@@ -1614,8 +1614,8 @@ function BulkEditModal({ items, ownerId, onClose, onSaved }: {
                   })()}
                   {/* Cig special change */}
                   {p.category === "cigarettes" && (() => {
-                    const sq = parseInt(cigSpecialData[p.id]?.qty ?? "", 10);
-                    const spr = parseFloat(cigSpecialData[p.id]?.price ?? "");
+                    const sq = parseInt(cigSpecialData[p.id]?.[0]?.qty ?? "", 10);
+                    const spr = parseFloat(cigSpecialData[p.id]?.[0]?.price ?? "");
                     if (!isNaN(sq) && sq > 0 && !isNaN(spr) && spr > 0) {
                       return (
                         <div className="text-xs font-bold" style={{ color: "var(--primary)" }}>
@@ -2113,6 +2113,8 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
   const [selectedTemplates, setSelectedTemplates] = useState<Map<string, { label: string; category: string }>>(new Map());
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
+  // Tracks whether the current submit should skip opening the stock numpad
+  const skipStockRef = useRef(false);
   // Scroll the numpad into view when it opens
   const numpadRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -2275,7 +2277,9 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
       if (error) { toast.error(error.message); return; }
       toast.success("Item updated");
       onDone();
-      onSaved({ ...updated, units_per_item: updated.units_per_item ?? 0, bottle_variations: (updated.bottle_variations ?? null) as any });
+      if (!skipStockRef.current) {
+        onSaved({ ...updated, units_per_item: updated.units_per_item ?? 0, bottle_variations: (updated.bottle_variations ?? null) as any });
+      }
     } else {
       // ── INSERT new product ───────────────────────────────────────────────
       const { data: inserted, error } = await supabase.from("products").insert({
@@ -2287,7 +2291,9 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
       toast.success("Item added");
       setName(""); setPrice(""); setCostPrice(""); setUnitsPerItem(""); setShotPricePerUnit(""); setCigSpecialQty(""); setCigSpecialPrice(""); setCigRetailPrice(""); setBottleVariations([]); setCategory("beers"); setFile(null); setPreview(null); setTemplateUrl(null);
       onDone();
-      onSaved({ ...inserted, units_per_item: inserted.units_per_item ?? 0, bottle_variations: (inserted.bottle_variations ?? null) as any });
+      if (!skipStockRef.current) {
+        onSaved({ ...inserted, units_per_item: inserted.units_per_item ?? 0, bottle_variations: (inserted.bottle_variations ?? null) as any });
+      }
     }
   };
 
@@ -2654,9 +2660,9 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
       </div>
 
       {!showTemplates && (
-        <div className="pt-3">
+        <div className="pt-3 space-y-2">
           <Button
-            onClick={submit}
+            onClick={() => { skipStockRef.current = false; submit(); }}
             disabled={
               busy ||
               !name ||
@@ -2668,6 +2674,20 @@ function AddItemDialog({ onDone, onSaved, onBulkSelect, ownerId, editProduct }: 
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("next", "Next →")}
+          </Button>
+          <Button
+            onClick={() => { skipStockRef.current = true; submit(); }}
+            disabled={
+              busy ||
+              !name ||
+              !price ||
+              (!isEdit && (!costPrice || parseFloat(costPrice) <= 0)) ||
+              (isEdit && (editProduct?.cost_price ?? 0) === 0 && (!costPrice || parseFloat(costPrice) <= 0))
+            }
+            variant="outline"
+            className="w-full font-bold h-11 shrink-0"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save_and_exit", "Save & Exit")}
           </Button>
         </div>
       )}
