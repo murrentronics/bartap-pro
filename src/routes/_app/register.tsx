@@ -238,8 +238,9 @@ export default function RegisterPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<CategoryValue>("beers");
-  // Preload all product images into browser + SW cache so tab switches are instant
-  useImageCache(products.map((p) => productImageUrl(p.image_url)));
+  // Preload all product images — returns imgSrc() helper that serves objectURLs
+  // from IndexedDB instantly, falling back to the network URL while loading.
+  const imgSrc = useImageCache(products.map((p) => productImageUrl(p.image_url)));
   // Initialize cart from localStorage on mount
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -1249,7 +1250,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={productImageUrl(p.image_url)!} alt="" loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={imgSrc(p.image_url) ?? productImageUrl(p.image_url)!} alt="" loading="eager" decoding="sync" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"
@@ -1331,7 +1332,7 @@ export default function RegisterPage() {
                         >
                           <div className="aspect-[3/4] relative w-full">
                             {p.image_url ? (
-                              <img src={productImageUrl(p.image_url)!} alt="" loading="eager" decoding="async" className="absolute inset-0 w-full h-full object-cover"
+                              <img src={imgSrc(p.image_url) ?? productImageUrl(p.image_url)!} alt="" loading="eager" decoding="sync" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover"
                                 onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
                             ) : null}
                             <div className="absolute inset-0 items-center justify-center text-4xl"

@@ -1698,6 +1698,9 @@ export default function ProductsPage() {
   // "editDialog" = came from editing an existing item (reopen it)
   // null = opened directly from product list card
   const [stockNumpadSource, setStockNumpadSource] = useState<"addDialog" | "editDialog" | null>(null);
+  // Holds the product that was being edited when we navigated to StockNumpad,
+  // so Back can reliably restore the Edit Item dialog regardless of Radix state.
+  const editItemForBackRef = useRef<Product | null>(null);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [bulkAddItems, setBulkAddItems] = useState<Product[] | null>(null);
   // Preload product images so the grid renders instantly and works offline
@@ -2009,7 +2012,15 @@ export default function ProductsPage() {
             stockNumpadSource === "addDialog"
               ? () => { setStockNumpadId(null); setStockNumpadSource(null); setOpen(true); }
               : stockNumpadSource === "editDialog"
-              ? () => { setStockNumpadId(null); setStockNumpadSource(null); /* editItem stays set, dialog reopens */ }
+              ? () => {
+                  setStockNumpadId(null);
+                  setStockNumpadSource(null);
+                  // Restore the edit dialog with the product that was being edited
+                  if (editItemForBackRef.current) {
+                    setEditItem(editItemForBackRef.current);
+                    editItemForBackRef.current = null;
+                  }
+                }
               : undefined
           }
           onSaved={(patch) => {
@@ -2028,7 +2039,9 @@ export default function ProductsPage() {
             onDone={() => { setEditItem(null); load(); }}
             onSaved={(updated) => {
               setItems((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p));
-              // Keep editItem set so Back can reopen the edit dialog; numpad will hide it via z-index
+              // Save the updated product so Back can restore the edit dialog
+              editItemForBackRef.current = { ...updated };
+              setEditItem(null); // close the dialog cleanly before opening numpad
               setStockNumpadSource("editDialog");
               // Open the stock numpad so the user can add new stock at the updated cost price
               setStockNumpadId(updated.id);

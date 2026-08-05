@@ -15,7 +15,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME    = "bartap-data-cache";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // ── Typed records ─────────────────────────────────────────────────────────────
 
@@ -68,6 +68,10 @@ async function getDb(): Promise<IDBPDatabase> {
       }
       if (!db.objectStoreNames.contains("credit_accounts")) {
         db.createObjectStore("credit_accounts"); // key = ownerId
+      }
+      // v2: image blobs keyed by image URL for instant local rendering
+      if (!db.objectStoreNames.contains("image_blobs")) {
+        db.createObjectStore("image_blobs"); // key = image URL
       }
     },
   });
@@ -140,5 +144,73 @@ export async function getCachedCreditAccounts(ownerId: string): Promise<CachedCr
   } catch (err) {
     console.warn("[offlineCache] Failed to read cached credit accounts:", err);
     return [];
+  }
+}
+
+// ── Image blobs ───────────────────────────────────────────────────────────────
+// Store image data as Blobs keyed by the original URL.
+// On load we convert each stored Blob to an objectURL so the <img> renders
+// instantly from IndexedDB — zero network latency, works offline.
+
+/** Persist a fetched image blob for a given URL. */
+export async function cacheImageBlob(url: string, blob: Blob): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.put("image_blobs", blob, url);
+  } catch (err) {
+    console.warn("[offlineCache] Failed to cache image blob:", err);
+  }
+}
+
+/** Retrieve a cached blob for a URL, or null if not stored. */
+export async function getCachedImageBlob(url: string): Promise<Blob | null> {
+  try {
+    const db = await getDb();
+    return (await db.get("image_blobs", url)) ?? null;
+  } catch (err) {
+    console.warn("[offlineCache] Failed to get cached image blob:", err);
+    return null;
+  }
+}
+
+/**
+ * Load all cached blobs for the given URLs and return a Map of
+ * url → objectURL. The caller is responsible for revoking objectURLs
+ * when they are no longer needed.
+ */
+export async function loadCachedImageObjectUrls(
+  urls: string[]
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (urls.length === 0) return result;
+  try {
+    const db = await getDb();
+    await Promise.all(
+      urls.map(async (url) => {
+        if (!url) return;
+        const blob: Blob | undefined = await db.get("image_blobs", url);
+        if (blob) result.set(url, URL.createObjectURL(blob));
+      })
+    );
+  } catch (err) {
+    console.warn("[offlineCache] Failed to load cached image blobs:", err);
+  }
+  return result;
+}
+
+/** Remove blobs for URLs that are no longer in the product list (cleanup). */
+export async function pruneImageBlobCache(activeUrls: Set<string>): Promise<void> {
+  try {
+    const db = await getDb();
+    const tx = db.transaction("image_blobs", "readwrite");
+    const keys = await tx.store.getAllKeys();
+    await Promise.all(
+      (keys as string[])
+        .filter((k) => !activeUrls.has(k))
+        .map((k) => tx.store.delete(k))
+    );
+    await tx.done;
+  } catch {
+    // Non-critical — old blobs will just sit until next cleanup
   }
 }
