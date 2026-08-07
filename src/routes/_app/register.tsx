@@ -2742,14 +2742,19 @@ function CashOverlay({
       }).eq("id", editOrder.id);
       if (updateErr) { setBusy(false); toast.error(updateErr.message); return; }
 
-      // Restore stock for OLD items then decrement for NEW items
+      // Restore stock for OLD items then decrement for NEW items —
+      // using a single RPC so the sync_actual_qty trigger is suppressed,
+      // leaving stock_check_actuals untouched (the owner's manual count stays intact).
       const oldStockItems = editOrder.items
         .filter((i) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-"))
         .map((i) => ({ id: i.id!, qty: i.qty }));
-      if (oldStockItems.length > 0) {
-        await (supabase as any).rpc("increment_stock_item", { p_items: oldStockItems });
-      }
-      await doStockAndShots(groupId);
+      const newStockItems = cart
+        .filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-"))
+        .map((c) => ({ id: c.id, qty: c.qty }));
+      await (supabase as any).rpc("adjust_stock_for_edit", {
+        p_restore: oldStockItems,
+        p_deduct:  newStockItems,
+      });
 
       // Update wallet_transactions amount for this order if total changed
       if (discountedTotal !== editOrder.total) {
