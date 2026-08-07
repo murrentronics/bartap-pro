@@ -449,30 +449,30 @@ export default function RegisterPage() {
     } catch { return null; }
   });
 
-  // Pre-fill the cart from the edit order on first render
+  // Pre-fill the cart from the edit order once products have loaded.
+  // Use a ref to ensure we only apply the pre-fill once even if products
+  // re-renders multiple times after mount.
+  const editOrderApplied = useRef(false);
   useEffect(() => {
-    if (!editOrder || products.length === 0) return;
+    if (!editOrder || products.length === 0 || editOrderApplied.current) return;
+    editOrderApplied.current = true;
     const preCart: CartItem[] = editOrder.items.flatMap((item) => {
-      // Match by id first, then by name
       const prod = products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
       if (!prod) return [];
-      const entry: CartItem = { ...prod, price: item.price, qty: item.qty };
-      return [entry];
+      return [{ ...prod, price: item.price, qty: item.qty } as CartItem];
     });
-    if (preCart.length > 0) {
-      setCart(preCart);
-    }
-  // Only run once after products load
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editOrder, products.length > 0 ? "ready" : "loading"]);
+    if (preCart.length > 0) setCart(preCart);
+  }, [editOrder, products]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [loading, setLoading] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
 
-  // Cancel edit mode if the cashier clears all items while not in checkout
+  // Cancel edit mode if the cashier clears all items while not in checkout.
+  // Guard with editOrderApplied so we don't fire on the very first render
+  // before the cart has been pre-filled.
   useEffect(() => {
-    if (editOrder && cart.length === 0 && !cashOpen) {
+    if (editOrder && editOrderApplied.current && cart.length === 0 && !cashOpen) {
       setEditOrder(null);
       nav("/wallet");
     }
