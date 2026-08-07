@@ -1518,8 +1518,7 @@ export default function AdminPage() {
     supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
       .then(({ count }) => setPendingBillingCount(count ?? 0));
 
-    const poll = setInterval(refresh, 10_000);
-    return () => { supabase.removeChannel(ch); clearInterval(poll); };
+    return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
 

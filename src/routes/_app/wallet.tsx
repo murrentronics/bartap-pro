@@ -3111,7 +3111,7 @@ function OwnerWallet({ profile }: { profile: { id: string; wallet_balance: numbe
   useEffect(() => {
     const ch = supabase
       .channel(`float-used-${profile.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions" }, () => loadFloatUsedRef.current())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` }, () => loadFloatUsedRef.current())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile.id]);
