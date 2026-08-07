@@ -28,8 +28,12 @@
  */
 
 import { removeBackground as imglyRemoveBg, type Config } from "@imgly/background-removal";
+import { Capacitor } from "@capacitor/core";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Detect if running in a mobile WebView (Capacitor) or native environment. */
+const IS_MOBILE = Capacitor.isNativePlatform();
 
 /** Output canvas is always square at this size (matches compressImageFile MAX_PX). */
 const CANVAS_PX = 500;
@@ -53,6 +57,10 @@ const BG_REMOVAL_CONFIG: Config = {
     format: "image/png",
     quality: 1,
   },
+  // Point to the correct CDN URL with the pinned version (1.7.0).
+  // This makes the WASM+ONNX model load reliably on desktop browsers.
+  // Mobile WebViews still can't fetch from external CDNs — we'll skip BG removal there.
+  publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
   debug: false,
 };
 
@@ -194,7 +202,8 @@ export async function processProductImage(
   try {
     // ── Step 1: Background removal ──────────────────────────────────────────
     let workingFile: File = file;
-    if (removeBg) {
+    // Skip BG removal on mobile — Capacitor WebView can't load the external WASM/model
+    if (removeBg && !IS_MOBILE) {
       const blob = await imglyRemoveBg(file, BG_REMOVAL_CONFIG);
       workingFile = new File([blob], `${baseName}.png`, { type: "image/png" });
     }

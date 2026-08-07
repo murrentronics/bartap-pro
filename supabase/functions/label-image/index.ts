@@ -178,59 +178,69 @@ async function tryClarifai(
   return best ? { label: cleanLabel(best.label), confidence: best.confidence } : null;
 }
 
-// ─── 3. Hugging Face — BLIP image captioning ─────────────────────────────────
-// Docs: https://huggingface.co/docs/api-inference
-// Model: Salesforce/blip-image-captioning-base (generates a natural language caption)
-// Free: unlimited, rate-limited (works without token; token raises limit)
-// Sign up (free): https://huggingface.co/join
+// ─── 3. Hugging Face — BLIP-2 image captioning ───────────────────────────────
+// Uses blip-image-captioning-large for better product name accuracy.
+// Free, no key required. Key in HF_TOKEN raises the rate limit.
 
 async function tryHuggingFace(
   imageUrl: string,
   hfToken?: string,
 ): Promise<{ label: string; confidence: number } | null> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {};
   if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
 
   let bodyBytes: Uint8Array;
+  let mimeType = "image/jpeg";
 
   if (imageUrl.startsWith("data:")) {
-    // HF Inference API accepts raw binary image bytes
-    const b64 = imageUrl.split(",")[1] ?? "";
-    bodyBytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    headers["Content-Type"] = "image/png";
+    const [meta, b64] = imageUrl.split(",");
+    const detectedMime = meta.match(/data:([^;]+)/)?.[1] ?? "image/png";
+    mimeType = detectedMime;
+    bodyBytes = Uint8Array.from(atob(b64 ?? ""), (c) => c.charCodeAt(0));
   } else {
-    // Fetch the remote image and forward its bytes
     const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
     if (!imgRes.ok) return null;
     const imgBuf = await imgRes.arrayBuffer();
     bodyBytes = new Uint8Array(imgBuf);
-    headers["Content-Type"] = imgRes.headers.get("content-type") || "image/jpeg";
+    mimeType = imgRes.headers.get("content-type") || "image/jpeg";
   }
 
-  const res = await fetch(
-    "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base",
-    {
-      method: "POST",
-      headers,
-      body: bodyBytes,
-      signal: AbortSignal.timeout(20000),
-    },
-  );
+  headers["Content-Type"] = mimeType;
 
-  if (!res.ok) return null;
+  // Try large model first — more accurate product names
+  const models = [
+    "Salesforce/blip-image-captioning-large",
+    "Salesforce/blip-image-captioning-base",
+  ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = await res.json() as any;
-  // Response shape: [{ generated_text: "a bottle of..." }]
-  const caption: string = Array.isArray(data) ? (data[0]?.generated_text ?? "") : (data?.generated_text ?? "");
-  if (!caption) return null;
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://api-inference.huggingface.co/models/${model}`,
+        { method: "POST", headers, body: bodyBytes, signal: AbortSignal.timeout(25000) },
+      );
+      if (!res.ok) continue;
 
-  // Strip leading "a photo of", "a picture of" boilerplate
-  const cleaned = caption
-    .replace(/^(a photo of|a picture of|an image of|a bottle of|a can of)\s+/i, "")
-    .trim();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await res.json() as any;
+      // Shape: [{ generated_text: "a bottle of heineken beer" }]
+      const caption: string = Array.isArray(data)
+        ? (data[0]?.generated_text ?? "")
+        : (data?.generated_text ?? "");
+      if (!caption) continue;
 
-  return { label: cleanLabel(cleaned), confidence: 0.75 };
+      // Strip common filler prefixes the model prepends
+      const cleaned = caption
+        .replace(/^(a photo of (a |an )?|a picture of (a |an )?|an image of (a |an )?|there (is|are) (a |an )?|this is (a |an )?)/i, "")
+        .replace(/^(a |an )\s*/i, "")
+        .trim();
+
+      if (!cleaned || cleaned.length < 3) continue;
+      return { label: cleanLabel(cleaned), confidence: 0.75 };
+    } catch { continue; }
+  }
+
+  return null;
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────

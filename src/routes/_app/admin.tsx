@@ -389,6 +389,13 @@ function TemplateImportPanel() {
 
   // ── Remove BG + resize + center + sharpen (full pipeline) ────────────────
   const handleRemoveBgAll = async () => {
+    // BG removal requires desktop browser — @imgly/background-removal loads
+    // a large WASM+ONNX model from CDN that mobile WebViews can't fetch.
+    const { Capacitor } = await import("@capacitor/core");
+    if (Capacitor.isNativePlatform()) {
+      toast.error("Background removal requires desktop — open the admin panel in a browser");
+      return;
+    }
     const toProcess = items.filter((i) => i.selected && !i.duplicate && i.url.startsWith("blob:"));
     if (toProcess.length === 0) { toast.error("Select local images first (dragged/pasted files)"); return; }
     setRemovingBg(true);
@@ -652,19 +659,26 @@ function TemplateImportPanel() {
                 className={`relative rounded-xl overflow-hidden border-2 transition ${item.duplicate ? "border-muted opacity-40" : item.selected ? "border-primary" : "border-border"}`}
                 style={{ background: "var(--gradient-card)" }}>
                 {/* Tap to toggle */}
-                <button className="block w-full aspect-[3/4] relative" style={{ background: "oklch(0.14 0.01 260)" }}
+                <div className="block w-full aspect-[3/4] relative cursor-pointer" style={{ background: "oklch(0.14 0.01 260)" }}
                   onClick={() => { if (item.duplicate) return; setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, selected: !i.selected } : i)); }}>
                   <img src={item.url} alt={item.label} loading="lazy" decoding="async"
                     className="absolute inset-0 w-full h-full object-contain"
                     onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                  {/* X — remove this image from the list */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setItems((prev) => prev.filter((i) => i.id !== item.id)); }}
+                    className="absolute top-1.5 left-1.5 h-5 w-5 rounded-full bg-black/70 border border-white/30 flex items-center justify-center hover:bg-red-600 hover:border-red-500 transition z-10"
+                    title="Remove image">
+                    <X className="h-3 w-3 text-white" />
+                  </button>
                   {!item.duplicate && (
                     <div className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition ${item.selected ? "bg-primary border-primary" : "bg-black/50 border-white/40"}`}>
                       {item.selected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                   )}
-                  {item.duplicate && <div className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SAVED</div>}
+                  {item.duplicate && <div className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SAVED</div>}
                   {item.labeling && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>}
-                </button>
+                </div>
                 {/* Info panel */}
                 <div className="px-1.5 pt-1 pb-1.5 space-y-1" style={{ background: "rgba(0,0,0,0.85)" }}>
                   <div className="flex items-center gap-1">
