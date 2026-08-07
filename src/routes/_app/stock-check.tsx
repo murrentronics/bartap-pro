@@ -502,6 +502,29 @@ function StockCheckPage() {
     return sum + (diff > 0 ? diff : 0);
   }, 0);
 
+  const totalGain = items.reduce((sum, p) => {
+    const actual = actuals[p.id] ?? p.stock_qty;
+    const diff = p.stock_qty - actual;
+    let gain = diff < 0 ? Math.abs(diff) * p.price : 0;
+
+    const openInfo = openItems[p.id];
+    if (openInfo) {
+      const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
+      const openActual = actuals[`${p.id}_open`] ?? remaining;
+      const openDiff = remaining - openActual;
+      const openPrice = perUnitPrice(p, openInfo.type);
+      gain += openDiff < 0 ? Math.abs(openDiff) * openPrice : 0;
+    }
+
+    return sum + gain;
+  }, 0);
+
+  const totalExceed = items.reduce((sum, p) => {
+    const actual = actuals[p.id] ?? p.stock_qty;
+    const diff = p.stock_qty - actual;
+    return sum + (diff < 0 ? Math.abs(diff) : 0);
+  }, 0);
+
   const activeProduct = activeNumpadId
     ? items.find((p) => p.id === activeNumpadId || activeNumpadId === `${p.id}_open`)
     : null;
@@ -670,6 +693,18 @@ function StockCheckPage() {
                 }}
               >
                 −${totalLoss.toFixed(2)}
+              </div>
+            )}
+            {totalGain > 0 && (
+              <div
+                className="px-3 py-1.5 rounded-xl text-xs font-black"
+                style={{
+                  background: "rgba(74,222,128,0.12)",
+                  border: "1px solid rgba(74,222,128,0.30)",
+                  color: "#4ade80",
+                }}
+              >
+                +${totalGain.toFixed(2)} exceed
               </div>
             )}
           </div>
@@ -898,17 +933,26 @@ function StockCheckPage() {
             ))}
           </div>
 
-          {/* ── Total loss footer ────────────────────────────────────────── */}
-          {totalLoss > 0 && (
+          {/* ── Total loss / gain footer ─────────────────────────────── */}
+          {(totalLoss > 0 || totalGain > 0) && (
             <div
-              className="fixed bottom-0 inset-x-0 mx-auto max-w-2xl px-4 py-3 border-t border-border flex items-center justify-between"
+              className="fixed bottom-0 inset-x-0 mx-auto max-w-2xl px-4 py-3 border-t border-border flex items-center justify-between gap-3"
               style={{ background: "var(--background)" }}
             >
               <div className="text-sm font-black text-muted-foreground">
-                Total estimated loss
+                {totalLoss > 0 && totalGain > 0 ? "Loss / Exceed" : totalLoss > 0 ? "Total estimated loss" : "Total exceed"}
               </div>
-              <div className="text-lg font-black text-red-400">
-                −${totalLoss.toFixed(2)}
+              <div className="flex items-center gap-3">
+                {totalLoss > 0 && (
+                  <div className="text-lg font-black text-red-400">
+                    −${totalLoss.toFixed(2)}
+                  </div>
+                )}
+                {totalGain > 0 && (
+                  <div className="text-lg font-black text-green-400">
+                    +${totalGain.toFixed(2)}
+                  </div>
+                )}
               </div>
             </div>
           )}
