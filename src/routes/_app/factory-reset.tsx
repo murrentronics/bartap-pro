@@ -358,7 +358,7 @@ export default function FactoryResetPage() {
                   ⚠ This will apply to all {chainBars.length} bars.
                 </p>
               )}
-              <p className="text-xs font-black text-red-400 pt-1">Esto no se puede deshacer.</p>
+              <p className="text-xs font-black text-red-400 pt-1">This cannot be undone.</p>
             </div>
           )}
 
@@ -369,7 +369,7 @@ export default function FactoryResetPage() {
             className="w-full h-14 text-base font-black bg-red-600 hover:bg-red-700 text-white disabled:opacity-40"
           >
             <Trash2 className="h-5 w-5 mr-2" />
-            Restablecer {target ? targetLabel : "…"}
+            Reset {target ? targetLabel : "…"}
           </Button>
         </>
       )}
@@ -384,19 +384,19 @@ export default function FactoryResetPage() {
                 <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-red-500/15 border border-red-500/30 shrink-0">
                   <AlertTriangle className="h-5 w-5 text-red-400" />
                 </div>
-                <h2 className="font-black text-lg text-red-400">¿Restablecer {targetLabel}?</h2>
+                <h2 className="font-black text-lg text-red-400">Reset {targetLabel}?</h2>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {isChainOwner && scopeLabel && (
                   <span>Scope: <span className="font-black text-foreground">{scopeLabel}</span> · </span>
                 )}
-                Todos los datos de <span className="font-black text-foreground">{targetLabel}</span> will be permanently deleted. Type <span className="font-black text-foreground">RESET</span> to confirm.
+                All data for <span className="font-black text-foreground">{targetLabel}</span> will be permanently deleted. Type <span className="font-black text-foreground">RESET</span> to confirm.
               </p>
               <input
                 type="text"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                placeholder="Escribe RESET para confirmar"
+                placeholder="Type RESET to confirm"
                 className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-red-500/40"
                 autoCapitalize="characters"
               />
@@ -408,14 +408,14 @@ export default function FactoryResetPage() {
                 onClick={() => { setShowConfirm(false); setConfirmText(""); }}
                 disabled={busy}
               >
-                Cancelar
+                Cancel
               </Button>
               <Button
                 className="flex-1 h-14 text-base font-black bg-red-600 hover:bg-red-700 text-white"
                 disabled={busy || confirmText !== "RESET"}
                 onClick={handleReset}
               >
-                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Restablecer"}
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Reset"}
               </Button>
             </div>
           </div>
