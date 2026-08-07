@@ -435,9 +435,48 @@ export default function RegisterPage() {
       return [];
     }
   });
+
+  // ── Edit-order mode ──────────────────────────────────────────────────────
+  // Set when the user taps the pencil on a wallet record and confirms the edit.
+  // sessionStorage key "edit_order" holds the full Order JSON written by wallet.tsx.
+  type EditOrder = { id: string; items: { id?: string; name: string; qty: number; price: number }[]; total: number; paid: number; change_given: number; created_at: string };
+  const [editOrder, setEditOrder] = useState<EditOrder | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("edit_order");
+      if (!raw) return null;
+      sessionStorage.removeItem("edit_order");
+      return JSON.parse(raw) as EditOrder;
+    } catch { return null; }
+  });
+
+  // Pre-fill the cart from the edit order on first render
+  useEffect(() => {
+    if (!editOrder || products.length === 0) return;
+    const preCart: CartItem[] = editOrder.items.flatMap((item) => {
+      // Match by id first, then by name
+      const prod = products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
+      if (!prod) return [];
+      const entry: CartItem = { ...prod, price: item.price, qty: item.qty };
+      return [entry];
+    });
+    if (preCart.length > 0) {
+      setCart(preCart);
+    }
+  // Only run once after products load
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editOrder, products.length > 0 ? "ready" : "loading"]);
+
   const [loading, setLoading] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
+
+  // Cancel edit mode if the cashier clears all items while not in checkout
+  useEffect(() => {
+    if (editOrder && cart.length === 0 && !cashOpen) {
+      setEditOrder(null);
+      nav("/wallet");
+    }
+  }, [cart.length, editOrder, cashOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist cart to localStorage whenever it changes
   useEffect(() => {
@@ -1536,6 +1575,15 @@ export default function RegisterPage() {
                 </span>
               </div>
             )}
+            {/* Edit-mode banner */}
+            {editOrder && (
+              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
+                style={{ background: "rgba(234,179,8,0.10)" }}>
+                <span className="text-yellow-300 font-black text-xs">✏️ Editing sale · {new Date(editOrder.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short" })}</span>
+                <button onClick={() => { setEditOrder(null); setCart([]); nav("/wallet"); }}
+                  className="text-yellow-400 font-black text-xs underline">Cancel</button>
+              </div>
+            )}
             {/* Place Order button */}
             <button
               onClick={() => setCashOpen(true)}
@@ -1543,7 +1591,7 @@ export default function RegisterPage() {
               style={{ background: "var(--gradient-hero)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span>Place Order</span>
+              <span>{editOrder ? "Save Edit" : "Place Order"}</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
             </button>
           </div>
@@ -1560,6 +1608,7 @@ export default function RegisterPage() {
           onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
+          editOrder={editOrder ?? undefined}
           onSuccess={async (paidAmt, changeAmt) => {
             // Write bottle variation tracking (needs openedBottles state — not available in CashOverlay)
             const shotItems = cart.filter((c) => (c as any)._bottle_id);
@@ -1585,9 +1634,11 @@ export default function RegisterPage() {
             setCart([]);
             localStorage.removeItem(`bartap-cart-${ownerId}`);
             setCashOpen(false);
+            setEditOrder(null);
             refreshProfile();
             fetchOpenedBottles();
             fetchOpenedPacks();
+            if (editOrder) nav("/wallet");
           }}
         />
       )}
@@ -2522,7 +2573,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove }: {
 }
 
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId, editOrder,
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
@@ -2530,6 +2581,7 @@ function CashOverlay({
   onClearCart: () => void;
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
   ownerId: string;
+  editOrder?: { id: string; items: { id?: string; name: string; qty: number; price: number }[]; total: number; paid: number; change_given: number; created_at: string };
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
@@ -2650,9 +2702,10 @@ function CashOverlay({
     }
 
     // ── Cash order (guest or customer) ────────────────────────────────
+    const newItems = cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) }));
     const orderPayload = {
       owner_id: ownerId, cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
+      items: newItems,
       total: discountedTotal, paid: paidNum, change_given: changeNum,
       ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total } : {}),
     };
@@ -2674,6 +2727,39 @@ function CashOverlay({
       }
       setBusy(false);
       toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess(paidNum, changeNum);
+      return;
+    }
+
+    if (editOrder) {
+      // ── Edit mode: UPDATE the existing record, restore old stock then decrement new ──
+      const { error: updateErr } = await (supabase as any).from("orders").update({
+        items: newItems,
+        total: discountedTotal,
+        paid: paidNum,
+        change_given: changeNum,
+        ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total } : { discount_amount: null, original_total: null }),
+      }).eq("id", editOrder.id);
+      if (updateErr) { setBusy(false); toast.error(updateErr.message); return; }
+
+      // Restore stock for OLD items then decrement for NEW items
+      const oldStockItems = editOrder.items
+        .filter((i) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-"))
+        .map((i) => ({ id: i.id!, qty: i.qty }));
+      if (oldStockItems.length > 0) {
+        await (supabase as any).rpc("increment_stock_item", { p_items: oldStockItems });
+      }
+      await doStockAndShots(groupId);
+
+      // Update wallet_transactions amount for this order if total changed
+      if (discountedTotal !== editOrder.total) {
+        await (supabase as any).from("wallet_transactions")
+          .update({ amount: discountedTotal })
+          .eq("order_id", editOrder.id);
+      }
+
+      setBusy(false);
+      toast.success("Sale updated");
       onSuccess(paidNum, changeNum);
       return;
     }

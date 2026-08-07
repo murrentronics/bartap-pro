@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { useTranslation } from "@/lib/i18n";
@@ -8,7 +9,7 @@ import {
   Wallet as WalletIcon, Receipt, ChevronLeft, ChevronRight,
   ArrowDownLeft, RotateCcw, Loader2, FileText, Download, X,
   TrendingUp, TrendingDown, DollarSign, ChevronDown,
-  BarChart3, List, Trash2,
+  BarChart3, List, Trash2, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,6 +30,8 @@ type Order = {
   original_total?: number;
   items: { name: string; qty: number; price: number; discount?: number; original_price?: number }[];
   created_at: string;
+  payment_method?: string | null;
+  cashier_id?: string | null;
 };
 
 type WalletTx = {
@@ -181,6 +184,13 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const nav = useNavigate();
+
+  const handleConfirmEdit = (order: Order) => {
+    sessionStorage.setItem("edit_order", JSON.stringify(order));
+    nav("/register");
+  };
 
   // ── Float cards state ────────────────────────────────────────────────────────
   const [floatAmount, setFloatAmount] = useState<number | null>(null);
@@ -879,6 +889,15 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
+                    {(profile.role === "owner" || profile.role === "manager" || (profile as any).job_title === "manager") && (
+                      <button
+                        onClick={() => setEditingOrder(o)}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                        title="Edit this sale"
+                      >
+                        <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                      </button>
+                    )}
                     {o.id === deletableOrderId && (
                       <button
                         onClick={() => deleteLatestCashierOrder(o)}
@@ -1072,6 +1091,44 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
           </div>
         )}
       </section>
+      )}
+
+      {/* ── Edit sale confirm modal ───────────────────────────────────── */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setEditingOrder(null)}>
+          <div className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+              <span className="text-base font-black">Edit Sale</span>
+              <button onClick={() => setEditingOrder(null)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-5 pb-2 text-xs text-muted-foreground space-y-1">
+              <p className="font-bold text-foreground">
+                {new Date(editingOrder.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short" })}
+                {" · "}${fmt(Number(editingOrder.total))}
+              </p>
+              <p>{(editingOrder.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}</p>
+              <p className="text-yellow-400 font-semibold pt-1">This will reload the sale on the register for editing. The original date and time will be preserved.</p>
+            </div>
+            <div className="px-5 pb-6 pt-3 grid grid-cols-2 gap-3">
+              <button onClick={() => setEditingOrder(null)}
+                className="h-11 rounded-2xl font-black text-sm border border-border transition active:scale-95"
+                style={{ background: "var(--gradient-card)" }}>
+                Cancel
+              </button>
+              <button onClick={() => handleConfirmEdit(editingOrder)}
+                className="h-11 rounded-2xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95"
+                style={{ background: "var(--gradient-hero)" }}>
+                <Pencil className="h-4 w-4" /> Edit
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2208,13 +2265,22 @@ function StaffBadge({ label = "Cashier" }: { label?: string }) {
 
 function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDeleted?: () => void }) {
   const { refreshProfile } = useAuth();
+  const { profile: authProfile } = useAuth();
+  const canEdit = authProfile?.role === "owner" || authProfile?.role === "manager" || (authProfile as any)?.job_title === "manager";
+  const nav = useNavigate();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [allTxs, setAllTxs] = useState<WalletTx[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   // The id of the owner-direct order that qualifies for the delete button
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+
+  const handleConfirmEdit = (order: Order) => {
+    sessionStorage.setItem("edit_order", JSON.stringify(order));
+    nav("/register");
+  };
 
   // Resolve which owner-direct order (if any) shows the delete button.
   // Same rules as cashier: newest, within 10 seconds, after last delete timestamp.
@@ -2556,6 +2622,15 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
+                        {canEdit && (
+                          <button
+                            onClick={() => setEditingOrder(o as Order)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                            title="Edit this sale"
+                          >
+                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
                         {isLatest && (
                           <button
                             onClick={() => deleteLatestOrder(o)}
@@ -2729,6 +2804,15 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <span className="font-black text-lg text-green-400">+${fmt(Number(o.total))}</span>
+                  {canEdit && (
+                    <button
+                      onClick={() => setEditingOrder(o)}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                      title="Edit this sale"
+                    >
+                      <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                    </button>
+                  )}
                   {isNewest && (
                     <button
                       onClick={() => deleteLatestOrder(o)}
@@ -2749,6 +2833,44 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
       )}
 
       <PaginationBar page={safePage} totalPages={totalPages} total={total} pageCount={pageRecordCount} onPrev={handlePrev} onNext={handleNext} />
+
+      {/* ── Edit sale confirm modal ─────────────────────────────────────── */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setEditingOrder(null)}>
+          <div className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+              <span className="text-base font-black">Edit Sale</span>
+              <button onClick={() => setEditingOrder(null)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-5 pb-2 text-xs text-muted-foreground space-y-1">
+              <p className="font-bold text-foreground">
+                {new Date(editingOrder.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short" })}
+                {" · "}${fmt(Number(editingOrder.total))}
+              </p>
+              <p>{(editingOrder.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ")}</p>
+              <p className="text-yellow-400 font-semibold pt-1">This will reload the sale on the register for editing. The original date and time will be preserved.</p>
+            </div>
+            <div className="px-5 pb-6 pt-3 grid grid-cols-2 gap-3">
+              <button onClick={() => setEditingOrder(null)}
+                className="h-11 rounded-2xl font-black text-sm border border-border transition active:scale-95"
+                style={{ background: "var(--gradient-card)" }}>
+                Cancel
+              </button>
+              <button onClick={() => handleConfirmEdit(editingOrder)}
+                className="h-11 rounded-2xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95"
+                style={{ background: "var(--gradient-hero)" }}>
+                <Pencil className="h-4 w-4" /> Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

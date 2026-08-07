@@ -80,7 +80,8 @@ function ActualNumpad({
   const unitPrice = priceOverride ?? product.price;
   const qty = product.stock_qty;
   const diff = isValid ? qty - parsed : 0;
-  const loss = isValid ? diff * unitPrice : 0;
+  const loss = isValid && diff > 0 ? diff * unitPrice : 0;
+  const gain = isValid && diff < 0 ? Math.abs(diff) * unitPrice : 0;
 
   const NUMPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
@@ -147,15 +148,15 @@ function ActualNumpad({
           <div
             className="px-3 py-2 rounded-xl text-center"
             style={{
-              background: loss > 0 ? "rgba(239,68,68,0.10)" : "rgba(255,255,255,0.04)",
-              border: loss > 0 ? "1px solid rgba(239,68,68,0.30)" : "1px solid rgba(255,255,255,0.08)",
+              background: loss > 0 ? "rgba(239,68,68,0.10)" : gain > 0 ? "rgba(74,222,128,0.10)" : "rgba(255,255,255,0.04)",
+              border: loss > 0 ? "1px solid rgba(239,68,68,0.30)" : gain > 0 ? "1px solid rgba(74,222,128,0.30)" : "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <div className="text-xs text-muted-foreground">Loss</div>
+            <div className="text-xs text-muted-foreground">{gain > 0 ? "Gain" : "Loss"}</div>
             <div
-              className={`text-base font-black leading-tight ${loss > 0 ? "text-red-400" : "text-muted-foreground"}`}
+              className={`text-base font-black leading-tight ${loss > 0 ? "text-red-400" : gain > 0 ? "text-green-400" : "text-muted-foreground"}`}
             >
-              {loss > 0 ? `-$${loss.toFixed(2)}` : "$0.00"}
+              {loss > 0 ? `-$${loss.toFixed(2)}` : gain > 0 ? `+$${gain.toFixed(2)}` : "$0.00"}
             </div>
           </div>
         </div>
@@ -175,6 +176,12 @@ function ActualNumpad({
             <>
               {" "}· Missing:{" "}
               <span className="font-black text-red-400">{diff}</span>
+            </>
+          )}
+          {diff < 0 && isValid && (
+            <>
+              {" "}· Over by:{" "}
+              <span className="font-black text-green-400">{Math.abs(diff)}</span>
             </>
           )}
         </p>
@@ -561,6 +568,7 @@ function StockCheckPage() {
           const actual = actuals[p.id] ?? p.stock_qty;
           const diff = p.stock_qty - actual;
           const loss = diff > 0 ? diff * p.price : 0;
+          const gain = diff < 0 ? Math.abs(diff) * p.price : 0;
           doc.setFont("helvetica", "normal");
           doc.setFontSize(7.5);
           doc.setTextColor(0, 0, 0);
@@ -572,6 +580,10 @@ function StockCheckPage() {
           if (loss > 0) {
             doc.setTextColor(220, 38, 38);
             doc.text(`-$${loss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            doc.setTextColor(0, 0, 0);
+          } else if (gain > 0) {
+            doc.setTextColor(22, 163, 74);
+            doc.text(`+$${gain.toFixed(2)}`, COL.loss, y, { align: "right" });
             doc.setTextColor(0, 0, 0);
           } else {
             doc.text("—", COL.loss, y, { align: "right" });
@@ -587,6 +599,7 @@ function StockCheckPage() {
             const openDiff = remaining - openActual;
             const openPrice = perUnitPrice(p, openInfo.type);
             const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
+            const openGain = openDiff < 0 ? Math.abs(openDiff) * openPrice : 0;
             doc.setTextColor(180, 100, 20);
             doc.setFontSize(7);
             const label = openInfo.type === "bottle" ? "🍾 Open bottle" : "🚬 Open pack";
@@ -596,6 +609,9 @@ function StockCheckPage() {
             if (openLoss > 0) {
               doc.setTextColor(220, 38, 38);
               doc.text(`-$${openLoss.toFixed(2)}`, COL.loss, y, { align: "right" });
+            } else if (openGain > 0) {
+              doc.setTextColor(22, 163, 74);
+              doc.text(`+$${openGain.toFixed(2)}`, COL.loss, y, { align: "right" });
             } else {
               doc.setTextColor(180, 100, 20);
               doc.text("—", COL.loss, y, { align: "right" });
@@ -728,8 +744,10 @@ function StockCheckPage() {
                   const actual = actuals[p.id] ?? p.stock_qty;
                   const diff = p.stock_qty - actual;
                   const loss = diff > 0 ? diff * p.price : 0;
+                  const gain = diff < 0 ? Math.abs(diff) * p.price : 0;
                   const isActive = activeNumpadId === p.id;
                   const hasLoss = loss > 0;
+                  const hasGain = gain > 0;
                   const openInfo = openItems[p.id];
 
                   // Open item actuals keyed separately so sealed and open track independently
@@ -739,6 +757,7 @@ function StockCheckPage() {
                   const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
                   const openPrice = openInfo ? perUnitPrice(p, openInfo.type) : 0;
                   const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
+                  const openGain = openDiff < 0 ? Math.abs(openDiff) * openPrice : 0;
                   const isOpenActive = activeNumpadId === openKey;
 
                   return (
@@ -785,8 +804,8 @@ function StockCheckPage() {
                             className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                             style={{
                               background: isActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
-                              borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : "var(--border)",
-                              color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : "var(--foreground)",
+                              borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : hasGain ? "rgba(74,222,128,0.50)" : "var(--border)",
+                              color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : hasGain ? "#4ade80" : "var(--foreground)",
                               minWidth: "44px",
                             }}
                           >
@@ -800,11 +819,13 @@ function StockCheckPage() {
                           <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
                         </div>
 
-                        {/* Loss */}
+                        {/* Loss / Gain */}
                         <div className="w-[56px] text-right">
                           {hasLoss
                             ? <span className="font-black text-xs text-red-400 tabular-nums">−${loss.toFixed(2)}</span>
-                            : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                            : hasGain
+                              ? <span className="font-black text-xs text-green-400 tabular-nums">+${gain.toFixed(2)}</span>
+                              : <span className="font-black text-xs text-muted-foreground/40">—</span>}
                         </div>
                       </div>
 
@@ -812,7 +833,7 @@ function StockCheckPage() {
                       {openInfo && remaining !== null && openActual !== null && (
                         <div
                           className="flex items-center gap-2 px-3 py-1.5 border-t border-dashed border-border/30"
-                          style={{ background: openLoss > 0 ? "rgba(239,68,68,0.04)" : "rgba(251,146,60,0.04)", paddingLeft: "24px" }}
+                          style={{ background: openLoss > 0 ? "rgba(239,68,68,0.04)" : openGain > 0 ? "rgba(74,222,128,0.04)" : "rgba(251,146,60,0.04)", paddingLeft: "24px" }}
                         >
                           {/* Indent spacer + open label */}
                           <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm"
@@ -845,8 +866,8 @@ function StockCheckPage() {
                               className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                               style={{
                                 background: isOpenActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
-                                borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : "var(--border)",
-                                color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : "var(--foreground)",
+                                borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : openGain > 0 ? "rgba(74,222,128,0.50)" : "var(--border)",
+                                color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : openGain > 0 ? "#4ade80" : "var(--foreground)",
                                 minWidth: "44px",
                               }}
                             >
@@ -860,11 +881,13 @@ function StockCheckPage() {
                             <span className="font-bold text-xs text-muted-foreground">${openPrice.toFixed(2)}</span>
                           </div>
 
-                          {/* Loss */}
+                          {/* Loss / Gain */}
                           <div className="w-[56px] text-right">
                             {openLoss > 0
                               ? <span className="font-black text-xs text-red-400 tabular-nums">−${openLoss.toFixed(2)}</span>
-                              : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                              : openGain > 0
+                                ? <span className="font-black text-xs text-green-400 tabular-nums">+${openGain.toFixed(2)}</span>
+                                : <span className="font-black text-xs text-muted-foreground/40">—</span>}
                           </div>
                         </div>
                       )}
