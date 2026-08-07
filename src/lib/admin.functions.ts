@@ -41,26 +41,23 @@ export async function setUserStatus(
     const isOwner = target?.role === "owner" && !target?.parent_id;
     if (isOwner) {
       extraFields = {
-        billing_status:                  "pending_setup",
-        plan_type:                       "basic",
-        subscription_start_date:         null,
-        subscription_end_date:           null,
-        premium_subscription_start_date: null,
-        premium_subscription_end_date:   null,
-        machines_addon_active:           false,
-        machines_addon_start_date:       null,
-        machines_addon_end_date:         null,
-        bar_addon_active:                false,
-        chain_addon_active:              false,
-        chain_bar_count:                 0,
-        addon_bar_count:                 0,
-        is_multi_bar:                    false,
-        music_addon:                     false,
+        billing_status:                      "pending_setup",
+        plan_type:                           "basic",
+        subscription_start_date:             null,
+        subscription_end_date:               null,
+        premium_subscription_start_date:     null,
+        premium_subscription_end_date:       null,
+        bar_addon_active:                    false,
+        chain_addon_active:                  false,
+        chain_bar_count:                     0,
+        addon_bar_count:                     0,
+        is_multi_bar:                        false,
+        music_addon:                         false,
       };
     }
   }
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from("profiles")
     .update({ status, ...extraFields })
     .eq("id", user_id);
@@ -91,7 +88,7 @@ export async function revokeSubscription(owner_id: string): Promise<RevokeResult
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select(
-      "role, parent_id, plan_type, machines_addon_active, bar_addon_active, chain_addon_active, music_addon"
+      "role, parent_id, plan_type, bar_addon_active, chain_addon_active, music_addon"
     )
     .eq("id", owner_id)
     .single();
@@ -107,10 +104,9 @@ export async function revokeSubscription(owner_id: string): Promise<RevokeResult
 
   // Guard: block if any addon is active — user must close account and re-register
   const activeAddons: string[] = [];
-  if (profile.machines_addon_active) activeAddons.push("Machines addon");
-  if (profile.bar_addon_active)       activeAddons.push("Bar addon");
-  if (profile.chain_addon_active)     activeAddons.push("Chain addon");
-  if (profile.music_addon)            activeAddons.push("Music addon");
+  if (profile.bar_addon_active)   activeAddons.push("Bar addon");
+  if (profile.chain_addon_active) activeAddons.push("Chain addon");
+  if (profile.music_addon)        activeAddons.push("Music addon");
 
   if (activeAddons.length > 0) {
     return { ok: false, reason: "has_addons", addons: activeAddons };
@@ -154,9 +150,6 @@ export async function revokeSubscription(owner_id: string): Promise<RevokeResult
       subscription_end_date:               null,
       premium_subscription_start_date:     null,
       premium_subscription_end_date:       null,
-      machines_addon_active:               false,
-      machines_addon_start_date:           null,
-      machines_addon_end_date:             null,
       bar_addon_active:                    false,
       chain_addon_active:                  false,
       chain_bar_count:                     0,
