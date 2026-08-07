@@ -31,6 +31,26 @@ export default function PrivacyPolicyPage() {
       </div>
 
       <div style={S.wrap}>
+        {/* Quick links — pill buttons */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          <button
+            onClick={() => nav("/terms?tab=conditions")}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 999, background: "rgba(240,160,48,0.08)", border: "1px solid rgba(240,160,48,0.30)", color: "#F0A030", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+            className="active:scale-[0.97] transition-transform"
+          >
+            <FileText size={12} />
+            Terms &amp; Conditions
+          </button>
+          <button
+            onClick={() => nav("/terms?tab=use")}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 999, background: "rgba(240,160,48,0.08)", border: "1px solid rgba(240,160,48,0.30)", color: "#F0A030", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+            className="active:scale-[0.97] transition-transform"
+          >
+            <FileText size={12} />
+            Terms of Use
+          </button>
+        </div>
+
         {/* Cover */}
         <div style={{ textAlign: "center", padding: "32px 0 28px", borderBottom: "1px solid rgba(240,160,48,0.12)", marginBottom: 28 }}>
           <div style={{ fontSize: "3rem", marginBottom: 12 }}>🔒</div>
