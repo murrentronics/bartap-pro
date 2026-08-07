@@ -16,6 +16,13 @@ export const Route = createFileRoute("/_app/stock-check")({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type BottleVariation = {
+  key: string;
+  label: string;
+  units_consumed: number;
+  price: number;
+};
+
 type Product = {
   id: string;
   name: string;
@@ -24,6 +31,7 @@ type Product = {
   category?: string;
   stock_qty: number;
   units_per_item: number;
+  bottle_variations: BottleVariation[] | null;
 };
 
 type ActualMap = Record<string, number>; // product_id → actual_qty
@@ -37,6 +45,15 @@ type OpenItemInfo = {
   shotPrice?: number;   // per-drink selling price (bottles only)
 };
 
+// Returns the per-drink price (bottles) or per-unit retail price (packs/cigs)
+// from the product's bottle_variations, falling back to price ÷ units_per_item.
+function perUnitPrice(p: Product, type: "bottle" | "pack"): number {
+  const varKey = type === "bottle" ? "shot" : "retail";
+  const v = (p.bottle_variations ?? []).find((bv) => bv.key === varKey);
+  if (v && v.price > 0) return v.price;
+  return p.price / (p.units_per_item || 1);
+}
+
 // ─── Numpad Modal ─────────────────────────────────────────────────────────────
 
 function ActualNumpad({
@@ -45,12 +62,14 @@ function ActualNumpad({
   onClose,
   onSave,
   priceOverride,
+  priceLabel,
 }: {
   product: Product;
   currentActual: number;
   onClose: () => void;
   onSave: (newActual: number) => void;
   priceOverride?: number;
+  priceLabel?: string;
 }) {
   const [inputVal, setInputVal] = useState(String(currentActual));
   const [busy, setBusy] = useState(false);
@@ -148,9 +167,9 @@ function ActualNumpad({
           </span>
         </div>
 
-        {/* Sale price hint */}
+        {/* Price hint */}
         <p className="text-center text-xs text-muted-foreground mb-3 px-5">
-          Sale price:{" "}
+          {priceLabel ?? "Sale price"}:{" "}
           <span className="font-black text-foreground">${unitPrice.toFixed(2)}</span>
           {diff > 0 && isValid && (
             <>
@@ -241,7 +260,7 @@ function StockCheckPage() {
     );
     const { data } = await supabase
       .from("products")
-      .select("id, name, price, image_url, category, stock_qty, units_per_item")
+      .select("id, name, price, image_url, category, stock_qty, units_per_item, bottle_variations")
       .eq("owner_id", oid)
       .order("name", { ascending: true });
     setItems((data ?? []) as Product[]);
@@ -253,11 +272,15 @@ function StockCheckPage() {
     if (!ownerIdForQuery) return;
     const { data } = await (supabase as any)
       .from("stock_check_actuals")
-      .select("product_id, actual_qty")
+      .select("product_id, actual_qty, is_open")
       .eq("owner_id", ownerIdForQuery);
     if (data) {
       const map: ActualMap = {};
-      for (const row of data) map[row.product_id] = row.actual_qty;
+      for (const row of data) {
+        // Open actuals are keyed as "<product_id>_open" in local state
+        const key = row.is_open ? `${row.product_id}_open` : row.product_id;
+        map[key] = row.actual_qty;
+      }
       setActuals(map);
     }
   }, [ownerIdForQuery]);
@@ -367,18 +390,20 @@ function StockCheckPage() {
           filter: `owner_id=eq.${ownerIdForQuery}`,
         },
         (payload: any) => {
-          const rec = payload.new as { product_id: string; actual_qty: number } | undefined;
+          const rec = payload.new as { product_id: string; actual_qty: number; is_open: boolean } | undefined;
           if (payload.eventType === "DELETE") {
-            const old = payload.old as { product_id: string };
+            const old = payload.old as { product_id: string; is_open: boolean };
             setActuals((prev) => {
               const next = { ...prev };
-              delete next[old.product_id];
+              const key = old.is_open ? `${old.product_id}_open` : old.product_id;
+              delete next[key];
               return next;
             });
             return;
           }
           if (rec) {
-            setActuals((prev) => ({ ...prev, [rec.product_id]: rec.actual_qty }));
+            const key = rec.is_open ? `${rec.product_id}_open` : rec.product_id;
+            setActuals((prev) => ({ ...prev, [key]: rec.actual_qty }));
           }
         }
       )
@@ -398,16 +423,23 @@ function StockCheckPage() {
   // ── Save actual ──────────────────────────────────────────────────────────
   const saveActual = async (productId: string, newActual: number) => {
     if (!ownerIdForQuery) return;
+
+    // Open bottle/pack actuals use a composite key like "<uuid>_open" in local
+    // state. Strip the suffix and write is_open=true to the DB.
+    const isOpen = productId.endsWith("_open");
+    const realProductId = isOpen ? productId.replace("_open", "") : productId;
+
     const { error } = await (supabase as any)
       .from("stock_check_actuals")
       .upsert(
         {
           owner_id: ownerIdForQuery,
-          product_id: productId,
+          product_id: realProductId,
+          is_open: isOpen,
           actual_qty: newActual,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "owner_id,product_id" }
+        { onConflict: "owner_id,product_id,is_open" }
       );
     if (error) {
       toast.error("Failed to save: " + error.message);
@@ -450,7 +482,7 @@ function StockCheckPage() {
       const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
       const openActual = actuals[`${p.id}_open`] ?? remaining;
       const openDiff = remaining - openActual;
-      const openPrice = (openInfo.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
+      const openPrice = perUnitPrice(p, openInfo.type);
       loss += openDiff > 0 ? openDiff * openPrice : 0;
     }
 
@@ -553,7 +585,7 @@ function StockCheckPage() {
             const remaining = Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold);
             const openActual = actuals[`${p.id}_open`] ?? remaining;
             const openDiff = remaining - openActual;
-            const openPrice = (openInfo.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
+            const openPrice = perUnitPrice(p, openInfo.type);
             const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
             doc.setTextColor(180, 100, 20);
             doc.setFontSize(7);
@@ -705,7 +737,7 @@ function StockCheckPage() {
                   const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
                   const openActual = openInfo ? (actuals[openKey] ?? remaining ?? 0) : null;
                   const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
-                  const openPrice = (openInfo?.shotPrice != null && openInfo.shotPrice > 0) ? openInfo.shotPrice : p.price;
+                  const openPrice = openInfo ? perUnitPrice(p, openInfo.type) : 0;
                   const openLoss = openDiff > 0 ? openDiff * openPrice : 0;
                   const isOpenActive = activeNumpadId === openKey;
 
@@ -882,9 +914,13 @@ function StockCheckPage() {
             activeIsOpen
               ? (() => {
                   const info = openItems[activeProductForNumpad.id];
-                  return (info?.shotPrice != null && info.shotPrice > 0) ? info.shotPrice : undefined;
+                  return info ? perUnitPrice(activeProductForNumpad, info.type) : undefined;
                 })()
               : undefined
+          }
+          priceLabel={activeIsOpen
+            ? (openItems[activeProductForNumpad.id]?.type === "bottle" ? "Per drink price" : "Per unit price")
+            : undefined
           }
         />
       )}

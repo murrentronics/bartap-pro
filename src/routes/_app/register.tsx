@@ -2217,7 +2217,8 @@ export default function RegisterPage() {
                             const ownId = ownerIdRef.current;
                             if (!ownId) { setPackBusy(false); return; }
                             const { error } = await supabase.rpc("open_pack", {
-                              p_owner_id: ownId, p_product_id: p.id, p_pack_type: packType, p_unit_price: 0,
+                              p_owner_id: ownId, p_product_id: p.id, p_pack_type: packType,
+                              p_unit_price: (p.bottle_variations ?? []).find((v: BottleVariation) => v.key === "retail")?.price ?? 0,
                             });
                             if (error) { toast.error(error.message); setPackBusy(false); return; }
                             await fetchOpenedPacks();
