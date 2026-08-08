@@ -840,7 +840,19 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                         )}
                         {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
                       </div>
-                      {/* credit_charge is always read-only — no amount shown */}
+                      {(profile.role === "owner" || profile.role === "manager" || (profile as any).job_title === "manager") && tx.order_id && (
+                        <button
+                          onClick={async () => {
+                            const { data: orderData } = await supabase.from("orders").select("*").eq("id", tx.order_id!).maybeSingle();
+                            if (orderData) setEditingOrder(orderData as unknown as Order);
+                            else toast.error("Could not load order for editing");
+                          }}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                          title="Edit this credit sale"
+                        >
+                          <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                        </button>
+                      )}
                     </div>
                   );
                 }
