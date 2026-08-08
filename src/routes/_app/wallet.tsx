@@ -2568,9 +2568,24 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                       )}
                     </div>
                     {/* Credit payment: +$X if owner collected, Staff/Manager badge if staff collected */}
-                    {/* Credit charge: only show Staff badge if a cashier/manager did it */}
+                    {/* Credit charge: edit pencil + optional Staff badge */}
                     {!isPayment ? (
-                      cashierPart ? <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} /> : null
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {cashierPart && <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} />}
+                        {canEdit && tx.order_id && (
+                          <button
+                            onClick={async () => {
+                              const { data: orderData } = await supabase.from("orders").select("*").eq("id", tx.order_id!).maybeSingle();
+                              if (orderData) setEditingOrder(orderData as unknown as Order);
+                              else toast.error("Could not load order for editing");
+                            }}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                            title="Edit this credit sale"
+                          >
+                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
+                      </div>
                     ) : isReadOnly && cashierPart ? (
                       <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} />
                     ) : !isReadOnly ? (
