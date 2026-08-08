@@ -40,6 +40,7 @@ type WalletTx = {
   type: string;
   note: string | null;
   order_id?: string | null;
+  credit_tx_id?: string | null;
   created_at: string;
 };
 
@@ -840,12 +841,26 @@ function CashierWallet({ profile }: { profile: { id: string; wallet_balance: num
                         )}
                         {ccBal && <div className="text-xs font-semibold mt-0.5" style={{ color: "var(--primary)" }}>{ccBal}</div>}
                       </div>
-                      {(profile.role === "owner" || profile.role === "manager" || (profile as any).job_title === "manager") && tx.order_id && (
+                      {(profile.role === "owner" || profile.role === "manager" || (profile as any).job_title === "manager") && (
                         <button
                           onClick={async () => {
-                            const { data: orderData } = await supabase.from("orders").select("*").eq("id", tx.order_id!).maybeSingle();
-                            if (orderData) setEditingOrder(orderData as unknown as Order);
-                            else toast.error("Could not load order for editing");
+                            const ctid = tx.credit_tx_id;
+                            if (!ctid) { toast.error("No credit record linked to this charge"); return; }
+                            const { data: ct } = await sb.from("credit_transactions")
+                              .select("id, credit_account_id, amount, items, created_at")
+                              .eq("id", ctid).maybeSingle();
+                            if (!ct) { toast.error("Could not load credit sale for editing"); return; }
+                            const { data: acct } = await sb.from("credit_accounts")
+                              .select("full_name").eq("id", ct.credit_account_id).maybeSingle();
+                            sessionStorage.setItem("edit_credit_order", JSON.stringify({
+                              credit_tx_id: ct.id,
+                              credit_account_id: ct.credit_account_id,
+                              customer_name: acct?.full_name ?? "Customer",
+                              items: (ct.items ?? []) as { id: string; name: string; qty: number; price: number }[],
+                              amount: ct.amount,
+                              created_at: ct.created_at,
+                            }));
+                            nav("/register");
                           }}
                           className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition mt-1 shrink-0 self-end"
                           title="Edit this credit sale"
@@ -2572,12 +2587,26 @@ function TransactionsTab({ profile, onDeleted }: { profile: { id: string }; onDe
                     {!isPayment ? (
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         {cashierPart && <StaffBadge label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"} />}
-                        {canEdit && tx.order_id && (
+                        {canEdit && (
                           <button
                             onClick={async () => {
-                              const { data: orderData } = await supabase.from("orders").select("*").eq("id", tx.order_id!).maybeSingle();
-                              if (orderData) setEditingOrder(orderData as unknown as Order);
-                              else toast.error("Could not load order for editing");
+                              const ctid = tx.credit_tx_id;
+                              if (!ctid) { toast.error("No credit record linked to this charge"); return; }
+                              const { data: ct } = await sb.from("credit_transactions")
+                                .select("id, credit_account_id, amount, items, created_at")
+                                .eq("id", ctid).maybeSingle();
+                              if (!ct) { toast.error("Could not load credit sale for editing"); return; }
+                              const { data: acct } = await sb.from("credit_accounts")
+                                .select("full_name").eq("id", ct.credit_account_id).maybeSingle();
+                              sessionStorage.setItem("edit_credit_order", JSON.stringify({
+                                credit_tx_id: ct.id,
+                                credit_account_id: ct.credit_account_id,
+                                customer_name: acct?.full_name ?? "Customer",
+                                items: (ct.items ?? []) as { id: string; name: string; qty: number; price: number }[],
+                                amount: ct.amount,
+                                created_at: ct.created_at,
+                              }));
+                              nav("/register");
                             }}
                             className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
                             title="Edit this credit sale"

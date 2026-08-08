@@ -449,6 +449,19 @@ export default function RegisterPage() {
     } catch { return null; }
   });
 
+  // ── Edit-credit-order mode ────────────────────────────────────────────────
+  // Set when the user taps the pencil on a credit charge record in the wallet.
+  // sessionStorage key "edit_credit_order" holds the credit tx data written by wallet.tsx.
+  type EditCreditOrder = { credit_tx_id: string; credit_account_id: string; customer_name: string; items: { id: string; name: string; qty: number; price: number }[]; amount: number; created_at: string };
+  const [editCreditOrder, setEditCreditOrder] = useState<EditCreditOrder | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("edit_credit_order");
+      if (!raw) return null;
+      sessionStorage.removeItem("edit_credit_order");
+      return JSON.parse(raw) as EditCreditOrder;
+    } catch { return null; }
+  });
+
   // Pre-fill the cart from the edit order once products have loaded.
   // Use a ref to ensure we only apply the pre-fill once even if products
   // re-renders multiple times after mount.
@@ -464,6 +477,19 @@ export default function RegisterPage() {
     if (preCart.length > 0) setCart(preCart);
   }, [editOrder, products]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pre-fill the cart from a credit edit order once products have loaded.
+  const editCreditOrderApplied = useRef(false);
+  useEffect(() => {
+    if (!editCreditOrder || products.length === 0 || editCreditOrderApplied.current) return;
+    editCreditOrderApplied.current = true;
+    const preCart: CartItem[] = editCreditOrder.items.flatMap((item) => {
+      const prod = products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
+      if (!prod) return [];
+      return [{ ...prod, price: item.price, qty: item.qty } as CartItem];
+    });
+    if (preCart.length > 0) setCart(preCart);
+  }, [editCreditOrder, products]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [loading, setLoading] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [creditOpen, setCreditOpen] = useState(false);
@@ -477,6 +503,13 @@ export default function RegisterPage() {
       nav("/wallet");
     }
   }, [cart.length, editOrder, cashOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (editCreditOrder && editCreditOrderApplied.current && cart.length === 0 && !creditOpen) {
+      setEditCreditOrder(null);
+      nav("/wallet");
+    }
+  }, [cart.length, editCreditOrder, creditOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist cart to localStorage whenever it changes
   useEffect(() => {
@@ -1584,6 +1617,14 @@ export default function RegisterPage() {
                   className="text-yellow-400 font-black text-xs underline">Cancel</button>
               </div>
             )}
+            {editCreditOrder && (
+              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
+                style={{ background: "rgba(234,179,8,0.10)" }}>
+                <span className="text-yellow-300 font-black text-xs">✏️ Editing credit · {editCreditOrder.customer_name}</span>
+                <button onClick={() => { setEditCreditOrder(null); setCart([]); nav("/wallet"); }}
+                  className="text-yellow-400 font-black text-xs underline">Cancel</button>
+              </div>
+            )}
             {/* Place Order button */}
             <button
               onClick={() => setCashOpen(true)}
@@ -1591,7 +1632,7 @@ export default function RegisterPage() {
               style={{ background: "var(--gradient-hero)" }}
             >
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span>{editOrder ? "Save Edit" : "Place Order"}</span>
+              <span>{editOrder ? "Save Edit" : editCreditOrder ? "Save Credit Edit" : "Place Order"}</span>
               <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
             </button>
           </div>
@@ -1609,6 +1650,7 @@ export default function RegisterPage() {
           onClose={() => { setCashOpen(false); revertPendingPacks(); }}
           ownerId={ownerId}
           editOrder={editOrder ?? undefined}
+          editCreditOrder={editCreditOrder ?? undefined}
           onSuccess={async (paidAmt, changeAmt) => {
             // Write bottle variation tracking (needs openedBottles state — not available in CashOverlay)
             const shotItems = cart.filter((c) => (c as any)._bottle_id);
@@ -1635,10 +1677,11 @@ export default function RegisterPage() {
             localStorage.removeItem(`bartap-cart-${ownerId}`);
             setCashOpen(false);
             setEditOrder(null);
+            setEditCreditOrder(null);
             refreshProfile();
             fetchOpenedBottles();
             fetchOpenedPacks();
-            if (editOrder) nav("/wallet");
+            if (editOrder || editCreditOrder) nav("/wallet");
           }}
         />
       )}
@@ -2573,7 +2616,7 @@ function CashItemActions({ item, onDec, onAdd, onRemove }: {
 }
 
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId, editOrder,
+  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId, editOrder, editCreditOrder,
 }: {
   total: number; cart: CartItem[];
   onDec: (id: string) => void; onAdd: (p: CartItem) => void;
@@ -2582,6 +2625,7 @@ function CashOverlay({
   onClose: () => void; onSuccess: (paid: number, change: number) => void;
   ownerId: string;
   editOrder?: { id: string; items: { id?: string; name: string; qty: number; price: number }[]; total: number; paid: number; change_given: number; created_at: string };
+  editCreditOrder?: { credit_tx_id: string; credit_account_id: string; customer_name: string; items: { id: string; name: string; qty: number; price: number }[]; amount: number; created_at: string };
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
@@ -2596,9 +2640,11 @@ function CashOverlay({
   const [discountVal, setDiscountVal] = useState("");
   const discountedTotal = Math.max(0, total - orderDiscount);
 
-  // Customer / payment mode selection
-  const [payMode, setPayMode] = useState<null | "cash" | "credit">(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<CreditAccount | null>(null);
+  // Customer / payment mode selection — pre-seeded when editing a credit order
+  const [payMode, setPayMode] = useState<null | "cash" | "credit">(editCreditOrder ? "credit" : null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CreditAccount | null>(
+    editCreditOrder ? { id: editCreditOrder.credit_account_id, full_name: editCreditOrder.customer_name, contact_number: null, balance_owed: 0, status: "open" } : null
+  );
   const [customers, setCustomers] = useState<CreditAccount[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -2692,11 +2738,21 @@ function CashOverlay({
         onSuccess(paidNum, changeNum);
         return;
       }
+      // If editing an existing credit charge: delete the old one first
+      if (editCreditOrder) {
+        const { error: delErr } = await (supabase as any).rpc("delete_credit_charge", {
+          p_credit_tx_id: editCreditOrder.credit_tx_id,
+          p_cashier_id: profile.id,
+        });
+        if (delErr) { setBusy(false); toast.error("Failed to remove old charge: " + delErr.message); return; }
+      }
       const { error } = await supabase.rpc("record_credit_charge", creditPayload);
       if (error) { setBusy(false); toast.error(error.message); return; }
       await doStockAndShots(groupId);
       setBusy(false);
-      toast.success(`Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`);
+      toast.success(editCreditOrder
+        ? `Credit sale updated for ${selectedCustomer.full_name}`
+        : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`);
       onSuccess(paidNum, changeNum);
       return;
     }
