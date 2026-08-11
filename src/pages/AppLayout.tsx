@@ -26,6 +26,29 @@ export default function AppLayout() {
   const menuRef = useRef<HTMLDivElement>(null);
   const yt = useYouTube();
 
+  // ── Maintenance mode ─────────────────────────────────────────────────────
+  const [maintenance, setMaintenance] = useState(false);
+  useEffect(() => {
+    (supabase as any).from("app_settings")
+      .select("value").eq("key", "maintenance_mode").maybeSingle()
+      .then(({ data }: { data: { value: string } | null }) => {
+        if (data?.value === "true") setMaintenance(true);
+      });
+  }, []);
+
+  if (maintenance && profile?.role !== "admin") {
+    return (
+      <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center gap-6 px-8 text-center"
+        style={{ background: "var(--background)" }}>
+        <div className="text-6xl">🔧</div>
+        <h1 className="text-2xl font-black">App Offline</h1>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          We're performing scheduled maintenance. Please check back shortly.
+        </p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (!loading && !session) nav("/login", { replace: true });
   }, [session, loading, nav]);
