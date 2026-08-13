@@ -239,51 +239,32 @@ async function buildSingleRecordPdf(
 
   // Itemized table (charges only)
   const C_ITEM = LM + 4;
-  const C_QTY  = LM + 90;
-  const C_SP   = LM + 118;
-  const C_CP   = LM + 146;
-  const C_PROF = RM;
+  const C_QTY  = LM + 110;
+  const C_SP   = RM;
 
   if (isCharge && tx.items && Array.isArray(tx.items) && tx.items.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(150, 150, 150);
-    doc.text("ITEM",   C_ITEM, y);
-    doc.text("QTY",    C_QTY,  y, { align: "right" });
-    doc.text("SALE",   C_SP,   y, { align: "right" });
-    doc.text("COST",   C_CP,   y, { align: "right" });
-    doc.text("PROFIT", C_PROF, y, { align: "right" });
+    doc.text("ITEM", C_ITEM, y);
+    doc.text("QTY",  C_QTY,  y, { align: "right" });
+    doc.text("SALE", C_SP,   y, { align: "right" });
     y += 3.5;
     doc.setDrawColor(210, 210, 210); doc.setLineWidth(0.15);
     doc.line(C_ITEM, y, RM, y); y += 3;
 
-    let totalSP = 0, totalCP = 0;
-    let hasCPData = false;
+    let totalSP = 0;
 
     for (const it of tx.items as any[]) {
       if (y > CONTENT_BOTTOM - 6) { doc.addPage(); y = 20; }
-      const qty    = Number(it.qty ?? 1);
-      const sp     = Number(it.price ?? 0) * qty;
-      const cp     = Number(it.cost_price ?? 0) * qty;
-      const profit = sp - cp;
-      const hasCP  = (it.cost_price ?? 0) > 0;
+      const qty = Number(it.qty ?? 1);
+      const sp  = Number(it.price ?? 0) * qty;
       totalSP += sp;
-      totalCP += cp;
-      if (hasCP) hasCPData = true;
 
       doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(30, 30, 30);
-      doc.text(doc.splitTextToSize(it.name ?? "", 72)[0], C_ITEM, y);
+      doc.text(doc.splitTextToSize(it.name ?? "", 95)[0], C_ITEM, y);
       doc.text(String(qty), C_QTY, y, { align: "right" });
 
       doc.setFont("helvetica", "bold"); doc.setTextColor(...ORANGE);
       doc.text("$" + sp.toFixed(2), C_SP, y, { align: "right" });
-
-      doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100);
-      doc.text(hasCP ? "$" + cp.toFixed(2) : "—", C_CP, y, { align: "right" });
-
-      const profColor: [number, number, number] = hasCP
-        ? (profit >= 0 ? [22, 163, 74] : [220, 38, 38])
-        : [160, 160, 160];
-      doc.setFont("helvetica", "bold"); doc.setTextColor(...profColor);
-      doc.text(hasCP ? "$" + profit.toFixed(2) : "—", C_PROF, y, { align: "right" });
       doc.setTextColor(0, 0, 0);
       y += 4.5;
     }
@@ -295,13 +276,6 @@ async function buildSingleRecordPdf(
     doc.text("Subtotal", C_ITEM, y);
     doc.setTextColor(...ORANGE);
     doc.text("$" + totalSP.toFixed(2), C_SP, y, { align: "right" });
-    if (hasCPData) {
-      doc.setTextColor(100, 100, 100);
-      doc.text("$" + totalCP.toFixed(2), C_CP, y, { align: "right" });
-      const totalProfit = totalSP - totalCP;
-      doc.setTextColor(totalProfit >= 0 ? 22 : 220, totalProfit >= 0 ? 163 : 38, totalProfit >= 0 ? 74 : 38);
-      doc.text("$" + totalProfit.toFixed(2), C_PROF, y, { align: "right" });
-    }
     doc.setTextColor(0, 0, 0);
     y += 8;
   } else if (tx.note) {
@@ -348,28 +322,9 @@ function BillModal({ account, ownerName, onClose }: {
   ownerName: string;
   onClose: () => void;
 }) {
-  const [busy, setBusy] = useState<"download" | "share" | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
+  const [busy, setBusy] = useState<"share" | null>(null);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
-
-  const handleDownload = async () => {
-    setBusy("download");
-    try {
-      const b64 = await buildBillPdf(account, ownerName);
-      if (b64) {
-        await downloadPdf(filename, b64);
-        setDownloaded(true);
-        toast.success(Capacitor.isNativePlatform() ? "Saved to Documents folder" : "PDF downloaded");
-        setTimeout(() => setDownloaded(false), 5000);
-      }
-    } catch (e: any) {
-      if (!String(e?.message ?? "").includes("cancel")) {
-        toast.error("Download failed: " + (e?.message ?? "unknown"));
-      }
-    }
-    setBusy(null);
-  };
 
   const handleShare = async () => {
     setBusy("share");
@@ -424,23 +379,6 @@ function BillModal({ account, ownerName, onClose }: {
           </button>
         </div>
         <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
-          <button
-            onClick={handleDownload}
-            disabled={!!busy}
-            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-            style={downloaded
-              ? { background: "#16a34a", color: "#ffffff" }
-              : { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-            }
-          >
-            {busy === "download"
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : downloaded
-              ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              : <FileDown className="h-4 w-4" />
-            }
-            {downloaded ? "Downloaded" : "Download PDF"}
-          </button>
           <button
             onClick={handleShare}
             disabled={!!busy}
