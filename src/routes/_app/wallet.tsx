@@ -251,6 +251,7 @@ function CashierWallet({
     role: string;
     username?: string;
     parent_id?: string | null;
+    cashier_shift_start?: string;
   };
 }) {
   const { t } = useTranslation();
@@ -293,13 +294,20 @@ function CashierWallet({
     setFloatAmount(famt > 0 ? famt : null);
     setFloatSetAt(since);
 
-    // Only count expenses AFTER the last float reset
+    // Only count expenses AFTER the last float reset AND after current shift start
     let query = sb
       .from("wallet_transactions")
       .select("amount")
       .eq("profile_id", profile.id)
       .eq("type", "cashier_expense");
     if (since) query = query.gte("created_at", since);
+    if (profile.cashier_shift_start) {
+      const shiftDate = new Date(profile.cashier_shift_start);
+      const sinceDate = since ? new Date(since) : null;
+      const effectiveSince =
+        sinceDate && sinceDate > shiftDate ? sinceDate.toISOString() : profile.cashier_shift_start;
+      query = query.gte("created_at", effectiveSince);
+    }
 
     const { data: expTxs } = await query;
     const used = (expTxs ?? []).reduce(
@@ -414,6 +422,34 @@ function CashierWallet({
 
   useEffect(() => {
     setLoading(true);
+    const txCountQ = supabase
+      .from("wallet_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id)
+      .in("type", [
+        "transfer_in",
+        "transfer_out",
+        "bottle_finished",
+        "pack_finished",
+        "credit_payment",
+        "credit_charge",
+      ]);
+    if (profile.cashier_shift_start) txCountQ.gte("created_at", profile.cashier_shift_start);
+
+    const txDataQ = supabase
+      .from("wallet_transactions")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .in("type", [
+        "transfer_in",
+        "transfer_out",
+        "bottle_finished",
+        "pack_finished",
+        "credit_payment",
+        "credit_charge",
+      ]);
+    if (profile.cashier_shift_start) txDataQ.gte("created_at", profile.cashier_shift_start);
+
     Promise.all([
       supabase
         .from("orders")
@@ -431,7 +467,20 @@ function CashierWallet({
           setOrders(o);
           resolveDeletable(o[0] ?? null);
         }),
-      supabase
+      txCountQ.then(({ count }) => setTotalTxs(count ?? 0)),
+      txDataQ
+        .order("created_at", { ascending: false })
+        .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
+        .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
+    ]).finally(() => setLoading(false));
+  }, [profile.id, page, profile.cashier_shift_start]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Realtime — stable channel
+  const fetchRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    fetchRef.current = () => {
+      setLoading(true);
+      const txQ = supabase
         .from("wallet_transactions")
         .select("id", { count: "exact", head: true })
         .eq("profile_id", profile.id)
@@ -442,9 +491,10 @@ function CashierWallet({
           "pack_finished",
           "credit_payment",
           "credit_charge",
-        ])
-        .then(({ count }) => setTotalTxs(count ?? 0)),
-      supabase
+        ]);
+      if (profile.cashier_shift_start) txQ.gte("created_at", profile.cashier_shift_start);
+
+      const txDataQ = supabase
         .from("wallet_transactions")
         .select("*")
         .eq("profile_id", profile.id)
@@ -455,18 +505,9 @@ function CashierWallet({
           "pack_finished",
           "credit_payment",
           "credit_charge",
-        ])
-        .order("created_at", { ascending: false })
-        .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
-        .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
-    ]).finally(() => setLoading(false));
-  }, [profile.id, page]); // eslint-disable-line react-hooks/exhaustive-deps
+        ]);
+      if (profile.cashier_shift_start) txDataQ.gte("created_at", profile.cashier_shift_start);
 
-  // Realtime — stable channel
-  const fetchRef = useRef<() => void>(() => {});
-  useEffect(() => {
-    fetchRef.current = () => {
-      setLoading(true);
       Promise.all([
         supabase
           .from("orders")
@@ -484,31 +525,8 @@ function CashierWallet({
             setOrders(o);
             resolveDeletable(o[0] ?? null);
           }),
-        supabase
-          .from("wallet_transactions")
-          .select("id", { count: "exact", head: true })
-          .eq("profile_id", profile.id)
-          .in("type", [
-            "transfer_in",
-            "transfer_out",
-            "bottle_finished",
-            "pack_finished",
-            "credit_payment",
-            "credit_charge",
-          ])
-          .then(({ count }) => setTotalTxs(count ?? 0)),
-        supabase
-          .from("wallet_transactions")
-          .select("*")
-          .eq("profile_id", profile.id)
-          .in("type", [
-            "transfer_in",
-            "transfer_out",
-            "bottle_finished",
-            "pack_finished",
-            "credit_payment",
-            "credit_charge",
-          ])
+        txQ.then(({ count }) => setTotalTxs(count ?? 0)),
+        txDataQ
           .order("created_at", { ascending: false })
           .range(page * ORDERS_PAGE_SIZE, page * ORDERS_PAGE_SIZE + ORDERS_PAGE_SIZE - 1)
           .then(({ data }) => setTxs((data ?? []) as WalletTx[])),
@@ -648,15 +666,16 @@ function CashierWallet({
 
   const loadCashierExpenses = useCallback(async () => {
     setLoadingExpenses(true);
-    const { data } = await sb
+    let query = sb
       .from("owner_expenses")
       .select("*")
       .eq("owner_id", ownerId)
-      .ilike("description", `%[Cashier: ${profile.username ?? profile.id}]%`)
-      .order("created_at", { ascending: false });
+      .ilike("description", `%[Cashier: ${profile.username ?? profile.id}]%`);
+    if (profile.cashier_shift_start) query = query.gte("created_at", profile.cashier_shift_start);
+    const { data } = await query.order("created_at", { ascending: false });
     setCashierExpenses((data ?? []) as OwnerExpense[]);
     setLoadingExpenses(false);
-  }, [ownerId, profile.id, profile.username]);
+  }, [ownerId, profile.id, profile.username, profile.cashier_shift_start]);
 
   useEffect(() => {
     if (cashierTab === "expenses") loadCashierExpenses();

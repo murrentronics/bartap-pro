@@ -32,6 +32,7 @@ export type Profile = {
   addon_bar_count?: number;
   is_multi_bar?: boolean;
   job_title?: string;
+  cashier_shift_start?: string;
 };
 
 type AuthCtx = {
@@ -57,17 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileFetching.current = true;
     try {
       // Race against a 6 s timeout so we never hang the app loader while offline
-      const fetchPromise = supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", uid)
-        .maybeSingle();
+      const fetchPromise = supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
 
-      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>(
-        (resolve) => setTimeout(() => resolve({ data: null, error: { message: "offline" } }), 6000)
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: { message: "offline" } }), 6000),
       );
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as { data: unknown; error: { message?: string } | null };
+      const { data, error } = (await Promise.race([fetchPromise, timeoutPromise])) as {
+        data: unknown;
+        error: { message?: string } | null;
+      };
 
       // If the request failed due to a network error (offline), keep whatever
       // profile is already in state rather than wiping it — this prevents the
@@ -133,18 +133,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
         (payload) => {
           setProfile((prev) => ({ ...(prev as Profile), ...(payload.new as Profile) }));
-        }
+        },
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
         () => {
           setProfile(null);
-        }
+        },
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [session?.user?.id]);
 
   const value: AuthCtx = {
@@ -162,7 +164,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { PushNotifications } = await import("@capacitor/push-notifications");
           await PushNotifications.removeAllListeners();
-        } catch { /* ignore — listeners may not be registered */ }
+        } catch {
+          /* ignore — listeners may not be registered */
+        }
       }
       await supabase.auth.signOut();
     },

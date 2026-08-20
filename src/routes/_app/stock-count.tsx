@@ -192,13 +192,13 @@ function StockCountPage() {
                     className="border-b border-border/40"
                     style={{ background: "rgba(255,255,255,0.02)" }}
                   >
-                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[140px]">
+                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[140px]">
                       Item name
                     </th>
                     {table.columns.map((col, ci) => (
                       <th
                         key={ci}
-                        className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[100px]"
+                        className="text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[70px] min-w-[70px]"
                       >
                         {col}
                       </th>
@@ -206,13 +206,13 @@ function StockCountPage() {
                     <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[70px]">
                       Total
                     </th>
-                    <th className="w-[40px]"></th>
+                    <th className="w-[40px] min-w-[40px]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {table.rows.map((row, ri) => (
                     <tr key={ri} className="border-b border-border/20">
-                      <td className="px-2 py-1">
+                      <td className="px-2 py-1 min-w-[140px]">
                         <input
                           type="text"
                           value={row[0] ?? ""}
@@ -226,12 +226,16 @@ function StockCountPage() {
                       {table.columns.map((_, ci) => {
                         const val = row[ci + 1] ?? "";
                         return (
-                          <td key={ci} className="px-2 py-1">
+                          <td key={ci} className="px-2 py-1 w-[70px] min-w-[70px]">
                             <input
                               type="text"
                               inputMode="numeric"
+                              pattern="[0-9]*"
                               value={val}
-                              onChange={(e) => updateCell(table.id, ri, ci + 1, e.target.value)}
+                              onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
+                                updateCell(table.id, ri, ci + 1, v);
+                              }}
                               onFocus={() => setActiveCell(`${table.id}-${ri}-${ci + 1}`)}
                               onBlur={() => setActiveCell(null)}
                               placeholder="0"
@@ -244,12 +248,12 @@ function StockCountPage() {
                           </td>
                         );
                       })}
-                      <td className="px-2 py-1">
+                      <td className="px-2 py-1 w-[60px] min-w-[60px]">
                         <div className="h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary">
                           {calcTotal(row)}
                         </div>
                       </td>
-                      <td className="px-2 py-1 text-center">
+                      <td className="px-2 py-1 text-center w-[40px] min-w-[40px]">
                         <button
                           onClick={() => deleteRow(table.id, ri)}
                           className="h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95"
@@ -285,4 +289,3 @@ function StockCountPage() {
     </div>
   );
 }
-
