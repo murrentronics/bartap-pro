@@ -316,12 +316,13 @@ export default function AppLayout() {
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
       ]
     : isManager ? [
-        // Manager: Items first, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
+        // Manager: Items, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
         ...(ownerHasBar ? [{ to: "/products",    label: t("products_title", "Items"),       icon: Package      }] : []),
-        ...(ownerHasBar ? [{ to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList }] : []),
+        { to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList },
         ...(ownerHasBar ? [{ to: "/credit",      label: t("customers_title", "Customers"),  icon: Receipt      }] : []),
         { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
         ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
+        { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
       ]
     : [
         ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
@@ -331,10 +332,12 @@ export default function AppLayout() {
         ...(isOwner && ownerHasBar ? [{ to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList }] : []),
         ...(isOwner && ownerHasBar ? [{ to: "/specials",    label: t("specials", "Specials"),           icon: Tag          }] : []),
         ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
+        ...((isCashier || isManager) ? [{ to: "/stock-count", label: "Stock Count", icon: ClipboardList }] : []),
         { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
         ...(isOwner ? [{ to: "/summary",  label: t("summary", "Summary"),       icon: BarChart3 }] : []),
         ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),
         ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"), icon: UserCircle }] : []),
+        { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
       ];
 
   return (

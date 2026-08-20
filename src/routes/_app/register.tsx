@@ -6,9 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Trash2, Minus, Plus, Loader2, X, CheckCircle2,
-} from "lucide-react";
+import { Trash2, Minus, Plus, Loader2, X, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon, categoryKey } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
@@ -17,19 +15,39 @@ import { enqueue } from "@/lib/offlineQueue";
 import { useImageCache } from "@/lib/useImageCache";
 import { productImageUrl } from "@/lib/imageUrl";
 import {
-  cacheProducts, getCachedProducts,
-  cacheBarSession, getCachedBarSession,
-  cacheCreditAccounts, getCachedCreditAccounts,
+  cacheProducts,
+  getCachedProducts,
+  cacheBarSession,
+  getCachedBarSession,
+  cacheCreditAccounts,
+  getCachedCreditAccounts,
   type CachedProduct,
 } from "@/lib/offlineCache";
 
 type BottleVariation = { key: string; label: string; units_consumed: number; price: number };
-type Product = { id: string; name: string; price: number; cost_price?: number; image_url: string | null; category?: CategoryValue; stock_qty?: number; units_per_item?: number; bottle_variations?: BottleVariation[] | null };
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  cost_price?: number;
+  image_url: string | null;
+  category?: CategoryValue;
+  stock_qty?: number;
+  units_per_item?: number;
+  bottle_variations?: BottleVariation[] | null;
+};
 type CartItem = Product & { qty: number; _discount?: number; _originalPrice?: number };
 type OpenedBottle = {
-  id: string; owner_id: string; product_id: string; product_name: string;
-  shot_price: number; shots_sold: number; revenue: number;
-  opened_at: string; finished_at: string | null; status: string;
+  id: string;
+  owner_id: string;
+  product_id: string;
+  product_name: string;
+  shot_price: number;
+  shots_sold: number;
+  revenue: number;
+  opened_at: string;
+  finished_at: string | null;
+  status: string;
   variation_counts: Record<string, number>;
   units_consumed: number;
 };
@@ -50,10 +68,17 @@ type ProductCardProps = {
   onRemove: (id: string) => void;
   onDec: (id: string) => void;
 };
-const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgSrc, onAdd, onRemove, onDec }: ProductCardProps) {
-  const outOfStock  = (p.stock_qty ?? 1) === 0;
-  const incomplete  = !p.price || Number(p.price) <= 0;
-  const inCart      = inCartQty > 0;
+const ProductCard = React.memo(function ProductCard({
+  p,
+  inCartQty,
+  resolvedImgSrc,
+  onAdd,
+  onRemove,
+  onDec,
+}: ProductCardProps) {
+  const outOfStock = (p.stock_qty ?? 1) === 0;
+  const incomplete = !p.price || Number(p.price) <= 0;
+  const inCart = inCartQty > 0;
   return (
     <div data-bar-id={p.id} className="relative">
       <button
@@ -82,8 +107,10 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgS
               }}
             />
           ) : null}
-          <div className="absolute inset-0 items-center justify-center text-4xl"
-            style={{ display: p.image_url ? "none" : "flex" }}>
+          <div
+            className="absolute inset-0 items-center justify-center text-4xl"
+            style={{ display: p.image_url ? "none" : "flex" }}
+          >
             {categoryIcon(p.category ?? "drinks")}
           </div>
           {p.stock_qty !== undefined && !outOfStock && (
@@ -93,7 +120,10 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgS
           )}
           {inCart && (
             <button
-              onClick={(e) => { e.stopPropagation(); onRemove(p.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(p.id);
+              }}
               className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
               style={{ background: "#dc2626" }}
             >
@@ -101,17 +131,24 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgS
             </button>
           )}
           {inCart && (
-            <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
-              style={{ background: "rgba(0,0,0,0.75)" }}>
+            <div
+              className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+              style={{ background: "rgba(0,0,0,0.75)" }}
+            >
               <button
-                onClick={(e) => { e.stopPropagation(); onDec(p.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDec(p.id);
+                }}
                 className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
                 style={{ background: "#ef4444" }}
               >
                 <Minus className="h-4 w-4 text-black" />
               </button>
-              <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
-                style={{ background: "var(--gradient-hero)" }}>
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
+                style={{ background: "var(--gradient-hero)" }}
+              >
                 {inCartQty}
               </div>
             </div>
@@ -119,26 +156,49 @@ const ProductCard = React.memo(function ProductCard({ p, inCartQty, resolvedImgS
           {outOfStock && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
               <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
+                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
+                  Out of Stock
+                </span>
               </div>
             </div>
           )}
           {!outOfStock && incomplete && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[1px]">
               <div className="rounded-xl px-2 py-1 shadow-lg" style={{ background: "#92400e" }}>
-                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">No Price</span>
+                <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
+                  No Price
+                </span>
               </div>
             </div>
           )}
-          {!outOfStock && !incomplete && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-            <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-              <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
-            </div>
-          )}
+          {!outOfStock &&
+            !incomplete &&
+            !inCart &&
+            (p.stock_qty ?? 1) >= 1 &&
+            (p.stock_qty ?? 1) <= 5 && (
+              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">
+                  Low
+                </span>
+              </div>
+            )}
         </div>
-        <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-          <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
-          <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
+        <div
+          className="px-1.5 py-1.5 border-t border-border/30"
+          style={{
+            background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+            borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+          }}
+        >
+          <div
+            className="font-bold text-[11px] truncate leading-tight"
+            style={{ color: "var(--primary)" }}
+          >
+            {p.name}
+          </div>
+          <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>
+            ${Number(p.price).toFixed(2)}
+          </div>
         </div>
       </button>
     </div>
@@ -160,8 +220,15 @@ type ProductGridProps = {
   sortLabel: string;
 };
 const ProductGrid = React.memo(function ProductGrid({
-  barOrdered, cartQtyMap, resolvedImgMap, onAdd, onRemove, onDec,
-  onEnterEditMode, showSortButton, sortLabel,
+  barOrdered,
+  cartQtyMap,
+  resolvedImgMap,
+  onAdd,
+  onRemove,
+  onDec,
+  onEnterEditMode,
+  showSortButton,
+  sortLabel,
 }: ProductGridProps) {
   return (
     <>
@@ -186,7 +253,11 @@ const ProductGrid = React.memo(function ProductGrid({
           <button
             onClick={onEnterEditMode}
             className="w-full h-12 rounded-2xl font-black text-sm active:scale-[0.98] transition border"
-            style={{ background: "rgba(251,146,60,0.08)", color: "var(--primary)", borderColor: "rgba(251,146,60,0.30)" }}
+            style={{
+              background: "rgba(251,146,60,0.08)",
+              color: "var(--primary)",
+              borderColor: "rgba(251,146,60,0.30)",
+            }}
           >
             {sortLabel}
           </button>
@@ -203,7 +274,9 @@ export default function RegisterPage() {
   const { isOnline } = useNetworkStatus();
   const nav = useNavigate();
 
-  const ownerId = effectiveOwnerId(profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""));
+  const ownerId = effectiveOwnerId(
+    profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""),
+  );
 
   // Managers have no register page — send them to /products
   useEffect(() => {
@@ -223,7 +296,7 @@ export default function RegisterPage() {
 
   // ── Bar session state — blocks sales when bar is closed ────────────────────
   const [barSessionStart, setBarSessionStart] = useState<string | null>(null);
-  const [barClosedAt,     setBarClosedAt]     = useState<string | null>(null);
+  const [barClosedAt, setBarClosedAt] = useState<string | null>(null);
   // Start as false — only set true once we have an ownerId and kick off the fetch
   const [barSessionLoading, setBarSessionLoading] = useState(false);
   // Delay showing the overlay so we don't flash it during initial profile/ownerId resolution
@@ -235,56 +308,74 @@ export default function RegisterPage() {
     setBarSessionLoading(true);
     setBarOverlayReady(false);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("profiles")
+    (supabase as any)
+      .from("profiles")
       .select("bar_session_start, bar_closed_at")
       .eq("id", ownerId)
       .single()
-      .then(async ({ data, error }: { data: { bar_session_start: string | null; bar_closed_at: string | null } | null; error: unknown }) => {
-        if (data) {
-          // Network success — update state and refresh cache
-          setBarSessionStart(data.bar_session_start ?? null);
-          setBarClosedAt(data.bar_closed_at ?? null);
-          cacheBarSession(ownerId, {
-            bar_session_start: data.bar_session_start ?? null,
-            bar_closed_at: data.bar_closed_at ?? null,
-          });
-        } else {
-          // Network failed (offline) — serve from IndexedDB cache
-          console.warn("[register] bar session fetch failed, using cache:", error);
-          const cached = await getCachedBarSession(ownerId);
-          if (cached) {
-            setBarSessionStart(cached.bar_session_start);
-            setBarClosedAt(cached.bar_closed_at);
+      .then(
+        async ({
+          data,
+          error,
+        }: {
+          data: { bar_session_start: string | null; bar_closed_at: string | null } | null;
+          error: unknown;
+        }) => {
+          if (data) {
+            // Network success — update state and refresh cache
+            setBarSessionStart(data.bar_session_start ?? null);
+            setBarClosedAt(data.bar_closed_at ?? null);
+            cacheBarSession(ownerId, {
+              bar_session_start: data.bar_session_start ?? null,
+              bar_closed_at: data.bar_closed_at ?? null,
+            });
+          } else {
+            // Network failed (offline) — serve from IndexedDB cache
+            console.warn("[register] bar session fetch failed, using cache:", error);
+            const cached = await getCachedBarSession(ownerId);
+            if (cached) {
+              setBarSessionStart(cached.bar_session_start);
+              setBarClosedAt(cached.bar_closed_at);
+            }
           }
-        }
-        setBarSessionLoading(false);
-        // Small delay so the overlay only appears after the data is confirmed — no flash
-        setTimeout(() => setBarOverlayReady(true), 150);
-      });
+          setBarSessionLoading(false);
+          // Small delay so the overlay only appears after the data is confirmed — no flash
+          setTimeout(() => setBarOverlayReady(true), 150);
+        },
+      );
 
     // Realtime: watch for bar open/close changes on the owner profile
     const ch = supabase
       .channel(`bar-session-register-${ownerId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         (payload) => {
           const rec = payload.new as Record<string, unknown>;
-          const newStart = "bar_session_start" in rec ? (rec.bar_session_start as string | null) ?? null : undefined;
-          const newClosed = "bar_closed_at" in rec ? (rec.bar_closed_at as string | null) ?? null : undefined;
+          const newStart =
+            "bar_session_start" in rec
+              ? ((rec.bar_session_start as string | null) ?? null)
+              : undefined;
+          const newClosed =
+            "bar_closed_at" in rec ? ((rec.bar_closed_at as string | null) ?? null) : undefined;
           if (newStart !== undefined) setBarSessionStart(newStart);
           if (newClosed !== undefined) setBarClosedAt(newClosed);
           // Keep IndexedDB cache in sync with realtime updates
           if (newStart !== undefined || newClosed !== undefined) {
             getCachedBarSession(ownerId).then((prev) => {
               cacheBarSession(ownerId, {
-                bar_session_start: newStart !== undefined ? newStart : (prev?.bar_session_start ?? null),
-                bar_closed_at:     newClosed !== undefined ? newClosed : (prev?.bar_closed_at ?? null),
+                bar_session_start:
+                  newStart !== undefined ? newStart : (prev?.bar_session_start ?? null),
+                bar_closed_at: newClosed !== undefined ? newClosed : (prev?.bar_closed_at ?? null),
               });
             });
           }
-        }
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [ownerId]);
 
   // ── Bar open / close toggle (owner only) ─────────────────────────────────
@@ -297,6 +388,31 @@ export default function RegisterPage() {
   const [activeFloatField, setActiveFloatField] = useState<"bar" | "machine" | null>(null);
   const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
 
+  const handleFloatNumpad = (field: "bar" | "machine", k: string) => {
+    const current = field === "bar" ? floatBarAmount : floatMachineAmount;
+    const setter = field === "bar" ? setFloatBarAmount : setFloatMachineAmount;
+    if (k === "⌫") {
+      setter(current.slice(0, -1));
+      return;
+    }
+    setter(current === "0" || current === "" ? k : current + k);
+  };
+
+  useEffect(() => {
+    if (activeFloatField === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleFloatNumpad(activeFloatField, e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleFloatNumpad(activeFloatField, "⌫");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeFloatField]);
+
   const handleOpenBar = async () => {
     // Check if machines addon is active before showing float modal
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -307,11 +423,15 @@ export default function RegisterPage() {
       .single();
 
     const planType: string = ownerRow?.plan_type ?? "";
-    const isMachinesOnlyPlan = planType === "machines_only" || !!(ownerRow?.is_machines_account);
-    const hasBarAddon        = !!(ownerRow?.bar_addon_active);
-    const hasMachinesAddon   = !!(ownerRow?.machines_addon_active) || planType === "premium" || planType === "chain" || isMachinesOnlyPlan;
+    const isMachinesOnlyPlan = planType === "machines_only" || !!ownerRow?.is_machines_account;
+    const hasBarAddon = !!ownerRow?.bar_addon_active;
+    const hasMachinesAddon =
+      !!ownerRow?.machines_addon_active ||
+      planType === "premium" ||
+      planType === "chain" ||
+      isMachinesOnlyPlan;
 
-    const showBarFloat     = !isMachinesOnlyPlan || hasBarAddon;
+    const showBarFloat = !isMachinesOnlyPlan || hasBarAddon;
     const showMachineFloat = hasMachinesAddon;
 
     setHasMachinesAddon(showMachineFloat);
@@ -324,17 +444,28 @@ export default function RegisterPage() {
 
   const confirmOpenBarWithFloat = async () => {
     const barFloatVal = isMachinesAccount ? 0 : parseInt(floatBarAmount, 10);
-    if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) { toast.error("Enter a valid bar float amount"); return; }
+    if (!isMachinesAccount && (isNaN(barFloatVal) || barFloatVal < 0)) {
+      toast.error("Enter a valid bar float amount");
+      return;
+    }
     if (hasMachinesAddon) {
       const machineFloatVal = parseInt(floatMachineAmount, 10);
-      if (isNaN(machineFloatVal) || machineFloatVal < 0) { toast.error("Enter a valid machine float amount"); return; }
+      if (isNaN(machineFloatVal) || machineFloatVal < 0) {
+        toast.error("Enter a valid machine float amount");
+        return;
+      }
     }
     setBarToggleBusy(true);
 
     // Guard: do not create a new session if one is already open
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingOpen } = await (supabase as any).from("bar_sessions")
-      .select("id").eq("owner_id", ownerId).is("closed_at", null).limit(1).maybeSingle();
+    const { data: existingOpen } = await (supabase as any)
+      .from("bar_sessions")
+      .select("id")
+      .eq("owner_id", ownerId)
+      .is("closed_at", null)
+      .limit(1)
+      .maybeSingle();
     if (existingOpen) {
       setBarToggleBusy(false);
       toast.error("Bar is already open — close the current session first");
@@ -343,23 +474,37 @@ export default function RegisterPage() {
 
     const now = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("profiles")
-      .update({ bar_session_start: now, bar_closed_at: null, cashier_float: barFloatVal, cashier_float_set_at: now })
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({
+        bar_session_start: now,
+        bar_closed_at: null,
+        cashier_float: barFloatVal,
+        cashier_float_set_at: now,
+      })
       .eq("id", ownerId);
-    if (error) { setBarToggleBusy(false); toast.error("Failed to open bar: " + error.message); return; }
+    if (error) {
+      setBarToggleBusy(false);
+      toast.error("Failed to open bar: " + error.message);
+      return;
+    }
 
     // Insert machine float session if machines addon active
     if (hasMachinesAddon) {
       const machineAmt = parseInt(floatMachineAmount, 10) || 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("machine_float_sessions").insert({ owner_id: ownerId, amount: machineAmt, set_at: now });
+      await (supabase as any)
+        .from("machine_float_sessions")
+        .insert({ owner_id: ownerId, amount: machineAmt, set_at: now });
     }
 
     // Insert bar_sessions parent row + first sub-session
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newSession } = await (supabase as any).from("bar_sessions")
+    const { data: newSession } = await (supabase as any)
+      .from("bar_sessions")
       .insert({ owner_id: ownerId, opened_at: now })
-      .select("id").single();
+      .select("id")
+      .single();
     if (newSession?.id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("bar_sub_sessions").insert({
@@ -374,7 +519,14 @@ export default function RegisterPage() {
     setShowFloatModal(false);
     setBarSessionStart(now);
     setBarClosedAt(null);
-    toast.success("🟢 Bar opened at " + new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }));
+    toast.success(
+      "🟢 Bar opened at " +
+        new Date(now).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+    );
     setShowBarOpenedOverlay(true);
   };
 
@@ -383,16 +535,28 @@ export default function RegisterPage() {
     const now = new Date().toISOString();
     // Close open sub-sessions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("bar_sub_sessions")
-      .update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
+    await (supabase as any)
+      .from("bar_sub_sessions")
+      .update({ closed_at: now })
+      .eq("owner_id", ownerId)
+      .is("closed_at", null);
     // Close open bar_session row
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("bar_sessions")
-      .update({ closed_at: now }).eq("owner_id", ownerId).is("closed_at", null);
+    await (supabase as any)
+      .from("bar_sessions")
+      .update({ closed_at: now })
+      .eq("owner_id", ownerId)
+      .is("closed_at", null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("profiles").update({ bar_closed_at: now }).eq("id", ownerId);
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({ bar_closed_at: now })
+      .eq("id", ownerId);
     setBarToggleBusy(false);
-    if (error) { toast.error("Failed to close bar: " + error.message); return; }
+    if (error) {
+      toast.error("Failed to close bar: " + error.message);
+      return;
+    }
     setBarClosedAt(now);
     toast.success("🔴 Bar closed");
   };
@@ -404,7 +568,7 @@ export default function RegisterPage() {
   // create a new array and re-trigger the entire IndexedDB read pipeline.
   const productImageUrls = useMemo(
     () => products.map((p) => productImageUrl(p.image_url)),
-    [products]
+    [products],
   );
   // Preload all product images — returns imgSrc() helper that serves objectURLs
   // from IndexedDB instantly, falling back to the network URL while loading.
@@ -421,10 +585,10 @@ export default function RegisterPage() {
       m[p.id] = url ? imgSrc(url) : null;
     });
     return m;
-  // imgSrc is stable (empty deps []); products changes trigger productImageUrls
-  // → useImageCache effect → new objectUrlMap → imgSrc reads fresh ref value.
-  // We rebuild this map whenever either products or the imgSrc function changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // imgSrc is stable (empty deps []); products changes trigger productImageUrls
+    // → useImageCache effect → new objectUrlMap → imgSrc reads fresh ref value.
+    // We rebuild this map whenever either products or the imgSrc function changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, imgSrc]);
   // Initialize cart from localStorage on mount
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -439,27 +603,45 @@ export default function RegisterPage() {
   // ── Edit-order mode ──────────────────────────────────────────────────────
   // Set when the user taps the pencil on a wallet record and confirms the edit.
   // sessionStorage key "edit_order" holds the full Order JSON written by wallet.tsx.
-  type EditOrder = { id: string; items: { id?: string; name: string; qty: number; price: number }[]; total: number; paid: number; change_given: number; created_at: string };
+  type EditOrder = {
+    id: string;
+    items: { id?: string; name: string; qty: number; price: number }[];
+    total: number;
+    paid: number;
+    change_given: number;
+    created_at: string;
+  };
   const [editOrder, setEditOrder] = useState<EditOrder | null>(() => {
     try {
       const raw = sessionStorage.getItem("edit_order");
       if (!raw) return null;
       sessionStorage.removeItem("edit_order");
       return JSON.parse(raw) as EditOrder;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   });
 
   // ── Edit-credit-order mode ────────────────────────────────────────────────
   // Set when the user taps the pencil on a credit charge record in the wallet.
   // sessionStorage key "edit_credit_order" holds the credit tx data written by wallet.tsx.
-  type EditCreditOrder = { credit_tx_id: string; credit_account_id: string; customer_name: string; items: { id: string; name: string; qty: number; price: number }[]; amount: number; created_at: string };
+  type EditCreditOrder = {
+    credit_tx_id: string;
+    credit_account_id: string;
+    customer_name: string;
+    items: { id: string; name: string; qty: number; price: number }[];
+    amount: number;
+    created_at: string;
+  };
   const [editCreditOrder, setEditCreditOrder] = useState<EditCreditOrder | null>(() => {
     try {
       const raw = sessionStorage.getItem("edit_credit_order");
       if (!raw) return null;
       sessionStorage.removeItem("edit_credit_order");
       return JSON.parse(raw) as EditCreditOrder;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   });
 
   // Pre-fill the cart from the edit order once products have loaded.
@@ -470,7 +652,8 @@ export default function RegisterPage() {
     if (!editOrder || products.length === 0 || editOrderApplied.current) return;
     editOrderApplied.current = true;
     const preCart: CartItem[] = editOrder.items.flatMap((item) => {
-      const prod = products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
+      const prod =
+        products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
       if (!prod) return [];
       return [{ ...prod, price: item.price, qty: item.qty } as CartItem];
     });
@@ -483,7 +666,8 @@ export default function RegisterPage() {
     if (!editCreditOrder || products.length === 0 || editCreditOrderApplied.current) return;
     editCreditOrderApplied.current = true;
     const preCart: CartItem[] = editCreditOrder.items.flatMap((item) => {
-      const prod = products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
+      const prod =
+        products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
       if (!prod) return [];
       return [{ ...prod, price: item.price, qty: item.qty } as CartItem];
     });
@@ -522,13 +706,17 @@ export default function RegisterPage() {
   // without triggering full re-renders on every cart change
   const cartQtyMap = useMemo(() => {
     const m: Record<string, number> = {};
-    cart.forEach((i) => { m[i.id] = i.qty; });
+    cart.forEach((i) => {
+      m[i.id] = i.qty;
+    });
     return m;
   }, [cart]);
 
   // Stable fetch — always reads latest ownerId via ref
   const ownerIdRef = useRef(ownerId);
-  useEffect(() => { ownerIdRef.current = ownerId; }, [ownerId]);
+  useEffect(() => {
+    ownerIdRef.current = ownerId;
+  }, [ownerId]);
 
   const fetchProducts = useCallback(async () => {
     const id = ownerIdRef.current;
@@ -563,23 +751,35 @@ export default function RegisterPage() {
     // Note: no filter on DELETE events — deleted rows can't match column filters
     const ch = supabase
       .channel(`products-register-${ownerId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
-        () => { fetchProducts(); }
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+        () => {
+          fetchProducts();
+        },
       )
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
-        () => { fetchProducts(); }
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "products", filter: `owner_id=eq.${ownerId}` },
+        () => {
+          fetchProducts();
+        },
       )
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "products" },
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "products" },
         (payload) => {
           // Only act if the deleted product belonged to this owner
           if (payload.old?.owner_id && payload.old.owner_id !== ownerId) return;
           setProducts((prev) => prev.filter((p) => p.id !== payload.old?.id));
           setCart((c) => c.filter((i) => i.id !== payload.old?.id));
-        }
+        },
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [ownerId, fetchProducts]);
 
   const filtered = useMemo(() => {
@@ -595,7 +795,9 @@ export default function RegisterPage() {
   const barSortMapRef = useRef<Record<string, number>>({});
   const barOrderedRef = useRef<Product[]>([]);
   const profileIdRef = useRef(profile?.id);
-  useEffect(() => { profileIdRef.current = profile?.id; }, [profile?.id]);
+  useEffect(() => {
+    profileIdRef.current = profile?.id;
+  }, [profile?.id]);
   const cartLengthRef = useRef(0);
   // Ref for the edit-mode grid — used to block native long-press browser behaviour
   const barEditGridRef = useRef<HTMLDivElement>(null);
@@ -607,7 +809,7 @@ export default function RegisterPage() {
       map[cat.value] = applyBarSort(products, cat.value, barSortMapRef.current);
     }
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, barSortMap]);
 
   // Block the browser's built-in long-press (context menu / text-selection grab)
@@ -627,10 +829,15 @@ export default function RegisterPage() {
     const pid = profileIdRef.current;
     if (!pid) return;
     const { data } = await (supabase as any)
-      .from("bar_sort_order").select("order_json").eq("owner_id", pid).maybeSingle();
+      .from("bar_sort_order")
+      .select("order_json")
+      .eq("owner_id", pid)
+      .maybeSingle();
     const arr: string[] = data?.order_json && Array.isArray(data.order_json) ? data.order_json : [];
     const map: Record<string, number> = {};
-    arr.forEach((id: string, i: number) => { map[id] = i; });
+    arr.forEach((id: string, i: number) => {
+      map[id] = i;
+    });
     barSortMapRef.current = map;
     setBarSortMap(map);
   };
@@ -641,19 +848,25 @@ export default function RegisterPage() {
     // Merge the new category order into the full map, keeping all other categories' positions
     const currentMap = barSortMapRef.current;
     const newMap = { ...currentMap };
-    newCatIds.forEach((id, idx) => { newMap[id] = idx; });
+    newCatIds.forEach((id, idx) => {
+      newMap[id] = idx;
+    });
     // Rebuild a flat ordered array: all ids sorted by their position in the map
     const allIds = Object.entries(newMap)
       .sort(([, a], [, b]) => a - b)
       .map(([id]) => id);
-    (supabase as any).from("bar_sort_order").upsert(
-      { owner_id: pid, order_json: allIds, updated_at: new Date().toISOString() },
-      { onConflict: "owner_id" }
-    ).then(() => {}).catch(() => {});
+    (supabase as any)
+      .from("bar_sort_order")
+      .upsert(
+        { owner_id: pid, order_json: allIds, updated_at: new Date().toISOString() },
+        { onConflict: "owner_id" },
+      )
+      .then(() => {})
+      .catch(() => {});
   };
 
   function applyBarSort(prods: Product[], cat: string, map: Record<string, number>) {
-    return [...prods.filter(p => (p.category || "beers") === cat)].sort((a, b) => {
+    return [...prods.filter((p) => (p.category || "beers") === cat)].sort((a, b) => {
       const ia = map[a.id] ?? Infinity;
       const ib = map[b.id] ?? Infinity;
       if (ia !== ib) return ia - ib;
@@ -680,7 +893,8 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (barEditModeRef.current) return;
-    const sorted = allCategorySorted[category] ?? applyBarSort(products, category, barSortMapRef.current);
+    const sorted =
+      allCategorySorted[category] ?? applyBarSort(products, category, barSortMapRef.current);
     barOrderedRef.current = sorted;
     setBarOrdered(sorted);
   }, [products, barSortMap]); // category changes are handled synchronously in the tab click handler
@@ -695,10 +909,18 @@ export default function RegisterPage() {
 
   // ── Specials: load active deals for this owner ─────────────────────────────
   type Special = {
-    id: string; name: string; special_price: number; required_qty: number;
-    product_ids: string[]; is_recurring: boolean; run_days: number[];
-    start_date: string; start_time: string | null;
-    end_date: string | null; end_time: string | null; active: boolean;
+    id: string;
+    name: string;
+    special_price: number;
+    required_qty: number;
+    product_ids: string[];
+    is_recurring: boolean;
+    run_days: number[];
+    start_date: string;
+    start_time: string | null;
+    end_date: string | null;
+    end_time: string | null;
+    active: boolean;
   };
   const [activeSpecials, setActiveSpecials] = useState<Special[]>([]);
 
@@ -717,11 +939,15 @@ export default function RegisterPage() {
     // Refresh when specials change for this owner
     const ch = supabase
       .channel(`specials-register-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "specials", filter: `owner_id=eq.${id}` },
-        () => loadSpecials()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "specials", filter: `owner_id=eq.${id}` },
+        () => loadSpecials(),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Specials: compute total with bundle pricing applied ───────────────────
@@ -758,11 +984,10 @@ export default function RegisterPage() {
       const bundles = Math.floor(eligible.length / s.required_qty);
       if (bundles === 0) continue;
       // Normal cost of those eligible items
-      const normalCost = eligible.slice(0, bundles * s.required_qty)
-        .reduce((sum, id) => {
-          const item = cart.find((c) => c.id === id);
-          return sum + Number(item?.price ?? 0);
-        }, 0);
+      const normalCost = eligible.slice(0, bundles * s.required_qty).reduce((sum, id) => {
+        const item = cart.find((c) => c.id === id);
+        return sum + Number(item?.price ?? 0);
+      }, 0);
       const specialCost = bundles * s.special_price;
       const saving = normalCost - specialCost;
       if (saving > bestSaving) {
@@ -795,59 +1020,74 @@ export default function RegisterPage() {
       const ex = c.find((i) => i.id === p.id);
       const currentQty = ex?.qty ?? 0;
       const availableStock = p.stock_qty ?? Infinity;
-      
+
       // Don't add if we've already reached the stock limit
       if (currentQty >= availableStock) {
         toast.error(`Only ${availableStock} in stock`);
         return c;
       }
-      
-      return ex ? c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i)) : [...c, { ...p, qty: 1 }];
+
+      return ex
+        ? c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
+        : [...c, { ...p, qty: 1 }];
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dec = useCallback((id: string) =>
-    setCart((c) => c.flatMap((i) => (i.id === id ? (i.qty > 1 ? [{ ...i, qty: i.qty - 1 }] : []) : [i]))), []);
+  const dec = useCallback(
+    (id: string) =>
+      setCart((c) =>
+        c.flatMap((i) => (i.id === id ? (i.qty > 1 ? [{ ...i, qty: i.qty - 1 }] : []) : [i])),
+      ),
+    [],
+  );
 
   const removeItem = useCallback((id: string) => setCart((c) => c.filter((i) => i.id !== id)), []);
 
   // ΓöÇΓöÇ Opened Bottles state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-  const [openedBottles, setOpenedBottles]       = useState<OpenedBottle[]>([]);
+  const [openedBottles, setOpenedBottles] = useState<OpenedBottle[]>([]);
   const [bottlesModalOpen, setBottlesModalOpen] = useState(false);
-  const [shotModalOpen, setShotModalOpen]       = useState(false);
-  const [shotStep, setShotStep]                 = useState<"select" | "variation">("select");
+  const [shotModalOpen, setShotModalOpen] = useState(false);
+  const [shotStep, setShotStep] = useState<"select" | "variation">("select");
   const [showNewBottleGrid, setShowNewBottleGrid] = useState(false);
-  const [shotBottleId, setShotBottleId]         = useState<string>("");
-  const [shotPrice, setShotPrice]               = useState("");
+  const [shotBottleId, setShotBottleId] = useState<string>("");
+  const [shotPrice, setShotPrice] = useState("");
   const [selectedVariation, setSelectedVariation] = useState<BottleVariation | null>(null);
-  const selectedBottleRef                       = useRef<HTMLDivElement>(null);
-  const [openNewMode, setOpenNewMode]           = useState(false);   // true = picking a new bottle from products
+  const selectedBottleRef = useRef<HTMLDivElement>(null);
+  const [openNewMode, setOpenNewMode] = useState(false); // true = picking a new bottle from products
   const [newBottleProductId, setNewBottleProductId] = useState<string>("");
-  const [newBottlePrice, setNewBottlePrice]     = useState("");
-  const [bottleBusy, setBottleBusy]             = useState(false);
+  const [newBottlePrice, setNewBottlePrice] = useState("");
+  const [bottleBusy, setBottleBusy] = useState(false);
   const [markEmptyBottleId, setMarkEmptyBottleId] = useState<string | null>(null); // confirm modal
-  const [cancelBottleId, setCancelBottleId]       = useState<string | null>(null); // confirm modal
+  const [cancelBottleId, setCancelBottleId] = useState<string | null>(null); // confirm modal
 
   // ΓöÇΓöÇ Opened Packs state (cigarettes retail + rolling paper) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   type OpenedPack = {
-    id: string; owner_id: string; product_id: string; product_name: string;
-    pack_type: "retail" | "paper"; unit_price: number; units_sold: number;
-    revenue: number; opened_at: string; finished_at: string | null; status: string;
+    id: string;
+    owner_id: string;
+    product_id: string;
+    product_name: string;
+    pack_type: "retail" | "paper";
+    unit_price: number;
+    units_sold: number;
+    revenue: number;
+    opened_at: string;
+    finished_at: string | null;
+    status: string;
   };
-  const [openedPacks, setOpenedPacks]             = useState<OpenedPack[]>([]);
-  const [packModalOpen, setPackModalOpen]         = useState(false);
-  const [packType, setPackType]                   = useState<"retail" | "paper">("retail");
-  const [packStep, setPackStep]                   = useState<"select" | "price">("select");
-  const [packPackId, setPackPackId]               = useState<string>("");
-  const [packPrice, setPackPrice]                 = useState("");
-  const [showNewPackGrid, setShowNewPackGrid]     = useState(false);
-  const [packBusy, setPackBusy]                   = useState(false);
-  const [markEmptyPackId, setMarkEmptyPackId]     = useState<string | null>(null);
-  const [cancelPackId, setCancelPackId]           = useState<string | null>(null);
-  const [packQty, setPackQty]                     = useState(1);
-  const [packSellMode, setPackSellMode]           = useState<"retail" | "special">("retail");
-  const [specialQty, setSpecialQty]               = useState(2);
-  const [specialPrice, setSpecialPrice]           = useState("");
+  const [openedPacks, setOpenedPacks] = useState<OpenedPack[]>([]);
+  const [packModalOpen, setPackModalOpen] = useState(false);
+  const [packType, setPackType] = useState<"retail" | "paper">("retail");
+  const [packStep, setPackStep] = useState<"select" | "price">("select");
+  const [packPackId, setPackPackId] = useState<string>("");
+  const [packPrice, setPackPrice] = useState("");
+  const [showNewPackGrid, setShowNewPackGrid] = useState(false);
+  const [packBusy, setPackBusy] = useState(false);
+  const [markEmptyPackId, setMarkEmptyPackId] = useState<string | null>(null);
+  const [cancelPackId, setCancelPackId] = useState<string | null>(null);
+  const [packQty, setPackQty] = useState(1);
+  const [packSellMode, setPackSellMode] = useState<"retail" | "special">("retail");
+  const [specialQty, setSpecialQty] = useState(2);
+  const [specialPrice, setSpecialPrice] = useState("");
   // Packs opened mid-order that need reverting if order is cancelled
   const [packsPendingClose, setPacksPendingClose] = useState<string[]>([]);
 
@@ -865,7 +1105,7 @@ export default function RegisterPage() {
       if (!pack) continue;
       const prod = products.find((p) => p.id === pack.product_id);
       const cap = prod?.units_per_item ?? 0;
-      if (cap > 0 && (pack.units_sold + soldQty) >= cap) {
+      if (cap > 0 && pack.units_sold + soldQty >= cap) {
         await handleFinishPack(packId);
       }
     }
@@ -885,14 +1125,16 @@ export default function RegisterPage() {
   };
 
   const cigaretteProducts = useMemo(() => {
-    const openedProductIds = new Set(openedPacks.map(p => p.product_id));
+    const openedProductIds = new Set(openedPacks.map((p) => p.product_id));
     return products.filter((p) => {
       if ((p.category || "beers") !== "cigarettes") return false;
       if (openedProductIds.has(p.id)) return false;
       // Require retail pricing to be set up (non-zero retail price variation)
-      const hasValidRetailPrice = (p.bottle_variations ?? []).some((v) => v.key === "retail" && v.price > 0);
+      const hasValidRetailPrice = (p.bottle_variations ?? []).some(
+        (v) => v.key === "retail" && v.price > 0,
+      );
       if (!hasValidRetailPrice) return false;
-      const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
+      const inCart = cart.filter((c) => c.id === p.id).reduce((s, c) => s + c.qty, 0);
       return (p.stock_qty ?? 0) - inCart > 0;
     });
   }, [products, openedPacks, cart]);
@@ -914,32 +1156,55 @@ export default function RegisterPage() {
     fetchOpenedPacks();
     const ch = supabase
       .channel(`opened-packs-${ownerId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "opened_packs", filter: `owner_id=eq.${ownerId}` },
-        () => fetchOpenedPacks())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "opened_packs", filter: `owner_id=eq.${ownerId}` },
+        () => fetchOpenedPacks(),
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [ownerId, fetchOpenedPacks]);
 
   const addPackUnit = async () => {
     const pack = openedPacks.find((p) => p.id === packPackId);
-    if (!pack) { toast.error("Select a pack"); return; }
+    if (!pack) {
+      toast.error("Select a pack");
+      return;
+    }
     const product = products.find((p) => p.id === pack.product_id);
     // Use the retail variation price (set by owner in Items page) not the pack sale price
     const retailVariation = (product?.bottle_variations ?? []).find((v) => v.key === "retail");
     const unitPrice = retailVariation?.price ?? product?.price ?? 0;
-    if (unitPrice <= 0) { toast.error("No retail price set for this item — edit the product first"); return; }
+    if (unitPrice <= 0) {
+      toast.error("No retail price set for this item — edit the product first");
+      return;
+    }
     const capacity = product?.units_per_item ?? 0;
     const alreadySold = pack.units_sold;
-    const cartQtyForPack = cart.filter((c) => (c as any)._pack_id === pack.id).reduce((s, c) => s + c.qty, 0);
+    const cartQtyForPack = cart
+      .filter((c) => (c as any)._pack_id === pack.id)
+      .reduce((s, c) => s + c.qty, 0);
     const remaining = capacity > 0 ? capacity - alreadySold - cartQtyForPack : Infinity;
     const qtyToSell = capacity > 0 ? Math.min(packQty, remaining) : packQty;
-    if (qtyToSell <= 0) { toast.error("Pack is empty — open a new pack"); return; }
+    if (qtyToSell <= 0) {
+      toast.error("Pack is empty — open a new pack");
+      return;
+    }
     const cartId = `pack-${pack.id}-${Date.now()}`;
-    setCart((c) => [...c, {
-      id: cartId, name: `Retail: ${pack.product_name}`, price: unitPrice,
-      image_url: null, category: "cigarettes", qty: qtyToSell,
-      _pack_id: pack.id,
-    } as CartItem & { _pack_id: string }]);
+    setCart((c) => [
+      ...c,
+      {
+        id: cartId,
+        name: `Retail: ${pack.product_name}`,
+        price: unitPrice,
+        image_url: null,
+        category: "cigarettes",
+        qty: qtyToSell,
+        _pack_id: pack.id,
+      } as CartItem & { _pack_id: string },
+    ]);
     // Close modal after adding so cashier can see the cash order button
     setPackQty(1);
     setPackSellMode("retail");
@@ -952,9 +1217,15 @@ export default function RegisterPage() {
   const handleFinishPack = async (packId: string) => {
     if (!profile) return;
     setPackBusy(true);
-    const { error } = await supabase.rpc("finish_pack", { p_pack_id: packId, p_cashier_id: ownerId });
+    const { error } = await supabase.rpc("finish_pack", {
+      p_pack_id: packId,
+      p_cashier_id: ownerId,
+    });
     setPackBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Pack marked empty — revenue recorded");
     await fetchOpenedPacks();
     refreshProfile();
@@ -964,7 +1235,10 @@ export default function RegisterPage() {
     setPackBusy(true);
     const { error } = await supabase.rpc("cancel_pack", { p_pack_id: packId });
     setPackBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     // Remove any retail cart items that were staged from this pack
     setCart((c) => c.filter((item) => (item as any)._pack_id !== packId));
     toast.success("Pack cancelled — stock restored");
@@ -972,32 +1246,31 @@ export default function RegisterPage() {
     await fetchProducts();
   };
 
-  const liquorProducts = useMemo(
-    () => {
-      // Count how many bottles of each product are already open
-      const openedBottleCounts = new Map<string, number>();
-      for (const b of openedBottles) {
-        openedBottleCounts.set(b.product_id, (openedBottleCounts.get(b.product_id) ?? 0) + 1);
-      }
-      return products.filter((p) => {
-        if ((p.category || "beers") !== "liquor") return false;
-        // Require shot pricing to be set up (non-zero shot price variation)
-        const hasValidShotPrice = (p.bottle_variations ?? []).some((v) => v.key === "shot" && v.price > 0);
-        if (!hasValidShotPrice) return false;
-        // All non-shot variations must also have a price set
-        const hasIncompleteVariation = (p.bottle_variations ?? [])
-          .filter((v) => v.key !== "shot")
-          .some((v) => v.label && v.units_consumed > 0 && v.price <= 0);
-        if (hasIncompleteVariation) return false;
-        // Subtract how many are already in the cart as whole-bottle sales
-        const inCart = cart.filter(c => c.id === p.id).reduce((s, c) => s + c.qty, 0);
-        // Subtract open bottles from available stock so we don't open more than we have
-        const openedCount = openedBottleCounts.get(p.id) ?? 0;
-        return (p.stock_qty ?? 0) - inCart - openedCount > 0;
-      });
-    },
-    [products, openedBottles, cart]
-  );
+  const liquorProducts = useMemo(() => {
+    // Count how many bottles of each product are already open
+    const openedBottleCounts = new Map<string, number>();
+    for (const b of openedBottles) {
+      openedBottleCounts.set(b.product_id, (openedBottleCounts.get(b.product_id) ?? 0) + 1);
+    }
+    return products.filter((p) => {
+      if ((p.category || "beers") !== "liquor") return false;
+      // Require shot pricing to be set up (non-zero shot price variation)
+      const hasValidShotPrice = (p.bottle_variations ?? []).some(
+        (v) => v.key === "shot" && v.price > 0,
+      );
+      if (!hasValidShotPrice) return false;
+      // All non-shot variations must also have a price set
+      const hasIncompleteVariation = (p.bottle_variations ?? [])
+        .filter((v) => v.key !== "shot")
+        .some((v) => v.label && v.units_consumed > 0 && v.price <= 0);
+      if (hasIncompleteVariation) return false;
+      // Subtract how many are already in the cart as whole-bottle sales
+      const inCart = cart.filter((c) => c.id === p.id).reduce((s, c) => s + c.qty, 0);
+      // Subtract open bottles from available stock so we don't open more than we have
+      const openedCount = openedBottleCounts.get(p.id) ?? 0;
+      return (p.stock_qty ?? 0) - inCart - openedCount > 0;
+    });
+  }, [products, openedBottles, cart]);
 
   const fetchOpenedBottles = useCallback(async () => {
     const id = ownerIdRef.current;
@@ -1016,11 +1289,15 @@ export default function RegisterPage() {
     fetchOpenedBottles();
     const ch = supabase
       .channel(`opened-bottles-${ownerId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${ownerId}` },
-        () => fetchOpenedBottles()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "opened_bottles", filter: `owner_id=eq.${ownerId}` },
+        () => fetchOpenedBottles(),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [ownerId, fetchOpenedBottles]);
 
   /** Open a new bottle — deducts 1 stock, creates opened_bottles row */
@@ -1028,14 +1305,20 @@ export default function RegisterPage() {
     if (!newBottleProductId || !newBottlePrice) return;
     setBottleBusy(true);
     const id = ownerIdRef.current;
-    if (!id) { setBottleBusy(false); return; }
+    if (!id) {
+      setBottleBusy(false);
+      return;
+    }
     const { error } = await supabase.rpc("open_bottle", {
       p_owner_id: id,
       p_product_id: newBottleProductId,
       p_shot_price: parseFloat(newBottlePrice),
     });
     setBottleBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     await fetchOpenedBottles();
     await fetchProducts();
     // Auto-select the newly opened bottle
@@ -1057,13 +1340,16 @@ export default function RegisterPage() {
 
   // Bottles opened mid-order that need reverting if order is cancelled
   const [bottlesPendingCancel, setBottlesPendingCancel] = useState<string[]>([]);
-  const [shotBuffer, setShotBuffer] = useState<Array<{ variation: BottleVariation; qty: number }>>([]);
+  const [shotBuffer, setShotBuffer] = useState<Array<{ variation: BottleVariation; qty: number }>>(
+    [],
+  );
 
   /** Add a shot/variation to the cart from an open bottle */
   const addShotToBuffer = (variation: BottleVariation) => {
     setShotBuffer((buf) => {
       const existing = buf.find((b) => b.variation.key === variation.key);
-      if (existing) return buf.map((b) => b.variation.key === variation.key ? { ...b, qty: b.qty + 1 } : b);
+      if (existing)
+        return buf.map((b) => (b.variation.key === variation.key ? { ...b, qty: b.qty + 1 } : b));
       return [...buf, { variation, qty: 1 }];
     });
   };
@@ -1073,11 +1359,14 @@ export default function RegisterPage() {
       const existing = buf.find((b) => b.variation.key === varKey);
       if (!existing) return buf;
       if (existing.qty <= 1) return buf.filter((b) => b.variation.key !== varKey);
-      return buf.map((b) => b.variation.key === varKey ? { ...b, qty: b.qty - 1 } : b);
+      return buf.map((b) => (b.variation.key === varKey ? { ...b, qty: b.qty - 1 } : b));
     });
   };
 
-  const bufferUnitsConsumed = shotBuffer.reduce((s, b) => s + b.variation.units_consumed * b.qty, 0);
+  const bufferUnitsConsumed = shotBuffer.reduce(
+    (s, b) => s + b.variation.units_consumed * b.qty,
+    0,
+  );
   const bufferTotal = shotBuffer.reduce((s, b) => s + b.variation.price * b.qty, 0);
 
   const commitShotBuffer = () => {
@@ -1092,17 +1381,20 @@ export default function RegisterPage() {
       const itemName = isExtra
         ? `Drink (extras): ${bottle.product_name}`
         : `${variation.label}: ${bottle.product_name}`;
-      setCart((c) => [...c, {
-        id: `shot-${bottle.id}-${variation.key}-${Date.now()}-${Math.random()}`,
-        name: itemName,
-        price: variation.price,
-        image_url: null,
-        category: "liquor",
-        qty,
-        _bottle_id: bottle.id,
-        _units_consumed: variation.units_consumed * qty,
-        _variation_key: variation.key,
-      } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
+      setCart((c) => [
+        ...c,
+        {
+          id: `shot-${bottle.id}-${variation.key}-${Date.now()}-${Math.random()}`,
+          name: itemName,
+          price: variation.price,
+          image_url: null,
+          category: "liquor",
+          qty,
+          _bottle_id: bottle.id,
+          _units_consumed: variation.units_consumed * qty,
+          _variation_key: variation.key,
+        } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string },
+      ]);
     }
 
     // NO local openedBottles state update here — that only happens at order confirm
@@ -1137,7 +1429,10 @@ export default function RegisterPage() {
     setBottleBusy(true);
     const { error } = await supabase.rpc("cancel_bottle", { p_bottle_id: bottleId });
     setBottleBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Bottle cancelled — stock restored");
     await fetchOpenedBottles();
     await fetchProducts();
@@ -1147,44 +1442,57 @@ export default function RegisterPage() {
     if (!profile) return;
     setBottleBusy(true);
     const { error } = await supabase.rpc("finish_bottle", {
-      p_bottle_id:  bottleId,
+      p_bottle_id: bottleId,
       p_cashier_id: ownerId,
     });
     setBottleBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Bottle marked finished — revenue recorded");
     await fetchOpenedBottles();
     refreshProfile();
   };
-
-
 
   return (
     <>
       {/* ── Float Modal (Open Bar) ── */}
       {showFloatModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-6 pt-6 pb-2 text-center">
-              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}>
+              <div
+                className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}
+              >
                 <span className="text-2xl">🟢</span>
               </div>
               <h2 className="font-black text-xl">Open Bar</h2>
-              <p className="text-xs text-muted-foreground mt-1">Set floats before starting the session</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Set floats before starting the session
+              </p>
             </div>
             <div className="px-6 pb-6 pt-4 space-y-4">
               {/* Bar Float — hidden for machines-only accounts */}
               {!isMachinesAccount && (
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Bar Float</label>
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                    Bar Float
+                  </label>
                   <div
                     onClick={() => setActiveFloatField(activeFloatField === "bar" ? null : "bar")}
                     className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
-                    style={{ borderColor: activeFloatField === "bar" ? "var(--primary)" : "var(--border)" }}
+                    style={{
+                      borderColor: activeFloatField === "bar" ? "var(--primary)" : "var(--border)",
+                    }}
                   >
-                    <span className={`text-base font-black ${activeFloatField === "bar" ? "text-primary" : floatBarAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                    <span
+                      className={`text-base font-black ${activeFloatField === "bar" ? "text-primary" : floatBarAmount ? "text-foreground" : "text-muted-foreground"}`}
+                    >
                       {floatBarAmount || "0"}
                     </span>
                   </div>
@@ -1192,13 +1500,22 @@ export default function RegisterPage() {
               )}
               {hasMachinesAddon && (
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Machine Float</label>
+                  <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                    Machine Float
+                  </label>
                   <div
-                    onClick={() => setActiveFloatField(activeFloatField === "machine" ? null : "machine")}
+                    onClick={() =>
+                      setActiveFloatField(activeFloatField === "machine" ? null : "machine")
+                    }
                     className="w-full h-11 rounded-xl border bg-background px-4 flex items-center cursor-pointer transition"
-                    style={{ borderColor: activeFloatField === "machine" ? "var(--primary)" : "var(--border)" }}
+                    style={{
+                      borderColor:
+                        activeFloatField === "machine" ? "var(--primary)" : "var(--border)",
+                    }}
                   >
-                    <span className={`text-base font-black ${activeFloatField === "machine" ? "text-primary" : floatMachineAmount ? "text-foreground" : "text-muted-foreground"}`}>
+                    <span
+                      className={`text-base font-black ${activeFloatField === "machine" ? "text-primary" : floatMachineAmount ? "text-foreground" : "text-muted-foreground"}`}
+                    >
                       {floatMachineAmount || "0"}
                     </span>
                   </div>
@@ -1207,35 +1524,47 @@ export default function RegisterPage() {
               {/* Inline numpad — integers only */}
               {activeFloatField !== null && (
                 <div className="grid grid-cols-3 gap-1.5">
-                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k, i) => (
-                    k === "" ? <div key={i} /> :
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        const current = activeFloatField === "bar" ? floatBarAmount : floatMachineAmount;
-                        const setter  = activeFloatField === "bar" ? setFloatBarAmount : setFloatMachineAmount;
-                        if (k === "⌫") { setter(current.slice(0, -1)); return; }
-                        setter(current === "0" || current === "" ? k : current + k);
-                      }}
-                      className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
-                        k === "⌫"
-                          ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
-                          : "bg-muted hover:bg-muted/70 text-foreground"
-                      }`}
-                    >{k}</button>
-                  ))}
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((k, i) =>
+                    k === "" ? (
+                      <div key={i} />
+                    ) : (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => handleFloatNumpad(activeFloatField, k)}
+                        className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
+                          k === "⌫"
+                            ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                            : "bg-muted hover:bg-muted/70 text-foreground"
+                        }`}
+                      >
+                        {k}
+                      </button>
+                    ),
+                  )}
                 </div>
               )}
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowFloatModal(false)}
-                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition">
+                <button
+                  onClick={() => setShowFloatModal(false)}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition"
+                >
                   Cancel
                 </button>
-                <button onClick={confirmOpenBarWithFloat}
-                  disabled={barToggleBusy || (!isMachinesAccount && !floatBarAmount) || (hasMachinesAddon && !floatMachineAmount)}
+                <button
+                  onClick={confirmOpenBarWithFloat}
+                  disabled={
+                    barToggleBusy ||
+                    (!isMachinesAccount && !floatBarAmount) ||
+                    (hasMachinesAddon && !floatMachineAmount)
+                  }
                   className="flex-1 h-12 rounded-2xl font-black text-sm transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}>
+                  style={{
+                    background: "rgba(134,239,172,0.15)",
+                    border: "1.5px solid #86efac",
+                    color: "#86efac",
+                  }}
+                >
                   {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Bar"}
                 </button>
               </div>
@@ -1247,8 +1576,10 @@ export default function RegisterPage() {
       {/* ── Bar Opened overlay ── */}
       {showBarOpenedOverlay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-6 pt-7 pb-4 text-center space-y-2">
               <div className="text-5xl">🟢</div>
               <h2 className="font-black text-xl">Bar is Open!</h2>
@@ -1257,9 +1588,11 @@ export default function RegisterPage() {
               </p>
             </div>
             <div className="px-6 pb-6 pt-2">
-              <button onClick={() => setShowBarOpenedOverlay(false)}
+              <button
+                onClick={() => setShowBarOpenedOverlay(false)}
                 className="w-full h-12 rounded-2xl font-black text-sm transition active:scale-95 text-primary-foreground"
-                style={{ background: "var(--gradient-hero)" }}>
+                style={{ background: "var(--gradient-hero)" }}
+              >
                 Let's Go
               </button>
             </div>
@@ -1277,8 +1610,10 @@ export default function RegisterPage() {
       {/* ── Bar Closed overlay — blocks all selling ── */}
       {barOverlayReady && !barSessionLoading && !barIsOpen && (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
-            style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-6 pt-8 pb-4">
               <div className="text-5xl mb-4">🔒</div>
               <h2 className="font-black text-xl mb-2">Bar is Closed</h2>
@@ -1295,14 +1630,26 @@ export default function RegisterPage() {
                   disabled={barToggleBusy}
                   onClick={handleOpenBar}
                   className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-                  style={{ background: "rgba(134,239,172,0.15)", border: "1.5px solid #86efac", color: "#86efac" }}
+                  style={{
+                    background: "rgba(134,239,172,0.15)",
+                    border: "1.5px solid #86efac",
+                    color: "#86efac",
+                  }}
                 >
                   {barToggleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "🟢 Open Bar Now"}
                 </button>
               ) : (
-                <div className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
-                  Ask the owner to go to <span className="font-black text-foreground">Wallet → Update Float → New Session</span>
+                <div
+                  className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  Ask the owner to go to{" "}
+                  <span className="font-black text-foreground">
+                    Wallet → Update Float → New Session
+                  </span>
                 </div>
               )}
             </div>
@@ -1319,7 +1666,9 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
-                const sorted = allCategorySorted[cat.value] ?? applyBarSort(products, cat.value, barSortMapRef.current);
+                const sorted =
+                  allCategorySorted[cat.value] ??
+                  applyBarSort(products, cat.value, barSortMapRef.current);
                 barOrderedRef.current = sorted;
                 setCategory(cat.value);
                 setBarOrdered(sorted);
@@ -1332,7 +1681,9 @@ export default function RegisterPage() {
               }`}
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
             >
-              <span className="text-xs leading-none whitespace-nowrap">{t(categoryKey(cat.value), cat.label)}</span>
+              <span className="text-xs leading-none whitespace-nowrap">
+                {t(categoryKey(cat.value), cat.label)}
+              </span>
             </button>
           ))}
         </div>
@@ -1343,7 +1694,9 @@ export default function RegisterPage() {
               key={cat.value}
               onClick={() => {
                 handleBarDone();
-                const sorted = allCategorySorted[cat.value] ?? applyBarSort(products, cat.value, barSortMapRef.current);
+                const sorted =
+                  allCategorySorted[cat.value] ??
+                  applyBarSort(products, cat.value, barSortMapRef.current);
                 barOrderedRef.current = sorted;
                 setCategory(cat.value);
                 setBarOrdered(sorted);
@@ -1357,7 +1710,9 @@ export default function RegisterPage() {
               style={category === cat.value ? { background: "var(--gradient-hero)" } : {}}
               title={t(categoryKey(cat.value), cat.label)}
             >
-              <span className="text-xs lg:text-sm leading-none text-center">{t(categoryKey(cat.value), cat.label)}</span>
+              <span className="text-xs lg:text-sm leading-none text-center">
+                {t(categoryKey(cat.value), cat.label)}
+              </span>
             </button>
           ))}
         </div>
@@ -1416,12 +1771,18 @@ export default function RegisterPage() {
                     setShotModalOpen(true);
                   }}
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
-                  style={{ background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)", borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)", color: "var(--primary)" }}
+                  style={{
+                    background: "rgba(var(--primary-rgb, 251 146 60) / 0.10)",
+                    borderColor: "rgba(var(--primary-rgb, 251 146 60) / 0.35)",
+                    color: "var(--primary)",
+                  }}
                 >
                   {t("shot_from_bottle", "🥃 Drink from Opened Bottle")}
                   {openedBottles.length > 0 && (
-                    <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
-                      style={{ background: "var(--gradient-hero)" }}>
+                    <span
+                      className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
+                      style={{ background: "var(--gradient-hero)" }}
+                    >
                       {openedBottles.length}
                     </span>
                   )}
@@ -1433,14 +1794,27 @@ export default function RegisterPage() {
             {category === "cigarettes" && !barEditMode && (
               <div className="mb-3">
                 <button
-                  onClick={() => { setPackModalOpen(true); setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setShowNewPackGrid(false); }}
+                  onClick={() => {
+                    setPackModalOpen(true);
+                    setPackStep("select");
+                    setPackPackId("");
+                    setPackPrice("");
+                    setPackQty(1);
+                    setShowNewPackGrid(false);
+                  }}
                   className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm active:scale-[0.98] transition border"
-                  style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)", color: "var(--primary)" }}
+                  style={{
+                    background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                    borderColor: "rgba(var(--primary-rgb,251 146 60)/0.35)",
+                    color: "var(--primary)",
+                  }}
                 >
                   {t("retail_cigg_paper", "🚬 Retail Cigarette & Paper")}
                   {openedPacks.length > 0 && (
-                    <span className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
-                      style={{ background: "var(--gradient-hero)" }}>
+                    <span
+                      className="h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] font-black text-primary-foreground"
+                      style={{ background: "var(--gradient-hero)" }}
+                    >
                       {openedPacks.length}
                     </span>
                   )}
@@ -1448,144 +1822,215 @@ export default function RegisterPage() {
               </div>
             )}
 
-
             {filtered.length === 0 && !loading ? (
               <div className="text-center py-20 text-muted-foreground">
-                {products.length === 0 ? "No items yet. Add some on the Items page." : `No ${t(categoryKey(CATEGORIES.find(c=>c.value===category)?.value ?? ""), CATEGORIES.find(c=>c.value===category)?.label ?? category)} found.`}
+                {products.length === 0
+                  ? "No items yet. Add some on the Items page."
+                  : `No ${t(categoryKey(CATEGORIES.find((c) => c.value === category)?.value ?? ""), CATEGORIES.find((c) => c.value === category)?.label ?? category)} found.`}
               </div>
             ) : (
-          <div>
-            {barEditMode ? (
-              /* ── Edit mode: tap-to-select then tap-to-swap ── */
               <div>
-                {/* Grid — normal scrolling, taps drive selection/swap */}
-                <div
-                  ref={barEditGridRef}
-                  className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2"
-                  onContextMenu={(e) => e.preventDefault()}
-                  style={{ touchAction: "pan-y" }}
-                >
-                  {barOrdered.map((p) => {
-                    const inCart = cart.find((i) => i.id === p.id);
-                    const outOfStock = (p.stock_qty ?? 1) === 0;
-                    const missingPrice = !p.price || Number(p.price) <= 0;
-                    const incomplete   = missingPrice;
-                    const isSelected = barSelectedId === p.id;
-                    return (
-                      <div key={p.id}
-                        data-bar-id={p.id}
-                        className="relative"
-                        onContextMenu={(e) => e.preventDefault()}
-                        style={{ userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", touchAction: "manipulation" } as React.CSSProperties}
-                      >
-                        <button
-                          onClick={() => {
-                            if (!barEditModeRef.current) return;
-                            const current = barOrderedRef.current;
-                            if (!barSelectedId) {
-                              setBarSelectedId(p.id);
-                              return;
+                {barEditMode ? (
+                  /* ── Edit mode: tap-to-select then tap-to-swap ── */
+                  <div>
+                    {/* Grid — normal scrolling, taps drive selection/swap */}
+                    <div
+                      ref={barEditGridRef}
+                      className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2"
+                      onContextMenu={(e) => e.preventDefault()}
+                      style={{ touchAction: "pan-y" }}
+                    >
+                      {barOrdered.map((p) => {
+                        const inCart = cart.find((i) => i.id === p.id);
+                        const outOfStock = (p.stock_qty ?? 1) === 0;
+                        const missingPrice = !p.price || Number(p.price) <= 0;
+                        const incomplete = missingPrice;
+                        const isSelected = barSelectedId === p.id;
+                        return (
+                          <div
+                            key={p.id}
+                            data-bar-id={p.id}
+                            className="relative"
+                            onContextMenu={(e) => e.preventDefault()}
+                            style={
+                              {
+                                userSelect: "none",
+                                WebkitUserSelect: "none",
+                                WebkitTouchCallout: "none",
+                                touchAction: "manipulation",
+                              } as React.CSSProperties
                             }
-                            if (barSelectedId === p.id) {
-                              setBarSelectedId(null);
-                              return;
-                            }
-                            const from = current.findIndex(x => x.id === barSelectedId);
-                            const to = current.findIndex(x => x.id === p.id);
-                            if (from === -1 || to === -1) { setBarSelectedId(null); return; }
-                            const next = [...current];
-                            const [moved] = next.splice(from, 1);
-                            next.splice(to, 0, moved);
-                            barOrderedRef.current = next;
-                            setBarOrdered(next);
-                            // Rebuild the full sort map: keep other categories' positions, update this category
-                            const newMap = { ...barSortMapRef.current };
-                            next.forEach((item, idx) => { newMap[item.id] = idx; });
-                            barSortMapRef.current = newMap;
-                            setBarSortMap(newMap);
-                            saveBarSortIds(next.map(x => x.id));
-                            setBarSelectedId(null);
-                          }}
-                          className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : ""} ${incomplete ? "opacity-50 grayscale" : ""}`}
-                          style={{
-                            background: "var(--gradient-card)",
-                            boxShadow: isSelected ? "0 0 0 3px rgba(251,191,36,0.95), var(--shadow-elegant)" : "var(--shadow-elegant)",
-                            borderColor: isSelected ? "rgb(251,191,36)" : "rgba(251,146,60,0.8)",
-                          }}
-                        >
-                          <div className="aspect-[3/4] relative w-full">
-                            {p.image_url ? (
-                              <img src={imgSrc(p.image_url) ?? productImageUrl(p.image_url)!} alt="" loading="eager" decoding="sync" fetchPriority="high" className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.style.display = "none"; const fb = img.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = "flex"; }} />
-                            ) : null}
-                            <div className="absolute inset-0 items-center justify-center text-4xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>
-                              {categoryIcon(p.category ?? "drinks")}
-                            </div>
-                            {p.stock_qty !== undefined && !outOfStock && (
-                              <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
-                                <span className="text-[10px] font-black text-white leading-none">{p.stock_qty}</span>
+                          >
+                            <button
+                              onClick={() => {
+                                if (!barEditModeRef.current) return;
+                                const current = barOrderedRef.current;
+                                if (!barSelectedId) {
+                                  setBarSelectedId(p.id);
+                                  return;
+                                }
+                                if (barSelectedId === p.id) {
+                                  setBarSelectedId(null);
+                                  return;
+                                }
+                                const from = current.findIndex((x) => x.id === barSelectedId);
+                                const to = current.findIndex((x) => x.id === p.id);
+                                if (from === -1 || to === -1) {
+                                  setBarSelectedId(null);
+                                  return;
+                                }
+                                const next = [...current];
+                                const [moved] = next.splice(from, 1);
+                                next.splice(to, 0, moved);
+                                barOrderedRef.current = next;
+                                setBarOrdered(next);
+                                // Rebuild the full sort map: keep other categories' positions, update this category
+                                const newMap = { ...barSortMapRef.current };
+                                next.forEach((item, idx) => {
+                                  newMap[item.id] = idx;
+                                });
+                                barSortMapRef.current = newMap;
+                                setBarSortMap(newMap);
+                                saveBarSortIds(next.map((x) => x.id));
+                                setBarSelectedId(null);
+                              }}
+                              className={`group relative rounded-2xl overflow-hidden border flex flex-col transition w-full ${outOfStock ? "opacity-80" : ""} ${incomplete ? "opacity-50 grayscale" : ""}`}
+                              style={{
+                                background: "var(--gradient-card)",
+                                boxShadow: isSelected
+                                  ? "0 0 0 3px rgba(251,191,36,0.95), var(--shadow-elegant)"
+                                  : "var(--shadow-elegant)",
+                                borderColor: isSelected
+                                  ? "rgb(251,191,36)"
+                                  : "rgba(251,146,60,0.8)",
+                              }}
+                            >
+                              <div className="aspect-[3/4] relative w-full">
+                                {p.image_url ? (
+                                  <img
+                                    src={imgSrc(p.image_url) ?? productImageUrl(p.image_url)!}
+                                    alt=""
+                                    loading="eager"
+                                    decoding="sync"
+                                    fetchPriority="high"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const img = e.currentTarget as HTMLImageElement;
+                                      img.style.display = "none";
+                                      const fb = img.nextElementSibling as HTMLElement | null;
+                                      if (fb) fb.style.display = "flex";
+                                    }}
+                                  />
+                                ) : null}
+                                <div
+                                  className="absolute inset-0 items-center justify-center text-4xl"
+                                  style={{ display: p.image_url ? "none" : "flex" }}
+                                >
+                                  {categoryIcon(p.category ?? "drinks")}
+                                </div>
+                                {p.stock_qty !== undefined && !outOfStock && (
+                                  <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow">
+                                    <span className="text-[10px] font-black text-white leading-none">
+                                      {p.stock_qty}
+                                    </span>
+                                  </div>
+                                )}
+                                {inCart && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeItem(p.id);
+                                    }}
+                                    className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
+                                    style={{ background: "#dc2626" }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                )}
+                                {inCart && (
+                                  <div
+                                    className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
+                                    style={{ background: "rgba(0,0,0,0.75)" }}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        dec(p.id);
+                                      }}
+                                      className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
+                                      style={{ background: "#ef4444" }}
+                                    >
+                                      <Minus className="h-4 w-4 text-black" />
+                                    </button>
+                                    <div
+                                      className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
+                                      style={{ background: "var(--gradient-hero)" }}
+                                    >
+                                      {inCart.qty}
+                                    </div>
+                                  </div>
+                                )}
+                                {outOfStock && (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
+                                    <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
+                                      <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">
+                                        Out of Stock
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                                {!outOfStock &&
+                                  !inCart &&
+                                  (p.stock_qty ?? 1) >= 1 &&
+                                  (p.stock_qty ?? 1) <= 5 && (
+                                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
+                                      <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">
+                                        Low
+                                      </span>
+                                    </div>
+                                  )}
                               </div>
-                            )}
-                            {inCart && (
-                              <button onClick={(e) => { e.stopPropagation(); removeItem(p.id); }}
-                                className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition text-black shadow z-10"
-                                style={{ background: "#dc2626" }}>
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                            {inCart && (
-                              <div className="absolute top-10 left-0 right-0 flex items-center justify-center gap-4 py-3"
-                                style={{ background: "rgba(0,0,0,0.75)" }}>
-                                <button onClick={(e) => { e.stopPropagation(); dec(p.id); }}
-                                  className="h-8 w-8 rounded-full flex items-center justify-center active:scale-90 transition"
-                                  style={{ background: "#ef4444" }}>
-                                  <Minus className="h-4 w-4 text-black" />
-                                </button>
-                                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-black text-black"
-                                  style={{ background: "var(--gradient-hero)" }}>
-                                  {inCart.qty}
+                              <div
+                                className="px-1.5 py-1.5 border-t border-border/30"
+                                style={{
+                                  background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                                  borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                                }}
+                              >
+                                <div
+                                  className="font-bold text-[11px] truncate leading-tight"
+                                  style={{ color: "var(--primary)" }}
+                                >
+                                  {p.name}
+                                </div>
+                                <div
+                                  className="font-black text-xs mt-0.5"
+                                  style={{ color: "var(--primary)" }}
+                                >
+                                  ${Number(p.price).toFixed(2)}
                                 </div>
                               </div>
-                            )}
-                            {outOfStock && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/75 backdrop-blur-[1px]">
-                                <div className="bg-red-600 rounded-xl px-2 py-1 shadow-lg">
-                                  <span className="text-white text-[10px] font-black uppercase tracking-wider leading-none">Out of Stock</span>
-                                </div>
-                              </div>
-                            )}
-                            {!outOfStock && !inCart && (p.stock_qty ?? 1) >= 1 && (p.stock_qty ?? 1) <= 5 && (
-                              <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-red-600 shadow">
-                                <span className="text-[9px] font-black uppercase tracking-wide text-white leading-none">Low</span>
-                              </div>
-                            )}
+                            </button>
                           </div>
-                          <div className="px-1.5 py-1.5 border-t border-border/30" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
-                            <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(p.price).toFixed(2)}</div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Normal mode: memoized grid — only re-renders when barOrdered/cart changes ── */
+                  <ProductGrid
+                    barOrdered={barOrdered}
+                    cartQtyMap={cartQtyMap}
+                    resolvedImgMap={resolvedImgMap}
+                    onAdd={addToCart}
+                    onRemove={removeItem}
+                    onDec={dec}
+                    onEnterEditMode={barEnterEditMode}
+                    showSortButton={cart.length === 0}
+                    sortLabel={t("sort_item_order", "⇅ Sort Item Order")}
+                  />
+                )}
               </div>
-            ) : (
-              /* ── Normal mode: memoized grid — only re-renders when barOrdered/cart changes ── */
-              <ProductGrid
-                barOrdered={barOrdered}
-                cartQtyMap={cartQtyMap}
-                resolvedImgMap={resolvedImgMap}
-                onAdd={addToCart}
-                onRemove={removeItem}
-                onDec={dec}
-                onEnterEditMode={barEnterEditMode}
-                showSortButton={cart.length === 0}
-                sortLabel={t("sort_item_order", "⇅ Sort Item Order")}
-              />
-            )}
-          </div>
             )}
           </>
         )}
@@ -1593,15 +2038,14 @@ export default function RegisterPage() {
 
       {/* Sticky CASH button — fixed at bottom */}
       {cartCount > 0 && (
-        <div
-          className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none"
-          style={{ bottom: 8 }}
-        >
+        <div className="fixed inset-x-0 z-[26] px-4 pb-2 pointer-events-none" style={{ bottom: 8 }}>
           <div className="max-w-2xl mx-auto pointer-events-auto space-y-2">
             {/* Special deal banner */}
             {appliedSpecial && (
-              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-green-500/40"
-                style={{ background: "oklch(0.20 0.07 145 / 0.9)" }}>
+              <div
+                className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-green-500/40"
+                style={{ background: "oklch(0.20 0.07 145 / 0.9)" }}
+              >
                 <span className="text-green-300 font-black text-xs">🏷 {appliedSpecial.name}</span>
                 <span className="text-green-300 font-black text-xs">
                   {specialBundles}× deal · save ${(rawTotal - total).toFixed(2)}
@@ -1610,19 +2054,50 @@ export default function RegisterPage() {
             )}
             {/* Edit-mode banner */}
             {editOrder && (
-              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
-                style={{ background: "rgba(234,179,8,0.10)" }}>
-                <span className="text-yellow-300 font-black text-xs">✏️ Editing sale · {new Date(editOrder.created_at).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short" })}</span>
-                <button onClick={() => { setEditOrder(null); setCart([]); nav("/wallet"); }}
-                  className="text-yellow-400 font-black text-xs underline">Cancel</button>
+              <div
+                className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
+                style={{ background: "rgba(234,179,8,0.10)" }}
+              >
+                <span className="text-yellow-300 font-black text-xs">
+                  ✏️ Editing sale ·{" "}
+                  {new Date(editOrder.created_at).toLocaleString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+                <button
+                  onClick={() => {
+                    setEditOrder(null);
+                    setCart([]);
+                    nav("/wallet");
+                  }}
+                  className="text-yellow-400 font-black text-xs underline"
+                >
+                  Cancel
+                </button>
               </div>
             )}
             {editCreditOrder && (
-              <div className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
-                style={{ background: "rgba(234,179,8,0.10)" }}>
-                <span className="text-yellow-300 font-black text-xs">✏️ Editing credit · {editCreditOrder.customer_name}</span>
-                <button onClick={() => { setEditCreditOrder(null); setCart([]); nav("/wallet"); }}
-                  className="text-yellow-400 font-black text-xs underline">Cancel</button>
+              <div
+                className="w-full rounded-2xl px-4 py-2 flex items-center justify-between border border-yellow-500/40"
+                style={{ background: "rgba(234,179,8,0.10)" }}
+              >
+                <span className="text-yellow-300 font-black text-xs">
+                  ✏️ Editing credit · {editCreditOrder.customer_name}
+                </span>
+                <button
+                  onClick={() => {
+                    setEditCreditOrder(null);
+                    setCart([]);
+                    nav("/wallet");
+                  }}
+                  className="text-yellow-400 font-black text-xs underline"
+                >
+                  Cancel
+                </button>
               </div>
             )}
             {/* Place Order button */}
@@ -1631,9 +2106,15 @@ export default function RegisterPage() {
               className="w-full h-14 rounded-2xl flex items-center justify-between px-5 font-black text-lg text-primary-foreground shadow-2xl active:scale-[0.98] transition"
               style={{ background: "var(--gradient-hero)" }}
             >
-              <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">{cartCount}</span>
-              <span>{editOrder ? "Save Edit" : editCreditOrder ? "Save Credit Edit" : "Place Order"}</span>
-              <span className="text-primary-foreground/80 text-base font-bold">${total.toFixed(2)}</span>
+              <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white/20 text-sm font-black">
+                {cartCount}
+              </span>
+              <span>
+                {editOrder ? "Save Edit" : editCreditOrder ? "Save Credit Edit" : "Place Order"}
+              </span>
+              <span className="text-primary-foreground/80 text-base font-bold">
+                ${total.toFixed(2)}
+              </span>
             </button>
           </div>
         </div>
@@ -1646,19 +2127,29 @@ export default function RegisterPage() {
           onDec={dec}
           onAdd={addToCart}
           onRemove={removeItem}
-          onClearCart={() => { setCart([]); localStorage.removeItem(`bartap-cart-${ownerId}`); revertPendingPacks(); }}
-          onClose={() => { setCashOpen(false); revertPendingPacks(); }}
+          onClearCart={() => {
+            setCart([]);
+            localStorage.removeItem(`bartap-cart-${ownerId}`);
+            revertPendingPacks();
+          }}
+          onClose={() => {
+            setCashOpen(false);
+            revertPendingPacks();
+          }}
           ownerId={ownerId}
           editOrder={editOrder ?? undefined}
           editCreditOrder={editCreditOrder ?? undefined}
           onSuccess={async (paidAmt, changeAmt) => {
             // Write bottle variation tracking (needs openedBottles state — not available in CashOverlay)
             const shotItems = cart.filter((c) => (c as any)._bottle_id);
-            const bottleUpdates = new Map<string, { units_consumed: number; variation_counts: Record<string, number> }>();
+            const bottleUpdates = new Map<
+              string,
+              { units_consumed: number; variation_counts: Record<string, number> }
+            >();
             for (const shot of shotItems) {
               const bid = (shot as any)._bottle_id as string;
-              const vKey = (shot as any)._variation_key as string ?? "shot";
-              const unitsUsed = (shot as any)._units_consumed as number ?? shot.qty;
+              const vKey = ((shot as any)._variation_key as string) ?? "shot";
+              const unitsUsed = ((shot as any)._units_consumed as number) ?? shot.qty;
               const ex = bottleUpdates.get(bid) ?? { units_consumed: 0, variation_counts: {} };
               ex.units_consumed += unitsUsed;
               ex.variation_counts[vKey] = (ex.variation_counts[vKey] ?? 0) + shot.qty;
@@ -1668,8 +2159,15 @@ export default function RegisterPage() {
               const bottle = openedBottles.find((b) => b.id === bottleId);
               if (!bottle) continue;
               const merged: Record<string, number> = { ...bottle.variation_counts };
-              for (const [k, v] of Object.entries(update.variation_counts)) merged[k] = (merged[k] ?? 0) + v;
-              await supabase.from("opened_bottles").update({ units_consumed: bottle.units_consumed + update.units_consumed, variation_counts: merged }).eq("id", bottleId);
+              for (const [k, v] of Object.entries(update.variation_counts))
+                merged[k] = (merged[k] ?? 0) + v;
+              await supabase
+                .from("opened_bottles")
+                .update({
+                  units_consumed: bottle.units_consumed + update.units_consumed,
+                  variation_counts: merged,
+                })
+                .eq("id", bottleId);
             }
             closeFullPacksAfterOrder(cart);
             setBottlesPendingCancel([]);
@@ -1688,139 +2186,249 @@ export default function RegisterPage() {
 
       {/* ── Shot Modal — Step 1: Select Liquor (3-column card grid) ──── */}
       {shotModalOpen && shotStep === "select" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}>
-          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => {
+            setShotModalOpen(false);
+            setShotStep("select");
+            setShotPrice("");
+            setShotBottleId("");
+            setNewBottlePrice("");
+            setNewBottleProductId("");
+            setShowNewBottleGrid(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-black">{t("select_liquor", "🥃 Select Liquor")}</span>
-              <button onClick={() => { setShotModalOpen(false); setShotStep("select"); setShotPrice(""); setShotBottleId(""); setNewBottlePrice(""); setNewBottleProductId(""); setShowNewBottleGrid(false); }}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+              <button
+                onClick={() => {
+                  setShotModalOpen(false);
+                  setShotStep("select");
+                  setShotPrice("");
+                  setShotBottleId("");
+                  setNewBottlePrice("");
+                  setNewBottleProductId("");
+                  setShowNewBottleGrid(false);
+                }}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="px-4 pb-5 space-y-4 max-h-[75vh] overflow-y-auto">
-
               {!showNewBottleGrid ? (
                 <>
                   {/* Currently open — 3-col card grid (exclude already-selected bottle) */}
                   {openedBottles.filter((b) => b.id !== shotBottleId).length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Currently Open
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {openedBottles.filter((b) => b.id !== shotBottleId).map((b) => {
-                          const prod = products.find(p => p.id === b.product_id);
-                          return (
-                            <div key={b.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
-                              {/* Top action bar — Mark Empty (shots > 0) OR Cancel (0 shots) */}
-                              {b.shots_sold > 0 ? (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setMarkEmptyBottleId(b.id); }}
-                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
-                                  style={{ background: "#dc2626" }}
-                                >
-                                  Mark Empty
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setCancelBottleId(b.id); }}
-                                  disabled={bottleBusy}
-                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
-                                  style={{ background: "#374151" }}
-                                >
-                                  ✗ Cancel
-                                </button>
-                              )}
-                              {/* Tap image area to sell a shot — blocked if owner hasn't set up shot prices */}
-                              {(() => {
-                                const hasShots = (prod?.bottle_variations ?? []).length > 0;
-                                const bCap = prod?.units_per_item ?? 0;
-                                const isEmptyNoShots = bCap > 0 && b.units_consumed >= bCap && b.shots_sold === 0;
-                                return hasShots ? (
+                        {openedBottles
+                          .filter((b) => b.id !== shotBottleId)
+                          .map((b) => {
+                            const prod = products.find((p) => p.id === b.product_id);
+                            return (
+                              <div
+                                key={b.id}
+                                className="flex flex-col rounded-2xl overflow-hidden border border-border"
+                              >
+                                {/* Top action bar — Mark Empty (shots > 0) OR Cancel (0 shots) */}
+                                {b.shots_sold > 0 ? (
                                   <button
-                                    onClick={() => {
-                                      if (isEmptyNoShots) {
-                                        // Bottle is empty with 0 shots — skip to open new bottle
-                                        setShowNewBottleGrid(true);
-                                        return;
-                                      }
-                                      setShotBottleId(b.id); setShotPrice(b.shot_price ? String(b.shot_price) : ""); setShotStep("variation"); setShotModalOpen(false); setShowNewBottleGrid(false);
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMarkEmptyBottleId(b.id);
                                     }}
-                                    className="aspect-[3/4] relative w-full active:scale-95 transition"
-                                    style={{ background: "var(--gradient-card)" }}>
-                                    {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                                    <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: prod?.image_url ? "none" : "flex" }}>🍾</div>
-                                    {isEmptyNoShots && (
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 px-2 text-center">
-                                        <span className="text-lg">🍾</span>
-                                        <span className="text-[9px] font-black text-amber-400 leading-tight">Tap to open new</span>
-                                      </div>
-                                    )}
+                                    className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
+                                    style={{ background: "#dc2626" }}
+                                  >
+                                    Mark Empty
                                   </button>
                                 ) : (
-                                  <div
-                                    className="aspect-[3/4] relative w-full flex items-center justify-center"
-                                    style={{ background: "var(--gradient-card)" }}>
-                                    {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 px-2 text-center">
-                                      <span className="text-lg">🔒</span>
-                                      <span className="text-[9px] font-black text-white/80 leading-tight">No shots set up by owner</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCancelBottleId(b.id);
+                                    }}
+                                    disabled={bottleBusy}
+                                    className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
+                                    style={{ background: "#374151" }}
+                                  >
+                                    ✗ Cancel
+                                  </button>
+                                )}
+                                {/* Tap image area to sell a shot — blocked if owner hasn't set up shot prices */}
+                                {(() => {
+                                  const hasShots = (prod?.bottle_variations ?? []).length > 0;
+                                  const bCap = prod?.units_per_item ?? 0;
+                                  const isEmptyNoShots =
+                                    bCap > 0 && b.units_consumed >= bCap && b.shots_sold === 0;
+                                  return hasShots ? (
+                                    <button
+                                      onClick={() => {
+                                        if (isEmptyNoShots) {
+                                          // Bottle is empty with 0 shots — skip to open new bottle
+                                          setShowNewBottleGrid(true);
+                                          return;
+                                        }
+                                        setShotBottleId(b.id);
+                                        setShotPrice(b.shot_price ? String(b.shot_price) : "");
+                                        setShotStep("variation");
+                                        setShotModalOpen(false);
+                                        setShowNewBottleGrid(false);
+                                      }}
+                                      className="aspect-[3/4] relative w-full active:scale-95 transition"
+                                      style={{ background: "var(--gradient-card)" }}
+                                    >
+                                      {prod?.image_url ? (
+                                        <img
+                                          src={productImageUrl(prod.image_url)!}
+                                          alt=""
+                                          className="absolute inset-0 w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).style.display =
+                                              "none";
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div
+                                        className="absolute inset-0 flex items-center justify-center text-3xl"
+                                        style={{ display: prod?.image_url ? "none" : "flex" }}
+                                      >
+                                        🍾
+                                      </div>
+                                      {isEmptyNoShots && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 px-2 text-center">
+                                          <span className="text-lg">🍾</span>
+                                          <span className="text-[9px] font-black text-amber-400 leading-tight">
+                                            Tap to open new
+                                          </span>
+                                        </div>
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <div
+                                      className="aspect-[3/4] relative w-full flex items-center justify-center"
+                                      style={{ background: "var(--gradient-card)" }}
+                                    >
+                                      {prod?.image_url ? (
+                                        <img
+                                          src={productImageUrl(prod.image_url)!}
+                                          alt=""
+                                          className="absolute inset-0 w-full h-full object-cover opacity-30"
+                                          onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).style.display =
+                                              "none";
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 px-2 text-center">
+                                        <span className="text-lg">🔒</span>
+                                        <span className="text-[9px] font-black text-white/80 leading-tight">
+                                          No shots set up by owner
+                                        </span>
+                                      </div>
                                     </div>
+                                  );
+                                })()}
+                                <div
+                                  className="px-1.5 py-1.5"
+                                  style={{
+                                    background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                                    borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                                  }}
+                                >
+                                  <div
+                                    className="font-bold text-[11px] truncate leading-tight"
+                                    style={{ color: "var(--primary)" }}
+                                  >
+                                    {b.product_name}
                                   </div>
-                                );
-                              })()}
-                              <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                                <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
-                                <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(b.revenue).toFixed(2)} made</div>
+                                  <div
+                                    className="font-black text-xs mt-0.5"
+                                    style={{ color: "var(--primary)" }}
+                                  >
+                                    ${Number(b.revenue).toFixed(2)} made
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
                     </div>
                   )}
 
                   {/* + Open New Bottle button */}
                   <div className="pt-3">
-                  <button
-                    onClick={() => setShowNewBottleGrid(true)}
-                    className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
-                    style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
-                  >
-                    + Open New Bottle
-                  </button>
+                    <button
+                      onClick={() => setShowNewBottleGrid(true)}
+                      className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
+                      style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+                    >
+                      + Open New Bottle
+                    </button>
                   </div>
                 </>
               ) : (
                 <>
                   {/* Back button + inventory grid */}
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setShowNewBottleGrid(false)} className="text-muted-foreground hover:text-foreground transition">
+                    <button
+                      onClick={() => setShowNewBottleGrid(false)}
+                      className="text-muted-foreground hover:text-foreground transition"
+                    >
                       <X className="h-4 w-4" />
                     </button>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select from Inventory</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Select from Inventory
+                    </p>
                   </div>
                   {liquorProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No liquor in stock.</p>
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      No liquor in stock.
+                    </p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {liquorProducts.map((p) => (
-                        <button key={p.id}
+                        <button
+                          key={p.id}
                           onClick={async () => {
                             setBottleBusy(true);
                             const ownId = ownerIdRef.current;
-                            if (!ownId) { setBottleBusy(false); return; }
-                            const shotVariation = (p.bottle_variations ?? []).find((v: BottleVariation) => v.key === "shot");
+                            if (!ownId) {
+                              setBottleBusy(false);
+                              return;
+                            }
+                            const shotVariation = (p.bottle_variations ?? []).find(
+                              (v: BottleVariation) => v.key === "shot",
+                            );
                             const { error } = await supabase.rpc("open_bottle", {
-                              p_owner_id: ownId, p_product_id: p.id, p_shot_price: shotVariation?.price ?? 0,
+                              p_owner_id: ownId,
+                              p_product_id: p.id,
+                              p_shot_price: shotVariation?.price ?? 0,
                             });
-                            if (error) { toast.error(error.message); setBottleBusy(false); return; }
+                            if (error) {
+                              toast.error(error.message);
+                              setBottleBusy(false);
+                              return;
+                            }
                             await fetchOpenedBottles();
                             await fetchProducts();
-                            const { data } = await supabase.from("opened_bottles").select("id")
-                              .eq("owner_id", ownId).eq("product_id", p.id).eq("status", "open")
-                              .order("opened_at", { ascending: false }).limit(1);
+                            const { data } = await supabase
+                              .from("opened_bottles")
+                              .select("id")
+                              .eq("owner_id", ownId)
+                              .eq("product_id", p.id)
+                              .eq("status", "open")
+                              .order("opened_at", { ascending: false })
+                              .limit(1);
                             setBottleBusy(false);
                             if (data?.[0]) {
                               // Track for revert if order is cancelled
@@ -1831,15 +2439,52 @@ export default function RegisterPage() {
                             }
                           }}
                           disabled={bottleBusy}
-                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
-                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
-                            {p.image_url ? <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: p.image_url ? "none" : "flex" }}>🍾</div>
-                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
-                            {bottleBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50"
+                        >
+                          <div
+                            className="aspect-[3/4] relative w-full"
+                            style={{ background: "var(--gradient-card)" }}
+                          >
+                            {p.image_url ? (
+                              <img
+                                src={productImageUrl(p.image_url)!}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="absolute inset-0 flex items-center justify-center text-3xl"
+                              style={{ display: p.image_url ? "none" : "flex" }}
+                            >
+                              🍾
+                            </div>
+                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5">
+                              <span className="text-[9px] font-black text-white">
+                                {p.stock_qty}
+                              </span>
+                            </div>
+                            {bottleBusy && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                              </div>
+                            )}
                           </div>
-                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                          <div
+                            className="px-1.5 py-1.5"
+                            style={{
+                              background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                              borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                            }}
+                          >
+                            <div
+                              className="font-bold text-[11px] truncate leading-tight"
+                              style={{ color: "var(--primary)" }}
+                            >
+                              {p.name}
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -1853,248 +2498,434 @@ export default function RegisterPage() {
       )}
 
       {/* ── Shot Step 2: Variation picker (buffer — modal stays open) ── */}
-      {shotStep === "variation" && shotBottleId && (() => {
-        const bottle = openedBottles.find((b) => b.id === shotBottleId);
-        const product = products.find((p) => p.id === bottle?.product_id);
-        const capacity = product?.units_per_item ?? 0;
-        const vars = product?.bottle_variations ?? [];
-        const consumed = bottle?.units_consumed ?? 0;
-        // Units already committed to cart (from previous Add to Order taps this session)
-        const cartUnitsForBottle = cart
-          .filter((c) => (c as any)._bottle_id === shotBottleId)
-          .reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
-        const effectiveConsumed = consumed + cartUnitsForBottle + bufferUnitsConsumed;
-        const remaining = capacity > 0 ? capacity - effectiveConsumed : null;
-        const atCapacity = capacity > 0 && effectiveConsumed >= capacity;
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm"
-            onClick={cancelShotBuffer}>
-            <div className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl flex flex-col max-h-[92dvh]"
-              style={{ background: "var(--gradient-card)" }}
-              onClick={(e) => e.stopPropagation()}>
-              {/* ── Opened bottles grid — tap to switch active bottle ── */}
-              <div className="px-4 pb-2">
-                <div className="grid grid-cols-3 gap-2">
-                  {openedBottles.map((b) => {
-                    const bProd = products.find(p => p.id === b.product_id);
-                    const bCap = bProd?.units_per_item ?? 0;
-                    const bCartUnits = cart.filter((c) => (c as any)._bottle_id === b.id).reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
-                    const bConsumed = b.units_consumed + bCartUnits;
-                    const bAtCap = bCap > 0 && bConsumed >= bCap;
-                    const isSelected = b.id === shotBottleId;
-                    return (
-                      <div key={b.id} ref={isSelected ? selectedBottleRef : null}>
-                        <button type="button"
-                          onClick={() => { setShotBottleId(b.id); setShotBuffer([]); }}
-                          className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
-                          style={{ borderWidth: isSelected ? 3 : 1, borderColor: isSelected ? "var(--primary)" : "transparent", background: "var(--gradient-card)" }}>
-                          <div className="aspect-[3/4] relative w-full">
-                            {bProd?.image_url ? <img src={productImageUrl(bProd.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ display: bProd?.image_url ? "none" : "flex" }}>🍾</div>
-                            {isSelected && <div className="absolute inset-0 flex items-center justify-center text-5xl font-black" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.30)", color: "var(--primary)" }}>✔</div>}
-                            {bAtCap && !isSelected && <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(239,68,68,0.5)" }}><span className="text-[9px] font-black text-white uppercase">Empty</span></div>}
-                          </div>
-                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{b.product_name}</div>
-                            <div className="font-black text-xs mt-0.5" style={{ color: bAtCap ? "#fca5a5" : "#86efac" }}>
-                              {bCap > 0 ? `${Math.max(0, bCap - bConsumed)} left` : `$${Number(b.revenue).toFixed(2)}`}
+      {shotStep === "variation" &&
+        shotBottleId &&
+        (() => {
+          const bottle = openedBottles.find((b) => b.id === shotBottleId);
+          const product = products.find((p) => p.id === bottle?.product_id);
+          const capacity = product?.units_per_item ?? 0;
+          const vars = product?.bottle_variations ?? [];
+          const consumed = bottle?.units_consumed ?? 0;
+          // Units already committed to cart (from previous Add to Order taps this session)
+          const cartUnitsForBottle = cart
+            .filter((c) => (c as any)._bottle_id === shotBottleId)
+            .reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
+          const effectiveConsumed = consumed + cartUnitsForBottle + bufferUnitsConsumed;
+          const remaining = capacity > 0 ? capacity - effectiveConsumed : null;
+          const atCapacity = capacity > 0 && effectiveConsumed >= capacity;
+          return (
+            <div
+              className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm"
+              onClick={cancelShotBuffer}
+            >
+              <div
+                className="w-full max-w-md mx-auto rounded-t-3xl border border-border shadow-2xl flex flex-col max-h-[92dvh]"
+                style={{ background: "var(--gradient-card)" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* ── Opened bottles grid — tap to switch active bottle ── */}
+                <div className="px-4 pb-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {openedBottles.map((b) => {
+                      const bProd = products.find((p) => p.id === b.product_id);
+                      const bCap = bProd?.units_per_item ?? 0;
+                      const bCartUnits = cart
+                        .filter((c) => (c as any)._bottle_id === b.id)
+                        .reduce((s, c) => s + ((c as any)._units_consumed ?? 0), 0);
+                      const bConsumed = b.units_consumed + bCartUnits;
+                      const bAtCap = bCap > 0 && bConsumed >= bCap;
+                      const isSelected = b.id === shotBottleId;
+                      return (
+                        <div key={b.id} ref={isSelected ? selectedBottleRef : null}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShotBottleId(b.id);
+                              setShotBuffer([]);
+                            }}
+                            className="w-full flex flex-col rounded-2xl overflow-hidden border active:scale-95 transition"
+                            style={{
+                              borderWidth: isSelected ? 3 : 1,
+                              borderColor: isSelected ? "var(--primary)" : "transparent",
+                              background: "var(--gradient-card)",
+                            }}
+                          >
+                            <div className="aspect-[3/4] relative w-full">
+                              {bProd?.image_url ? (
+                                <img
+                                  src={productImageUrl(bProd.image_url)!}
+                                  alt=""
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="absolute inset-0 flex items-center justify-center text-3xl"
+                                style={{ display: bProd?.image_url ? "none" : "flex" }}
+                              >
+                                🍾
+                              </div>
+                              {isSelected && (
+                                <div
+                                  className="absolute inset-0 flex items-center justify-center text-5xl font-black"
+                                  style={{
+                                    background: "rgba(var(--primary-rgb,251 146 60)/0.30)",
+                                    color: "var(--primary)",
+                                  }}
+                                >
+                                  ✔
+                                </div>
+                              )}
+                              {bAtCap && !isSelected && (
+                                <div
+                                  className="absolute inset-0 flex items-center justify-center"
+                                  style={{ background: "rgba(239,68,68,0.5)" }}
+                                >
+                                  <span className="text-[9px] font-black text-white uppercase">
+                                    Empty
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
+                            <div
+                              className="px-1.5 py-1.5"
+                              style={{
+                                background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                                borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                              }}
+                            >
+                              <div
+                                className="font-bold text-[11px] truncate leading-tight"
+                                style={{ color: "var(--primary)" }}
+                              >
+                                {b.product_name}
+                              </div>
+                              <div
+                                className="font-black text-xs mt-0.5"
+                                style={{ color: bAtCap ? "#fca5a5" : "#86efac" }}
+                              >
+                                {bCap > 0
+                                  ? `${Math.max(0, bCap - bConsumed)} left`
+                                  : `$${Number(b.revenue).toFixed(2)}`}
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-              {/* Header — bottle name + capacity bar + cancel */}
-              <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-                <div className="min-w-0 flex-1">
-                  <span className="font-black text-base">🥃 {bottle?.product_name}</span>
-                  {capacity > 0 && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="h-2 flex-1 rounded-full bg-muted/40 overflow-hidden">
-                        <div className="h-full rounded-full transition-all"
-                          style={{ width: `${Math.min(100, (effectiveConsumed / capacity) * 100)}%`, background: atCapacity ? "#f87171" : "var(--gradient-hero)" }} />
+                {/* Header — bottle name + capacity bar + cancel */}
+                <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-black text-base">🥃 {bottle?.product_name}</span>
+                    {capacity > 0 && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-2 flex-1 rounded-full bg-muted/40 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(100, (effectiveConsumed / capacity) * 100)}%`,
+                              background: atCapacity ? "#f87171" : "var(--gradient-hero)",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="text-xs font-black shrink-0"
+                          style={{ color: atCapacity ? "#f87171" : "#86efac" }}
+                        >
+                          {atCapacity ? "⚠ Should be empty" : `${remaining} left`}
+                        </span>
                       </div>
-                      <span className="text-xs font-black shrink-0" style={{ color: atCapacity ? "#f87171" : "#86efac" }}>
-                        {atCapacity ? "⚠ Should be empty" : `${remaining} left`}
-                      </span>
+                    )}
+                    {atCapacity && (
+                      <p className="text-[10px] text-amber-400 font-semibold">
+                        Only extra drinks allowed
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={cancelShotBuffer}
+                    className="shrink-0 h-8 px-3 rounded-lg bg-muted text-xs font-bold text-muted-foreground flex items-center gap-1"
+                  >
+                    <X className="h-3.5 w-3.5" /> Cancel
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2">
+                  {vars.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        {vars.map((v) => {
+                          const isShot = v.key === "shot";
+                          const bufEntry = shotBuffer.find((b) => b.variation.key === v.key);
+                          const bufQty = bufEntry?.qty ?? 0;
+                          const wouldExceed =
+                            capacity > 0 && effectiveConsumed + v.units_consumed > capacity;
+                          const isDisabled = !isShot && wouldExceed;
+                          const maxCan =
+                            capacity > 0 && v.units_consumed > 0
+                              ? Math.floor((capacity - effectiveConsumed) / v.units_consumed)
+                              : 999;
+                          const countSold = bottle?.variation_counts?.[v.key] ?? 0;
+                          const isSelected = bufQty > 0;
+                          return (
+                            <div
+                              key={v.key}
+                              className="rounded-2xl border-2 overflow-hidden transition"
+                              style={{
+                                borderColor: isDisabled
+                                  ? "rgba(255,255,255,0.06)"
+                                  : isSelected
+                                    ? "var(--primary)"
+                                    : isShot && atCapacity
+                                      ? "#fbbf24"
+                                      : "rgba(255,255,255,0.12)",
+                                background: isSelected
+                                  ? "rgba(var(--primary-rgb,251 146 60)/0.10)"
+                                  : isShot && atCapacity
+                                    ? "rgba(251,191,36,0.08)"
+                                    : "rgba(255,255,255,0.04)",
+                                opacity: isDisabled ? 0.35 : 1,
+                              }}
+                            >
+                              <button
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={() => addShotToBuffer(v)}
+                                className="w-full p-3 flex flex-col items-center gap-0.5 active:bg-white/5 transition"
+                              >
+                                <span className="font-black text-sm">
+                                  {isShot ? "Drink" : v.label}
+                                  {isShot && atCapacity && (
+                                    <span className="text-amber-400 text-[10px] ml-1">extras</span>
+                                  )}
+                                </span>
+                                <span
+                                  className="font-black text-lg"
+                                  style={{
+                                    color: isDisabled ? "var(--muted-foreground)" : "#86efac",
+                                  }}
+                                >
+                                  ${v.price.toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}
+                                  {!isDisabled && capacity > 0 && maxCan > 0
+                                    ? ` - ${maxCan} avail`
+                                    : ""}
+                                </span>
+                                {countSold > 0 && (
+                                  <span className="text-[10px]" style={{ color: "var(--primary)" }}>
+                                    {countSold} sold
+                                  </span>
+                                )}
+                              </button>
+                              {isSelected && (
+                                <div className="flex items-center justify-between px-3 pb-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeShotFromBuffer(v.key)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition"
+                                    style={{ background: "#ef4444" }}
+                                  >
+                                    −
+                                  </button>
+                                  <span
+                                    className="font-black text-base"
+                                    style={{ color: "var(--primary)" }}
+                                  >
+                                    {bufQty}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={isDisabled || (capacity > 0 && maxCan <= 0)}
+                                    onClick={() => addShotToBuffer(v)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition disabled:opacity-30"
+                                    style={{ background: "var(--gradient-hero)" }}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {capacity > 0 && !atCapacity && shotBuffer.length > 0 && (
+                        <div
+                          className="rounded-xl border border-border/40 px-3 py-2"
+                          style={{ background: "rgba(255,255,255,0.02)" }}
+                        >
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">
+                            Remaining after order
+                          </p>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            {vars
+                              .filter(
+                                (v) =>
+                                  v.units_consumed > 0 &&
+                                  Math.floor((capacity - effectiveConsumed) / v.units_consumed) > 0,
+                              )
+                              .map((v) => (
+                                <span
+                                  key={v.key}
+                                  className="text-xs font-semibold"
+                                  style={{ color: "#86efac" }}
+                                >
+                                  {Math.floor((capacity - effectiveConsumed) / v.units_consumed)}x{" "}
+                                  {v.label}
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Open New Bottle — shown when bottle is at/near capacity */}
+                      {capacity > 0 &&
+                        vars.some(
+                          (v) =>
+                            v.key !== "shot" && effectiveConsumed + v.units_consumed > capacity,
+                        ) && (
+                          <button
+                            type="button"
+                            disabled={bottleBusy}
+                            onClick={async () => {
+                              if (!product || !bottle) return;
+                              setBottleBusy(true);
+                              const shotVar = (product.bottle_variations ?? []).find(
+                                (v: BottleVariation) => v.key === "shot",
+                              );
+                              const { error } = await supabase.rpc("open_bottle", {
+                                p_owner_id: ownerIdRef.current,
+                                p_product_id: product.id,
+                                p_shot_price: shotVar?.price ?? 0,
+                              });
+                              setBottleBusy(false);
+                              if (error) {
+                                toast.error(error.message);
+                                return;
+                              }
+                              await fetchOpenedBottles();
+                              await fetchProducts();
+                              const { data } = await supabase
+                                .from("opened_bottles")
+                                .select("id")
+                                .eq("owner_id", ownerIdRef.current!)
+                                .eq("product_id", product.id)
+                                .eq("status", "open")
+                                .order("opened_at", { ascending: false })
+                                .limit(1);
+                              if (data?.[0]) {
+                                const newBottleId = data[0].id;
+                                // Track new bottle for revert if order is cancelled
+                                setBottlesPendingCancel((prev) => [...prev, newBottleId]);
+                                // Commit any buffered shots from the current bottle directly into cart
+                                // WITHOUT closing the modal, then switch to the new bottle
+                                if (shotBuffer.length > 0) {
+                                  const currentBottle = openedBottles.find(
+                                    (b) => b.id === shotBottleId,
+                                  );
+                                  const currentProduct = products.find(
+                                    (p) => p.id === currentBottle?.product_id,
+                                  );
+                                  const currentCapacity = currentProduct?.units_per_item ?? 0;
+                                  const isAtCap =
+                                    currentCapacity > 0 &&
+                                    (currentBottle?.units_consumed ?? 0) >= currentCapacity;
+                                  for (const { variation, qty } of shotBuffer) {
+                                    const isExtra = isAtCap;
+                                    const itemName = isExtra
+                                      ? `Drink (extras): ${currentBottle?.product_name}`
+                                      : `${variation.label}: ${currentBottle?.product_name}`;
+                                    setCart((c) => [
+                                      ...c,
+                                      {
+                                        id: `shot-${shotBottleId}-${variation.key}-${Date.now()}-${Math.random()}`,
+                                        name: itemName,
+                                        price: variation.price,
+                                        image_url: null,
+                                        category: "liquor",
+                                        qty,
+                                        _bottle_id: shotBottleId,
+                                        _units_consumed: variation.units_consumed * qty,
+                                        _variation_key: variation.key,
+                                      } as CartItem & {
+                                        _bottle_id: string;
+                                        _units_consumed: number;
+                                        _variation_key: string;
+                                      },
+                                    ]);
+                                  }
+                                }
+                                // Switch to the new bottle and clear buffer — modal stays open
+                                setShotBottleId(newBottleId);
+                                setShotBuffer([]);
+                              }
+                            }}
+                            className="w-full h-10 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
+                            style={{
+                              borderColor: "var(--primary)",
+                              color: "var(--primary)",
+                              background: "rgba(var(--primary-rgb,251 146 60)/0.08)",
+                            }}
+                          >
+                            {bottleBusy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "🍾 Open New Bottle"
+                            )}
+                          </button>
+                        )}
+                    </>
+                  ) : (
+                    <div
+                      className="rounded-2xl border border-border/40 px-4 py-6 flex flex-col items-center gap-2 text-center"
+                      style={{ background: "rgba(255,255,255,0.03)" }}
+                    >
+                      <span className="text-3xl">🔒</span>
+                      <p className="font-black text-sm text-foreground">Shots not set up</p>
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        The owner hasn't configured drink prices for this product. Ask the owner to
+                        add drink pricing in Product Settings.
+                      </p>
                     </div>
                   )}
-                  {atCapacity && <p className="text-[10px] text-amber-400 font-semibold">Only extra drinks allowed</p>}
                 </div>
-                <button type="button" onClick={cancelShotBuffer}
-                  className="shrink-0 h-8 px-3 rounded-lg bg-muted text-xs font-bold text-muted-foreground flex items-center gap-1">
-                  <X className="h-3.5 w-3.5" /> Cancel
-                </button>
-              </div>
 
-              <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2">
-                {vars.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      {vars.map((v) => {
-                        const isShot = v.key === "shot";
-                        const bufEntry = shotBuffer.find((b) => b.variation.key === v.key);
-                        const bufQty = bufEntry?.qty ?? 0;
-                        const wouldExceed = capacity > 0 && (effectiveConsumed + v.units_consumed) > capacity;
-                        const isDisabled = !isShot && wouldExceed;
-                        const maxCan = capacity > 0 && v.units_consumed > 0
-                          ? Math.floor((capacity - effectiveConsumed) / v.units_consumed)
-                          : 999;
-                        const countSold = bottle?.variation_counts?.[v.key] ?? 0;
-                        const isSelected = bufQty > 0;
-                        return (
-                          <div key={v.key} className="rounded-2xl border-2 overflow-hidden transition"
-                            style={{
-                              borderColor: isDisabled
-                                ? "rgba(255,255,255,0.06)"
-                                : isSelected ? "var(--primary)"
-                                : isShot && atCapacity ? "#fbbf24"
-                                : "rgba(255,255,255,0.12)",
-                              background: isSelected
-                                ? "rgba(var(--primary-rgb,251 146 60)/0.10)"
-                                : isShot && atCapacity ? "rgba(251,191,36,0.08)"
-                                : "rgba(255,255,255,0.04)",
-                              opacity: isDisabled ? 0.35 : 1,
-                            }}>
-                            <button type="button" disabled={isDisabled}
-                              onClick={() => addShotToBuffer(v)}
-                              className="w-full p-3 flex flex-col items-center gap-0.5 active:bg-white/5 transition">
-                              <span className="font-black text-sm">
-                                {isShot ? "Drink" : v.label}
-                                {isShot && atCapacity && <span className="text-amber-400 text-[10px] ml-1">extras</span>}
-                              </span>
-                              <span className="font-black text-lg" style={{ color: isDisabled ? "var(--muted-foreground)" : "#86efac" }}>
-                                ${v.price.toFixed(2)}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {v.units_consumed} unit{v.units_consumed !== 1 ? "s" : ""}
-                                {!isDisabled && capacity > 0 && maxCan > 0 ? ` - ${maxCan} avail` : ""}
-                              </span>
-                              {countSold > 0 && (
-                                <span className="text-[10px]" style={{ color: "var(--primary)" }}>{countSold} sold</span>
-                              )}
-                            </button>
-                            {isSelected && (
-                              <div className="flex items-center justify-between px-3 pb-2 gap-2">
-                                <button type="button" onClick={() => removeShotFromBuffer(v.key)}
-                                  className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition"
-                                  style={{ background: "#ef4444" }}>−</button>
-                                <span className="font-black text-base" style={{ color: "var(--primary)" }}>{bufQty}</span>
-                                <button type="button"
-                                  disabled={isDisabled || (capacity > 0 && maxCan <= 0)}
-                                  onClick={() => addShotToBuffer(v)}
-                                  className="h-7 w-7 rounded-full flex items-center justify-center font-black text-sm active:scale-90 transition disabled:opacity-30"
-                                  style={{ background: "var(--gradient-hero)" }}>+</button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {capacity > 0 && !atCapacity && shotBuffer.length > 0 && (
-                      <div className="rounded-xl border border-border/40 px-3 py-2" style={{ background: "rgba(255,255,255,0.02)" }}>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Remaining after order</p>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                          {vars.filter((v) => v.units_consumed > 0 && Math.floor((capacity - effectiveConsumed) / v.units_consumed) > 0).map((v) => (
-                            <span key={v.key} className="text-xs font-semibold" style={{ color: "#86efac" }}>
-                              {Math.floor((capacity - effectiveConsumed) / v.units_consumed)}x {v.label}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Open New Bottle — shown when bottle is at/near capacity */}
-                    {capacity > 0 && vars.some((v) => v.key !== "shot" && (effectiveConsumed + v.units_consumed) > capacity) && (
-                      <button type="button" disabled={bottleBusy}
-                        onClick={async () => {
-                          if (!product || !bottle) return;
-                          setBottleBusy(true);
-                          const shotVar = (product.bottle_variations ?? []).find((v: BottleVariation) => v.key === "shot");
-                          const { error } = await supabase.rpc("open_bottle", {
-                            p_owner_id: ownerIdRef.current, p_product_id: product.id, p_shot_price: shotVar?.price ?? 0,
-                          });
-                          setBottleBusy(false);
-                          if (error) { toast.error(error.message); return; }
-                          await fetchOpenedBottles();
-                          await fetchProducts();
-                          const { data } = await supabase.from("opened_bottles").select("id")
-                            .eq("owner_id", ownerIdRef.current!).eq("product_id", product.id)
-                            .eq("status", "open").order("opened_at", { ascending: false }).limit(1);
-                          if (data?.[0]) {
-                            const newBottleId = data[0].id;
-                            // Track new bottle for revert if order is cancelled
-                            setBottlesPendingCancel((prev) => [...prev, newBottleId]);
-                            // Commit any buffered shots from the current bottle directly into cart
-                            // WITHOUT closing the modal, then switch to the new bottle
-                            if (shotBuffer.length > 0) {
-                              const currentBottle = openedBottles.find((b) => b.id === shotBottleId);
-                              const currentProduct = products.find((p) => p.id === currentBottle?.product_id);
-                              const currentCapacity = currentProduct?.units_per_item ?? 0;
-                              const isAtCap = currentCapacity > 0 && (currentBottle?.units_consumed ?? 0) >= currentCapacity;
-                              for (const { variation, qty } of shotBuffer) {
-                                const isExtra = isAtCap;
-                                const itemName = isExtra
-                                  ? `Drink (extras): ${currentBottle?.product_name}`
-                                  : `${variation.label}: ${currentBottle?.product_name}`;
-                                setCart((c) => [...c, {
-                                  id: `shot-${shotBottleId}-${variation.key}-${Date.now()}-${Math.random()}`,
-                                  name: itemName,
-                                  price: variation.price,
-                                  image_url: null,
-                                  category: "liquor",
-                                  qty,
-                                  _bottle_id: shotBottleId,
-                                  _units_consumed: variation.units_consumed * qty,
-                                  _variation_key: variation.key,
-                                } as CartItem & { _bottle_id: string; _units_consumed: number; _variation_key: string }]);
-                              }
-                            }
-                            // Switch to the new bottle and clear buffer — modal stays open
-                            setShotBottleId(newBottleId);
-                            setShotBuffer([]);
-                          }
-                        }}
-                        className="w-full h-10 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
-                        style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "🍾 Open New Bottle"}
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <div className="rounded-2xl border border-border/40 px-4 py-6 flex flex-col items-center gap-2 text-center"
-                    style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <span className="text-3xl">🔒</span>
-                    <p className="font-black text-sm text-foreground">Shots not set up</p>
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      The owner hasn't configured drink prices for this product. Ask the owner to add drink pricing in Product Settings.
-                    </p>
+                {shotBuffer.length > 0 && (
+                  <div className="px-4 pb-5 pt-1">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await commitShotBuffer();
+                      }}
+                      className="w-full h-12 rounded-xl font-black text-base text-primary-foreground active:scale-[0.98] transition flex items-center justify-center gap-2"
+                      style={{ background: "var(--gradient-hero)" }}
+                    >
+                      + Add to Order
+                      {bufferTotal > 0 && (
+                        <span className="font-semibold text-sm opacity-80">
+                          — ${bufferTotal.toFixed(2)}
+                        </span>
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
-
-              {shotBuffer.length > 0 && (
-                <div className="px-4 pb-5 pt-1">
-                  <button type="button"
-                    onClick={async () => { await commitShotBuffer(); }}
-                    className="w-full h-12 rounded-xl font-black text-base text-primary-foreground active:scale-[0.98] transition flex items-center justify-center gap-2"
-                    style={{ background: "var(--gradient-hero)" }}>
-                    + Add to Order
-                    {bufferTotal > 0 && <span className="font-semibold text-sm opacity-80">— ${bufferTotal.toFixed(2)}</span>}
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
       {/* Mark Empty Confirm Modal */}
       {markEmptyBottleId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
-          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-5 pt-6 pb-4 text-center">
               <div className="text-3xl mb-2">🍾</div>
               <div className="font-black text-base">Mark Bottle Empty?</div>
@@ -2130,8 +2961,10 @@ export default function RegisterPage() {
       {/* ΓöÇΓöÇ Cancel Bottle Confirm Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {cancelBottleId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
-          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-5 pt-6 pb-4 text-center">
               <div className="text-3xl mb-2">🍾</div>
               <div className="font-black text-base">Cancel Bottle?</div>
@@ -2166,8 +2999,10 @@ export default function RegisterPage() {
 
       {/* ΓöÇΓöÇ Opened Bottles Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {bottlesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => setBottlesModalOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setBottlesModalOpen(false)}
+        >
           <div
             className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl pb-safe"
             style={{ background: "var(--gradient-card)" }}
@@ -2175,53 +3010,92 @@ export default function RegisterPage() {
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-black">🍾 Opened Bottles</span>
-              <button onClick={() => setBottlesModalOpen(false)}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+              <button
+                onClick={() => setBottlesModalOpen(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="px-5 pb-6 space-y-3 max-h-[70vh] overflow-y-auto">
               {openedBottles.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">No bottles currently open.</div>
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  No bottles currently open.
+                </div>
               ) : (
                 openedBottles.map((b) => {
-                  const prod = products.find(p => p.id === b.product_id);
+                  const prod = products.find((p) => p.id === b.product_id);
                   return (
-                  <div key={b.id}
-                    className="rounded-2xl border border-border overflow-hidden"
-                    style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.06)" }}>
-                    {/* Image + info row */}
-                    <div className="flex items-center gap-3 p-3">
-                      <div className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-black/30 flex items-center justify-center">
-                        {prod?.image_url
-                          ? <img src={productImageUrl(prod.image_url)!} alt="" className="h-full w-full object-cover"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                          : <span className="text-3xl">🍾</span>}
+                    <div
+                      key={b.id}
+                      className="rounded-2xl border border-border overflow-hidden"
+                      style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.06)" }}
+                    >
+                      {/* Image + info row */}
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-black/30 flex items-center justify-center">
+                          {prod?.image_url ? (
+                            <img
+                              src={productImageUrl(prod.image_url)!}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span className="text-3xl">🍾</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-sm leading-tight truncate">
+                            {b.product_name}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Opened{" "}
+                            {new Date(b.opened_at).toLocaleDateString("en-GB", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}
+                            </span>
+                            <span className="text-xs font-black text-primary">
+                              ${Number(b.revenue).toFixed(2)} made
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-black text-sm leading-tight truncate">{b.product_name}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Opened {new Date(b.opened_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground">{b.shots_sold} shot{b.shots_sold !== 1 ? "s" : ""}</span>
-                          <span className="text-xs font-black text-primary">${Number(b.revenue).toFixed(2)} made</span>
-                        </div>
+                      {/* Single centered button — Cancel if 0 shots, Mark Bottle Empty if shots sold */}
+                      <div className="flex justify-center py-2">
+                        <button
+                          onClick={() =>
+                            b.shots_sold === 0 ? handleCancelBottle(b.id) : handleFinishBottle(b.id)
+                          }
+                          disabled={bottleBusy}
+                          className="px-6 h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                          style={{
+                            background:
+                              b.shots_sold === 0
+                                ? "linear-gradient(135deg,#374151,#1f2937)"
+                                : "linear-gradient(135deg,#dc2626,#991b1b)",
+                          }}
+                        >
+                          {bottleBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : b.shots_sold === 0 ? (
+                            "✗ Cancel"
+                          ) : (
+                            "Mark Bottle Empty"
+                          )}
+                        </button>
                       </div>
                     </div>
-                    {/* Single centered button — Cancel if 0 shots, Mark Bottle Empty if shots sold */}
-                    <div className="flex justify-center py-2">
-                      <button
-                        onClick={() => b.shots_sold === 0 ? handleCancelBottle(b.id) : handleFinishBottle(b.id)}
-                        disabled={bottleBusy}
-                        className="px-6 h-10 rounded-xl font-black text-sm text-white disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
-                        style={{ background: b.shots_sold === 0 ? "linear-gradient(135deg,#374151,#1f2937)" : "linear-gradient(135deg,#dc2626,#991b1b)" }}
-                      >
-                        {bottleBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : b.shots_sold === 0 ? "✗ Cancel" : "Mark Bottle Empty"}
-                      </button>
-                    </div>
-                  </div>
                   );
                 })
               )}
@@ -2234,15 +3108,37 @@ export default function RegisterPage() {
 
       {/* ΓöÇΓöÇ Pack Step 1: Select open pack + open new ΓöÇΓöÇ */}
       {packModalOpen && packStep === "select" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}>
-          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => {
+            setPackModalOpen(false);
+            setPackStep("select");
+            setPackPrice("");
+            setPackPackId("");
+            setShowNewPackGrid(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
             style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-black">{packType === "paper" ? t("select_cigg_paper", "🚬 Select Cigarette or Paper") : t("select_cigg_paper", "🚬 Select Cigarette or Paper")}</span>
-              <button onClick={() => { setPackModalOpen(false); setPackStep("select"); setPackPrice(""); setPackPackId(""); setShowNewPackGrid(false); }}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+              <span className="text-base font-black">
+                {packType === "paper"
+                  ? t("select_cigg_paper", "🚬 Select Cigarette or Paper")
+                  : t("select_cigg_paper", "🚬 Select Cigarette or Paper")}
+              </span>
+              <button
+                onClick={() => {
+                  setPackModalOpen(false);
+                  setPackStep("select");
+                  setPackPrice("");
+                  setPackPackId("");
+                  setShowNewPackGrid(false);
+                }}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2250,46 +3146,106 @@ export default function RegisterPage() {
               {!showNewPackGrid ? (
                 <>
                   {/* Currently open packs of this type */}
-                  {openedPacks.filter(p => p.pack_type === packType).length > 0 && (
+                  {openedPacks.filter((p) => p.pack_type === packType).length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currently Open</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Currently Open
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {openedPacks.filter(p => p.pack_type === packType).map((pk) => {
-                          const prod = products.find(p => p.id === pk.product_id);
-                          return (
-                            <div key={pk.id} className="flex flex-col rounded-2xl overflow-hidden border border-border">
-                              {pk.units_sold > 0 ? (
-                                <button onClick={(e) => { e.stopPropagation(); setMarkEmptyPackId(pk.id); }}
-                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
-                                  style={{ background: "#dc2626" }}>Mark Empty</button>
-                              ) : (
-                                <button onClick={(e) => { e.stopPropagation(); setCancelPackId(pk.id); }}
-                                  disabled={packBusy}
-                                  className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
-                                  style={{ background: "#374151" }}>✗ Cancel</button>
-                              )}
-                              <button
-                                onClick={() => { setPackPackId(pk.id); setPackPrice(pk.unit_price ? String(pk.unit_price) : ""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }}
-                                className="aspect-[3/4] relative w-full active:scale-95 transition"
-                                style={{ background: "var(--gradient-card)" }}>
-                                {prod?.image_url ? <img src={productImageUrl(prod.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                                <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                                  style={{ display: prod?.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
-                              </button>
-                              <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                                <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
-                                <div className="font-black text-xs mt-0.5" style={{ color: "var(--primary)" }}>${Number(pk.revenue).toFixed(2)} made</div>
+                        {openedPacks
+                          .filter((p) => p.pack_type === packType)
+                          .map((pk) => {
+                            const prod = products.find((p) => p.id === pk.product_id);
+                            return (
+                              <div
+                                key={pk.id}
+                                className="flex flex-col rounded-2xl overflow-hidden border border-border"
+                              >
+                                {pk.units_sold > 0 ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMarkEmptyPackId(pk.id);
+                                    }}
+                                    className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition shrink-0"
+                                    style={{ background: "#dc2626" }}
+                                  >
+                                    Mark Empty
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCancelPackId(pk.id);
+                                    }}
+                                    disabled={packBusy}
+                                    className="w-full h-10 flex items-center justify-center font-black text-xs text-white active:opacity-80 transition disabled:opacity-40 shrink-0"
+                                    style={{ background: "#374151" }}
+                                  >
+                                    ✗ Cancel
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setPackPackId(pk.id);
+                                    setPackPrice(pk.unit_price ? String(pk.unit_price) : "");
+                                    setPackStep("price");
+                                    setPackModalOpen(false);
+                                    setShowNewPackGrid(false);
+                                  }}
+                                  className="aspect-[3/4] relative w-full active:scale-95 transition"
+                                  style={{ background: "var(--gradient-card)" }}
+                                >
+                                  {prod?.image_url ? (
+                                    <img
+                                      src={productImageUrl(prod.image_url)!}
+                                      alt=""
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLImageElement).style.display =
+                                          "none";
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div
+                                    className="absolute inset-0 flex items-center justify-center text-3xl"
+                                    style={{ display: prod?.image_url ? "none" : "flex" }}
+                                  >
+                                    {packType === "paper" ? "📄" : "🚬"}
+                                  </div>
+                                </button>
+                                <div
+                                  className="px-1.5 py-1.5"
+                                  style={{
+                                    background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                                    borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                                  }}
+                                >
+                                  <div
+                                    className="font-bold text-[11px] truncate leading-tight"
+                                    style={{ color: "var(--primary)" }}
+                                  >
+                                    {pk.product_name}
+                                  </div>
+                                  <div
+                                    className="font-black text-xs mt-0.5"
+                                    style={{ color: "var(--primary)" }}
+                                  >
+                                    ${Number(pk.revenue).toFixed(2)} made
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
                     </div>
                   )}
                   <div className="pt-3">
-                    <button onClick={() => setShowNewPackGrid(true)}
+                    <button
+                      onClick={() => setShowNewPackGrid(true)}
                       className="w-full h-11 rounded-xl border-dashed border-2 flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98]"
-                      style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+                      style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+                    >
                       + Open New Pack
                     </button>
                   </div>
@@ -2297,43 +3253,113 @@ export default function RegisterPage() {
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setShowNewPackGrid(false)} className="text-muted-foreground hover:text-foreground transition"><X className="h-4 w-4" /></button>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select from Inventory</p>
+                    <button
+                      onClick={() => setShowNewPackGrid(false)}
+                      className="text-muted-foreground hover:text-foreground transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Select from Inventory
+                    </p>
                   </div>
                   {cigaretteProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">No cigarettes in stock.</p>
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      No cigarettes in stock.
+                    </p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {cigaretteProducts.map((p) => (
-                        <button key={p.id}
+                        <button
+                          key={p.id}
                           onClick={async () => {
                             setPackBusy(true);
                             const ownId = ownerIdRef.current;
-                            if (!ownId) { setPackBusy(false); return; }
+                            if (!ownId) {
+                              setPackBusy(false);
+                              return;
+                            }
                             const { error } = await supabase.rpc("open_pack", {
-                              p_owner_id: ownId, p_product_id: p.id, p_pack_type: packType,
-                              p_unit_price: (p.bottle_variations ?? []).find((v: BottleVariation) => v.key === "retail")?.price ?? 0,
+                              p_owner_id: ownId,
+                              p_product_id: p.id,
+                              p_pack_type: packType,
+                              p_unit_price:
+                                (p.bottle_variations ?? []).find(
+                                  (v: BottleVariation) => v.key === "retail",
+                                )?.price ?? 0,
                             });
-                            if (error) { toast.error(error.message); setPackBusy(false); return; }
+                            if (error) {
+                              toast.error(error.message);
+                              setPackBusy(false);
+                              return;
+                            }
                             await fetchOpenedPacks();
                             await fetchProducts();
-                            const { data } = await supabase.from("opened_packs").select("id")
-                              .eq("owner_id", ownId).eq("product_id", p.id).eq("status", "open").eq("pack_type", packType)
-                              .order("opened_at", { ascending: false }).limit(1);
+                            const { data } = await supabase
+                              .from("opened_packs")
+                              .select("id")
+                              .eq("owner_id", ownId)
+                              .eq("product_id", p.id)
+                              .eq("status", "open")
+                              .eq("pack_type", packType)
+                              .order("opened_at", { ascending: false })
+                              .limit(1);
                             setPackBusy(false);
-                            if (data?.[0]) { setPackPackId(data[0].id); setPackPrice(""); setPackStep("price"); setPackModalOpen(false); setShowNewPackGrid(false); }
+                            if (data?.[0]) {
+                              setPackPackId(data[0].id);
+                              setPackPrice("");
+                              setPackStep("price");
+                              setPackModalOpen(false);
+                              setShowNewPackGrid(false);
+                            }
                           }}
                           disabled={packBusy}
-                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50">
-                          <div className="aspect-[3/4] relative w-full" style={{ background: "var(--gradient-card)" }}>
-                            {p.image_url ? <img src={productImageUrl(p.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl"
-                              style={{ display: p.image_url ? "none" : "flex" }}>{packType === "paper" ? "📄" : "🚬"}</div>
-                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5"><span className="text-[9px] font-black text-white">{p.stock_qty}</span></div>
-                            {packBusy && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                          className="flex flex-col rounded-2xl overflow-hidden border border-border active:scale-95 transition disabled:opacity-50"
+                        >
+                          <div
+                            className="aspect-[3/4] relative w-full"
+                            style={{ background: "var(--gradient-card)" }}
+                          >
+                            {p.image_url ? (
+                              <img
+                                src={productImageUrl(p.image_url)!}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="absolute inset-0 flex items-center justify-center text-3xl"
+                              style={{ display: p.image_url ? "none" : "flex" }}
+                            >
+                              {packType === "paper" ? "📄" : "🚬"}
+                            </div>
+                            <div className="absolute top-1 left-1 bg-black/70 rounded-full px-1.5 py-0.5">
+                              <span className="text-[9px] font-black text-white">
+                                {p.stock_qty}
+                              </span>
+                            </div>
+                            {packBusy && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                              </div>
+                            )}
                           </div>
-                          <div className="px-1.5 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                            <div className="font-bold text-[11px] truncate leading-tight" style={{ color: "var(--primary)" }}>{p.name}</div>
+                          <div
+                            className="px-1.5 py-1.5"
+                            style={{
+                              background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                              borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                            }}
+                          >
+                            <div
+                              className="font-bold text-[11px] truncate leading-tight"
+                              style={{ color: "var(--primary)" }}
+                            >
+                              {p.name}
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -2347,204 +3373,359 @@ export default function RegisterPage() {
       )}
 
       {/* ── Pack Step 2: Price + Qty entry ── */}
-      {packStep === "price" && packPackId && (() => {
-        const pack = openedPacks.find((p) => p.id === packPackId);
-        const product = products.find((p) => p.id === pack?.product_id);
-        const capacity = product?.units_per_item ?? 0;
-        const alreadySold = pack?.units_sold ?? 0;
-        const remaining = capacity > 0 ? capacity - alreadySold : null;
-        return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); }}>
-          <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
-            style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <div>
-                <span className="font-black text-base">🚬 Add to Order</span>
-                {remaining !== null && (
-                  <p className="text-xs mt-0.5 font-semibold" style={{ color: remaining <= 3 ? "#fca5a5" : "#86efac" }}>
-                    {remaining} unit{remaining !== 1 ? "s" : ""} remaining
-                  </p>
-                )}
-              </div>
-              <button onClick={() => { setPackStep("select"); setPackPackId(""); setPackPrice(""); setPackQty(1); setPackModalOpen(true); }}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted">
-                <X className="h-3.5 w-3.5" /> Change
-              </button>
-            </div>
+      {packStep === "price" &&
+        packPackId &&
+        (() => {
+          const pack = openedPacks.find((p) => p.id === packPackId);
+          const product = products.find((p) => p.id === pack?.product_id);
+          const capacity = product?.units_per_item ?? 0;
+          const alreadySold = pack?.units_sold ?? 0;
+          const remaining = capacity > 0 ? capacity - alreadySold : null;
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+              onClick={() => {
+                setPackStep("select");
+                setPackPackId("");
+                setPackPrice("");
+                setPackQty(1);
+              }}
+            >
+              <div
+                className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+                style={{ background: "var(--gradient-card)" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                  <div>
+                    <span className="font-black text-base">🚬 Add to Order</span>
+                    {remaining !== null && (
+                      <p
+                        className="text-xs mt-0.5 font-semibold"
+                        style={{ color: remaining <= 3 ? "#fca5a5" : "#86efac" }}
+                      >
+                        {remaining} unit{remaining !== 1 ? "s" : ""} remaining
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPackStep("select");
+                      setPackPackId("");
+                      setPackPrice("");
+                      setPackQty(1);
+                      setPackModalOpen(true);
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-8 px-2 rounded-lg bg-muted"
+                  >
+                    <X className="h-3.5 w-3.5" /> Change
+                  </button>
+                </div>
 
-            {/* Pack card grid — tap to add, shows qty banner, price from retail variation */}
-            <div className="px-4 pb-2">
-              <div className="grid grid-cols-3 gap-2">
-                {openedPacks.map((pk) => {
-                  const pkProd = products.find(p => p.id === pk.product_id);
-                  const pkCap = pkProd?.units_per_item ?? 0;
-                  const pkRemaining = pkCap > 0 ? pkCap - pk.units_sold : null;
-                  const unitPrice = (pkProd?.bottle_variations ?? []).find((v: any) => v.key === "retail")?.price ?? pkProd?.price ?? 0;
-                  // Cart qty already added for this pack
-                  const cartQtyForPack = cart
-                    .filter((c) => (c as any)._pack_id === pk.id)
-                    .reduce((s, c) => s + c.qty, 0);
-                  const effectiveRemaining = pkRemaining !== null ? pkRemaining - cartQtyForPack : null;
-                  const isSelected = pk.id === packPackId;
-                  const isOutOfStock = effectiveRemaining !== null && effectiveRemaining <= 0;
-                  return (
-                    <div key={pk.id} className="rounded-2xl border-2 overflow-hidden transition"
-                      style={{
-                        borderColor: isSelected ? "var(--primary)" : "rgba(255,255,255,0.1)",
-                        background: isSelected ? "rgba(var(--primary-rgb,251 146 60)/0.08)" : "var(--gradient-card)",
-                        opacity: isOutOfStock ? 0.4 : 1,
-                      }}>
-                      {/* Card image area — tap to select + add 1 */}
-                      <button type="button" disabled={isOutOfStock}
-                        onClick={() => {
-                          setPackPackId(pk.id);
-                          setPackQty((q) => {
-                            const next = isSelected ? q + 1 : 1;
-                            return effectiveRemaining !== null ? Math.min(next, effectiveRemaining) : next;
-                          });
-                          if (!isSelected) setPackQty(1);
-                        }}
-                        className="w-full relative active:bg-white/5 transition">
-                        <div className="aspect-[3/4] relative w-full">
-                          {pkProd?.image_url ? <img src={productImageUrl(pkProd.image_url)!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} /> : null}
-                          <div className="absolute inset-0 flex items-center justify-center text-4xl"
-                            style={{ display: pkProd?.image_url ? "none" : "flex" }}>{pk.pack_type === "paper" ? "📄" : "🚬"}</div>
-                          {effectiveRemaining !== null && (
-                            <div className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 bg-black/70">
-                              <span className="text-[10px] font-black text-white">{effectiveRemaining} left</span>
+                {/* Pack card grid — tap to add, shows qty banner, price from retail variation */}
+                <div className="px-4 pb-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {openedPacks.map((pk) => {
+                      const pkProd = products.find((p) => p.id === pk.product_id);
+                      const pkCap = pkProd?.units_per_item ?? 0;
+                      const pkRemaining = pkCap > 0 ? pkCap - pk.units_sold : null;
+                      const unitPrice =
+                        (pkProd?.bottle_variations ?? []).find((v: any) => v.key === "retail")
+                          ?.price ??
+                        pkProd?.price ??
+                        0;
+                      // Cart qty already added for this pack
+                      const cartQtyForPack = cart
+                        .filter((c) => (c as any)._pack_id === pk.id)
+                        .reduce((s, c) => s + c.qty, 0);
+                      const effectiveRemaining =
+                        pkRemaining !== null ? pkRemaining - cartQtyForPack : null;
+                      const isSelected = pk.id === packPackId;
+                      const isOutOfStock = effectiveRemaining !== null && effectiveRemaining <= 0;
+                      return (
+                        <div
+                          key={pk.id}
+                          className="rounded-2xl border-2 overflow-hidden transition"
+                          style={{
+                            borderColor: isSelected ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                            background: isSelected
+                              ? "rgba(var(--primary-rgb,251 146 60)/0.08)"
+                              : "var(--gradient-card)",
+                            opacity: isOutOfStock ? 0.4 : 1,
+                          }}
+                        >
+                          {/* Card image area — tap to select + add 1 */}
+                          <button
+                            type="button"
+                            disabled={isOutOfStock}
+                            onClick={() => {
+                              setPackPackId(pk.id);
+                              setPackQty((q) => {
+                                const next = isSelected ? q + 1 : 1;
+                                return effectiveRemaining !== null
+                                  ? Math.min(next, effectiveRemaining)
+                                  : next;
+                              });
+                              if (!isSelected) setPackQty(1);
+                            }}
+                            className="w-full relative active:bg-white/5 transition"
+                          >
+                            <div className="aspect-[3/4] relative w-full">
+                              {pkProd?.image_url ? (
+                                <img
+                                  src={productImageUrl(pkProd.image_url)!}
+                                  alt=""
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="absolute inset-0 flex items-center justify-center text-4xl"
+                                style={{ display: pkProd?.image_url ? "none" : "flex" }}
+                              >
+                                {pk.pack_type === "paper" ? "📄" : "🚬"}
+                              </div>
+                              {effectiveRemaining !== null && (
+                                <div className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 bg-black/70">
+                                  <span className="text-[10px] font-black text-white">
+                                    {effectiveRemaining} left
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div
+                              className="px-2 py-1.5"
+                              style={{
+                                background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                                borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)",
+                              }}
+                            >
+                              <div
+                                className="font-bold text-[11px] truncate"
+                                style={{ color: "var(--primary)" }}
+                              >
+                                {pk.product_name}
+                              </div>
+                              <div className="font-black text-xs" style={{ color: "#86efac" }}>
+                                ${unitPrice.toFixed(2)} each
+                              </div>
+                              {pkCap > 0 && (
+                                <div
+                                  className="text-[10px] font-semibold mt-0.5"
+                                  style={{ color: "var(--muted-foreground)" }}
+                                >
+                                  {pkCap} per pack
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                          {/* Qty banner — shown only when selected */}
+                          {isSelected && (
+                            <div className="flex items-center justify-between px-2 py-1.5 gap-2 border-t border-border/40">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (packQty <= 1) {
+                                    setPackPackId("");
+                                    setPackQty(1);
+                                  } else setPackQty((q) => q - 1);
+                                }}
+                                className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition"
+                                style={{ background: "#ef4444" }}
+                              >
+                                −
+                              </button>
+                              <span
+                                className="font-black text-base"
+                                style={{ color: "var(--primary)" }}
+                              >
+                                {packQty}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={
+                                  effectiveRemaining !== null && packQty >= effectiveRemaining
+                                }
+                                onClick={() =>
+                                  setPackQty((q) =>
+                                    effectiveRemaining !== null
+                                      ? Math.min(q + 1, effectiveRemaining)
+                                      : q + 1,
+                                  )
+                                }
+                                className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition disabled:opacity-30"
+                                style={{ background: "var(--gradient-hero)" }}
+                              >
+                                +
+                              </button>
                             </div>
                           )}
                         </div>
-                        <div className="px-2 py-1.5" style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", borderTop: "1px solid rgba(var(--primary-rgb,251 146 60)/0.35)" }}>
-                          <div className="font-bold text-[11px] truncate" style={{ color: "var(--primary)" }}>{pk.product_name}</div>
-                          <div className="font-black text-xs" style={{ color: "#86efac" }}>${unitPrice.toFixed(2)} each</div>
-                          {pkCap > 0 && (
-                            <div className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--muted-foreground)" }}>{pkCap} per pack</div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Action area — Add to Order + Open New Pack when full */}
+                <div className="px-4 pb-4 pt-1 space-y-2">
+                  {/* Running cart summary for this pack session */}
+                  {(() => {
+                    const sessionItems = cart.filter((c) => (c as any)._pack_id);
+                    if (sessionItems.length === 0) return null;
+                    const sessionTotal = sessionItems.reduce((s, c) => s + c.price * c.qty, 0);
+                    const sessionQty = sessionItems.reduce((s, c) => s + c.qty, 0);
+                    return (
+                      <div
+                        className="rounded-xl px-3 py-2 flex items-center justify-between"
+                        style={{
+                          background: "rgba(var(--primary-rgb,251 146 60)/0.10)",
+                          border: "1px solid rgba(var(--primary-rgb,251 146 60)/0.25)",
+                        }}
+                      >
+                        <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
+                          {sessionQty} unit{sessionQty !== 1 ? "s" : ""} added
+                        </span>
+                        <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
+                          ${sessionTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Add to Order — only shown when a pack is selected and qty > 0 */}
+                  {packPackId &&
+                    packQty > 0 &&
+                    (() => {
+                      const pack = openedPacks.find((p) => p.id === packPackId);
+                      const prod = products.find((p) => p.id === pack?.product_id);
+                      const unitPrice =
+                        (prod?.bottle_variations ?? []).find((v: any) => v.key === "retail")
+                          ?.price ??
+                        prod?.price ??
+                        0;
+                      return (
+                        <button
+                          onClick={() => addPackUnit()}
+                          disabled={!packPackId || unitPrice <= 0}
+                          className="w-full h-12 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                          style={{ background: "var(--gradient-hero)" }}
+                        >
+                          + Add {packQty > 1 ? `${packQty}x ` : ""}to Order
+                          {unitPrice > 0 && (
+                            <span className="opacity-80 text-sm">
+                              — ${(unitPrice * packQty).toFixed(2)}
+                            </span>
                           )}
-                        </div>
-                      </button>
-                      {/* Qty banner — shown only when selected */}
-                      {isSelected && (
-                        <div className="flex items-center justify-between px-2 py-1.5 gap-2 border-t border-border/40">
-                          <button type="button"
-                            onClick={() => { if (packQty <= 1) { setPackPackId(""); setPackQty(1); } else setPackQty(q => q - 1); }}
-                            className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition"
-                            style={{ background: "#ef4444" }}>−</button>
-                          <span className="font-black text-base" style={{ color: "var(--primary)" }}>{packQty}</span>
-                          <button type="button"
-                            disabled={effectiveRemaining !== null && packQty >= effectiveRemaining}
-                            onClick={() => setPackQty(q => effectiveRemaining !== null ? Math.min(q + 1, effectiveRemaining) : q + 1)}
-                            className="h-8 w-8 rounded-full flex items-center justify-center font-black active:scale-90 transition disabled:opacity-30"
-                            style={{ background: "var(--gradient-hero)" }}>+</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        </button>
+                      );
+                    })()}
+
+                  {/* Open New Pack — shown when current pack is tapped out in cart */}
+                  {packPackId &&
+                    (() => {
+                      const pack = openedPacks.find((p) => p.id === packPackId);
+                      const prod = products.find((p) => p.id === pack?.product_id);
+                      const pkCap = prod?.units_per_item ?? 0;
+                      const cartQty = cart
+                        .filter((c) => (c as any)._pack_id === packPackId)
+                        .reduce((s, c) => s + c.qty, 0);
+                      const alreadySold = pack?.units_sold ?? 0;
+                      const isFull = pkCap > 0 && alreadySold + cartQty >= pkCap;
+                      if (!isFull) return null;
+                      return (
+                        <button
+                          type="button"
+                          disabled={packBusy}
+                          onClick={async () => {
+                            if (!pack || !prod) return;
+                            setPackBusy(true);
+                            const { error } = await supabase.rpc("open_pack", {
+                              p_owner_id: ownerIdRef.current,
+                              p_product_id: prod.id,
+                              p_pack_type: pack.pack_type,
+                              p_unit_price:
+                                (prod.bottle_variations ?? []).find(
+                                  (v: BottleVariation) => v.key === "retail",
+                                )?.price ?? prod.price,
+                            });
+                            setPackBusy(false);
+                            if (error) {
+                              toast.error(error.message);
+                              return;
+                            }
+                            await fetchOpenedPacks();
+                            await fetchProducts();
+                            const { data: newPack } = await supabase
+                              .from("opened_packs")
+                              .select("id")
+                              .eq("owner_id", ownerIdRef.current!)
+                              .eq("product_id", prod.id)
+                              .eq("status", "open")
+                              .order("opened_at", { ascending: false })
+                              .limit(1);
+                            if (newPack?.[0]) {
+                              setPacksPendingClose((prev) => [...prev, newPack[0].id]);
+                              setPackPackId(newPack[0].id);
+                              setPackQty(1);
+                            }
+                          }}
+                          className="w-full h-11 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
+                          style={{
+                            borderColor: "var(--primary)",
+                            color: "var(--primary)",
+                            background: "rgba(var(--primary-rgb,251 146 60)/0.08)",
+                          }}
+                        >
+                          {packBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "📦 Open New Pack"
+                          )}
+                        </button>
+                      );
+                    })()}
+                </div>
               </div>
             </div>
-
-            {/* Action area — Add to Order + Open New Pack when full */}
-            <div className="px-4 pb-4 pt-1 space-y-2">
-              {/* Running cart summary for this pack session */}
-              {(() => {
-                const sessionItems = cart.filter((c) => (c as any)._pack_id);
-                if (sessionItems.length === 0) return null;
-                const sessionTotal = sessionItems.reduce((s, c) => s + c.price * c.qty, 0);
-                const sessionQty = sessionItems.reduce((s, c) => s + c.qty, 0);
-                return (
-                  <div className="rounded-xl px-3 py-2 flex items-center justify-between"
-                    style={{ background: "rgba(var(--primary-rgb,251 146 60)/0.10)", border: "1px solid rgba(var(--primary-rgb,251 146 60)/0.25)" }}>
-                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
-                      {sessionQty} unit{sessionQty !== 1 ? "s" : ""} added
-                    </span>
-                    <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
-                      ${sessionTotal.toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Add to Order — only shown when a pack is selected and qty > 0 */}
-              {packPackId && packQty > 0 && (() => {
-                const pack = openedPacks.find((p) => p.id === packPackId);
-                const prod = products.find((p) => p.id === pack?.product_id);
-                const unitPrice = (prod?.bottle_variations ?? []).find((v: any) => v.key === "retail")?.price ?? prod?.price ?? 0;
-                return (
-                  <button onClick={() => addPackUnit()}
-                    disabled={!packPackId || unitPrice <= 0}
-                    className="w-full h-12 rounded-xl font-black text-sm text-primary-foreground disabled:opacity-40 active:scale-[0.98] transition flex items-center justify-center gap-2"
-                    style={{ background: "var(--gradient-hero)" }}>
-                    + Add {packQty > 1 ? `${packQty}x ` : ""}to Order
-                    {unitPrice > 0 && <span className="opacity-80 text-sm">— ${(unitPrice * packQty).toFixed(2)}</span>}
-                  </button>
-                );
-              })()}
-
-              {/* Open New Pack — shown when current pack is tapped out in cart */}
-              {packPackId && (() => {
-                const pack = openedPacks.find((p) => p.id === packPackId);
-                const prod = products.find((p) => p.id === pack?.product_id);
-                const pkCap = prod?.units_per_item ?? 0;
-                const cartQty = cart.filter((c) => (c as any)._pack_id === packPackId).reduce((s, c) => s + c.qty, 0);
-                const alreadySold = pack?.units_sold ?? 0;
-                const isFull = pkCap > 0 && (alreadySold + cartQty) >= pkCap;
-                if (!isFull) return null;
-                return (
-                  <button type="button" disabled={packBusy}
-                    onClick={async () => {
-                      if (!pack || !prod) return;
-                      setPackBusy(true);
-                      const { error } = await supabase.rpc("open_pack", {
-                        p_owner_id: ownerIdRef.current, p_product_id: prod.id,
-                        p_pack_type: pack.pack_type,
-                        p_unit_price: (prod.bottle_variations ?? []).find((v: BottleVariation) => v.key === "retail")?.price ?? prod.price,
-                      });
-                      setPackBusy(false);
-                      if (error) { toast.error(error.message); return; }
-                      await fetchOpenedPacks();
-                      await fetchProducts();
-                      const { data: newPack } = await supabase.from("opened_packs")
-                        .select("id").eq("owner_id", ownerIdRef.current!)
-                        .eq("product_id", prod.id).eq("status", "open")
-                        .order("opened_at", { ascending: false }).limit(1);
-                      if (newPack?.[0]) {
-                        setPacksPendingClose((prev) => [...prev, newPack[0].id]);
-                        setPackPackId(newPack[0].id);
-                        setPackQty(1);
-                      }
-                    }}
-                    className="w-full h-11 rounded-xl font-black text-sm border-2 flex items-center justify-center gap-2 transition active:scale-95"
-                    style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "rgba(var(--primary-rgb,251 146 60)/0.08)" }}>
-                    {packBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "📦 Open New Pack"}
-                  </button>
-                );
-              })()}
-
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* ΓöÇΓöÇ Mark Pack Empty Confirm ΓöÇΓöÇ */}
       {markEmptyPackId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
-          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-5 pt-6 pb-4 text-center">
               <div className="text-3xl mb-2">🚬</div>
               <div className="font-black text-base">Mark Pack Empty?</div>
-              <div className="text-xs text-muted-foreground mt-1">This will close the pack and record the wallet entry.</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                This will close the pack and record the wallet entry.
+              </div>
             </div>
             <div className="grid grid-cols-2 border-t border-border">
-              <button onClick={() => setMarkEmptyPackId(null)} disabled={packBusy}
-                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40">Cancel</button>
-              <button onClick={async () => { const id = markEmptyPackId; setMarkEmptyPackId(null); await handleFinishPack(id!); }}
+              <button
+                onClick={() => setMarkEmptyPackId(null)}
+                disabled={packBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = markEmptyPackId;
+                  setMarkEmptyPackId(null);
+                  await handleFinishPack(id!);
+                }}
                 disabled={packBusy}
                 className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
-                style={{ background: "#dc2626" }}>OK</button>
+                style={{ background: "#dc2626" }}
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>
@@ -2553,31 +3734,53 @@ export default function RegisterPage() {
       {/* ΓöÇΓöÇ Cancel Pack Confirm ΓöÇΓöÇ */}
       {cancelPackId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-6">
-          <div className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="px-5 pt-6 pb-4 text-center">
               <div className="text-3xl mb-2">🚬</div>
               <div className="font-black text-base">Cancel Pack?</div>
-              <div className="text-xs text-muted-foreground mt-1">This will remove the pack and restore 1 to stock.</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                This will remove the pack and restore 1 to stock.
+              </div>
             </div>
             <div className="grid grid-cols-2 border-t border-border">
-              <button onClick={() => setCancelPackId(null)} disabled={packBusy}
-                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40">Keep</button>
-              <button onClick={async () => { const id = cancelPackId; setCancelPackId(null); await handleCancelPack(id!); }}
+              <button
+                onClick={() => setCancelPackId(null)}
+                disabled={packBusy}
+                className="h-12 font-black text-sm border-r border-border transition active:bg-muted/60 disabled:opacity-40"
+              >
+                Keep
+              </button>
+              <button
+                onClick={async () => {
+                  const id = cancelPackId;
+                  setCancelPackId(null);
+                  await handleCancelPack(id!);
+                }}
                 disabled={packBusy}
                 className="h-12 font-black text-sm text-white transition active:opacity-80 disabled:opacity-40"
-                style={{ background: "#374151" }}>Cancel</button>
+                style={{ background: "#374151" }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
-
     </>
   );
 }
 
 // ΓöÇΓöÇΓöÇ Cash Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // ── CashItemActions — shared action bar for cash & credit order item rows ──────
-function CashItemActions({ item, onDec, onAdd, onRemove }: {
+function CashItemActions({
+  item,
+  onDec,
+  onAdd,
+  onRemove,
+}: {
   item: CartItem;
   onDec: (id: string) => void;
   onAdd: (p: CartItem) => void;
@@ -2589,26 +3792,31 @@ function CashItemActions({ item, onDec, onAdd, onRemove }: {
       <button
         onClick={() => onDec(item.id)}
         className="h-11 w-11 ml-3 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
-        style={{ background: "#ef4444" }}>
+        style={{ background: "#ef4444" }}
+      >
         <Minus className="h-5 w-5 text-white" />
       </button>
       {/* qty */}
-      <div className="h-11 min-w-[2.75rem] px-2 rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
-        style={{ background: "#1a1a1a" }}>
+      <div
+        className="h-11 min-w-[2.75rem] px-2 rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
+        style={{ background: "#1a1a1a" }}
+      >
         {item.qty}
       </div>
       {/* + */}
       <button
         onClick={() => onAdd(item)}
         className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
-        style={{ background: "var(--gradient-hero)" }}>
+        style={{ background: "var(--gradient-hero)" }}
+      >
         <Plus className="h-5 w-5 text-black" />
       </button>
       {/* X — removes item */}
       <button
         onClick={() => onRemove(item.id)}
         className="h-11 w-11 rounded-full flex items-center justify-center active:scale-90 transition shrink-0"
-        style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid rgba(239,68,68,0.35)" }}>
+        style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid rgba(239,68,68,0.35)" }}
+      >
         <X className="h-5 w-5 text-red-400" />
       </button>
     </div>
@@ -2616,16 +3824,43 @@ function CashItemActions({ item, onDec, onAdd, onRemove }: {
 }
 
 function CashOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId, editOrder, editCreditOrder,
+  total,
+  cart,
+  onDec,
+  onAdd,
+  onRemove,
+  onClearCart,
+  onClose,
+  onSuccess,
+  ownerId,
+  editOrder,
+  editCreditOrder,
 }: {
-  total: number; cart: CartItem[];
-  onDec: (id: string) => void; onAdd: (p: CartItem) => void;
+  total: number;
+  cart: CartItem[];
+  onDec: (id: string) => void;
+  onAdd: (p: CartItem) => void;
   onRemove: (id: string) => void;
   onClearCart: () => void;
-  onClose: () => void; onSuccess: (paid: number, change: number) => void;
+  onClose: () => void;
+  onSuccess: (paid: number, change: number) => void;
   ownerId: string;
-  editOrder?: { id: string; items: { id?: string; name: string; qty: number; price: number }[]; total: number; paid: number; change_given: number; created_at: string };
-  editCreditOrder?: { credit_tx_id: string; credit_account_id: string; customer_name: string; items: { id: string; name: string; qty: number; price: number }[]; amount: number; created_at: string };
+  editOrder?: {
+    id: string;
+    items: { id?: string; name: string; qty: number; price: number }[];
+    total: number;
+    paid: number;
+    change_given: number;
+    created_at: string;
+  };
+  editCreditOrder?: {
+    credit_tx_id: string;
+    credit_account_id: string;
+    customer_name: string;
+    items: { id: string; name: string; qty: number; price: number }[];
+    amount: number;
+    created_at: string;
+  };
 }) {
   const { profile } = useAuth();
   const { t } = useTranslation();
@@ -2634,16 +3869,84 @@ function CashOverlay({
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const handlePaidNumpad = (k: string) => {
+    if (k === "⌫") setPaid((v) => v.slice(0, -1));
+    else if (k === ".") {
+      if (!paid.includes(".")) setPaid((v) => v + ".");
+    } else {
+      const dotIdx = paid.indexOf(".");
+      if (dotIdx !== -1 && paid.length - dotIdx > 2) return;
+      setPaid((v) => (v === "0" ? k : v + k));
+    }
+  };
+
+  useEffect(() => {
+    if (step !== 2) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handlePaidNumpad(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handlePaidNumpad("⌫");
+      } else if (e.key === ".") {
+        e.preventDefault();
+        handlePaidNumpad(".");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [step, paid]);
+
   // Order-level discount
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [discountVal, setDiscountVal] = useState("");
   const discountedTotal = Math.max(0, total - orderDiscount);
 
+  const handleDiscountNumpad = (k: string) => {
+    if (k === "⌫") setDiscountVal((v) => v.slice(0, -1));
+    else if (k === ".") {
+      if (!discountVal.includes(".")) setDiscountVal((v) => v + ".");
+    } else {
+      const dot = discountVal.indexOf(".");
+      if (dot !== -1 && discountVal.length - dot > 2) return;
+      setDiscountVal((v) => (v === "0" ? k : v + k));
+    }
+  };
+
+  useEffect(() => {
+    if (!discountOpen || orderDiscount !== 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleDiscountNumpad(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleDiscountNumpad("⌫");
+      } else if (e.key === ".") {
+        e.preventDefault();
+        handleDiscountNumpad(".");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [discountOpen, orderDiscount, discountVal]);
+
   // Customer / payment mode selection — pre-seeded when editing a credit order
-  const [payMode, setPayMode] = useState<null | "cash" | "credit">(editCreditOrder ? "credit" : null);
+  const [payMode, setPayMode] = useState<null | "cash" | "credit">(
+    editCreditOrder ? "credit" : null,
+  );
   const [selectedCustomer, setSelectedCustomer] = useState<CreditAccount | null>(
-    editCreditOrder ? { id: editCreditOrder.credit_account_id, full_name: editCreditOrder.customer_name, contact_number: null, balance_owed: 0, status: "open" } : null
+    editCreditOrder
+      ? {
+          id: editCreditOrder.credit_account_id,
+          full_name: editCreditOrder.customer_name,
+          contact_number: null,
+          balance_owed: 0,
+          status: "open",
+        }
+      : null,
   );
   const [customers, setCustomers] = useState<CreditAccount[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -2652,7 +3955,8 @@ function CashOverlay({
   useEffect(() => {
     if (!ownerId) return;
     setLoadingCustomers(true);
-    supabase.from("credit_accounts")
+    supabase
+      .from("credit_accounts")
       .select("id, full_name, contact_number, balance_owed, status")
       .eq("owner_id", ownerId)
       .order("full_name")
@@ -2663,7 +3967,10 @@ function CashOverlay({
           cacheCreditAccounts(ownerId, data as CreditAccount[]);
         } else {
           // Network failed (offline) — serve from IndexedDB cache
-          console.warn("[CashOverlay] customers fetch failed, using cache:", error?.message ?? "offline");
+          console.warn(
+            "[CashOverlay] customers fetch failed, using cache:",
+            error?.message ?? "offline",
+          );
           const cached = await getCachedCreditAccounts(ownerId);
           setCustomers(cached as CreditAccount[]);
         }
@@ -2680,14 +3987,20 @@ function CashOverlay({
 
   // Shared stock/shot/pack helpers — enqueue offline if no network
   const doStockAndShots = async (groupId: string) => {
-    const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
+    const stockItems = cart
+      .filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-"))
+      .map((c) => ({ id: c.id, qty: c.qty }));
     if (isOnline) {
       await supabase.rpc("decrement_stock_item", { p_items: stockItems });
     } else {
       await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
     }
     for (const shot of cart.filter((c) => (c as any)._bottle_id)) {
-      const payload = { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) };
+      const payload = {
+        p_bottle_id: (shot as any)._bottle_id,
+        p_qty: shot.qty,
+        p_revenue: shot.qty * Number(shot.price),
+      };
       if (isOnline) {
         await supabase.rpc("record_shot", payload);
       } else {
@@ -2695,7 +4008,11 @@ function CashOverlay({
       }
     }
     for (const unit of cart.filter((c) => (c as any)._pack_id)) {
-      const payload = { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) };
+      const payload = {
+        p_pack_id: (unit as any)._pack_id,
+        p_qty: (unit as any)._pack_units ?? unit.qty,
+        p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
+      };
       if (isOnline) {
         await supabase.rpc("record_pack_unit", payload);
       } else {
@@ -2722,12 +4039,21 @@ function CashOverlay({
     if (payMode === "credit" && selectedCustomer) {
       // ── Credit order ──────────────────────────────────────────────────
       const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-      const discountNote = orderDiscount > 0 ? ` | Disc: -$${orderDiscount.toFixed(2)} (orig $${total.toFixed(2)})` : "";
+      const discountNote =
+        orderDiscount > 0
+          ? ` | Disc: -$${orderDiscount.toFixed(2)} (orig $${total.toFixed(2)})`
+          : "";
       const creditPayload = {
         p_credit_account_id: selectedCustomer.id,
         p_cashier_id: profile.id,
         p_amount: discountedTotal,
-        p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: (c as any).cost_price ?? 0, qty: c.qty })),
+        p_items: cart.map((c) => ({
+          id: c.id,
+          name: c.name,
+          price: c.price,
+          cost_price: (c as any).cost_price ?? 0,
+          qty: c.qty,
+        })),
         p_note: itemsDesc + discountNote,
       };
       if (!isOnline) {
@@ -2744,25 +4070,47 @@ function CashOverlay({
           p_credit_tx_id: editCreditOrder.credit_tx_id,
           p_cashier_id: profile.id,
         });
-        if (delErr) { setBusy(false); toast.error("Failed to remove old charge: " + delErr.message); return; }
+        if (delErr) {
+          setBusy(false);
+          toast.error("Failed to remove old charge: " + delErr.message);
+          return;
+        }
       }
       const { error } = await supabase.rpc("record_credit_charge", creditPayload);
-      if (error) { setBusy(false); toast.error(error.message); return; }
+      if (error) {
+        setBusy(false);
+        toast.error(error.message);
+        return;
+      }
       await doStockAndShots(groupId);
       setBusy(false);
-      toast.success(editCreditOrder
-        ? `Credit sale updated for ${selectedCustomer.full_name}`
-        : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`);
+      toast.success(
+        editCreditOrder
+          ? `Credit sale updated for ${selectedCustomer.full_name}`
+          : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`,
+      );
       onSuccess(paidNum, changeNum);
       return;
     }
 
     // ── Cash order (guest or customer) ────────────────────────────────
-    const newItems = cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) }));
+    const newItems = cart.map((c) => ({
+      id: c.id,
+      name: c.name,
+      price: c.price,
+      qty: c.qty,
+      units_consumed: (c as any)._units_consumed ?? null,
+      ...(c._discount
+        ? { discount: c._discount, original_price: c._originalPrice ?? c.price }
+        : {}),
+    }));
     const orderPayload = {
-      owner_id: ownerId, cashier_id: profile.id,
+      owner_id: ownerId,
+      cashier_id: profile.id,
       items: newItems,
-      total: discountedTotal, paid: paidNum, change_given: changeNum,
+      total: discountedTotal,
+      paid: paidNum,
+      change_given: changeNum,
       ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total } : {}),
     };
 
@@ -2771,15 +4119,25 @@ function CashOverlay({
       await doStockAndShots(groupId);
       if (payMode === "cash" && selectedCustomer) {
         const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
-        await enqueue("credit_transactions_insert", {
-          credit_account_id: selectedCustomer.id,
-          owner_id: ownerId,
-          cashier_id: profile.id,
-          type: "charge",
-          amount: discountedTotal,
-          items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
-          note: "[CASH] " + itemsDesc,
-        }, groupId);
+        await enqueue(
+          "credit_transactions_insert",
+          {
+            credit_account_id: selectedCustomer.id,
+            owner_id: ownerId,
+            cashier_id: profile.id,
+            type: "charge",
+            amount: discountedTotal,
+            items: cart.map((c) => ({
+              id: c.id,
+              name: c.name,
+              price: c.price,
+              qty: c.qty,
+              units_consumed: (c as any)._units_consumed ?? null,
+            })),
+            note: "[CASH] " + itemsDesc,
+          },
+          groupId,
+        );
       }
       setBusy(false);
       toast.success(`💾 Saved offline — will sync when reconnected`);
@@ -2789,14 +4147,23 @@ function CashOverlay({
 
     if (editOrder) {
       // ── Edit mode: UPDATE the existing record, restore old stock then decrement new ──
-      const { error: updateErr } = await (supabase as any).from("orders").update({
-        items: newItems,
-        total: discountedTotal,
-        paid: paidNum,
-        change_given: changeNum,
-        ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total } : { discount_amount: null, original_total: null }),
-      }).eq("id", editOrder.id);
-      if (updateErr) { setBusy(false); toast.error(updateErr.message); return; }
+      const { error: updateErr } = await (supabase as any)
+        .from("orders")
+        .update({
+          items: newItems,
+          total: discountedTotal,
+          paid: paidNum,
+          change_given: changeNum,
+          ...(orderDiscount > 0
+            ? { discount_amount: orderDiscount, original_total: total }
+            : { discount_amount: null, original_total: null }),
+        })
+        .eq("id", editOrder.id);
+      if (updateErr) {
+        setBusy(false);
+        toast.error(updateErr.message);
+        return;
+      }
 
       // Restore stock for OLD items then decrement for NEW items —
       // using a single RPC so the sync_actual_qty trigger is suppressed,
@@ -2809,12 +4176,13 @@ function CashOverlay({
         .map((c) => ({ id: c.id, qty: c.qty }));
       await (supabase as any).rpc("adjust_stock_for_edit", {
         p_restore: oldStockItems,
-        p_deduct:  newStockItems,
+        p_deduct: newStockItems,
       });
 
       // Update wallet_transactions amount for this order if total changed
       if (discountedTotal !== editOrder.total) {
-        await (supabase as any).from("wallet_transactions")
+        await (supabase as any)
+          .from("wallet_transactions")
           .update({ amount: discountedTotal })
           .eq("order_id", editOrder.id);
       }
@@ -2826,7 +4194,11 @@ function CashOverlay({
     }
 
     const { error } = await supabase.from("orders").insert(orderPayload);
-    if (error) { setBusy(false); toast.error(error.message); return; }
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
     await doStockAndShots(groupId);
 
     // If a customer was selected with cash, record history without changing balance
@@ -2838,7 +4210,13 @@ function CashOverlay({
         cashier_id: profile.id,
         type: "charge",
         amount: discountedTotal,
-        items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
+        items: cart.map((c) => ({
+          id: c.id,
+          name: c.name,
+          price: c.price,
+          qty: c.qty,
+          units_consumed: (c as any)._units_consumed ?? null,
+        })),
         note: "[CASH] " + itemsDesc,
       });
     }
@@ -2850,8 +4228,10 @@ function CashOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       {/* Outer container: side-by-side on md+, stacked on mobile */}
-      <div className="relative w-full max-w-3xl max-h-[90dvh] flex flex-col md:flex-row rounded-3xl overflow-hidden border border-border shadow-2xl" style={{ background: "var(--gradient-card)" }}>
-
+      <div
+        className="relative w-full max-w-3xl max-h-[90dvh] flex flex-col md:flex-row rounded-3xl overflow-hidden border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}
+      >
         {/* ── Left panel: order review ── */}
         <div className="flex flex-col flex-1 min-h-0 md:border-r md:border-border">
           <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
@@ -2860,14 +4240,21 @@ function CashOverlay({
               {/* Customer toggle — mobile only */}
               {step === 1 && (
                 <button
-                  onClick={() => setShowRightPanel(v => !v)}
+                  onClick={() => setShowRightPanel((v) => !v)}
                   className="md:hidden h-11 px-4 rounded-xl font-black text-sm flex items-center gap-1.5 active:scale-95 transition"
-                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
                   👤
-                  {selectedCustomer ? selectedCustomer.full_name.split(" ")[0] : payMode ?? "Guest"}
+                  {selectedCustomer
+                    ? selectedCustomer.full_name.split(" ")[0]
+                    : (payMode ?? "Guest")}
                 </button>
               )}
-              <button onClick={onClose} className="h-11 w-11 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition" aria-label="Close">
+              <button
+                onClick={onClose}
+                className="h-11 w-11 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+                aria-label="Close"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2876,62 +4263,123 @@ function CashOverlay({
           {step === 1 && (
             <>
               <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
-                <div className="rounded-2xl p-5 text-center" style={{ background: "var(--gradient-hero)" }}>
+                <div
+                  className="rounded-2xl p-5 text-center"
+                  style={{ background: "var(--gradient-hero)" }}
+                >
                   <div className="text-sm font-medium text-primary-foreground/80">Total Due</div>
                   {orderDiscount > 0 && (
-                    <div className="text-xs line-through text-primary-foreground/50 mb-0.5">${total.toFixed(2)}</div>
+                    <div className="text-xs line-through text-primary-foreground/50 mb-0.5">
+                      ${total.toFixed(2)}
+                    </div>
                   )}
-                  <div className="text-5xl font-black text-primary-foreground">${discountedTotal.toFixed(2)}</div>
+                  <div className="text-5xl font-black text-primary-foreground">
+                    ${discountedTotal.toFixed(2)}
+                  </div>
                   {orderDiscount > 0 && (
-                    <div className="text-xs font-semibold text-white/90 mt-0.5">-${orderDiscount.toFixed(2)} discount</div>
+                    <div className="text-xs font-semibold text-white/90 mt-0.5">
+                      -${orderDiscount.toFixed(2)} discount
+                    </div>
                   )}
                   {selectedCustomer && (
                     <div className="mt-2 text-xs font-black text-primary-foreground/70">
-                      {payMode === "credit" ? "🧾 Credit" : "💵 Cash"} · {selectedCustomer.full_name}
+                      {payMode === "credit" ? "🧾 Credit" : "💵 Cash"} ·{" "}
+                      {selectedCustomer.full_name}
                     </div>
                   )}
-                  {!selectedCustomer && <div className="mt-2 text-xs text-primary-foreground/50">Guest</div>}
+                  {!selectedCustomer && (
+                    <div className="mt-2 text-xs text-primary-foreground/50">Guest</div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Order
+                    </span>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => { if (orderDiscount > 0) { setOrderDiscount(0); setDiscountVal(""); setDiscountOpen(false); } else { setDiscountOpen(v => !v); } }}
+                        onClick={() => {
+                          if (orderDiscount > 0) {
+                            setOrderDiscount(0);
+                            setDiscountVal("");
+                            setDiscountOpen(false);
+                          } else {
+                            setDiscountOpen((v) => !v);
+                          }
+                        }}
                         className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black transition active:scale-95"
-                        style={orderDiscount > 0
-                          ? { background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.4)", color: "#4ade80" }
-                          : { background: "rgba(250,204,21,0.1)", border: "1px solid rgba(250,204,21,0.25)", color: "#facc15" }}>
-                        {orderDiscount > 0 ? `✕ -$${orderDiscount.toFixed(2)}` : <><span className="text-base font-black leading-none">+</span> Discount</>}
+                        style={
+                          orderDiscount > 0
+                            ? {
+                                background: "rgba(34,197,94,0.15)",
+                                border: "1px solid rgba(34,197,94,0.4)",
+                                color: "#4ade80",
+                              }
+                            : {
+                                background: "rgba(250,204,21,0.1)",
+                                border: "1px solid rgba(250,204,21,0.25)",
+                                color: "#facc15",
+                              }
+                        }
+                      >
+                        {orderDiscount > 0 ? (
+                          `✕ -$${orderDiscount.toFixed(2)}`
+                        ) : (
+                          <>
+                            <span className="text-base font-black leading-none">+</span> Discount
+                          </>
+                        )}
                       </button>
-                      <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                      <button
+                        onClick={onClearCart}
+                        className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95"
+                        style={{
+                          background: "rgba(239,68,68,0.1)",
+                          border: "1px solid rgba(239,68,68,0.25)",
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" /> Clear all
                       </button>
                     </div>
                   </div>
                   {discountOpen && orderDiscount === 0 && (
-                    <div className="rounded-xl border border-yellow-500/30 p-3 space-y-2" style={{ background: "oklch(0.18 0.04 80 / 0.5)" }}>
-                      <div className="text-xs font-semibold text-yellow-300/70 uppercase tracking-widest text-center">Order Discount ($)</div>
-                      <div className="rounded-lg border border-yellow-500/20 px-3 py-2 text-center text-xl font-black text-yellow-100" style={{ background: "oklch(0.12 0.02 80)" }}>
+                    <div
+                      className="rounded-xl border border-yellow-500/30 p-3 space-y-2"
+                      style={{ background: "oklch(0.18 0.04 80 / 0.5)" }}
+                    >
+                      <div className="text-xs font-semibold text-yellow-300/70 uppercase tracking-widest text-center">
+                        Order Discount ($)
+                      </div>
+                      <div
+                        className="rounded-lg border border-yellow-500/20 px-3 py-2 text-center text-xl font-black text-yellow-100"
+                        style={{ background: "oklch(0.12 0.02 80)" }}
+                      >
                         {discountVal || "0"}
                       </div>
                       <div className="grid grid-cols-3 gap-1.5">
-                        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                          <button key={k} type="button"
-                            onClick={() => {
-                              if (k === "⌫") setDiscountVal(v => v.slice(0, -1));
-                              else if (k === ".") { if (!discountVal.includes(".")) setDiscountVal(v => v + "."); }
-                              else { const dot = discountVal.indexOf("."); if (dot !== -1 && discountVal.length - dot > 2) return; setDiscountVal(v => v === "0" ? k : v + k); }
-                            }}
-                            className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}>
+                        {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => handleDiscountNumpad(k)}
+                            className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                          >
                             {k}
                           </button>
                         ))}
                       </div>
                       <button
                         className="w-full h-10 rounded-xl font-black text-sm transition active:scale-95"
-                        style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-                        onClick={() => { const d = Math.min(parseFloat(discountVal) || 0, total); setOrderDiscount(d); setDiscountOpen(false); }}>
+                        style={{
+                          background: "var(--gradient-hero)",
+                          color: "var(--primary-foreground)",
+                        }}
+                        onClick={() => {
+                          const d = Math.min(parseFloat(discountVal) || 0, total);
+                          setOrderDiscount(d);
+                          setDiscountOpen(false);
+                        }}
+                      >
                         Apply Discount
                       </button>
                     </div>
@@ -2939,16 +4387,31 @@ function CashOverlay({
                   {cart.map((i) => (
                     <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
                       <div className="h-20 w-14 sm:h-28 sm:w-20 md:h-32 md:w-24 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-                        {i.image_url ? <img src={productImageUrl(i.image_url)!} alt={i.name} className="h-full w-full object-cover" />
-                          : i.id.startsWith("shot-") ? <span className="text-2xl">🥃</span>
-                          : <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>}
+                        {i.image_url ? (
+                          <img
+                            src={productImageUrl(i.image_url)!}
+                            alt={i.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : i.id.startsWith("shot-") ? (
+                          <span className="text-2xl">🥃</span>
+                        ) : (
+                          <span className="text-2xl">{categoryIcon(i.category ?? "drinks")}</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col gap-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
                           <div className="flex flex-col items-end shrink-0">
-                            <span className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
-                            <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
+                            <span
+                              className="font-black text-base"
+                              style={{ color: "var(--primary)" }}
+                            >
+                              ${(i.qty * Number(i.price)).toFixed(2)}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              ${Number(i.price).toFixed(2)} each
+                            </span>
                           </div>
                         </div>
                         <CashItemActions item={i} onDec={onDec} onAdd={onAdd} onRemove={onRemove} />
@@ -2958,8 +4421,16 @@ function CashOverlay({
                 </div>
               </div>
               <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-                <Button variant="outline" className="flex-1 h-12" onClick={onClose}>{t("cancel", "Cancel")}</Button>
-                <Button className="flex-1 h-12 font-black text-base" onClick={() => setStep(2)} style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>{t("proceed", "Proceed")}</Button>
+                <Button variant="outline" className="flex-1 h-12" onClick={onClose}>
+                  {t("cancel", "Cancel")}
+                </Button>
+                <Button
+                  className="flex-1 h-12 font-black text-base"
+                  onClick={() => setStep(2)}
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
+                  {t("proceed", "Proceed")}
+                </Button>
               </div>
             </>
           )}
@@ -2969,36 +4440,69 @@ function CashOverlay({
               <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
                 {payMode === "credit" && selectedCustomer ? (
                   /* Credit — no cash collection needed, confirm directly */
-                  <div className="rounded-2xl p-6 text-center space-y-2" style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}>
-                    <div className="text-sm font-semibold" style={{ color: "var(--primary)" }}>Charging to</div>
-                    <div className="text-2xl font-black" style={{ color: "var(--primary)" }}>{selectedCustomer.full_name}</div>
-                    <div className="text-4xl font-black" style={{ color: "var(--primary)" }}>${discountedTotal.toFixed(2)}</div>
+                  <div
+                    className="rounded-2xl p-6 text-center space-y-2"
+                    style={{
+                      background: "oklch(0.18 0.04 45)",
+                      border: "2px solid var(--primary)",
+                    }}
+                  >
+                    <div className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
+                      Charging to
+                    </div>
+                    <div className="text-2xl font-black" style={{ color: "var(--primary)" }}>
+                      {selectedCustomer.full_name}
+                    </div>
+                    <div className="text-4xl font-black" style={{ color: "var(--primary)" }}>
+                      ${discountedTotal.toFixed(2)}
+                    </div>
                     {orderDiscount > 0 && (
-                      <div className="text-xs text-green-400 font-semibold">-${orderDiscount.toFixed(2)} discount applied</div>
+                      <div className="text-xs text-green-400 font-semibold">
+                        -${orderDiscount.toFixed(2)} discount applied
+                      </div>
                     )}
                     {Number(selectedCustomer.balance_owed) > 0 && (
-                      <div className="text-sm text-red-400 font-semibold">Current balance: ${Number(selectedCustomer.balance_owed).toFixed(2)}</div>
+                      <div className="text-sm text-red-400 font-semibold">
+                        Current balance: ${Number(selectedCustomer.balance_owed).toFixed(2)}
+                      </div>
                     )}
                   </div>
                 ) : (
                   <>
-                    <div className="rounded-xl border border-green-500/30 px-4 py-3 text-center" style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}>
-                      <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">Amount Received</div>
+                    <div
+                      className="rounded-xl border border-green-500/30 px-4 py-3 text-center"
+                      style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}
+                    >
+                      <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">
+                        Amount Received
+                      </div>
                       <div className="text-3xl font-black text-green-100">${paid || "0.00"}</div>
                     </div>
-                    <div className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}>
-                      <div className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}>{enough ? "Change to Give" : "Short by"}</div>
-                      <div className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}>
-                        ${Number(paid) === 0 ? "0.00" : (enough ? change : discountedTotal - Number(paid)).toFixed(2)}
+                    <div
+                      className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}
+                    >
+                      <div
+                        className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}
+                      >
+                        {enough ? "Change to Give" : "Short by"}
+                      </div>
+                      <div
+                        className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}
+                      >
+                        $
+                        {Number(paid) === 0
+                          ? "0.00"
+                          : (enough ? change : discountedTotal - Number(paid)).toFixed(2)}
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                        <button key={k} type="button" onClick={() => {
-                          if (k === "⌫") setPaid((v) => v.slice(0, -1));
-                          else if (k === ".") { if (!paid.includes(".")) setPaid((v) => v + "."); }
-                          else { const dotIdx = paid.indexOf("."); if (dotIdx !== -1 && paid.length - dotIdx > 2) return; setPaid((v) => (v === "0" ? k : v + k)); }
-                        }} className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`}>
+                      {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => handlePaidNumpad(k)}
+                          className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                        >
                           {k}
                         </button>
                       ))}
@@ -3007,12 +4511,29 @@ function CashOverlay({
                 )}
               </div>
               <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-                <Button variant="outline" className="flex-1 h-12" onClick={() => { setStep(1); setPaid(""); }}>{t("back", "Back")}</Button>
-                <Button className="flex-1 h-12 font-black text-base"
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12"
+                  onClick={() => {
+                    setStep(1);
+                    setPaid("");
+                  }}
+                >
+                  {t("back", "Back")}
+                </Button>
+                <Button
+                  className="flex-1 h-12 font-black text-base"
                   disabled={(payMode === "credit" ? false : !enough) || busy}
                   onClick={submit}
-                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : payMode === "credit" ? "Confirm Credit" : t("confirm_sale", "Confirm Sale")}
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : payMode === "credit" ? (
+                    "Confirm Credit"
+                  ) : (
+                    t("confirm_sale", "Confirm Sale")
+                  )}
                 </Button>
               </div>
             </>
@@ -3021,39 +4542,62 @@ function CashOverlay({
 
         {/* ── Right panel: payment type + customer list ── */}
         {step === 1 && (
-          <div className={`
+          <div
+            className={`
             w-full md:w-64 flex flex-col shrink-0
             md:static
-            ${showRightPanel
-              ? "absolute inset-0 z-[60] rounded-3xl"
-              : "hidden md:flex"}
-          `} style={{ background: "oklch(0.15 0.02 60)", border: "3px solid #f97316", borderRadius: "1rem" }}>
+            ${showRightPanel ? "absolute inset-0 z-[60] rounded-3xl" : "hidden md:flex"}
+          `}
+            style={{
+              background: "oklch(0.15 0.02 60)",
+              border: "3px solid #f97316",
+              borderRadius: "1rem",
+            }}
+          >
             {/* Done button — mobile only, closes the panel */}
             <div className="md:hidden flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
               <span className="text-sm font-black text-white/60">Customer / Payment</span>
-              <button onClick={() => setShowRightPanel(false)}
+              <button
+                onClick={() => setShowRightPanel(false)}
                 className="h-9 px-5 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
-                style={{ background: "var(--gradient-hero)" }}>
+                style={{ background: "var(--gradient-hero)" }}
+              >
                 Done
               </button>
             </div>
             {/* Cash / Credit big square buttons */}
             <div className="grid grid-cols-2 gap-3 px-4 py-3 shrink-0">
               <button
-                onClick={() => { setPayMode(payMode === "cash" ? null : "cash"); if (payMode === "credit") setSelectedCustomer(null); }}
+                onClick={() => {
+                  setPayMode(payMode === "cash" ? null : "cash");
+                  if (payMode === "credit") setSelectedCustomer(null);
+                }}
                 className="h-20 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1.5 transition active:scale-95"
-                style={payMode === "cash"
-                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                  : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
+                style={
+                  payMode === "cash"
+                    ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                    : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }
+                }
+              >
                 <span className="text-2xl">💵</span>
                 Cash
               </button>
               <button
-                onClick={() => { setPayMode(payMode === "credit" ? null : "credit"); if (payMode === "cash") setSelectedCustomer(null); }}
+                onClick={() => {
+                  setPayMode(payMode === "credit" ? null : "credit");
+                  if (payMode === "cash") setSelectedCustomer(null);
+                }}
                 className="h-20 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1.5 transition active:scale-95"
-                style={payMode === "credit"
-                  ? { background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }
-                  : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }}>
+                style={
+                  payMode === "credit"
+                    ? {
+                        background: "oklch(0.22 0.04 45)",
+                        border: "2px solid var(--primary)",
+                        color: "var(--primary)",
+                      }
+                    : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.6)" }
+                }
+              >
                 <span className="text-2xl">🧾</span>
                 Credit
               </button>
@@ -3062,26 +4606,43 @@ function CashOverlay({
             {payMode && (
               <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 min-h-0 pt-1">
                 {loadingCustomers ? (
-                  <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
                 ) : customers.length === 0 ? (
                   <p className="text-xs text-white/30 text-center py-6">No customers yet</p>
                 ) : (
                   customers.map((c) => (
-                    <button key={c.id}
+                    <button
+                      key={c.id}
                       onClick={() => setSelectedCustomer(selectedCustomer?.id === c.id ? null : c)}
                       className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left transition active:scale-[0.98] min-h-[60px]"
-                      style={selectedCustomer?.id === c.id
-                        ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                        : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }}>
-                      <span className={`text-sm font-black leading-tight flex-1 pr-3 ${selectedCustomer?.id === c.id ? "text-black" : ""}`}>{c.full_name}</span>
-                      <span className={`text-xs font-black shrink-0 ${
+                      style={
                         selectedCustomer?.id === c.id
-                          ? "text-black"
-                          : Number(c.balance_owed) > 0
-                            ? "text-red-400"
-                            : "text-amber-700"
-                      }`}>
-                        {Number(c.balance_owed) > 0 ? `-$${Number(c.balance_owed).toFixed(2)}` : "$0.00"}
+                          ? {
+                              background: "var(--gradient-hero)",
+                              color: "var(--primary-foreground)",
+                            }
+                          : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }
+                      }
+                    >
+                      <span
+                        className={`text-sm font-black leading-tight flex-1 pr-3 ${selectedCustomer?.id === c.id ? "text-black" : ""}`}
+                      >
+                        {c.full_name}
+                      </span>
+                      <span
+                        className={`text-xs font-black shrink-0 ${
+                          selectedCustomer?.id === c.id
+                            ? "text-black"
+                            : Number(c.balance_owed) > 0
+                              ? "text-red-400"
+                              : "text-amber-700"
+                        }`}
+                      >
+                        {Number(c.balance_owed) > 0
+                          ? `-$${Number(c.balance_owed).toFixed(2)}`
+                          : "$0.00"}
                       </span>
                     </button>
                   ))
@@ -3090,7 +4651,13 @@ function CashOverlay({
             )}
             {!payMode && (
               <div className="flex-1 flex items-center justify-center px-4 pb-4 min-h-[80px]">
-                <p className="text-xs text-white/30 text-center">Select Cash or Credit<br/>to assign a customer,<br/>or Proceed as Guest</p>
+                <p className="text-xs text-white/30 text-center">
+                  Select Cash or Credit
+                  <br />
+                  to assign a customer,
+                  <br />
+                  or Proceed as Guest
+                </p>
               </div>
             )}
           </div>
@@ -3100,28 +4667,48 @@ function CashOverlay({
   );
 }
 
-function SaleSuccessBanner({ paid, change, onOk }: { paid: number; change: number; onOk: () => void }) {
+function SaleSuccessBanner({
+  paid,
+  change,
+  onOk,
+}: {
+  paid: number;
+  change: number;
+  onOk: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-green-500/50 shadow-2xl text-center" style={{ background: "oklch(0.18 0.07 145)" }}>
+      <div
+        className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-green-500/50 shadow-2xl text-center"
+        style={{ background: "oklch(0.18 0.07 145)" }}
+      >
         <div className="pt-10 pb-6 flex justify-center">
           <div className="h-24 w-24 rounded-full bg-green-500/20 border-2 border-green-500/40 flex items-center justify-center">
             <CheckCircle2 className="h-14 w-14 text-green-400" strokeWidth={1.5} />
           </div>
         </div>
         <div className="px-8 pb-2">
-          <div className="text-xs font-semibold uppercase tracking-widest text-orange-400/80 mb-1">Customer Paid</div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-orange-400/80 mb-1">
+            Customer Paid
+          </div>
           <div className="text-3xl font-black text-orange-300">${paid.toFixed(2)}</div>
         </div>
         <div className="mx-8 my-5 border-t border-green-500/20" />
         <div className="px-8 pb-8">
           <div className="rounded-2xl bg-green-500/20 border border-green-500/30 px-6 py-5">
-            <div className="text-xs font-semibold uppercase tracking-widest text-green-300/60 mb-2">Change to Give</div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-green-300/60 mb-2">
+              Change to Give
+            </div>
             <div className="text-6xl font-black text-green-300">${change.toFixed(2)}</div>
           </div>
         </div>
         <div className="px-8 pb-10">
-          <button onClick={onOk} className="w-full h-14 rounded-2xl font-black text-xl text-white bg-green-600 hover:bg-green-500 active:scale-95 transition shadow-lg">OK</button>
+          <button
+            onClick={onOk}
+            className="w-full h-14 rounded-2xl font-black text-xl text-white bg-green-600 hover:bg-green-500 active:scale-95 transition shadow-lg"
+          >
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -3131,8 +4718,11 @@ function SaleSuccessBanner({ paid, change, onOk }: { paid: number; change: numbe
 // ΓöÇΓöÇ Credit Sale Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Step 1: Order review ΓåÆ Step 2: Pick/create credit account ΓåÆ confirm
 type CreditAccount = {
-  id: string; full_name: string; contact_number: string | null;
-  balance_owed: number; status: string;
+  id: string;
+  full_name: string;
+  contact_number: string | null;
+  balance_owed: number;
+  status: string;
 };
 
 // ── Cash Customer Overlay ─────────────────────────────────────────────────────
@@ -3140,7 +4730,15 @@ type CreditAccount = {
 // Records a credit_charge + immediate credit_payment so the transaction history
 // shows the purchase while balance stays at $0 (cleared).
 function CashCustomerOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
+  total,
+  cart,
+  onDec,
+  onAdd,
+  onRemove,
+  onClearCart,
+  onClose,
+  onSuccess,
+  ownerId,
 }: {
   total: number;
   cart: CartItem[];
@@ -3165,13 +4763,45 @@ function CashCustomerOverlay({
   // Order-level discount (mirrors CashOverlay)
   const [orderDiscount, setOrderDiscount] = useState(0);
 
+  const handlePaidNumpad = (k: string) => {
+    if (k === "⌫") setPaid((v) => v.slice(0, -1));
+    else if (k === ".") {
+      if (!paid.includes(".")) setPaid((v) => v + ".");
+    } else {
+      const dotIdx = paid.indexOf(".");
+      if (dotIdx !== -1 && paid.length - dotIdx > 2) return;
+      setPaid((v) => (v === "0" ? k : v + k));
+    }
+  };
+
+  useEffect(() => {
+    if (step !== "pay" || !selectedAccount) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handlePaidNumpad(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handlePaidNumpad("⌫");
+      } else if (e.key === ".") {
+        e.preventDefault();
+        handlePaidNumpad(".");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [step, selectedAccount, paid]);
+
   // Create account form
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");
   const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
   const [newIdNumber, setNewIdNumber] = useState("");
-  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(null);
-  const toggleNew = (f: "name" | "idNumber" | "contact") => setNewActiveField((cur) => cur === f ? null : f);
+  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(
+    null,
+  );
+  const toggleNew = (f: "name" | "idNumber" | "contact") =>
+    setNewActiveField((cur) => (cur === f ? null : f));
 
   const change = Math.max(0, (Number(paid) || 0) - total);
   const enough = (Number(paid) || 0) >= total;
@@ -3195,7 +4825,11 @@ function CashCustomerOverlay({
   const recordShotPack = async (groupId: string) => {
     const shotItems = cart.filter((c) => (c as any)._bottle_id);
     for (const shot of shotItems) {
-      const payload = { p_bottle_id: (shot as any)._bottle_id, p_qty: shot.qty, p_revenue: shot.qty * Number(shot.price) };
+      const payload = {
+        p_bottle_id: (shot as any)._bottle_id,
+        p_qty: shot.qty,
+        p_revenue: shot.qty * Number(shot.price),
+      };
       if (isOnline) {
         await supabase.rpc("record_shot", payload);
       } else {
@@ -3204,7 +4838,11 @@ function CashCustomerOverlay({
     }
     const packItems = cart.filter((c) => (c as any)._pack_id);
     for (const unit of packItems) {
-      const payload = { p_pack_id: (unit as any)._pack_id, p_qty: (unit as any)._pack_units ?? unit.qty, p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price) };
+      const payload = {
+        p_pack_id: (unit as any)._pack_id,
+        p_qty: (unit as any)._pack_units ?? unit.qty,
+        p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
+      };
       if (isOnline) {
         await supabase.rpc("record_pack_unit", payload);
       } else {
@@ -3223,13 +4861,26 @@ function CashCustomerOverlay({
     const orderPayload = {
       owner_id: ownerId,
       cashier_id: profile.id,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null, ...(c._discount ? { discount: c._discount, original_price: c._originalPrice ?? c.price } : {}) })),
+      items: cart.map((c) => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        qty: c.qty,
+        units_consumed: (c as any)._units_consumed ?? null,
+        ...(c._discount
+          ? { discount: c._discount, original_price: c._originalPrice ?? c.price }
+          : {}),
+      })),
       total,
       paid: paidNum,
       change_given: changeNum,
-      ...(orderDiscount > 0 ? { discount_amount: orderDiscount, original_total: total + orderDiscount } : {}),
+      ...(orderDiscount > 0
+        ? { discount_amount: orderDiscount, original_total: total + orderDiscount }
+        : {}),
     };
-    const stockItems = cart.filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-")).map((c) => ({ id: c.id, qty: c.qty }));
+    const stockItems = cart
+      .filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-"))
+      .map((c) => ({ id: c.id, qty: c.qty }));
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const creditTxPayload = {
       credit_account_id: account.id,
@@ -3237,7 +4888,13 @@ function CashCustomerOverlay({
       cashier_id: profile.id,
       type: "charge",
       amount: total,
-      items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty, units_consumed: (c as any)._units_consumed ?? null })),
+      items: cart.map((c) => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        qty: c.qty,
+        units_consumed: (c as any)._units_consumed ?? null,
+      })),
       note: "[CASH] " + itemsDesc,
     };
 
@@ -3255,7 +4912,11 @@ function CashCustomerOverlay({
 
     // 1. Normal cash order (triggers cashier wallet update)
     const { error: orderErr } = await supabase.from("orders").insert(orderPayload);
-    if (orderErr) { setBusy(false); toast.error(orderErr.message); return; }
+    if (orderErr) {
+      setBusy(false);
+      toast.error(orderErr.message);
+      return;
+    }
 
     // 2. Stock decrement
     await supabase.rpc("decrement_stock_item", { p_items: stockItems });
@@ -3280,12 +4941,18 @@ function CashCustomerOverlay({
         owner_id: ownerId,
         full_name: newName.trim(),
         contact_number: newContact.trim() ? "868-" + newContact.trim() : null,
-        id_number: newIdNumber.trim() ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}` : null,
+        id_number: newIdNumber.trim()
+          ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}`
+          : null,
         status: "closed",
       })
       .select()
       .single();
-    if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
+    if (createErr || !acc) {
+      setBusy(false);
+      toast.error(createErr?.message ?? "Failed to create account");
+      return;
+    }
     setBusy(false);
     setSelectedAccount(acc as CreditAccount);
     setStep("pay");
@@ -3293,10 +4960,18 @@ function CashCustomerOverlay({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden border border-border shadow-2xl" style={{ background: "var(--gradient-card)" }}>
+      <div
+        className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}
+      >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <h2 className="text-xl font-black">Cash — Customer</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"><X className="h-4 w-4" /></button>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Step: pick customer */}
@@ -3305,21 +4980,31 @@ function CashCustomerOverlay({
             <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
               <p className="text-sm text-muted-foreground">Select the customer's account</p>
               {loadingAccounts ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
               ) : accounts.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8 text-sm">No customers yet</p>
               ) : (
                 <div className="space-y-2">
                   {accounts.map((a) => (
-                    <button key={a.id} onClick={() => setConfirmPick(a)} disabled={busy}
+                    <button
+                      key={a.id}
+                      onClick={() => setConfirmPick(a)}
+                      disabled={busy}
                       className="w-full flex items-center justify-between p-4 rounded-2xl border border-border hover:border-primary/50 active:scale-[0.98] transition text-left disabled:opacity-50"
-                      style={{ background: "var(--gradient-card)" }}>
+                      style={{ background: "var(--gradient-card)" }}
+                    >
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-sm">{a.full_name}</p>
-                        {a.contact_number && <p className="text-xs text-muted-foreground">{a.contact_number}</p>}
+                        {a.contact_number && (
+                          <p className="text-xs text-muted-foreground">{a.contact_number}</p>
+                        )}
                       </div>
                       {Number(a.balance_owed) > 0 && (
-                        <span className="text-xs font-black text-red-400 shrink-0 ml-2">owes ${Number(a.balance_owed).toFixed(2)}</span>
+                        <span className="text-xs font-black text-red-400 shrink-0 ml-2">
+                          owes ${Number(a.balance_owed).toFixed(2)}
+                        </span>
                       )}
                     </button>
                   ))}
@@ -3327,8 +5012,16 @@ function CashCustomerOverlay({
               )}
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>Cancel</Button>
-              <Button className="h-12 px-5 font-black text-sm" onClick={() => setStep("create")} style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>+ New Customer</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                className="h-12 px-5 font-black text-sm"
+                onClick={() => setStep("create")}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                + New Customer
+              </Button>
             </div>
           </>
         )}
@@ -3336,14 +5029,32 @@ function CashCustomerOverlay({
         {/* Confirm customer pick → go to pay step */}
         {confirmPick && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl" style={{ background: "var(--gradient-card)" }}>
+            <div
+              className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl"
+              style={{ background: "var(--gradient-card)" }}
+            >
               <h3 className="font-black text-2xl">Confirm Customer?</h3>
               <p className="font-black text-3xl">{confirmPick.full_name}</p>
-              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
+              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>
+                ${total.toFixed(2)}
+              </p>
               <div className="flex gap-3 pt-4">
-                <Button variant="outline" className="flex-1 h-16 font-black text-base" onClick={() => setConfirmPick(null)}>Cancel</Button>
-                <Button className="flex-1 h-16 font-black text-base" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-                  onClick={() => { setSelectedAccount(confirmPick); setConfirmPick(null); setStep("pay"); }}>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-16 font-black text-base"
+                  onClick={() => setConfirmPick(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 h-16 font-black text-base"
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                  onClick={() => {
+                    setSelectedAccount(confirmPick);
+                    setConfirmPick(null);
+                    setStep("pay");
+                  }}
+                >
                   Yes, Select
                 </Button>
               </div>
@@ -3358,42 +5069,98 @@ function CashCustomerOverlay({
               <p className="text-sm text-muted-foreground">Create a new customer account</p>
               <div>
                 <Label>Full Name *</Label>
-                <button type="button" onClick={() => toggleNew("name")} className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-                  <span className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}>{newName || "e.g. John Smith"}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleNew("name")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                >
+                  <span
+                    className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {newName || "e.g. John Smith"}
+                  </span>
                 </button>
-                {newActiveField === "name" && <CreditAlphaKeyboard value={newName} onChange={setNewName} onDone={() => setNewActiveField(null)} />}
+                {newActiveField === "name" && (
+                  <CreditAlphaKeyboard
+                    value={newName}
+                    onChange={setNewName}
+                    onDone={() => setNewActiveField(null)}
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="cash-new-idtype">ID Type</Label>
-                <select id="cash-new-idtype" value={newIdType} onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
+                <select
+                  id="cash-new-idtype"
+                  value={newIdType}
+                  onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                >
                   <option value="drivers_permit">Driver's Permit</option>
                   <option value="national_id">National ID</option>
                 </select>
               </div>
               <div>
                 <Label>ID Number</Label>
-                <button type="button" onClick={() => toggleNew("idNumber")} className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-                  <span className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}>{newIdNumber || "e.g. 00000000"}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleNew("idNumber")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                >
+                  <span
+                    className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {newIdNumber || "e.g. 00000000"}
+                  </span>
                 </button>
-                {newActiveField === "idNumber" && <CreditNumPad value={newIdNumber} onChange={setNewIdNumber} maxLen={20} onDone={() => setNewActiveField(null)} />}
+                {newActiveField === "idNumber" && (
+                  <CreditNumPad
+                    value={newIdNumber}
+                    onChange={setNewIdNumber}
+                    maxLen={20}
+                    onDone={() => setNewActiveField(null)}
+                  />
+                )}
               </div>
               <div>
                 <Label>Contact Number</Label>
                 <div className="flex items-center mt-1">
-                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-                  <button type="button" onClick={() => toggleNew("contact")} className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
-                    <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>{newContact || "XXX-XXXX"}</span>
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
+                    868
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleNew("contact")}
+                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
+                  >
+                    <span
+                      className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}
+                    >
+                      {newContact || "XXX-XXXX"}
+                    </span>
                   </button>
                 </div>
-                {newActiveField === "contact" && <CreditContactPad value={newContact} onChange={setNewContact} onDone={() => setNewActiveField(null)} />}
+                {newActiveField === "contact" && (
+                  <CreditContactPad
+                    value={newContact}
+                    onChange={setNewContact}
+                    onDone={() => setNewActiveField(null)}
+                  />
+                )}
               </div>
-              <Button type="submit" disabled={busy || !newName.trim()} className="w-full h-12 font-black text-base" style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              <Button
+                type="submit"
+                disabled={busy || !newName.trim()}
+                className="w-full h-12 font-black text-base"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create & Continue"}
               </Button>
             </form>
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
-              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← Back to Customers</Button>
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>
+                ← Back to Customers
+              </Button>
             </div>
           </>
         )}
@@ -3402,37 +5169,72 @@ function CashCustomerOverlay({
         {step === "pay" && selectedAccount && (
           <>
             <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
-              <div className="rounded-xl px-4 py-2 text-center" style={{ background: "var(--gradient-hero)" }}>
+              <div
+                className="rounded-xl px-4 py-2 text-center"
+                style={{ background: "var(--gradient-hero)" }}
+              >
                 <div className="text-xs font-semibold text-primary-foreground/70">Customer</div>
-                <div className="font-black text-lg text-primary-foreground">{selectedAccount.full_name}</div>
+                <div className="font-black text-lg text-primary-foreground">
+                  {selectedAccount.full_name}
+                </div>
               </div>
-              <div className="rounded-xl border border-green-500/30 px-4 py-3 text-center" style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}>
-                <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">Amount Received</div>
+              <div
+                className="rounded-xl border border-green-500/30 px-4 py-3 text-center"
+                style={{ background: "oklch(0.22 0.06 145 / 0.4)" }}
+              >
+                <div className="text-xs font-semibold text-green-300/70 uppercase tracking-widest mb-1">
+                  Amount Received
+                </div>
                 <div className="text-3xl font-black text-green-100">${paid || "0.00"}</div>
               </div>
-              <div className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}>
-                <div className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}>{enough ? "Change to Give" : "Short by"}</div>
-                <div className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}>
-                  ${Number(paid) === 0 ? "0.00" : (enough ? change : total - Number(paid)).toFixed(2)}
+              <div
+                className={`rounded-xl px-4 py-4 text-center border transition-all ${Number(paid) === 0 ? "opacity-40 bg-green-500/10 border-green-500/20" : enough ? "bg-green-500/25 border-green-500/40" : "bg-red-500/25 border-red-500/40"}`}
+              >
+                <div
+                  className={`text-xs font-semibold uppercase tracking-widest mb-1 ${enough ? "text-green-300/70" : "text-red-300/70"}`}
+                >
+                  {enough ? "Change to Give" : "Short by"}
+                </div>
+                <div
+                  className={`text-5xl font-black ${enough ? "text-green-300" : "text-red-400"}`}
+                >
+                  $
+                  {Number(paid) === 0
+                    ? "0.00"
+                    : (enough ? change : total - Number(paid)).toFixed(2)}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map((k) => (
-                  <button key={k} type="button" onClick={() => {
-                    if (k === "⌫") setPaid((v) => v.slice(0, -1));
-                    else if (k === ".") { if (!paid.includes(".")) setPaid((v) => v + "."); }
-                    else { const dotIdx = paid.indexOf("."); if (dotIdx !== -1 && paid.length - dotIdx > 2) return; setPaid((v) => (v === "0" ? k : v + k)); }
-                  }}
-                  className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`}>
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => handlePaidNumpad(k)}
+                    className={`h-14 rounded-2xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive hover:bg-destructive/30" : "bg-muted hover:bg-muted/70 text-foreground"}`}
+                  >
                     {k}
                   </button>
                 ))}
               </div>
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => { setStep("pick"); setSelectedAccount(null); setPaid(""); }}>← Back</Button>
-              <Button className="flex-1 h-12 font-black text-base" disabled={!enough || busy} onClick={() => submitCashOrder(selectedAccount)}
-                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+              <Button
+                variant="outline"
+                className="flex-1 h-12"
+                onClick={() => {
+                  setStep("pick");
+                  setSelectedAccount(null);
+                  setPaid("");
+                }}
+              >
+                ← Back
+              </Button>
+              <Button
+                className="flex-1 h-12 font-black text-base"
+                disabled={!enough || busy}
+                onClick={() => submitCashOrder(selectedAccount)}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Sale"}
               </Button>
             </div>
@@ -3444,7 +5246,15 @@ function CashCustomerOverlay({
 }
 
 function CreditSaleOverlay({
-  total, cart, onDec, onAdd, onRemove, onClearCart, onClose, onSuccess, ownerId,
+  total,
+  cart,
+  onDec,
+  onAdd,
+  onRemove,
+  onClearCart,
+  onClose,
+  onSuccess,
+  ownerId,
 }: {
   total: number;
   cart: CartItem[];
@@ -3471,8 +5281,11 @@ function CreditSaleOverlay({
   const [newContactPadOpen, setNewContactPadOpen] = useState(false);
   const [newIdType, setNewIdType] = useState<"drivers_permit" | "national_id">("national_id");
   const [newIdNumber, setNewIdNumber] = useState("");
-  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(null);
-  const toggleNew = (f: "name" | "idNumber" | "contact") => setNewActiveField((cur) => cur === f ? null : f);
+  const [newActiveField, setNewActiveField] = useState<null | "name" | "idNumber" | "contact">(
+    null,
+  );
+  const toggleNew = (f: "name" | "idNumber" | "contact") =>
+    setNewActiveField((cur) => (cur === f ? null : f));
 
   const loadAccounts = async () => {
     if (!ownerId) return;
@@ -3499,8 +5312,8 @@ function CreditSaleOverlay({
     for (const shot of shotItems) {
       const payload = {
         p_bottle_id: (shot as any)._bottle_id,
-        p_qty:       shot.qty,
-        p_revenue:   shot.qty * Number(shot.price),
+        p_qty: shot.qty,
+        p_revenue: shot.qty * Number(shot.price),
       };
       if (isOnline) {
         const { error } = await supabase.rpc("record_shot", payload);
@@ -3513,7 +5326,7 @@ function CreditSaleOverlay({
     for (const unit of packItems) {
       const payload = {
         p_pack_id: (unit as any)._pack_id,
-        p_qty:     (unit as any)._pack_units ?? unit.qty,
+        p_qty: (unit as any)._pack_units ?? unit.qty,
         p_revenue: ((unit as any)._pack_units ?? unit.qty) * Number(unit.price),
       };
       if (isOnline) {
@@ -3534,7 +5347,13 @@ function CreditSaleOverlay({
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
       p_amount: total,
-      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: c.cost_price ?? 0, qty: c.qty })),
+      p_items: cart.map((c) => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        cost_price: c.cost_price ?? 0,
+        qty: c.qty,
+      })),
       p_note: itemsDesc,
     };
     if (!isOnline) {
@@ -3546,7 +5365,11 @@ function CreditSaleOverlay({
       return;
     }
     const { error } = await supabase.rpc("record_credit_charge", creditPayload);
-    if (error) { setBusy(false); toast.error(error.message); return; }
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
     await recordShotPackForCredit(groupId);
     setBusy(false);
     toast.success(`Charged $${total.toFixed(2)} to ${account.full_name}`);
@@ -3569,22 +5392,38 @@ function CreditSaleOverlay({
         owner_id: ownerId,
         full_name: newName.trim(),
         contact_number: newContact.trim() ? "868-" + newContact.trim() : null,
-        id_number: newIdNumber.trim() ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}` : null,
+        id_number: newIdNumber.trim()
+          ? `${newIdType === "drivers_permit" ? "DP" : "NID"}: ${newIdNumber.trim()}`
+          : null,
         status: "closed",
       })
       .select()
       .single();
-    if (createErr || !acc) { setBusy(false); toast.error(createErr?.message ?? "Failed to create account"); return; }
+    if (createErr || !acc) {
+      setBusy(false);
+      toast.error(createErr?.message ?? "Failed to create account");
+      return;
+    }
     const groupId = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const itemsDesc = cart.map((c) => `${c.qty}x ${c.name}`).join(", ");
     const { error: chargeErr } = await supabase.rpc("record_credit_charge", {
       p_credit_account_id: acc.id,
       p_cashier_id: profile.id,
       p_amount: total,
-      p_items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, cost_price: c.cost_price ?? 0, qty: c.qty })),
+      p_items: cart.map((c) => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        cost_price: c.cost_price ?? 0,
+        qty: c.qty,
+      })),
       p_note: itemsDesc,
     });
-    if (chargeErr) { setBusy(false); toast.error(chargeErr.message); return; }
+    if (chargeErr) {
+      setBusy(false);
+      toast.error(chargeErr.message);
+      return;
+    }
     await recordShotPackForCredit(groupId);
     setBusy(false);
     toast.success(`Account created & $${total.toFixed(2)} charged to ${newName.trim()}`);
@@ -3599,8 +5438,13 @@ function CreditSaleOverlay({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-xl font-black" style={{ color: "var(--primary)" }}>{t("credit_order", "Credit Order")}</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+          <h2 className="text-xl font-black" style={{ color: "var(--primary)" }}>
+            {t("credit_order", "Credit Order")}
+          </h2>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -3610,16 +5454,32 @@ function CreditSaleOverlay({
           <>
             <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
               {/* Total banner — brown/orange theme */}
-              <div className="rounded-2xl p-5 text-center" style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}>
-                <div className="text-sm font-medium" style={{ color: "var(--primary)" }}>Total to Credit</div>
-                <div className="text-5xl font-black" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</div>
+              <div
+                className="rounded-2xl p-5 text-center"
+                style={{ background: "oklch(0.18 0.04 45)", border: "2px solid var(--primary)" }}
+              >
+                <div className="text-sm font-medium" style={{ color: "var(--primary)" }}>
+                  Total to Credit
+                </div>
+                <div className="text-5xl font-black" style={{ color: "var(--primary)" }}>
+                  ${total.toFixed(2)}
+                </div>
               </div>
 
               {/* Order items — same layout as Cash Order */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Order</span>
-                  <button onClick={onClearCart} className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Order
+                  </span>
+                  <button
+                    onClick={onClearCart}
+                    className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-black text-destructive transition active:scale-95"
+                    style={{
+                      background: "rgba(239,68,68,0.1)",
+                      border: "1px solid rgba(239,68,68,0.25)",
+                    }}
+                  >
                     <Trash2 className="h-4 w-4" /> Clear all
                   </button>
                 </div>
@@ -3627,7 +5487,11 @@ function CreditSaleOverlay({
                   <div key={i.id} className="flex gap-3 p-3 rounded-xl bg-background/50">
                     <div className="h-20 w-14 shrink-0 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
                       {i.image_url ? (
-                        <img src={productImageUrl(i.image_url)!} alt={i.name} className="h-full w-full object-cover" />
+                        <img
+                          src={productImageUrl(i.image_url)!}
+                          alt={i.name}
+                          className="h-full w-full object-cover"
+                        />
                       ) : i.id.startsWith("shot-") ? (
                         <span className="text-2xl">🥃</span>
                       ) : (
@@ -3639,28 +5503,36 @@ function CreditSaleOverlay({
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-black text-sm leading-tight flex-1">{i.name}</div>
                         <div className="flex flex-col items-end shrink-0">
-                          <span className="font-black text-base" style={{ color: "var(--primary)" }}>${(i.qty * Number(i.price)).toFixed(2)}</span>
-                          <span className="text-[11px] text-muted-foreground">${Number(i.price).toFixed(2)} each</span>
+                          <span
+                            className="font-black text-base"
+                            style={{ color: "var(--primary)" }}
+                          >
+                            ${(i.qty * Number(i.price)).toFixed(2)}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            ${Number(i.price).toFixed(2)} each
+                          </span>
                         </div>
                       </div>
                       {/* Action bar: − qty + X */}
-                      <CashItemActions
-                        item={i}
-                        onDec={onDec}
-                        onAdd={onAdd}
-                        onRemove={onRemove}
-                      />
+                      <CashItemActions item={i} onDec={onDec} onAdd={onAdd} onRemove={onRemove} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>{t("cancel", "Cancel")}</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={onClose}>
+                {t("cancel", "Cancel")}
+              </Button>
               <Button
                 className="flex-1 h-12 font-black text-base"
                 onClick={handleProceed}
-                style={{ background: "oklch(0.22 0.04 45)", border: "2px solid var(--primary)", color: "var(--primary)" }}
+                style={{
+                  background: "oklch(0.22 0.04 45)",
+                  border: "2px solid var(--primary)",
+                  color: "var(--primary)",
+                }}
               >
                 {t("proceed", "Proceed")}
               </Button>
@@ -3691,10 +5563,14 @@ function CreditSaleOverlay({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-sm">{a.full_name}</p>
-                        {a.contact_number && <p className="text-xs text-muted-foreground">{a.contact_number}</p>}
+                        {a.contact_number && (
+                          <p className="text-xs text-muted-foreground">{a.contact_number}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className={`text-sm font-black ${Number(a.balance_owed) > 0 ? "text-red-400" : "text-green-400"}`}>
+                        <span
+                          className={`text-sm font-black ${Number(a.balance_owed) > 0 ? "text-red-400" : "text-green-400"}`}
+                        >
                           ${Number(a.balance_owed).toFixed(2)}
                         </span>
                         <CheckCircle2 className="h-5 w-5 text-primary opacity-50" />
@@ -3705,7 +5581,9 @@ function CreditSaleOverlay({
               )}
             </div>
             <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border flex gap-3">
-              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>← {t("back", "Back")}</Button>
+              <Button variant="outline" className="flex-1 h-12" onClick={() => setStep("review")}>
+                ← {t("back", "Back")}
+              </Button>
               <Button
                 className="h-12 px-5 font-black text-sm"
                 onClick={() => setStep("create")}
@@ -3720,23 +5598,45 @@ function CreditSaleOverlay({
         {/* ΓöÇΓöÇ Step 2b: Confirm account selection ΓöÇΓöÇ */}
         {confirmPick && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl" style={{ background: "var(--gradient-card)" }}>
+            <div
+              className="w-full max-w-sm mx-6 py-12 px-8 space-y-6 text-center rounded-3xl"
+              style={{ background: "var(--gradient-card)" }}
+            >
               <h3 className="font-black text-2xl">{t("confirm_customer", "Confirm Customer?")}</h3>
-              <p className="text-muted-foreground text-base">{t("charge_to", "Charge this order to")}</p>
+              <p className="text-muted-foreground text-base">
+                {t("charge_to", "Charge this order to")}
+              </p>
               <p className="font-black text-3xl">{confirmPick.full_name}</p>
-              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>${total.toFixed(2)}</p>
+              <p className="font-black text-4xl" style={{ color: "var(--primary)" }}>
+                ${total.toFixed(2)}
+              </p>
               {Number(confirmPick.balance_owed) > 0 && (
-                <p className="text-base text-red-400 font-semibold">Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}</p>
+                <p className="text-base text-red-400 font-semibold">
+                  Current balance: ${Number(confirmPick.balance_owed).toFixed(2)}
+                </p>
               )}
               <div className="flex gap-3 pt-4">
-                <Button variant="outline" className="flex-1 h-16 font-black text-base" onClick={() => setConfirmPick(null)}>{t("cancel", "Cancel")}</Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-16 font-black text-base"
+                  onClick={() => setConfirmPick(null)}
+                >
+                  {t("cancel", "Cancel")}
+                </Button>
                 <Button
                   className="flex-1 h-16 font-black text-base"
                   disabled={busy}
-                  onClick={() => { chargeAccount(confirmPick); setConfirmPick(null); }}
+                  onClick={() => {
+                    chargeAccount(confirmPick);
+                    setConfirmPick(null);
+                  }}
                   style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
                 >
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("yes_charge", "Yes, Charge")}
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    t("yes_charge", "Yes, Charge")
+                  )}
                 </Button>
               </div>
             </div>
@@ -3746,28 +5646,42 @@ function CreditSaleOverlay({
         {step === "create" && (
           <>
             <form onSubmit={createAndCharge} className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Create a new credit account and charge this order to it</p>
+              <p className="text-sm text-muted-foreground">
+                Create a new credit account and charge this order to it
+              </p>
 
               {/* Full Name */}
               <div>
                 <Label>Full Name *</Label>
-                <button type="button" onClick={() => toggleNew("name")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-                  <span className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleNew("name")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                >
+                  <span
+                    className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}
+                  >
                     {newName || "e.g. John Smith"}
                   </span>
                 </button>
                 {newActiveField === "name" && (
-                  <CreditAlphaKeyboard value={newName} onChange={setNewName} onDone={() => setNewActiveField(null)} />
+                  <CreditAlphaKeyboard
+                    value={newName}
+                    onChange={setNewName}
+                    onDone={() => setNewActiveField(null)}
+                  />
                 )}
               </div>
 
               {/* ID Type */}
               <div>
                 <Label htmlFor="credit-new-idtype">ID Type</Label>
-                <select id="credit-new-idtype" value={newIdType}
+                <select
+                  id="credit-new-idtype"
+                  value={newIdType}
                   onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1">
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                >
                   <option value="drivers_permit">Driver's Permit</option>
                   <option value="national_id">National ID</option>
                 </select>
@@ -3776,14 +5690,24 @@ function CreditSaleOverlay({
               {/* ID Number */}
               <div>
                 <Label>ID Number</Label>
-                <button type="button" onClick={() => toggleNew("idNumber")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1">
-                  <span className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleNew("idNumber")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                >
+                  <span
+                    className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}
+                  >
                     {newIdNumber || "e.g. 00000000"}
                   </span>
                 </button>
                 {newActiveField === "idNumber" && (
-                  <CreditNumPad value={newIdNumber} onChange={setNewIdNumber} maxLen={20} onDone={() => setNewActiveField(null)} />
+                  <CreditNumPad
+                    value={newIdNumber}
+                    onChange={setNewIdNumber}
+                    maxLen={20}
+                    onDone={() => setNewActiveField(null)}
+                  />
                 )}
               </div>
 
@@ -3791,20 +5715,34 @@ function CreditSaleOverlay({
               <div>
                 <Label>Contact Number</Label>
                 <div className="flex items-center mt-1">
-                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-                  <button type="button" onClick={() => toggleNew("contact")}
-                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left">
-                    <span className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}>
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
+                    868
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleNew("contact")}
+                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
+                  >
+                    <span
+                      className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}
+                    >
                       {newContact || "XXX-XXXX"}
                     </span>
                   </button>
                 </div>
                 {newActiveField === "contact" && (
-                  <CreditContactPad value={newContact} onChange={setNewContact} onDone={() => setNewActiveField(null)} />
+                  <CreditContactPad
+                    value={newContact}
+                    onChange={setNewContact}
+                    onDone={() => setNewActiveField(null)}
+                  />
                 )}
               </div>
 
-              <div className="rounded-xl p-3 text-sm" style={{ background: "oklch(0.22 0.04 45)", border: "1px solid var(--primary)" }}>
+              <div
+                className="rounded-xl p-3 text-sm"
+                style={{ background: "oklch(0.22 0.04 45)", border: "1px solid var(--primary)" }}
+              >
                 <div className="flex justify-between font-black">
                   <span style={{ color: "var(--primary)" }}>Amount to charge</span>
                   <span style={{ color: "var(--primary)" }}>${total.toFixed(2)}</span>
@@ -3812,15 +5750,25 @@ function CreditSaleOverlay({
               </div>
               <Button
                 type="submit"
-                disabled={busy || !newName.trim() || (newContact.trim() !== "" && newContact.replace("-", "").length < 7)}
+                disabled={
+                  busy ||
+                  !newName.trim() ||
+                  (newContact.trim() !== "" && newContact.replace("-", "").length < 7)
+                }
                 className="w-full h-12 font-black text-base"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("create_and_charge", "Create & Charge")}
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t("create_and_charge", "Create & Charge")
+                )}
               </Button>
             </form>
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-border">
-              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>← {t("back", "Back to Accounts")}</Button>
+              <Button variant="outline" className="w-full h-10" onClick={() => setStep("pick")}>
+                ← {t("back", "Back to Accounts")}
+              </Button>
             </div>
           </>
         )}
@@ -3829,33 +5777,82 @@ function CreditSaleOverlay({
   );
 }
 
-// Credit form keyboard helpers 
-function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
-  value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
+// Credit form keyboard helpers
+function CreditNumPad({
+  value,
+  onChange,
+  maxLen = 20,
+  onDone,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  maxLen?: number;
+  onDone: () => void;
 }) {
+  const handleKey = (k: string) => {
+    if (k === "⌫") onChange(value.slice(0, -1));
+    else if (k === "done") onDone();
+    else if (value.length < maxLen) onChange(value + k);
+  };
+
+  const handleKeyRef = useRef(handleKey);
+  handleKeyRef.current = handleKey;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleKeyRef.current(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleKeyRef.current("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleKeyRef.current("done");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [value, onChange, onDone, maxLen]);
+
   return (
     <div className="mt-2">
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k, i) =>
-          k === "done"
-            ? <button key="done" type="button" onClick={onDone}
-                className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
-                style={{ background: "var(--gradient-hero)" }}>Done</button>
-            : <button key={k} type="button"
-                onClick={() => {
-                  if (k === "⌫") onChange(value.slice(0, -1));
-                  else if (value.length < maxLen) onChange(value + k);
-                }}
-                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
-              >{k}</button>
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "done", "0", "⌫"].map((k, i) =>
+          k === "done" ? (
+            <button
+              key="done"
+              type="button"
+              onClick={onDone}
+              className="h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              Done
+            </button>
+          ) : (
+            <button
+              key={k}
+              type="button"
+              onClick={() => handleKey(k)}
+              className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+            >
+              {k}
+            </button>
+          ),
         )}
       </div>
     </div>
   );
 }
 
-function CreditContactPad({ value, onChange, onDone }: {
-  value: string; onChange: (v: string) => void; onDone: () => void;
+function CreditContactPad({
+  value,
+  onChange,
+  onDone,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onDone: () => void;
 }) {
   const digits = value.replace("-", "");
   const complete = digits.length === 7;
@@ -3863,11 +5860,33 @@ function CreditContactPad({ value, onChange, onDone }: {
     if (k === "⌫") {
       const d = value.replace("-", "").slice(0, -1);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    } else if (k === "done") {
+      if (complete) onDone();
     } else {
       const d = (value.replace("-", "") + k).slice(0, 7);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
+
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleRef.current(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleRef.current("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleRef.current("done");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [value, onChange, onDone]);
   return (
     <div className="mt-2">
       {!complete && (
@@ -3876,15 +5895,29 @@ function CreditContactPad({ value, onChange, onDone }: {
         </p>
       )}
       <div className="grid grid-cols-3 gap-1.5">
-        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k) =>
-          k === "done"
-            ? <button key="done" type="button"
-                onClick={() => { if (complete) onDone(); }}
-                className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
-                style={{ background: "var(--gradient-hero)" }}>Done</button>
-            : <button key={k} type="button" onClick={() => handle(k)}
-                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
-              >{k}</button>
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "done", "0", "⌫"].map((k) =>
+          k === "done" ? (
+            <button
+              key="done"
+              type="button"
+              onClick={() => {
+                if (complete) onDone();
+              }}
+              className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              Done
+            </button>
+          ) : (
+            <button
+              key={k}
+              type="button"
+              onClick={() => handle(k)}
+              className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+            >
+              {k}
+            </button>
+          ),
         )}
       </div>
     </div>
@@ -3892,20 +5925,28 @@ function CreditContactPad({ value, onChange, onDone }: {
 }
 
 const CREDIT_ALPHA_ROWS = [
-  ["Q","W","E","R","T","Y","U","I","O","P"],
-  ["A","S","D","F","G","H","J","K","L"],
-  ["Z","X","C","V","B","N","M","⌫"],
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["Z", "X", "C", "V", "B", "N", "M", "⌫"],
 ];
 
-function CreditAlphaKeyboard({ value, onChange, onDone }: {
-  value: string; onChange: (v: string) => void; onDone: () => void;
+function CreditAlphaKeyboard({
+  value,
+  onChange,
+  onDone,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onDone: () => void;
 }) {
   return (
     <div className="mt-2 space-y-1.5">
       {CREDIT_ALPHA_ROWS.map((row, ri) => (
         <div key={ri} className="flex gap-1 justify-center">
           {row.map((k) => (
-            <button key={k} type="button"
+            <button
+              key={k}
+              type="button"
               onClick={() => {
                 if (k === "⌫") onChange(value.slice(0, -1));
                 else onChange(value + k);
@@ -3913,22 +5954,29 @@ function CreditAlphaKeyboard({ value, onChange, onDone }: {
               className={`flex-1 h-10 rounded-lg font-bold text-sm transition active:scale-95 max-w-[38px] ${
                 k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"
               }`}
-            >{k}</button>
+            >
+              {k}
+            </button>
           ))}
         </div>
       ))}
       <div className="flex gap-1.5">
-        <button type="button" onClick={() => onChange(value + " ")}
-          className="flex-1 h-10 rounded-lg bg-muted text-foreground font-bold text-sm active:scale-95 transition">
+        <button
+          type="button"
+          onClick={() => onChange(value + " ")}
+          className="flex-1 h-10 rounded-lg bg-muted text-foreground font-bold text-sm active:scale-95 transition"
+        >
           SPACE
         </button>
-        <button type="button" onClick={onDone}
+        <button
+          type="button"
+          onClick={onDone}
           className="w-20 h-10 rounded-lg font-bold text-sm active:scale-95 transition text-primary-foreground"
-          style={{ background: "var(--gradient-hero)" }}>
+          style={{ background: "var(--gradient-hero)" }}
+        >
           Done
         </button>
       </div>
     </div>
   );
 }
-

@@ -29,6 +29,7 @@ import SwitchBarPage from "@/pages/SwitchBarPage";
 import SummaryPage from "@/pages/SummaryPage";
 import ManagerPage from "@/pages/ManagerPage";
 import StockCheckPage from "@/pages/StockCheckPage";
+import StockCountPage from "@/routes/_app/stock-count";
 import ManualPage from "@/pages/ManualPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import TermsPage from "@/pages/TermsPage";
@@ -107,6 +108,7 @@ function AppWithUpdateCheck() {
             <Route path="summary" element={<SummaryPage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="stock-check" element={<StockCheckPage />} />
+            <Route path="stock-count" element={<StockCountPage />} />
             <Route path="manual" element={<ManualPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />

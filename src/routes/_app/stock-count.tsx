@@ -1,0 +1,288 @@
+import { createFileRoute } from "@tanstack/react-router";
+import React, { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { ClipboardList, Plus, Trash2, X } from "lucide-react";
+
+export const Route = createFileRoute("/_app/stock-count")({
+  component: StockCountPage,
+});
+
+export default StockCountPage;
+
+type Table = {
+  id: string;
+  name: string;
+  columns: string[];
+  rows: string[][];
+};
+
+function StockCountPage() {
+  const { profile } = useAuth();
+  const [tables, setTables] = useState<Table[]>([]);
+  const [newTableName, setNewTableName] = useState("");
+  const [activeCell, setActiveCell] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      const raw = localStorage.getItem(`stock-count-${profile.id}`);
+      if (raw) setTables(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, [profile?.id]);
+
+  const persist = (next: Table[]) => {
+    setTables(next);
+    if (!profile?.id) return;
+    localStorage.setItem(`stock-count-${profile.id}`, JSON.stringify(next));
+  };
+
+  const createTable = () => {
+    if (!newTableName.trim()) return;
+    const t: Table = {
+      id: crypto.randomUUID(),
+      name: newTableName.trim(),
+      columns: [],
+      rows: [],
+    };
+    persist([...tables, t]);
+    setNewTableName("");
+  };
+
+  const deleteTable = (id: string) => {
+    persist(tables.filter((t) => t.id !== id));
+  };
+
+  const addRow = (tableId: string) => {
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          rows: [...t.rows, Array(t.columns.length + 1).fill("")],
+        };
+      }),
+    );
+  };
+
+  const addColumn = (tableId: string) => {
+    const name = prompt("Column title:");
+    if (!name?.trim()) return;
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          columns: [...t.columns, name.trim()],
+          rows: t.rows.map((r) => [...r, ""]),
+        };
+      }),
+    );
+  };
+
+  const updateCell = (tableId: string, rowIdx: number, colIdx: number, val: string) => {
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        const newRows = [...t.rows];
+        newRows[rowIdx] = [...newRows[rowIdx]];
+        newRows[rowIdx][colIdx] = val;
+        return { ...t, rows: newRows };
+      }),
+    );
+  };
+
+  const deleteRow = (tableId: string, rowIdx: number) => {
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          rows: t.rows.filter((_, i) => i !== rowIdx),
+        };
+      }),
+    );
+  };
+
+  const calcTotal = (row: string[]) => {
+    const sum = row.slice(1).reduce((acc, val) => {
+      const n = parseFloat(val);
+      return acc + (isNaN(n) ? 0 : n);
+    }, 0);
+    return sum > 0 ? String(sum) : "";
+  };
+
+  const isCashier = profile?.role === "cashier";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+
+  if (!isCashier && !isManager) {
+    return (
+      <div className="text-center text-muted-foreground py-20">
+        Stock Count is available for cashiers and managers.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
+        <h1 className="text-xl font-black leading-tight">Stock Count</h1>
+        <p className="text-xs text-muted-foreground">
+          Personal stock count sheets — does not affect system stock
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={newTableName}
+          onChange={(e) => setNewTableName(e.target.value)}
+          placeholder="New table name..."
+          className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <button
+          onClick={createTable}
+          disabled={!newTableName.trim()}
+          className="h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40"
+          style={{ background: "var(--gradient-hero)" }}
+        >
+          Create Table
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {tables.map((table) => (
+          <div key={table.id} className="rounded-2xl border border-border overflow-hidden">
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b border-border/50"
+              style={{ background: "var(--gradient-card)" }}
+            >
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                <span className="font-black text-sm">{table.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => addColumn(table.id)}
+                  className="h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95"
+                >
+                  + Add Column
+                </button>
+                <button
+                  onClick={() => addRow(table.id)}
+                  className="h-8 px-3 rounded-lg text-[10px] font-black border border-primary/40 text-primary hover:bg-primary/10 transition active:scale-95"
+                >
+                  + Add Row
+                </button>
+                <button
+                  onClick={() => deleteTable(table.id)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr
+                    className="border-b border-border/40"
+                    style={{ background: "rgba(255,255,255,0.02)" }}
+                  >
+                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[140px]">
+                      Item name
+                    </th>
+                    {table.columns.map((col, ci) => (
+                      <th
+                        key={ci}
+                        className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[100px]"
+                      >
+                        {col}
+                      </th>
+                    ))}
+                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[70px]">
+                      Total
+                    </th>
+                    <th className="w-[40px]"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.map((row, ri) => (
+                    <tr key={ri} className="border-b border-border/20">
+                      <td className="px-2 py-1">
+                        <input
+                          type="text"
+                          value={row[0] ?? ""}
+                          onChange={(e) => updateCell(table.id, ri, 0, e.target.value)}
+                          onFocus={() => setActiveCell(`${table.id}-${ri}-0`)}
+                          onBlur={() => setActiveCell(null)}
+                          placeholder="Item"
+                          className="w-full h-9 px-2 rounded-lg border border-transparent bg-transparent text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
+                        />
+                      </td>
+                      {table.columns.map((_, ci) => {
+                        const val = row[ci + 1] ?? "";
+                        return (
+                          <td key={ci} className="px-2 py-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={val}
+                              onChange={(e) => updateCell(table.id, ri, ci + 1, e.target.value)}
+                              onFocus={() => setActiveCell(`${table.id}-${ri}-${ci + 1}`)}
+                              onBlur={() => setActiveCell(null)}
+                              placeholder="0"
+                              className={`w-full h-9 px-2 rounded-lg border text-xs font-black text-center focus:outline-none focus:ring-2 focus:ring-primary ${
+                                activeCell === `${table.id}-${ri}-${ci + 1}`
+                                  ? "border-primary bg-background"
+                                  : "border-transparent bg-transparent"
+                              }`}
+                            />
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1">
+                        <div className="h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary">
+                          {calcTotal(row)}
+                        </div>
+                      </td>
+                      <td className="px-2 py-1 text-center">
+                        <button
+                          onClick={() => deleteRow(table.id, ri)}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {table.rows.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={table.columns.length + 3}
+                        className="px-4 py-8 text-center text-muted-foreground text-xs"
+                      >
+                        No rows yet. Tap + Add Row to start counting.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+        {tables.length === 0 && (
+          <div className="text-center text-muted-foreground py-12">
+            <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="font-bold text-sm">No stock count tables yet</p>
+            <p className="text-xs mt-1">Create a table above to start your personal stock count.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

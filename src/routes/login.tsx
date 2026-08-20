@@ -21,25 +21,34 @@ function LoginPage() {
   useEffect(() => {
     if (!loading && session && profile) {
       const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
-      const isMachinesOnly = (profile as any)?.is_machines_account || profile.plan_type === "machines_only";
-      const dest = profile.role === "admin"
-        ? "/admin"
-        : isManager
-        ? "/products"
-        : isMachinesOnly
-        ? "/machines"
-        : "/register";
+      const isMachinesOnly =
+        (profile as any)?.is_machines_account || profile.plan_type === "machines_only";
+      const dest =
+        profile.role === "admin"
+          ? "/admin"
+          : isManager
+            ? "/products"
+            : isMachinesOnly
+              ? "/machines"
+              : "/register";
       nav({ to: dest as any });
     }
   }, [session, profile, loading, nav]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-3 py-8"
-      style={{ background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)" }}>
+    <div
+      className="min-h-screen flex items-center justify-center px-3 py-8"
+      style={{
+        background:
+          "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)",
+      }}
+    >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
-            style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+          <div
+            className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
+            style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}
+          >
             <Wine className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-4xl font-black tracking-tight">Bartendaz Pro</h1>
@@ -50,7 +59,9 @@ function LoginPage() {
           <TabsList className="grid grid-cols-1 w-full">
             <TabsTrigger value="signin">Admin Sign In</TabsTrigger>
           </TabsList>
-          <TabsContent value="signin"><SignInForm /></TabsContent>
+          <TabsContent value="signin">
+            <SignInForm />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -62,7 +73,7 @@ function SignInForm() {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
-  
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -71,21 +82,40 @@ function SignInForm() {
     setBusy(false);
     if (error) toast.error(friendlyError(error));
   };
-  
+
   if (showForgot) {
     return <ForgotPasswordFlow onBack={() => setShowForgot(false)} />;
   }
-  
+
   return (
-    <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl p-6"
-      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
+    <form
+      onSubmit={submit}
+      className="mt-6 space-y-4 rounded-2xl p-6"
+      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
+    >
       <div>
         <Label htmlFor="signin-id">Email or Cashier Username</Label>
-        <Input id="signin-id" name="username" autoComplete="username" value={id} onChange={(e) => setId(e.target.value)} placeholder="owner@bar.com or cashier1" required />
+        <Input
+          id="signin-id"
+          name="username"
+          autoComplete="username"
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="owner@bar.com or cashier1"
+          required
+        />
       </div>
       <div>
         <Label htmlFor="signin-pw">Password</Label>
-        <Input id="signin-pw" name="password" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required />
+        <Input
+          id="signin-pw"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          required
+        />
       </div>
       <Button type="submit" className="w-full h-12 text-base font-bold" disabled={busy}>
         {busy ? "Signing in..." : "Sign in"}
@@ -154,7 +184,10 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
 
   const handleChange = (i: number, char: string) => {
     const d = char.replace(/\D/g, "").slice(-1);
-    const next = digits.map((v, idx) => (idx === i ? d : v)).join("").replace(/ /g, "");
+    const next = digits
+      .map((v, idx) => (idx === i ? d : v))
+      .join("")
+      .replace(/ /g, "");
     onChange(next);
     if (d && i < 5) inputsRef.current[i + 1]?.focus();
   };
@@ -188,7 +221,9 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
       {digits.map((d, i) => (
         <input
           key={i}
-          ref={(el) => { inputsRef.current[i] = el; }}
+          ref={(el) => {
+            inputsRef.current[i] = el;
+          }}
           type="text"
           inputMode="numeric"
           autoComplete={i === 0 ? "one-time-code" : "off"}
@@ -216,20 +251,7 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    
-    // First check if email exists in profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("email", email.trim())
-      .single();
-    
-    if (profileError || !profile) {
-      setBusy(false);
-      toast.error("No account found with this email");
-      return;
-    }
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: window.location.origin + "/login",
     });
@@ -285,8 +307,10 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="mt-6 rounded-2xl p-6 space-y-4"
-      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
+    <div
+      className="mt-6 rounded-2xl p-6 space-y-4"
+      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
+    >
       <button
         onClick={onBack}
         className="text-sm text-muted-foreground hover:text-foreground transition"
@@ -298,7 +322,9 @@ function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
         <form onSubmit={sendOtp} className="space-y-4">
           <div>
             <h3 className="text-lg font-bold mb-1">Reset Password</h3>
-            <p className="text-sm text-muted-foreground">Enter your email to receive a 6-digit code</p>
+            <p className="text-sm text-muted-foreground">
+              Enter your email to receive a 6-digit code
+            </p>
           </div>
           <div>
             <Label htmlFor="forgot-email">Email</Label>
@@ -387,34 +413,97 @@ function SignUpForm() {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.signUp({
-      email: email.trim(), password: pw,
-      options: { data: { username: username.trim(), role: "owner" }, emailRedirectTo: window.location.origin },
+      email: email.trim(),
+      password: pw,
+      options: {
+        data: { username: username.trim(), role: "owner" },
+        emailRedirectTo: window.location.origin,
+      },
     });
     setBusy(false);
     if (error) toast.error(error.message);
     else toast.success("Account created — signing you in");
   };
   return (
-    <form onSubmit={submit} className="mt-6 space-y-4 rounded-2xl p-6"
-      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}>
+    <form
+      onSubmit={submit}
+      className="mt-6 space-y-4 rounded-2xl p-6"
+      style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
+    >
       <div>
         <Label htmlFor="signup-username">Bar / Owner Username</Label>
-        <Input id="signup-username" name="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} />
+        <Input
+          id="signup-username"
+          name="username"
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          minLength={3}
+        />
       </div>
       <div>
         <Label htmlFor="signup-email">Email</Label>
-        <Input id="signup-email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input
+          id="signup-email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
       </div>
       <div>
         <Label htmlFor="signup-pw">Password</Label>
         <div className="relative">
-          <Input id="signup-pw" name="password" type={showPw ? "text" : "password"} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} className="pr-10" />
-          <button type="button" onClick={() => setShowPw(v => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
-            {showPw
-              ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            }
+          <Input
+            id="signup-pw"
+            name="password"
+            type={showPw ? "text" : "password"}
+            autoComplete="new-password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            required
+            minLength={6}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+          >
+            {showPw ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
           </button>
         </div>
       </div>

@@ -42,7 +42,7 @@ type OpenItemInfo = {
   packType?: string; // 'retail' | 'paper'
   unitsSold: number;
   unitsPerItem: number; // from products.units_per_item
-  shotPrice?: number;   // per-drink selling price (bottles only)
+  shotPrice?: number; // per-drink selling price (bottles only)
 };
 
 // Returns the per-drink price (bottles) or per-unit retail price (packs/cigs)
@@ -103,6 +103,31 @@ function ActualNumpad({
     setBusy(false);
   };
 
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  const handleKeyRef = useRef(handleKey);
+  handleKeyRef.current = handleKey;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleKeyRef.current(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleKeyRef.current("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSaveRef.current();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -148,8 +173,18 @@ function ActualNumpad({
           <div
             className="px-3 py-2 rounded-xl text-center"
             style={{
-              background: loss > 0 ? "rgba(239,68,68,0.10)" : gain > 0 ? "rgba(74,222,128,0.10)" : "rgba(255,255,255,0.04)",
-              border: loss > 0 ? "1px solid rgba(239,68,68,0.30)" : gain > 0 ? "1px solid rgba(74,222,128,0.30)" : "1px solid rgba(255,255,255,0.08)",
+              background:
+                loss > 0
+                  ? "rgba(239,68,68,0.10)"
+                  : gain > 0
+                    ? "rgba(74,222,128,0.10)"
+                    : "rgba(255,255,255,0.04)",
+              border:
+                loss > 0
+                  ? "1px solid rgba(239,68,68,0.30)"
+                  : gain > 0
+                    ? "1px solid rgba(74,222,128,0.30)"
+                    : "1px solid rgba(255,255,255,0.08)",
             }}
           >
             <div className="text-xs text-muted-foreground">{gain > 0 ? "Gain" : "Loss"}</div>
@@ -174,14 +209,14 @@ function ActualNumpad({
           <span className="font-black text-foreground">${unitPrice.toFixed(2)}</span>
           {diff > 0 && isValid && (
             <>
-              {" "}· Missing:{" "}
-              <span className="font-black text-red-400">{diff}</span>
+              {" "}
+              · Missing: <span className="font-black text-red-400">{diff}</span>
             </>
           )}
           {diff < 0 && isValid && (
             <>
-              {" "}· Over by:{" "}
-              <span className="font-black text-green-400">{Math.abs(diff)}</span>
+              {" "}
+              · Over by: <span className="font-black text-green-400">{Math.abs(diff)}</span>
             </>
           )}
         </p>
@@ -199,15 +234,14 @@ function ActualNumpad({
                   onClick={() => handleKey(k)}
                   className="h-14 rounded-2xl flex items-center justify-center font-black text-xl transition active:scale-95"
                   style={{
-                    background:
-                      k === "⌫" ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.06)",
+                    background: k === "⌫" ? "rgba(220,38,38,0.15)" : "rgba(255,255,255,0.06)",
                     border: "1px solid rgba(255,255,255,0.08)",
                     color: k === "⌫" ? "#f87171" : "var(--foreground)",
                   }}
                 >
                   {k}
                 </button>
-              )
+              ),
             )}
           </div>
         </div>
@@ -250,8 +284,7 @@ function StockCheckPage() {
   }, [profile]);
 
   // ── Derive owner id ──────────────────────────────────────────────────────
-  const isManager =
-    profile?.role === "manager" || (profile as any)?.job_title === "manager";
+  const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
   const ownerIdForQuery = profile
     ? effectiveOwnerId(isManager ? (profile.parent_id ?? profile.id) : profile.id)
     : null;
@@ -261,9 +294,7 @@ function StockCheckPage() {
     const p = profileRef.current;
     if (!p) return;
     const oid = effectiveOwnerId(
-      p.role === "manager" || (p as any).job_title === "manager"
-        ? (p.parent_id ?? p.id)
-        : p.id
+      p.role === "manager" || (p as any).job_title === "manager" ? (p.parent_id ?? p.id) : p.id,
     );
     const { data } = await supabase
       .from("products")
@@ -381,7 +412,7 @@ function StockCheckPage() {
           // delta to actual_qty whenever stock_qty changes, preserving the gap.
           // The realtime subscription on stock_check_actuals picks up those
           // changes and updates the actuals map — nothing extra needed here.
-        }
+        },
       )
       .subscribe();
 
@@ -397,7 +428,9 @@ function StockCheckPage() {
           filter: `owner_id=eq.${ownerIdForQuery}`,
         },
         (payload: any) => {
-          const rec = payload.new as { product_id: string; actual_qty: number; is_open: boolean } | undefined;
+          const rec = payload.new as
+            | { product_id: string; actual_qty: number; is_open: boolean }
+            | undefined;
           if (payload.eventType === "DELETE") {
             const old = payload.old as { product_id: string; is_open: boolean };
             setActuals((prev) => {
@@ -412,7 +445,7 @@ function StockCheckPage() {
             const key = rec.is_open ? `${rec.product_id}_open` : rec.product_id;
             setActuals((prev) => ({ ...prev, [key]: rec.actual_qty }));
           }
-        }
+        },
       )
       .subscribe();
 
@@ -436,18 +469,16 @@ function StockCheckPage() {
     const isOpen = productId.endsWith("_open");
     const realProductId = isOpen ? productId.replace("_open", "") : productId;
 
-    const { error } = await (supabase as any)
-      .from("stock_check_actuals")
-      .upsert(
-        {
-          owner_id: ownerIdForQuery,
-          product_id: realProductId,
-          is_open: isOpen,
-          actual_qty: newActual,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "owner_id,product_id,is_open" }
-      );
+    const { error } = await (supabase as any).from("stock_check_actuals").upsert(
+      {
+        owner_id: ownerIdForQuery,
+        product_id: realProductId,
+        is_open: isOpen,
+        actual_qty: newActual,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "owner_id,product_id,is_open" },
+    );
     if (error) {
       toast.error("Failed to save: " + error.message);
       return;
@@ -529,10 +560,11 @@ function StockCheckPage() {
     ? items.find((p) => p.id === activeNumpadId || activeNumpadId === `${p.id}_open`)
     : null;
   const activeIsOpen = activeNumpadId?.endsWith("_open") ?? false;
-  const activeProductId = activeIsOpen && activeNumpadId
-    ? activeNumpadId.replace("_open", "")
-    : activeNumpadId;
-  const activeProductForNumpad = activeProductId ? items.find(p => p.id === activeProductId) : null;
+  const activeProductId =
+    activeIsOpen && activeNumpadId ? activeNumpadId.replace("_open", "") : activeNumpadId;
+  const activeProductForNumpad = activeProductId
+    ? items.find((p) => p.id === activeProductId)
+    : null;
 
   // ── PDF generation ───────────────────────────────────────────────────────
   const [pdfBusy, setPdfBusy] = useState<string | null>(null); // category value or "all"
@@ -546,19 +578,28 @@ function StockCheckPage() {
       const now = new Date();
       const dateStr = now.toLocaleDateString("en-GB");
       const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-      const title = catFilter ? `Stock Check — ${categoryLabel(catFilter)}` : "Stock Check — All Items";
-      let y = await drawHeader(doc, profile?.username ?? "Stock Check", title, dateStr, `${dateStr} ${timeStr}`);
+      const title = catFilter
+        ? `Stock Check — ${categoryLabel(catFilter)}`
+        : "Stock Check — All Items";
+      let y = await drawHeader(
+        doc,
+        profile?.username ?? "Stock Check",
+        title,
+        dateStr,
+        `${dateStr} ${timeStr}`,
+      );
 
       const COL = { name: LM, qty: 110, actual: 135, price: 160, loss: 185 };
       const ROW_H = 7;
 
       const checkPage = () => {
-        if (y > CONTENT_BOTTOM - ROW_H) { doc.addPage(); y = 20; }
+        if (y > CONTENT_BOTTOM - ROW_H) {
+          doc.addPage();
+          y = 20;
+        }
       };
 
-      const sectionsToDraw = catFilter
-        ? grouped.filter(g => g.cat.value === catFilter)
-        : grouped;
+      const sectionsToDraw = catFilter ? grouped.filter((g) => g.cat.value === catFilter) : grouped;
 
       for (const { cat, products } of sectionsToDraw) {
         // Category header
@@ -710,7 +751,10 @@ function StockCheckPage() {
           </div>
         </div>
         {/* Column header row — orange, full bleed */}
-        <div className="-mx-3 flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20" style={{ background: "var(--gradient-hero)" }}>
+        <div
+          className="-mx-3 flex items-center py-2 px-3 gap-2 text-xs font-black text-black uppercase tracking-wide border-b border-black/20"
+          style={{ background: "var(--gradient-hero)" }}
+        >
           <div className="w-8 shrink-0" />
           <div className="flex-1 min-w-0">Name</div>
           <div className="w-[46px] text-right">Qty</div>
@@ -756,9 +800,17 @@ function StockCheckPage() {
                         onClick={() => generatePdf(null)}
                         disabled={pdfBusy !== null}
                         className="flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50"
-                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid var(--border)",
+                          color: "var(--foreground)",
+                        }}
                       >
-                        {pdfBusy === "all" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                        {pdfBusy === "all" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <FileDown className="h-3 w-3" />
+                        )}
                         All
                       </button>
                     )}
@@ -767,9 +819,17 @@ function StockCheckPage() {
                       onClick={() => generatePdf(cat.value)}
                       disabled={pdfBusy !== null}
                       className="flex items-center gap-1 h-6 px-2 rounded-lg text-[10px] font-black transition active:scale-95 disabled:opacity-50"
-                      style={{ background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.35)", color: "var(--primary)" }}
+                      style={{
+                        background: "rgba(251,146,60,0.12)",
+                        border: "1px solid rgba(251,146,60,0.35)",
+                        color: "var(--primary)",
+                      }}
                     >
-                      {pdfBusy === cat.value ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                      {pdfBusy === cat.value ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <FileDown className="h-3 w-3" />
+                      )}
                       {cat.label}
                     </button>
                   </div>
@@ -787,7 +847,9 @@ function StockCheckPage() {
 
                   // Open item actuals keyed separately so sealed and open track independently
                   const openKey = `${p.id}_open`;
-                  const remaining = openInfo ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold) : null;
+                  const remaining = openInfo
+                    ? Math.max(0, openInfo.unitsPerItem - openInfo.unitsSold)
+                    : null;
                   const openActual = openInfo ? (actuals[openKey] ?? remaining ?? 0) : null;
                   const openDiff = openInfo && openActual !== null ? remaining! - openActual : 0;
                   const openPrice = openInfo ? perUnitPrice(p, openInfo.type) : 0;
@@ -812,7 +874,9 @@ function StockCheckPage() {
                               src={productImageUrl(p.image_url)!}
                               alt=""
                               className="h-full w-full object-cover"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                              }}
                             />
                           ) : (
                             categoryIcon(p.category ?? "drinks")
@@ -821,12 +885,16 @@ function StockCheckPage() {
 
                         {/* Name */}
                         <div className="flex-1 min-w-0">
-                          <span className="font-bold text-xs leading-tight line-clamp-2">{p.name}</span>
+                          <span className="font-bold text-xs leading-tight line-clamp-2">
+                            {p.name}
+                          </span>
                         </div>
 
                         {/* Qty — sealed bottles in stock */}
                         <div className="w-[46px] flex justify-end">
-                          <span className={`font-black text-xs ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`}>
+                          <span
+                            className={`font-black text-xs ${p.stock_qty === 0 ? "text-red-400" : p.stock_qty <= 5 ? "text-yellow-400" : "text-green-400"}`}
+                          >
                             {p.stock_qty}
                           </span>
                         </div>
@@ -838,9 +906,23 @@ function StockCheckPage() {
                             onClick={() => setActiveNumpadId(isActive ? null : p.id)}
                             className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                             style={{
-                              background: isActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
-                              borderColor: isActive ? "var(--primary)" : hasLoss ? "rgba(239,68,68,0.50)" : hasGain ? "rgba(74,222,128,0.50)" : "var(--border)",
-                              color: isActive ? "var(--primary)" : hasLoss ? "#f87171" : hasGain ? "#4ade80" : "var(--foreground)",
+                              background: isActive
+                                ? "rgba(251,146,60,0.15)"
+                                : "var(--gradient-card)",
+                              borderColor: isActive
+                                ? "var(--primary)"
+                                : hasLoss
+                                  ? "rgba(239,68,68,0.50)"
+                                  : hasGain
+                                    ? "rgba(74,222,128,0.50)"
+                                    : "var(--border)",
+                              color: isActive
+                                ? "var(--primary)"
+                                : hasLoss
+                                  ? "#f87171"
+                                  : hasGain
+                                    ? "#4ade80"
+                                    : "var(--foreground)",
                               minWidth: "44px",
                             }}
                           >
@@ -851,16 +933,24 @@ function StockCheckPage() {
 
                         {/* Price */}
                         <div className="w-[52px] text-right">
-                          <span className="font-bold text-xs text-muted-foreground">${p.price.toFixed(2)}</span>
+                          <span className="font-bold text-xs text-muted-foreground">
+                            ${p.price.toFixed(2)}
+                          </span>
                         </div>
 
                         {/* Loss / Gain */}
                         <div className="w-[56px] text-right">
-                          {hasLoss
-                            ? <span className="font-black text-xs text-red-400 tabular-nums">−${loss.toFixed(2)}</span>
-                            : hasGain
-                              ? <span className="font-black text-xs text-green-400 tabular-nums">+${gain.toFixed(2)}</span>
-                              : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                          {hasLoss ? (
+                            <span className="font-black text-xs text-red-400 tabular-nums">
+                              −${loss.toFixed(2)}
+                            </span>
+                          ) : hasGain ? (
+                            <span className="font-black text-xs text-green-400 tabular-nums">
+                              +${gain.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="font-black text-xs text-muted-foreground/40">—</span>
+                          )}
                         </div>
                       </div>
 
@@ -868,18 +958,38 @@ function StockCheckPage() {
                       {openInfo && remaining !== null && openActual !== null && (
                         <div
                           className="flex items-center gap-2 px-3 py-1.5 border-t border-dashed border-border/30"
-                          style={{ background: openLoss > 0 ? "rgba(239,68,68,0.04)" : openGain > 0 ? "rgba(74,222,128,0.04)" : "rgba(251,146,60,0.04)", paddingLeft: "24px" }}
+                          style={{
+                            background:
+                              openLoss > 0
+                                ? "rgba(239,68,68,0.04)"
+                                : openGain > 0
+                                  ? "rgba(74,222,128,0.04)"
+                                  : "rgba(251,146,60,0.04)",
+                            paddingLeft: "24px",
+                          }}
                         >
                           {/* Indent spacer + open label */}
-                          <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm"
-                            style={{ background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.25)" }}>
+                          <div
+                            className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                            style={{
+                              background: "rgba(251,146,60,0.12)",
+                              border: "1px solid rgba(251,146,60,0.25)",
+                            }}
+                          >
                             {openInfo.type === "bottle" ? "🍾" : "🚬"}
                           </div>
 
                           {/* Name */}
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs font-black" style={{ color: "var(--primary)" }}>
-                              {openInfo.type === "bottle" ? "Open bottle" : openInfo.packType === "retail" ? "Open pack" : "Open papers"}
+                            <span
+                              className="text-xs font-black"
+                              style={{ color: "var(--primary)" }}
+                            >
+                              {openInfo.type === "bottle"
+                                ? "Open bottle"
+                                : openInfo.packType === "retail"
+                                  ? "Open pack"
+                                  : "Open papers"}
                             </span>
                             <p className="text-[10px] text-muted-foreground">
                               {openInfo.unitsSold} sold · {remaining} left
@@ -888,7 +998,9 @@ function StockCheckPage() {
 
                           {/* Qty = remaining drinks */}
                           <div className="w-[46px] flex justify-end">
-                            <span className={`font-black text-xs ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`}>
+                            <span
+                              className={`font-black text-xs ${remaining === 0 ? "text-red-400" : remaining <= 3 ? "text-yellow-400" : "text-green-400"}`}
+                            >
                               {remaining}
                             </span>
                           </div>
@@ -900,9 +1012,23 @@ function StockCheckPage() {
                               onClick={() => setActiveNumpadId(isOpenActive ? null : openKey)}
                               className="flex items-center gap-1 h-8 px-2 rounded-lg border font-black text-xs transition active:scale-95"
                               style={{
-                                background: isOpenActive ? "rgba(251,146,60,0.15)" : "var(--gradient-card)",
-                                borderColor: isOpenActive ? "var(--primary)" : openLoss > 0 ? "rgba(239,68,68,0.50)" : openGain > 0 ? "rgba(74,222,128,0.50)" : "var(--border)",
-                                color: isOpenActive ? "var(--primary)" : openLoss > 0 ? "#f87171" : openGain > 0 ? "#4ade80" : "var(--foreground)",
+                                background: isOpenActive
+                                  ? "rgba(251,146,60,0.15)"
+                                  : "var(--gradient-card)",
+                                borderColor: isOpenActive
+                                  ? "var(--primary)"
+                                  : openLoss > 0
+                                    ? "rgba(239,68,68,0.50)"
+                                    : openGain > 0
+                                      ? "rgba(74,222,128,0.50)"
+                                      : "var(--border)",
+                                color: isOpenActive
+                                  ? "var(--primary)"
+                                  : openLoss > 0
+                                    ? "#f87171"
+                                    : openGain > 0
+                                      ? "#4ade80"
+                                      : "var(--foreground)",
                                 minWidth: "44px",
                               }}
                             >
@@ -913,16 +1039,24 @@ function StockCheckPage() {
 
                           {/* Price */}
                           <div className="w-[52px] text-right">
-                            <span className="font-bold text-xs text-muted-foreground">${openPrice.toFixed(2)}</span>
+                            <span className="font-bold text-xs text-muted-foreground">
+                              ${openPrice.toFixed(2)}
+                            </span>
                           </div>
 
                           {/* Loss / Gain */}
                           <div className="w-[56px] text-right">
-                            {openLoss > 0
-                              ? <span className="font-black text-xs text-red-400 tabular-nums">−${openLoss.toFixed(2)}</span>
-                              : openGain > 0
-                                ? <span className="font-black text-xs text-green-400 tabular-nums">+${openGain.toFixed(2)}</span>
-                                : <span className="font-black text-xs text-muted-foreground/40">—</span>}
+                            {openLoss > 0 ? (
+                              <span className="font-black text-xs text-red-400 tabular-nums">
+                                −${openLoss.toFixed(2)}
+                              </span>
+                            ) : openGain > 0 ? (
+                              <span className="font-black text-xs text-green-400 tabular-nums">
+                                +${openGain.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="font-black text-xs text-muted-foreground/40">—</span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -940,18 +1074,18 @@ function StockCheckPage() {
               style={{ background: "var(--background)" }}
             >
               <div className="text-sm font-black text-muted-foreground">
-                {totalLoss > 0 && totalGain > 0 ? "Loss / Exceed" : totalLoss > 0 ? "Total estimated loss" : "Total exceed"}
+                {totalLoss > 0 && totalGain > 0
+                  ? "Loss / Exceed"
+                  : totalLoss > 0
+                    ? "Total estimated loss"
+                    : "Total exceed"}
               </div>
               <div className="flex items-center gap-3">
                 {totalLoss > 0 && (
-                  <div className="text-lg font-black text-red-400">
-                    −${totalLoss.toFixed(2)}
-                  </div>
+                  <div className="text-lg font-black text-red-400">−${totalLoss.toFixed(2)}</div>
                 )}
                 {totalGain > 0 && (
-                  <div className="text-lg font-black text-green-400">
-                    +${totalGain.toFixed(2)}
-                  </div>
+                  <div className="text-lg font-black text-green-400">+${totalGain.toFixed(2)}</div>
                 )}
               </div>
             </div>
@@ -962,17 +1096,27 @@ function StockCheckPage() {
       {/* ── Numpad Modal ─────────────────────────────────────────────────── */}
       {activeProductForNumpad && (
         <ActualNumpad
-          product={activeIsOpen
-            ? {
-                ...activeProductForNumpad,
-                // For open row: system qty = remaining drinks
-                stock_qty: Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - ((openItems[activeProductForNumpad.id]?.unitsSold) ?? 0)),
-              }
-            : activeProductForNumpad
+          product={
+            activeIsOpen
+              ? {
+                  ...activeProductForNumpad,
+                  // For open row: system qty = remaining drinks
+                  stock_qty: Math.max(
+                    0,
+                    (activeProductForNumpad.units_per_item ?? 0) -
+                      (openItems[activeProductForNumpad.id]?.unitsSold ?? 0),
+                  ),
+                }
+              : activeProductForNumpad
           }
           currentActual={
             activeIsOpen
-              ? (actuals[activeNumpadId!] ?? Math.max(0, (activeProductForNumpad.units_per_item ?? 0) - ((openItems[activeProductForNumpad.id]?.unitsSold) ?? 0)))
+              ? (actuals[activeNumpadId!] ??
+                Math.max(
+                  0,
+                  (activeProductForNumpad.units_per_item ?? 0) -
+                    (openItems[activeProductForNumpad.id]?.unitsSold ?? 0),
+                ))
               : (actuals[activeNumpadId!] ?? activeProductForNumpad.stock_qty)
           }
           onClose={() => setActiveNumpadId(null)}
@@ -985,9 +1129,12 @@ function StockCheckPage() {
                 })()
               : undefined
           }
-          priceLabel={activeIsOpen
-            ? (openItems[activeProductForNumpad.id]?.type === "bottle" ? "Per drink price" : "Per unit price")
-            : undefined
+          priceLabel={
+            activeIsOpen
+              ? openItems[activeProductForNumpad.id]?.type === "bottle"
+                ? "Per drink price"
+                : "Per unit price"
+              : undefined
           }
         />
       )}

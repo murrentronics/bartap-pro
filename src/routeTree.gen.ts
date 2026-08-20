@@ -17,6 +17,7 @@ import { Route as AppManagerRouteImport } from './routes/_app/manager'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
+import { Route as AppStockCountRouteImport } from './routes/_app/stock-count'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
   id: '/__root/capacitor',
@@ -57,6 +58,11 @@ const AppCreditRoute = AppCreditRouteImport.update({
   path: '/credit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppStockCountRoute = AppStockCountRouteImport.update({
+  id: '/stock-count',
+  path: '/stock-count',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppRouteWithChildren
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
   '/stock-check': typeof AppStockCheckRoute
+  '/stock-count': typeof AppStockCountRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppRouteWithChildren
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/machines': typeof AppMachinesRoute
   '/manager': typeof AppManagerRoute
   '/stock-check': typeof AppStockCheckRoute
+  '/stock-count': typeof AppStockCountRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/_app/machines': typeof AppMachinesRoute
   '/_app/manager': typeof AppManagerRoute
   '/_app/stock-check': typeof AppStockCheckRoute
+  '/_app/stock-count': typeof AppStockCountRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/machines'
     | '/manager'
     | '/stock-check'
+    | '/stock-count'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/machines'
     | '/manager'
     | '/stock-check'
+    | '/stock-count'
   id:
     | '__root__'
     | '/_app'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/_app/machines'
     | '/_app/manager'
     | '/_app/stock-check'
+    | '/_app/stock-count'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/stock-check'
       fullPath: '/stock-check'
       preLoaderRoute: typeof AppStockCheckRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/stock-count': {
+      id: '/_app/stock-count'
+      path: '/stock-count'
+      fullPath: '/stock-count'
+      preLoaderRoute: typeof AppStockCountRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/manager': {
@@ -195,6 +214,7 @@ interface AppRouteChildren {
   AppMachinesRoute: typeof AppMachinesRoute
   AppManagerRoute: typeof AppManagerRoute
   AppStockCheckRoute: typeof AppStockCheckRoute
+  AppStockCountRoute: typeof AppStockCountRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -203,6 +223,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMachinesRoute: AppMachinesRoute,
   AppManagerRoute: AppManagerRoute,
   AppStockCheckRoute: AppStockCheckRoute,
+  AppStockCountRoute: AppStockCountRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

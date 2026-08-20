@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import AdminBillingManagementPage from "@/pages/AdminBillingManagementPage";
-import {
-  listAllProfiles,
-  setUserStatus,
-  adminDeleteUser,
-} from "@/lib/admin.functions";
+import { listAllProfiles, setUserStatus, adminDeleteUser } from "@/lib/admin.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, type CategoryValue } from "@/lib/categories";
 import { Badge } from "@/components/ui/badge";
@@ -16,21 +17,71 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Check, X, Ban, UserMinus, RotateCw, RotateCcw, Trash2, Loader2,
-  ShieldAlert, Search, ImagePlus, Link as LinkIcon, LayoutGrid, CalendarClock, AlertCircle,
-  Youtube, Key, BarChart3, RefreshCw, CheckCircle2, XCircle, Zap, Camera, Plus, GitBranch,
-  DollarSign, TrendingUp, Calendar, History,
+  Check,
+  X,
+  Ban,
+  UserMinus,
+  RotateCw,
+  RotateCcw,
+  Trash2,
+  Loader2,
+  ShieldAlert,
+  Search,
+  ImagePlus,
+  Link as LinkIcon,
+  LayoutGrid,
+  CalendarClock,
+  AlertCircle,
+  Youtube,
+  Key,
+  BarChart3,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Zap,
+  Camera,
+  Plus,
+  GitBranch,
+  DollarSign,
+  TrendingUp,
+  Calendar,
+  History,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { confirm } from "@/components/ui/confirm-dialog";
 
 // ─── Shareholder Config ───────────────────────────────────────────────────────
 const SHAREHOLDERS = [
-  { name: "Renard Sankersingh", share: 0.8, color: "text-emerald-400", bg: "border-emerald-500/30", gradient: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" },
-  { name: "Theron Murren",      share: 0.2, color: "text-blue-400",    bg: "border-blue-500/30",    gradient: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04))" },
+  {
+    name: "Renard Sankersingh",
+    share: 0.8,
+    color: "text-emerald-400",
+    bg: "border-emerald-500/30",
+    gradient: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))",
+  },
+  {
+    name: "Theron Murren",
+    share: 0.2,
+    color: "text-blue-400",
+    bg: "border-blue-500/30",
+    gradient: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04))",
+  },
 ] as const;
 
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 type MonthlyRecord = { year: number; month: number; total: number };
 type ShareholderMonthly = { year: number; month: number; total: number; shares: number[] };
@@ -107,9 +158,7 @@ function AnnualFeeBadge({ ownerId }: { ownerId: string }) {
   );
 }
 
-function SubscriptionBadge({ ownerId }: {
-  ownerId: string;
-}) {
+function SubscriptionBadge({ ownerId }: { ownerId: string }) {
   const [profile, setProfile] = useState<any>(null);
   const [paidCount, setPaidCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -122,14 +171,14 @@ function SubscriptionBadge({ ownerId }: {
         .select("subscription_end_date, billing_status")
         .eq("id", ownerId)
         .single();
-      
+
       // Get count of paid payments
       const { data: payments } = await supabase
         .from("billing_payments")
         .select("id, plan_id")
         .eq("owner_id", ownerId)
         .eq("status", "paid");
-      
+
       // Get plan amount from the most recent payment
       let planAmount = 0;
       if (payments && payments.length > 0) {
@@ -138,15 +187,15 @@ function SubscriptionBadge({ ownerId }: {
           .select("amount")
           .eq("id", payments[0].plan_id)
           .single();
-        
+
         if (plan) planAmount = plan.amount;
       }
-      
+
       setProfile({ ...profileData, planAmount });
       setPaidCount(payments?.length || 0);
       setLoading(false);
     };
-    
+
     loadData();
   }, [ownerId]);
 
@@ -161,44 +210,62 @@ function SubscriptionBadge({ ownerId }: {
   const isNearExpiry = daysUntil <= 7;
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-      isNearExpiry
-        ? "bg-red-500/15 border border-red-500/30 text-red-400"
-        : "bg-muted border border-border text-muted-foreground"
-    }`}>
+    <div
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+        isNearExpiry
+          ? "bg-red-500/15 border border-red-500/30 text-red-400"
+          : "bg-muted border border-border text-muted-foreground"
+      }`}
+    >
       {isNearExpiry ? (
         <AlertCircle className="h-3.5 w-3.5 shrink-0" />
       ) : (
         <CalendarClock className="h-3.5 w-3.5 shrink-0" />
       )}
       <span>
-        Due {formatDate(dueDate)}{isNearExpiry && ` (${daysUntil}d)`}
+        Due {formatDate(dueDate)}
+        {isNearExpiry && ` (${daysUntil}d)`}
       </span>
     </div>
   );
 }
 
-const TEMPLATE_CATEGORIES = CATEGORIES.filter(c => c.value !== "miscellaneous" && c.value !== "food").map(c => c.value) as CategoryValue[];
+const TEMPLATE_CATEGORIES = CATEGORIES.filter(
+  (c) => c.value !== "miscellaneous" && c.value !== "food",
+).map((c) => c.value) as CategoryValue[];
 type TemplateCategory = CategoryValue;
 
 // ─── Shared label cleaner (used by import panel + fix-all) ───────────────────
 function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
   let s = raw.trim();
   if (!s) {
-    s = fallbackUrl.split("/").pop()?.split("?")[0]?.replace(/[-_]/g, " ").replace(/\.\w+$/, "") ?? "";
+    s =
+      fallbackUrl
+        .split("/")
+        .pop()
+        ?.split("?")[0]
+        ?.replace(/[-_]/g, " ")
+        .replace(/\.\w+$/, "") ?? "";
   }
   // Decode HTML entities
   s = s
-    .replace(/&#39;/g, "'").replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"').replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)))
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
   // Strip site name after separators: " - Caribshopper", " | Site", " – "
   s = s.replace(/\s*[-–|]\s*[A-Z][^|–\-]{2,}$/, "").trim();
   // Strip pack/count quantities — keep size/weight like 330ml, 12oz
-  s = s.replace(/\s*\(\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\)/gi, "").trim();
-  s = s.replace(/\s*\[\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\]/gi, "").trim();
+  s = s
+    .replace(/\s*\(\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\)/gi, "")
+    .trim();
+  s = s
+    .replace(/\s*\[\s*(?:\d+\s+or\s+\d+\s+)?(?:pack|count|case|ct|pk)(?:\s+of\s+\d+)?\s*\]/gi, "")
+    .trim();
   s = s.replace(/\s*[-,]?\s*\d+\s*(?:pack|count|ct|pk)\b/gi, "").trim();
   s = s.replace(/\s*[-,]?\s*pack\s+of\s+\d+\b/gi, "").trim();
   // Strip empty parens/brackets: "()", "[]", "( )"
@@ -209,7 +276,21 @@ function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
   // Title case — capitalize first letter of each word, lowercase the rest
   // but preserve known all-caps brands and size units
   const PRESERVE_UPPER = new Set(["VS", "KBS", "IPA", "XO", "VSOP", "XXX"]);
-  const LOWERCASE_WORDS = new Set(["a", "an", "the", "and", "or", "of", "in", "on", "at", "to", "for", "with", "by"]);
+  const LOWERCASE_WORDS = new Set([
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "of",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "with",
+    "by",
+  ]);
   s = s
     .split(" ")
     .map((word, i) => {
@@ -244,14 +325,14 @@ function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
 //  - No SDK, single REST call, no CORS (called via edge function)
 
 type ScrapeItem = {
-  id: string;           // local uuid — React key
-  url: string;          // remote URL or object-URL for local files
-  dataUri?: string;     // base64 data URI (for local files, sent to Vision)
+  id: string; // local uuid — React key
+  url: string; // remote URL or object-URL for local files
+  dataUri?: string; // base64 data URI (for local files, sent to Vision)
   label: string;
   category: TemplateCategory;
   selected: boolean;
   duplicate: boolean;
-  labeling: boolean;    // auto-label in progress
+  labeling: boolean; // auto-label in progress
   labelSource?: "web" | "label" | "fallback"; // which Vision signal won
 };
 
@@ -290,22 +371,27 @@ function TemplateImportPanel() {
   const addFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (arr.length === 0) return;
-    const newItems: ScrapeItem[] = await Promise.all(arr.map(async (f) => {
-      const objectUrl = URL.createObjectURL(f);
-      const dataUri = await fileToDataUri(f);
-      const nameFromFile = f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase()).trim();
-      return {
-        id: crypto.randomUUID(),
-        url: objectUrl,
-        dataUri,
-        label: nameFromFile || "Untitled",
-        category: masterCategory,
-        selected: true,
-        duplicate: false,
-        labeling: false,
-      };
-    }));
+    const newItems: ScrapeItem[] = await Promise.all(
+      arr.map(async (f) => {
+        const objectUrl = URL.createObjectURL(f);
+        const dataUri = await fileToDataUri(f);
+        const nameFromFile = f.name
+          .replace(/\.[^.]+$/, "")
+          .replace(/[-_]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+          .trim();
+        return {
+          id: crypto.randomUUID(),
+          url: objectUrl,
+          dataUri,
+          label: nameFromFile || "Untitled",
+          category: masterCategory,
+          selected: true,
+          duplicate: false,
+          labeling: false,
+        };
+      }),
+    );
     setItems((prev) => [...prev, ...newItems]);
   };
 
@@ -322,7 +408,13 @@ function TemplateImportPanel() {
     const newItems: ScrapeItem[] = urls.map((u) => ({
       id: crypto.randomUUID(),
       url: u,
-      label: u.split("/").pop()?.split("?")[0]?.replace(/[-_]/g, " ").replace(/\.\w+$/, "") || "Untitled",
+      label:
+        u
+          .split("/")
+          .pop()
+          ?.split("?")[0]
+          ?.replace(/[-_]/g, " ")
+          .replace(/\.\w+$/, "") || "Untitled",
       category: masterCategory,
       selected: !existingUrls.has(u),
       duplicate: existingUrls.has(u),
@@ -336,7 +428,9 @@ function TemplateImportPanel() {
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
       // Files pasted (e.g. right-click copy image → paste)
-      const imageFiles = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      const imageFiles = Array.from(e.clipboardData?.files ?? []).filter((f) =>
+        f.type.startsWith("image/"),
+      );
       if (imageFiles.length > 0) {
         e.preventDefault();
         await addFiles(imageFiles);
@@ -351,37 +445,47 @@ function TemplateImportPanel() {
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterCategory, existingUrls]);
 
   // ── Auto-label one image — runs 100% in the browser, no API key needed ──
   // Uses @huggingface/transformers (ONNX/WASM) — same approach as Lovable's
   // "Auto-correct all names". Model downloads once (~40MB) then cached forever.
   const labelOneItem = async (id: string, url: string, dataUri?: string): Promise<void> => {
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, labeling: true } : i));
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, labeling: true } : i)));
     try {
       const { labelImage } = await import("@/lib/labelImage");
       // Prefer the object URL (works for both local files and remote URLs).
       // dataUri is only passed when we have a base64 version — use url instead
       // since transformers.js handles blob: and https: URLs natively.
       const label = await labelImage(url);
-      setItems((prev) => prev.map((i) => i.id === id
-        ? { ...i, label: decodeAndCleanLabel(label, url), labelSource: "web", labeling: false }
-        : i
-      ));
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? { ...i, label: decodeAndCleanLabel(label, url), labelSource: "web", labeling: false }
+            : i,
+        ),
+      );
     } catch {
-      setItems((prev) => prev.map((i) => i.id === id ? { ...i, labeling: false } : i));
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, labeling: false } : i)));
     }
   };
 
   // ── Auto-label ALL images in parallel (3 at a time) ─────────────────────
   const handleAutoLabelAll = async () => {
     const toLabel = items.filter((i) => !i.duplicate && !i.labeling);
-    if (toLabel.length === 0) { toast.error("No images to label"); return; }
+    if (toLabel.length === 0) {
+      toast.error("No images to label");
+      return;
+    }
     setAutoLabelingAll(true);
     const BATCH = 3;
     for (let idx = 0; idx < toLabel.length; idx += BATCH) {
-      await Promise.all(toLabel.slice(idx, idx + BATCH).map((item) => labelOneItem(item.id, item.url, item.dataUri)));
+      await Promise.all(
+        toLabel
+          .slice(idx, idx + BATCH)
+          .map((item) => labelOneItem(item.id, item.url, item.dataUri)),
+      );
     }
     setAutoLabelingAll(false);
     toast.success("Auto-label complete");
@@ -397,19 +501,32 @@ function TemplateImportPanel() {
       return;
     }
     const toProcess = items.filter((i) => i.selected && !i.duplicate && i.url.startsWith("blob:"));
-    if (toProcess.length === 0) { toast.error("Select local images first (dragged/pasted files)"); return; }
+    if (toProcess.length === 0) {
+      toast.error("Select local images first (dragged/pasted files)");
+      return;
+    }
     setRemovingBg(true);
     for (const item of toProcess) {
       try {
         const { processProductImage } = await import("@/lib/processProductImage");
         const blob = await fetch(item.url).then((r) => r.blob());
-        const file = new File([blob], `img_${item.id}.${blob.type === "image/png" ? "png" : "jpg"}`, { type: blob.type || "image/png" });
+        const file = new File(
+          [blob],
+          `img_${item.id}.${blob.type === "image/png" ? "png" : "jpg"}`,
+          { type: blob.type || "image/png" },
+        );
         // Full pipeline: remove BG → tight crop → center on 500×500 → sharpen
         const result = await processProductImage(file, { removeBg: true });
         const newObjectUrl = URL.createObjectURL(result);
         const newDataUri = await fileToDataUri(result);
-        setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, url: newObjectUrl, dataUri: newDataUri } : i));
-      } catch { /* skip — keeps original if pipeline fails */ }
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, url: newObjectUrl, dataUri: newDataUri } : i,
+          ),
+        );
+      } catch {
+        /* skip — keeps original if pipeline fails */
+      }
     }
     setRemovingBg(false);
     toast.success("Done — backgrounds removed, images centered & sharpened");
@@ -418,57 +535,87 @@ function TemplateImportPanel() {
   // ── Save selected items to template_images ────────────────────────────────
   const handleSave = async () => {
     const toSave = items.filter((i) => i.selected && !i.duplicate);
-    if (toSave.length === 0) { toast.error("No images selected"); return; }
+    if (toSave.length === 0) {
+      toast.error("No images selected");
+      return;
+    }
     setSaving(true);
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-    const rows = await Promise.all(toSave.map(async (item) => {
-      try {
-        if (item.url.startsWith("blob:")) {
-          // Local file — run through full pipeline: crop, center, sharpen, then upload
-          const blob = await fetch(item.url).then((r) => r.blob());
-          const isPng = blob.type === "image/png";
-          const ext = isPng ? "png" : "jpg";
-          const { processProductImage } = await import("@/lib/processProductImage");
-          const processed = await processProductImage(
-            new File([blob], `img.${ext}`, { type: blob.type }),
-            { removeBg: false }, // BG already removed if user ran Remove BG; skip re-processing
-          );
-          const path = `templates/import/${crypto.randomUUID()}.png`;
-          const { error: upErr } = await supabase.storage.from("product-images").upload(path, processed, { upsert: false });
-          if (upErr) throw upErr;
-          const storedUrl = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-          return { url: storedUrl, label: item.label, category: item.category };
+    const rows = await Promise.all(
+      toSave.map(async (item) => {
+        try {
+          if (item.url.startsWith("blob:")) {
+            // Local file — run through full pipeline: crop, center, sharpen, then upload
+            const blob = await fetch(item.url).then((r) => r.blob());
+            const isPng = blob.type === "image/png";
+            const ext = isPng ? "png" : "jpg";
+            const { processProductImage } = await import("@/lib/processProductImage");
+            const processed = await processProductImage(
+              new File([blob], `img.${ext}`, { type: blob.type }),
+              { removeBg: false }, // BG already removed if user ran Remove BG; skip re-processing
+            );
+            const path = `templates/import/${crypto.randomUUID()}.png`;
+            const { error: upErr } = await supabase.storage
+              .from("product-images")
+              .upload(path, processed, { upsert: false });
+            if (upErr) throw upErr;
+            const storedUrl = supabase.storage.from("product-images").getPublicUrl(path)
+              .data.publicUrl;
+            return { url: storedUrl, label: item.label, category: item.category };
+          }
+          // Remote URL — cache via edge function
+          const res = await fetch(`${supabaseUrl}/functions/v1/cache-template-image`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseKey}`,
+              apikey: supabaseKey,
+            },
+            body: JSON.stringify({ url: item.url }),
+            signal: AbortSignal.timeout(20000),
+          });
+          const json = (await res.json()) as { storedUrl?: string; error?: string };
+          return { url: json.storedUrl ?? item.url, label: item.label, category: item.category };
+        } catch {
+          return { url: item.url, label: item.label, category: item.category };
         }
-        // Remote URL — cache via edge function
-        const res = await fetch(`${supabaseUrl}/functions/v1/cache-template-image`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}`, "apikey": supabaseKey },
-          body: JSON.stringify({ url: item.url }),
-          signal: AbortSignal.timeout(20000),
-        });
-        const json = await res.json() as { storedUrl?: string; error?: string };
-        return { url: json.storedUrl ?? item.url, label: item.label, category: item.category };
-      } catch {
-        return { url: item.url, label: item.label, category: item.category };
-      }
-    }));
+      }),
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("template_images").upsert(rows, { onConflict: "url", ignoreDuplicates: true });
+    const { error } = await (supabase as any)
+      .from("template_images")
+      .upsert(rows, { onConflict: "url", ignoreDuplicates: true });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`${toSave.length} template${toSave.length !== 1 ? "s" : ""} added`);
-    setExistingUrls((prev) => { const next = new Set(prev); toSave.forEach((i) => next.add(i.url)); return next; });
-    setItems((prev) => prev.map((i) => i.selected ? { ...i, duplicate: true, selected: false } : i));
+    setExistingUrls((prev) => {
+      const next = new Set(prev);
+      toSave.forEach((i) => next.add(i.url));
+      return next;
+    });
+    setItems((prev) =>
+      prev.map((i) => (i.selected ? { ...i, duplicate: true, selected: false } : i)),
+    );
   };
 
   // ── Drag-and-drop handlers ────────────────────────────────────────────────
-  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
   const onDragLeave = () => setIsDragging(false);
   const onDrop = async (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
+    e.preventDefault();
+    setIsDragging(false);
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
-    if (files.length > 0) { await addFiles(files); return; }
+    if (files.length > 0) {
+      await addFiles(files);
+      return;
+    }
     const text = e.dataTransfer.getData("text");
     if (text) addUrls(text);
   };
@@ -482,7 +629,9 @@ function TemplateImportPanel() {
   const [recaching, setRecaching] = useState(false);
   const [recacheResult, setRecacheResult] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
-  const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(null);
+  const [compressProgress, setCompressProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   const [compressResult, setCompressResult] = useState<string | null>(null);
 
   const handleCompressAll = async () => {
@@ -492,35 +641,70 @@ function TemplateImportPanel() {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).from("template_images").select("id, url").order("id");
-      if (error) { toast.error(error.message); return; }
-      const dbRows = (data as { id: string; url: string }[]).filter((r) => r.url?.startsWith(supabaseUrl));
-      if (dbRows.length === 0) { setCompressResult("No Supabase-hosted images to compress."); return; }
+      const { data, error } = await (supabase as any)
+        .from("template_images")
+        .select("id, url")
+        .order("id");
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const dbRows = (data as { id: string; url: string }[]).filter((r) =>
+        r.url?.startsWith(supabaseUrl),
+      );
+      if (dbRows.length === 0) {
+        setCompressResult("No Supabase-hosted images to compress.");
+        return;
+      }
       setCompressProgress({ done: 0, total: dbRows.length });
-      let succeeded = 0; let skipped = 0;
+      let succeeded = 0;
+      let skipped = 0;
       for (let i = 0; i < dbRows.length; i++) {
         const row = dbRows[i];
         try {
           const fetchRes = await fetch(row.url, { cache: "no-store" });
-          if (!fetchRes.ok) { skipped++; continue; }
+          if (!fetchRes.ok) {
+            skipped++;
+            continue;
+          }
           const blob = await fetchRes.blob();
           const isPng = blob.type === "image/png" || row.url.toLowerCase().includes(".png");
           const ext = isPng ? "png" : "jpg";
-          const orig = new File([blob], `original.${ext}`, { type: blob.type || (isPng ? "image/png" : "image/jpeg") });
+          const orig = new File([blob], `original.${ext}`, {
+            type: blob.type || (isPng ? "image/png" : "image/jpeg"),
+          });
           const compressed = await compressImageFile(orig);
-          if (compressed.size >= orig.size * 0.95) { skipped++; setCompressProgress({ done: i + 1, total: dbRows.length }); continue; }
+          if (compressed.size >= orig.size * 0.95) {
+            skipped++;
+            setCompressProgress({ done: i + 1, total: dbRows.length });
+            continue;
+          }
           const match = row.url.match(/\/object\/public\/product-images\/(.+?)(\?|$)/);
-          if (!match) { skipped++; continue; }
-          const { error: upErr } = await supabase.storage.from("product-images").upload(match[1], compressed, { upsert: true, contentType: compressed.type });
-          if (upErr) { skipped++; continue; }
+          if (!match) {
+            skipped++;
+            continue;
+          }
+          const { error: upErr } = await supabase.storage
+            .from("product-images")
+            .upload(match[1], compressed, { upsert: true, contentType: compressed.type });
+          if (upErr) {
+            skipped++;
+            continue;
+          }
           succeeded++;
-        } catch { skipped++; }
+        } catch {
+          skipped++;
+        }
         setCompressProgress({ done: i + 1, total: dbRows.length });
       }
       setCompressResult(`Done — ${succeeded} compressed, ${skipped} skipped.`);
       toast.success("Compression complete");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setCompressing(false); setCompressProgress(null); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setCompressing(false);
+      setCompressProgress(null);
+    }
   };
 
   const handleRecacheAll = async () => {
@@ -531,21 +715,32 @@ function TemplateImportPanel() {
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/backfill-template-images`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}`, "apikey": supabaseKey },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseKey}`,
+          apikey: supabaseKey,
+        },
         signal: AbortSignal.timeout(120000),
       });
-      const json = await res.json() as { templates?: { total: number; success: number; failed: number }; products?: { total: number; success: number; failed: number } };
+      const json = (await res.json()) as {
+        templates?: { total: number; success: number; failed: number };
+        products?: { total: number; success: number; failed: number };
+      };
       const t = json.templates ?? { total: 0, success: 0, failed: 0 };
-      const p = json.products  ?? { total: 0, success: 0, failed: 0 };
-      setRecacheResult(`Templates: ${t.success}/${t.total} fixed. Products: ${p.success}/${p.total} fixed.`);
+      const p = json.products ?? { total: 0, success: 0, failed: 0 };
+      setRecacheResult(
+        `Templates: ${t.success}/${t.total} fixed. Products: ${p.success}/${p.total} fixed.`,
+      );
       toast.success("Re-cache complete");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setRecaching(false); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRecaching(false);
+    }
   };
 
   return (
     <div className="space-y-5">
-
       {/* ══ DROP ZONE ══ */}
       <div
         ref={dropRef}
@@ -560,10 +755,22 @@ function TemplateImportPanel() {
           minHeight: 140,
         }}
       >
-        <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
-          onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            if (e.target.files) addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <div className="flex flex-col items-center justify-center gap-2 py-8 px-4 pointer-events-none">
-          <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ background: "oklch(0.24 0.04 260)" }}>
+          <div
+            className="h-10 w-10 rounded-full flex items-center justify-center"
+            style={{ background: "oklch(0.24 0.04 260)" }}
+          >
             <ImagePlus className="h-5 w-5 text-primary" />
           </div>
           <p className="font-black text-sm text-center">Paste or drag images here</p>
@@ -573,8 +780,10 @@ function TemplateImportPanel() {
           <p className="text-xs font-bold text-primary/60">{items.length} / 500 added</p>
         </div>
         {isDragging && (
-          <div className="absolute inset-0 rounded-2xl flex items-center justify-center pointer-events-none"
-            style={{ background: "oklch(0.24 0.08 260 / 0.4)", border: "2px solid var(--primary)" }}>
+          <div
+            className="absolute inset-0 rounded-2xl flex items-center justify-center pointer-events-none"
+            style={{ background: "oklch(0.24 0.08 260 / 0.4)", border: "2px solid var(--primary)" }}
+          >
             <p className="font-black text-primary text-lg">Drop here</p>
           </div>
         )}
@@ -583,43 +792,91 @@ function TemplateImportPanel() {
       {/* ══ ACTION BAR — only shown when images are loaded ══ */}
       {items.length > 0 && (
         <div className="space-y-3">
-
           {/* Bulk action buttons */}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={handleAutoLabelAll}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAutoLabelAll}
               disabled={autoLabelingAll || newCount === 0}
-              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/10 font-bold">
-              {autoLabelingAll
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Labeling {labelingCount}…</>
-                : <><Zap className="h-3.5 w-3.5" />Auto-label all ({newCount})</>}
+              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/10 font-bold"
+            >
+              {autoLabelingAll ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Labeling {labelingCount}…
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3.5 w-3.5" />
+                  Auto-label all ({newCount})
+                </>
+              )}
             </Button>
-            <Button size="sm" variant="outline" onClick={handleRemoveBgAll}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRemoveBgAll}
               disabled={removingBg || selectedCount === 0}
-              className="gap-1.5 border-pink-500/40 text-pink-300 hover:bg-pink-500/10 font-bold">
-              {removingBg
-                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Removing BG…</>
-                : <><Camera className="h-3.5 w-3.5" />Remove BG ({selectedCount})</>}
+              className="gap-1.5 border-pink-500/40 text-pink-300 hover:bg-pink-500/10 font-bold"
+            >
+              {removingBg ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Removing BG…
+                </>
+              ) : (
+                <>
+                  <Camera className="h-3.5 w-3.5" />
+                  Remove BG ({selectedCount})
+                </>
+              )}
             </Button>
-            <Button size="sm" variant="outline"
-              onClick={() => setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, selected: true }))}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setItems((prev) => prev.map((i) => (i.duplicate ? i : { ...i, selected: true })))
+              }
+            >
               Select All
             </Button>
-            <Button size="sm" variant="outline"
-              onClick={() => setItems((prev) => prev.map((i) => ({ ...i, selected: false })))}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setItems((prev) => prev.map((i) => ({ ...i, selected: false })))}
+            >
               Deselect All
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setItems([])}
-              className="text-red-400 border-red-500/30 hover:bg-red-500/10">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setItems([])}
+              className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+            >
               Clear All
             </Button>
           </div>
 
           {/* Master category picker */}
-          <div className="rounded-xl border border-border p-3 space-y-2" style={{ background: "var(--gradient-card)" }}>
+          <div
+            className="rounded-xl border border-border p-3 space-y-2"
+            style={{ background: "var(--gradient-card)" }}
+          >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Master Category</p>
-              <Button size="sm" variant="ghost" className="h-6 text-[10px] font-black text-primary px-2"
-                onClick={() => setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, category: masterCategory }))}>
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                Master Category
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] font-black text-primary px-2"
+                onClick={() =>
+                  setItems((prev) =>
+                    prev.map((i) => (i.duplicate ? i : { ...i, category: masterCategory })),
+                  )
+                }
+              >
                 Apply to all
               </Button>
             </div>
@@ -627,10 +884,17 @@ function TemplateImportPanel() {
               {TEMPLATE_CATEGORIES.map((cat) => {
                 const catDef = CATEGORIES.find((c) => c.value === cat);
                 return (
-                  <button key={cat}
-                    onClick={() => { setMasterCategory(cat); setItems((prev) => prev.map((i) => i.duplicate ? i : { ...i, category: cat })); }}
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setMasterCategory(cat);
+                      setItems((prev) =>
+                        prev.map((i) => (i.duplicate ? i : { ...i, category: cat })),
+                      );
+                    }}
                     className={`h-9 rounded-xl font-black text-xs transition border ${masterCategory === cat ? "text-primary-foreground border-transparent" : "bg-muted text-muted-foreground border-border hover:text-foreground"}`}
-                    style={masterCategory === cat ? { background: "var(--gradient-hero)" } : {}}>
+                    style={masterCategory === cat ? { background: "var(--gradient-hero)" } : {}}
+                  >
                     {catDef?.icon} {catDef?.label ?? cat}
                   </button>
                 );
@@ -645,51 +909,115 @@ function TemplateImportPanel() {
               <span className="font-black text-primary">{newCount}</span> new ·{" "}
               <span>{items.filter((i) => i.duplicate).length} already saved</span>
             </div>
-            <Button disabled={selectedCount === 0 || saving} onClick={handleSave}
+            <Button
+              disabled={selectedCount === 0 || saving}
+              onClick={handleSave}
               className="gap-2 font-black"
-              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-              {saving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : <><Plus className="h-4 w-4" />Add {selectedCount} to Templates</>}
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Add {selectedCount} to Templates
+                </>
+              )}
             </Button>
           </div>
 
           {/* Image grid */}
           <div className="grid grid-cols-3 gap-2">
             {items.map((item) => (
-              <div key={item.id}
+              <div
+                key={item.id}
                 className={`relative rounded-xl overflow-hidden border-2 transition ${item.duplicate ? "border-muted opacity-40" : item.selected ? "border-primary" : "border-border"}`}
-                style={{ background: "var(--gradient-card)" }}>
+                style={{ background: "var(--gradient-card)" }}
+              >
                 {/* Tap to toggle */}
-                <div className="block w-full aspect-[3/4] relative cursor-pointer" style={{ background: "oklch(0.14 0.01 260)" }}
-                  onClick={() => { if (item.duplicate) return; setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, selected: !i.selected } : i)); }}>
-                  <img src={item.url} alt={item.label} loading="lazy" decoding="async"
+                <div
+                  className="block w-full aspect-[3/4] relative cursor-pointer"
+                  style={{ background: "oklch(0.14 0.01 260)" }}
+                  onClick={() => {
+                    if (item.duplicate) return;
+                    setItems((prev) =>
+                      prev.map((i) => (i.id === item.id ? { ...i, selected: !i.selected } : i)),
+                    );
+                  }}
+                >
+                  <img
+                    src={item.url}
+                    alt={item.label}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.2"; }} />
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.opacity = "0.2";
+                    }}
+                  />
                   {/* X — remove this image from the list */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); setItems((prev) => prev.filter((i) => i.id !== item.id)); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setItems((prev) => prev.filter((i) => i.id !== item.id));
+                    }}
                     className="absolute top-1.5 left-1.5 h-5 w-5 rounded-full bg-black/70 border border-white/30 flex items-center justify-center hover:bg-red-600 hover:border-red-500 transition z-10"
-                    title="Remove image">
+                    title="Remove image"
+                  >
                     <X className="h-3 w-3 text-white" />
                   </button>
                   {!item.duplicate && (
-                    <div className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition ${item.selected ? "bg-primary border-primary" : "bg-black/50 border-white/40"}`}>
+                    <div
+                      className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 flex items-center justify-center transition ${item.selected ? "bg-primary border-primary" : "bg-black/50 border-white/40"}`}
+                    >
                       {item.selected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                   )}
-                  {item.duplicate && <div className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SAVED</div>}
-                  {item.labeling && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>}
+                  {item.duplicate && (
+                    <div className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                      SAVED
+                    </div>
+                  )}
+                  {item.labeling && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+                    </div>
+                  )}
                 </div>
                 {/* Info panel */}
-                <div className="px-1.5 pt-1 pb-1.5 space-y-1" style={{ background: "rgba(0,0,0,0.85)" }}>
+                <div
+                  className="px-1.5 pt-1 pb-1.5 space-y-1"
+                  style={{ background: "rgba(0,0,0,0.85)" }}
+                >
                   <div className="flex items-center gap-1">
-                    <input className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
-                      value={item.label} onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, label: e.target.value } : i))} />
+                    <input
+                      className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
+                      value={item.label}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        setItems((prev) =>
+                          prev.map((i) => (i.id === item.id ? { ...i, label: e.target.value } : i)),
+                        )
+                      }
+                    />
                     {!item.duplicate && (
-                      <button onClick={(e) => { e.stopPropagation(); labelOneItem(item.id, item.url, item.dataUri); }}
-                        disabled={item.labeling} title="Auto-label this image"
-                        className="shrink-0 h-5 w-5 rounded flex items-center justify-center hover:bg-violet-500/20">
-                        {item.labeling ? <Loader2 className="h-3 w-3 animate-spin text-violet-400" /> : <Zap className="h-3 w-3 text-violet-400/70" />}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          labelOneItem(item.id, item.url, item.dataUri);
+                        }}
+                        disabled={item.labeling}
+                        title="Auto-label this image"
+                        className="shrink-0 h-5 w-5 rounded flex items-center justify-center hover:bg-violet-500/20"
+                      >
+                        {item.labeling ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-violet-400" />
+                        ) : (
+                          <Zap className="h-3 w-3 text-violet-400/70" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -697,11 +1025,19 @@ function TemplateImportPanel() {
                     <>
                       {/* Category badge */}
                       <div className="flex items-center gap-1">
-                        <span className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Cat:</span>
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
-                          style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+                        <span className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
+                          Cat:
+                        </span>
+                        <span
+                          className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "var(--gradient-hero)",
+                            color: "var(--primary-foreground)",
+                          }}
+                        >
                           {CATEGORIES.find((c) => c.value === item.category)?.icon}{" "}
-                          {CATEGORIES.find((c) => c.value === item.category)?.label ?? item.category}
+                          {CATEGORIES.find((c) => c.value === item.category)?.label ??
+                            item.category}
                         </span>
                       </div>
                       {/* Per-image category mini-picker */}
@@ -709,10 +1045,19 @@ function TemplateImportPanel() {
                         {TEMPLATE_CATEGORIES.map((cat) => {
                           const catDef = CATEGORIES.find((c) => c.value === cat);
                           return (
-                            <button key={cat}
-                              onClick={(e) => { e.stopPropagation(); setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, category: cat } : i)); }}
+                            <button
+                              key={cat}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItems((prev) =>
+                                  prev.map((i) => (i.id === item.id ? { ...i, category: cat } : i)),
+                                );
+                              }}
                               className={`h-6 rounded text-[9px] font-black transition leading-none ${item.category === cat ? "text-primary-foreground" : "bg-white/10 text-white/50 hover:text-white/80"}`}
-                              style={item.category === cat ? { background: "var(--gradient-hero)" } : {}}>
+                              style={
+                                item.category === cat ? { background: "var(--gradient-hero)" } : {}
+                              }
+                            >
                               {catDef?.label ?? cat}
                             </button>
                           );
@@ -731,24 +1076,69 @@ function TemplateImportPanel() {
       <details>
         <summary className="cursor-pointer text-xs font-black text-muted-foreground/60 uppercase tracking-wider flex items-center gap-2 select-none list-none">
           <RefreshCw className="h-3.5 w-3.5" /> Maintenance Tools
-          <span className="text-[10px] font-normal normal-case">(fix broken / compress images)</span>
+          <span className="text-[10px] font-normal normal-case">
+            (fix broken / compress images)
+          </span>
         </summary>
         <div className="mt-3 space-y-3">
-          <div className="rounded-2xl p-4 border border-amber-500/30 space-y-3" style={{ background: "rgba(245,158,11,0.06)" }}>
-            <h2 className="font-black text-sm flex items-center gap-2 text-amber-400"><RefreshCw className="h-4 w-4" /> Fix Broken Images</h2>
-            <p className="text-xs text-muted-foreground">Re-downloads all external images into Supabase storage.</p>
-            <Button onClick={handleRecacheAll} disabled={recaching} variant="outline" className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold">
-              {recaching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Re-caching…</> : "Re-cache All Images Now"}
+          <div
+            className="rounded-2xl p-4 border border-amber-500/30 space-y-3"
+            style={{ background: "rgba(245,158,11,0.06)" }}
+          >
+            <h2 className="font-black text-sm flex items-center gap-2 text-amber-400">
+              <RefreshCw className="h-4 w-4" /> Fix Broken Images
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Re-downloads all external images into Supabase storage.
+            </p>
+            <Button
+              onClick={handleRecacheAll}
+              disabled={recaching}
+              variant="outline"
+              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-bold"
+            >
+              {recaching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Re-caching…
+                </>
+              ) : (
+                "Re-cache All Images Now"
+              )}
             </Button>
-            {recacheResult && <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>}
+            {recacheResult && (
+              <p className="text-xs text-green-400 font-semibold">{recacheResult}</p>
+            )}
           </div>
-          <div className="rounded-2xl p-4 border border-blue-500/30 space-y-3" style={{ background: "rgba(59,130,246,0.06)" }}>
-            <h2 className="font-black text-sm flex items-center gap-2 text-blue-400"><ImagePlus className="h-4 w-4" /> Compress Existing Templates</h2>
-            <p className="text-xs text-muted-foreground">Re-compresses all template images to max 500px.</p>
-            <Button onClick={handleCompressAll} disabled={compressing} variant="outline" className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-bold">
-              {compressing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Compressing… {compressProgress ? `${compressProgress.done}/${compressProgress.total}` : ""}</> : "Compress All Template Images"}
+          <div
+            className="rounded-2xl p-4 border border-blue-500/30 space-y-3"
+            style={{ background: "rgba(59,130,246,0.06)" }}
+          >
+            <h2 className="font-black text-sm flex items-center gap-2 text-blue-400">
+              <ImagePlus className="h-4 w-4" /> Compress Existing Templates
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Re-compresses all template images to max 500px.
+            </p>
+            <Button
+              onClick={handleCompressAll}
+              disabled={compressing}
+              variant="outline"
+              className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-bold"
+            >
+              {compressing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Compressing…{" "}
+                  {compressProgress ? `${compressProgress.done}/${compressProgress.total}` : ""}
+                </>
+              ) : (
+                "Compress All Template Images"
+              )}
             </Button>
-            {compressResult && <p className="text-xs text-green-400 font-semibold">{compressResult}</p>}
+            {compressResult && (
+              <p className="text-xs text-green-400 font-semibold">{compressResult}</p>
+            )}
           </div>
         </div>
       </details>
@@ -757,11 +1147,23 @@ function TemplateImportPanel() {
 }
 
 // ─── Template Gallery Panel ───────────────────────────────────────────────────
-type SavedTemplate = { id: string; url: string; label: string; category: string; created_at: string };
+type SavedTemplate = {
+  id: string;
+  url: string;
+  label: string;
+  category: string;
+  created_at: string;
+};
 
-const CAT_EMOJI: Record<string, string> = Object.fromEntries(CATEGORIES.map(c => [c.value, c.icon]));
+const CAT_EMOJI: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.value, c.icon]),
+);
 
-function TemplateCard({ t, onDelete, onCategoryChange }: {
+function TemplateCard({
+  t,
+  onDelete,
+  onCategoryChange,
+}: {
   t: SavedTemplate;
   onDelete: (id: string) => void;
   onCategoryChange: (id: string, newCategory: string) => void;
@@ -808,7 +1210,10 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("template_images").delete().eq("id", t.id);
     setDeleting(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     onDelete(t.id);
   };
 
@@ -825,7 +1230,9 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
           loading="lazy"
           decoding="async"
           className="absolute inset-0 w-full h-full object-contain"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
         />
         {/* Saving indicator */}
         {saving && (
@@ -840,9 +1247,11 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
           className="absolute top-1.5 right-1.5 h-7 w-7 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition shadow-lg"
           title="Delete template"
         >
-          {deleting
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-            : <Trash2 className="h-3.5 w-3.5 text-white" />}
+          {deleting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5 text-white" />
+          )}
         </button>
       </div>
 
@@ -865,13 +1274,18 @@ function TemplateCard({ t, onDelete, onCategoryChange }: {
             e.target.style.height = Math.min(e.target.scrollHeight, 57) + "px";
           }}
           onBlur={() => save(label, category)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            }
+          }}
           title="Click to edit name"
         />
         {/* Category — text buttons */}
         <div className="grid grid-cols-5 gap-0.5">
           {TEMPLATE_CATEGORIES.map((cat) => {
-            const catDef = CATEGORIES.find(c => c.value === cat);
+            const catDef = CATEGORIES.find((c) => c.value === cat);
             return (
               <button
                 key={cat}
@@ -912,19 +1326,25 @@ function compressImageFile(f: File): Promise<File> {
     img.onload = () => {
       URL.revokeObjectURL(url);
       const { naturalWidth: w, naturalHeight: h } = img;
-      if (w <= MAX_PX && h <= MAX_PX) { resolve(f); return; }
+      if (w <= MAX_PX && h <= MAX_PX) {
+        resolve(f);
+        return;
+      }
       const scale = MAX_PX / Math.max(w, h);
       const canvas = document.createElement("canvas");
-      canvas.width  = Math.round(w * scale);
+      canvas.width = Math.round(w * scale);
       canvas.height = Math.round(h * scale);
       const ctx = canvas.getContext("2d")!;
       if (isPng) ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const mimeType = isPng ? "image/png" : "image/jpeg";
-      const quality  = isPng ? undefined : 0.82;
+      const quality = isPng ? undefined : 0.82;
       canvas.toBlob(
         (blob) => {
-          if (!blob) { resolve(f); return; }
+          if (!blob) {
+            resolve(f);
+            return;
+          }
           const ext = isPng ? "png" : "jpg";
           resolve(new File([blob], `${f.name.replace(/\.[^.]+$/, "")}.${ext}`, { type: mimeType }));
         },
@@ -932,29 +1352,32 @@ function compressImageFile(f: File): Promise<File> {
         quality,
       );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(f);
+    };
     img.src = url;
   });
 }
 
 // ─── Add Template Modal ───────────────────────────────────────────────────────
 function AddTemplateModal({ onDone }: { onDone: () => void }) {
-  const [mode, setMode]         = useState<"single" | "bulk">("single");
+  const [mode, setMode] = useState<"single" | "bulk">("single");
 
   // ── Single mode state ──
-  const [name, setName]         = useState("");
+  const [name, setName] = useState("");
   const [category, setCategory] = useState<string>("beers");
-  const [file, setFile]         = useState<File | null>(null);
-  const [preview, setPreview]   = useState<string | null>(null);
-  const [busy, setBusy]         = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const camRef  = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
 
   // ── Bulk mode state ──
   type BulkItem = { file: File; previewUrl: string; name: string };
-  const [bulkItems, setBulkItems]   = useState<BulkItem[]>([]);
-  const [bulkCat, setBulkCat]       = useState<string>("beers");
-  const [bulkBusy, setBulkBusy]     = useState(false);
+  const [bulkItems, setBulkItems] = useState<BulkItem[]>([]);
+  const [bulkCat, setBulkCat] = useState<string>("beers");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const bulkFileRef = useRef<HTMLInputElement>(null);
 
@@ -964,35 +1387,45 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     setPreview(URL.createObjectURL(f));
   };
 
-  const clearImage = () => { setFile(null); setPreview(null); };
+  const clearImage = () => {
+    setFile(null);
+    setPreview(null);
+  };
 
   // Derive a clean name from filename
   const nameFromFile = (f: File) =>
-    f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+    f.name
+      .replace(/\.[^.]+$/, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim();
 
   const onBulkPick = (files: FileList | null) => {
     if (!files) return;
-    const incoming: BulkItem[] = Array.from(files).map(f => ({
+    const incoming: BulkItem[] = Array.from(files).map((f) => ({
       file: f,
       previewUrl: URL.createObjectURL(f),
       name: nameFromFile(f),
     }));
-    setBulkItems(prev => [...prev, ...incoming]);
+    setBulkItems((prev) => [...prev, ...incoming]);
   };
 
   const removeBulkItem = (idx: number) => {
-    setBulkItems(prev => {
+    setBulkItems((prev) => {
       URL.revokeObjectURL(prev[idx].previewUrl);
       return prev.filter((_, i) => i !== idx);
     });
   };
 
   const updateBulkName = (idx: number, val: string) =>
-    setBulkItems(prev => prev.map((it, i) => i === idx ? { ...it, name: val } : it));
+    setBulkItems((prev) => prev.map((it, i) => (i === idx ? { ...it, name: val } : it)));
 
   // ── Single submit ──
   const submit = async () => {
-    if (!name.trim()) { toast.error("Enter a title"); return; }
+    if (!name.trim()) {
+      toast.error("Enter a title");
+      return;
+    }
     setBusy(true);
     let url: string | null = null;
     if (file) {
@@ -1003,7 +1436,11 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
       const { error: upErr } = await supabase.storage
         .from("product-images")
         .upload(path, processed, { upsert: false });
-      if (upErr) { toast.error(upErr.message); setBusy(false); return; }
+      if (upErr) {
+        toast.error(upErr.message);
+        setBusy(false);
+        return;
+      }
       url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1013,15 +1450,24 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
       category,
     });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Template added");
     onDone();
   };
 
   // ── Bulk submit ──
   const submitBulk = async () => {
-    if (bulkItems.length === 0) { toast.error("No images selected"); return; }
-    if (bulkItems.some(it => !it.name.trim())) { toast.error("All items need a name"); return; }
+    if (bulkItems.length === 0) {
+      toast.error("No images selected");
+      return;
+    }
+    if (bulkItems.some((it) => !it.name.trim())) {
+      toast.error("All items need a name");
+      return;
+    }
     setBulkBusy(true);
     setBulkProgress(0);
     let saved = 0;
@@ -1033,7 +1479,10 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
       const { error: upErr } = await supabase.storage
         .from("product-images")
         .upload(path, processed, { upsert: false });
-      if (upErr) { toast.error(`${it.name}: ${upErr.message}`); continue; }
+      if (upErr) {
+        toast.error(`${it.name}: ${upErr.message}`);
+        continue;
+      }
       const url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from("template_images").insert({
@@ -1041,7 +1490,10 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
         label: it.name.trim(),
         category: bulkCat,
       });
-      if (error) { toast.error(`${it.name}: ${error.message}`); continue; }
+      if (error) {
+        toast.error(`${it.name}: ${error.message}`);
+        continue;
+      }
       saved++;
       setBulkProgress(Math.round(((i + 1) / bulkItems.length) * 100));
     }
@@ -1052,38 +1504,59 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
     }
   };
 
-  const CategoryPicker = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+  const CategoryPicker = ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+  }) => (
     <div>
       <Label className="text-xs mb-1.5 block">Category</Label>
       <div className="grid grid-cols-5 gap-2">
-        {CATEGORIES.filter((cat) => cat.value !== "miscellaneous" && cat.value !== "food").map((cat) => (
-          <button key={cat.value} type="button"
-            onClick={() => onChange(cat.value)}
-            className={`h-10 rounded-xl font-bold text-xs transition ${
-              value === cat.value ? "text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-            style={value === cat.value ? { background: "var(--gradient-hero)" } : {}}>
-            {cat.label}
-          </button>
-        ))}
+        {CATEGORIES.filter((cat) => cat.value !== "miscellaneous" && cat.value !== "food").map(
+          (cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => onChange(cat.value)}
+              className={`h-10 rounded-xl font-bold text-xs transition ${
+                value === cat.value
+                  ? "text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+              style={value === cat.value ? { background: "var(--gradient-hero)" } : {}}
+            >
+              {cat.label}
+            </button>
+          ),
+        )}
       </div>
     </div>
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-      onClick={onDone}>
-      <div className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onDone}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl border border-border shadow-2xl"
         style={{ background: "var(--gradient-card)" }}
-        onClick={(e) => e.stopPropagation()}>
-
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Handle */}
-        <div className="w-10 h-1 rounded-full mx-auto mt-3 mb-1" style={{ background: "rgba(255,255,255,0.15)" }} />
+        <div
+          className="w-10 h-1 rounded-full mx-auto mt-3 mb-1"
+          style={{ background: "rgba(255,255,255,0.15)" }}
+        />
 
         <div className="flex items-center justify-between px-5 pt-2 pb-3">
           <span className="font-black text-base">Add Template</span>
-          <button onClick={onDone}
-            className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition">
+          <button
+            onClick={onDone}
+            className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1091,135 +1564,218 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
         {/* Mode toggle */}
         <div className="px-5 pb-3">
           <div className="flex rounded-xl overflow-hidden border border-border">
-            <button type="button"
+            <button
+              type="button"
               onClick={() => setMode("single")}
               className="flex-1 h-9 text-xs font-black transition"
-              style={mode === "single" ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "transparent", color: "rgba(255,255,255,0.4)" }}>
+              style={
+                mode === "single"
+                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                  : { background: "transparent", color: "rgba(255,255,255,0.4)" }
+              }
+            >
               Single
             </button>
-            <button type="button"
+            <button
+              type="button"
               onClick={() => setMode("bulk")}
               className="flex-1 h-9 text-xs font-black transition"
-              style={mode === "bulk" ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" } : { background: "transparent", color: "rgba(255,255,255,0.4)" }}>
+              style={
+                mode === "bulk"
+                  ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
+                  : { background: "transparent", color: "rgba(255,255,255,0.4)" }
+              }
+            >
               Bulk Upload
             </button>
           </div>
         </div>
 
         <div className="px-5 pb-6 space-y-4 max-h-[75vh] overflow-y-auto">
-
           {/* ── SINGLE MODE ── */}
-          {mode === "single" && (<>
-            {/* Image area */}
-            <div className="flex gap-3 items-stretch">
-              <div className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
-                style={{ background: "var(--gradient-card)" }}>
-                {preview
-                  ? <img src={preview} className="absolute inset-0 w-full h-full object-contain" alt="preview" />
-                  : <div className="absolute inset-0 flex items-center justify-center"><ImagePlus className="h-8 w-8 text-muted-foreground/40" /></div>
-                }
-                {preview && (
-                  <button onClick={clearImage}
-                    className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1">
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
-                <input ref={camRef} type="file" accept="image/*" capture="environment" hidden
-                  onChange={(e) => onPick(e.target.files?.[0])} />
-                <input ref={fileRef} type="file" accept="image/*" hidden
-                  onChange={(e) => onPick(e.target.files?.[0])} />
+          {mode === "single" && (
+            <>
+              {/* Image area */}
+              <div className="flex gap-3 items-stretch">
+                <div
+                  className="relative w-1/2 aspect-[3/4] rounded-xl border-2 border-dashed border-border overflow-hidden shrink-0"
+                  style={{ background: "var(--gradient-card)" }}
+                >
+                  {preview ? (
+                    <img
+                      src={preview}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      alt="preview"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ImagePlus className="h-8 w-8 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  {preview && (
+                    <button
+                      onClick={clearImage}
+                      className="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-full p-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                  <input
+                    ref={camRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    hidden
+                    onChange={(e) => onPick(e.target.files?.[0])}
+                  />
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => onPick(e.target.files?.[0])}
+                  />
+                </div>
+                <div className="flex flex-col gap-2 flex-1 justify-center">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full h-14 text-sm font-bold"
+                    onClick={() => camRef.current?.click()}
+                  >
+                    <Camera className="h-5 w-5 mr-2" /> Take Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full h-14 text-sm font-bold"
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    <ImagePlus className="h-5 w-5 mr-2" /> Upload Photo
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-col gap-2 flex-1 justify-center">
-                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
-                  onClick={() => camRef.current?.click()}>
-                  <Camera className="h-5 w-5 mr-2" /> Take Photo
-                </Button>
-                <Button type="button" variant="secondary" className="w-full h-14 text-sm font-bold"
-                  onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="h-5 w-5 mr-2" /> Upload Photo
-                </Button>
+
+              <CategoryPicker value={category} onChange={setCategory} />
+
+              <div>
+                <Label className="text-xs mb-1.5 block">Title</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Heineken 330ml"
+                  className="h-11"
+                />
               </div>
-            </div>
 
-            <CategoryPicker value={category} onChange={setCategory} />
-
-            <div>
-              <Label className="text-xs mb-1.5 block">Title</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Heineken 330ml" className="h-11" />
-            </div>
-
-            <Button className="w-full h-12 font-black text-base"
-              disabled={!name.trim() || busy}
-              onClick={submit}
-              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Template"}
-            </Button>
-          </>)}
+              <Button
+                className="w-full h-12 font-black text-base"
+                disabled={!name.trim() || busy}
+                onClick={submit}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Template"}
+              </Button>
+            </>
+          )}
 
           {/* ── BULK MODE ── */}
-          {mode === "bulk" && (<>
-            <CategoryPicker value={bulkCat} onChange={setBulkCat} />
+          {mode === "bulk" && (
+            <>
+              <CategoryPicker value={bulkCat} onChange={setBulkCat} />
 
-            {/* Pick images button */}
-            <input ref={bulkFileRef} type="file" accept="image/*" multiple hidden
-              onChange={(e) => onBulkPick(e.target.files)} />
-            <Button type="button" variant="secondary" className="w-full h-12 font-bold text-sm"
-              onClick={() => bulkFileRef.current?.click()}>
-              <ImagePlus className="h-5 w-5 mr-2" />
-              {bulkItems.length === 0 ? "Select Images" : `Add More Images (${bulkItems.length} selected)`}
-            </Button>
+              {/* Pick images button */}
+              <input
+                ref={bulkFileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => onBulkPick(e.target.files)}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full h-12 font-bold text-sm"
+                onClick={() => bulkFileRef.current?.click()}
+              >
+                <ImagePlus className="h-5 w-5 mr-2" />
+                {bulkItems.length === 0
+                  ? "Select Images"
+                  : `Add More Images (${bulkItems.length} selected)`}
+              </Button>
 
-            {/* Preview list */}
-            {bulkItems.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-wider">
-                  {bulkItems.length} image{bulkItems.length !== 1 ? "s" : ""} · edit names before saving
-                </p>
-                {bulkItems.map((it, idx) => (
-                  <div key={idx} className="flex items-center gap-2 rounded-xl border border-border p-2"
-                    style={{ background: "oklch(0.18 0.015 60)" }}>
-                    <img src={it.previewUrl} alt={it.name}
-                      className="h-14 w-10 rounded-lg object-contain shrink-0 border border-border"
-                      style={{ background: "var(--gradient-card)" }} />
-                    <input
-                      value={it.name}
-                      onChange={(e) => updateBulkName(idx, e.target.value)}
-                      className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm font-bold outline-none min-w-0"
-                      placeholder="Template name" />
-                    <button type="button" onClick={() => removeBulkItem(idx)}
-                      className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition active:scale-90"
-                      style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                    </button>
+              {/* Preview list */}
+              {bulkItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider">
+                    {bulkItems.length} image{bulkItems.length !== 1 ? "s" : ""} · edit names before
+                    saving
+                  </p>
+                  {bulkItems.map((it, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 rounded-xl border border-border p-2"
+                      style={{ background: "oklch(0.18 0.015 60)" }}
+                    >
+                      <img
+                        src={it.previewUrl}
+                        alt={it.name}
+                        className="h-14 w-10 rounded-lg object-contain shrink-0 border border-border"
+                        style={{ background: "var(--gradient-card)" }}
+                      />
+                      <input
+                        value={it.name}
+                        onChange={(e) => updateBulkName(idx, e.target.value)}
+                        className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm font-bold outline-none min-w-0"
+                        placeholder="Template name"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBulkItem(idx)}
+                        className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition active:scale-90"
+                        style={{
+                          background: "rgba(239,68,68,0.12)",
+                          border: "1px solid rgba(239,68,68,0.3)",
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Progress bar */}
+              {bulkBusy && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Uploading…</span>
+                    <span>{bulkProgress}%</span>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Progress bar */}
-            {bulkBusy && (
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Uploading…</span><span>{bulkProgress}%</span>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${bulkProgress}%`, background: "var(--gradient-hero)" }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-300"
-                    style={{ width: `${bulkProgress}%`, background: "var(--gradient-hero)" }} />
-                </div>
-              </div>
-            )}
+              )}
 
-            <Button className="w-full h-12 font-black text-base"
-              disabled={bulkItems.length === 0 || bulkBusy}
-              onClick={submitBulk}
-              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-              {bulkBusy
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : `Save ${bulkItems.length > 0 ? bulkItems.length : ""} Template${bulkItems.length !== 1 ? "s" : ""}`}
-            </Button>
-          </>)}
-
+              <Button
+                className="w-full h-12 font-black text-base"
+                disabled={bulkItems.length === 0 || bulkBusy}
+                onClick={submitBulk}
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                {bulkBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  `Save ${bulkItems.length > 0 ? bulkItems.length : ""} Template${bulkItems.length !== 1 ? "s" : ""}`
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1245,15 +1801,15 @@ function TemplateGalleryPanel() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   // Fix all titles: decode entities + clean labels in one batch
   const handleFixAllTitles = async () => {
     setFixing(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
-      .from("template_images")
-      .select("id, url, label");
+    const { data } = await (supabase as any).from("template_images").select("id, url, label");
 
     const all = (data ?? []) as { id: string; url: string; label: string }[];
     const toUpdate = all
@@ -1295,7 +1851,7 @@ function TemplateGalleryPanel() {
       <div className="sticky top-[48px] z-10 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="grid grid-cols-5 gap-2 mb-2">
           {TEMPLATE_CATEGORIES.map((cat) => {
-            const catDef = CATEGORIES.find(c => c.value === cat);
+            const catDef = CATEGORIES.find((c) => c.value === cat);
             return (
               <button
                 key={cat}
@@ -1316,7 +1872,8 @@ function TemplateGalleryPanel() {
         <button
           onClick={() => setAddOpen(true)}
           className="w-full h-10 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition active:scale-[0.98] border-dashed border-2"
-          style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+          style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+        >
           <Plus className="h-4 w-4" /> Add Template
         </button>
       </div>
@@ -1338,7 +1895,9 @@ function TemplateGalleryPanel() {
               t={t}
               onDelete={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
               onCategoryChange={(id, newCat) =>
-                setTemplates((prev) => prev.map((x) => x.id === id ? { ...x, category: newCat } : x))
+                setTemplates((prev) =>
+                  prev.map((x) => (x.id === id ? { ...x, category: newCat } : x)),
+                )
               }
             />
           ))}
@@ -1347,7 +1906,10 @@ function TemplateGalleryPanel() {
 
       {addOpen && (
         <AddTemplateModal
-          onDone={() => { setAddOpen(false); load(); }}
+          onDone={() => {
+            setAddOpen(false);
+            load();
+          }}
         />
       )}
     </div>
@@ -1360,7 +1922,10 @@ function TemplateGalleryPanel() {
 function AdminBillingInline({ onCountChange }: { onCountChange: (n: number) => void }) {
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+    (supabase as any)
+      .from("billing_payments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
       .then(({ count }: { count: number | null }) => onCountChange(count ?? 0));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <AdminBillingManagementPage />;
@@ -1406,31 +1971,31 @@ export default function AdminPage() {
   // Calculate near-expiry count for approved users
   useEffect(() => {
     const checkNearExpiry = async () => {
-      const approvedUsers = rows.filter(r => r.status === "approved");
+      const approvedUsers = rows.filter((r) => r.status === "approved");
       let count = 0;
-      
+
       for (const user of approvedUsers) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("subscription_end_date")
           .eq("id", user.id)
           .single();
-        
+
         if (profileData?.subscription_end_date) {
           const dueDate = new Date(profileData.subscription_end_date);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / 86400000);
-          
+
           if (daysUntil <= 7) {
             count++;
           }
         }
       }
-      
+
       setNearExpiryCount(count);
     };
-    
+
     if (rows.length > 0) {
       checkNearExpiry();
     }
@@ -1441,12 +2006,14 @@ export default function AdminPage() {
     setIncomeLoading(true);
     try {
       // Exclude demo account from income calculations
-      const { data: demoProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", "isabel@gmail.com")
-        .maybeSingle();
-      const demoId = demoProfile?.id;
+      let demoId: string | undefined;
+      try {
+        const allProfiles = await listAllProfiles();
+        const demoProfile = allProfiles.find((p) => p.email === "isabel@gmail.com");
+        demoId = demoProfile?.id;
+      } catch {
+        /* ignore */
+      }
 
       // Master account (renard.sankersingh@gmail.com) has no billing payments — no filtering needed
       const masterId: string | undefined = undefined;
@@ -1500,7 +2067,7 @@ export default function AdminPage() {
             year: y,
             month: m,
             total,
-            shares: SHAREHOLDERS.map(s => Math.round(total * s.share * 100) / 100),
+            shares: SHAREHOLDERS.map((s) => Math.round(total * s.share * 100) / 100),
           };
         })
         .sort((a, b) => b.year - a.year || b.month - a.month);
@@ -1522,17 +2089,25 @@ export default function AdminPage() {
       .channel("admin-profiles")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "billing_payments" }, () => {
-        supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+        supabase
+          .from("billing_payments")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending")
           .then(({ count }) => setPendingBillingCount(count ?? 0));
         loadShareholderIncome();
       })
       .subscribe();
 
     // Load initial pending billing count
-    supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending")
+    supabase
+      .from("billing_payments")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
       .then(({ count }) => setPendingBillingCount(count ?? 0));
 
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
 
@@ -1540,31 +2115,49 @@ export default function AdminPage() {
     const needle = q.trim().toLowerCase();
     const MASTER_ACCOUNT_EMAILS = ["renard.sankersingh@gmail.com", "isabel@gmail.com"];
     const filtered = needle
-      ? rows.filter((r) =>
-          r.username.toLowerCase().includes(needle) ||
-          r.email.toLowerCase().includes(needle) ||
-          (r.phone ?? "").toLowerCase().includes(needle) ||
-          (r.address ?? "").toLowerCase().includes(needle)
+      ? rows.filter(
+          (r) =>
+            r.username.toLowerCase().includes(needle) ||
+            r.email.toLowerCase().includes(needle) ||
+            (r.phone ?? "").toLowerCase().includes(needle) ||
+            (r.address ?? "").toLowerCase().includes(needle),
         )
       : rows;
     return {
       // Never show master account in pending — treat as approved regardless of DB status
-      pending: filtered.filter((r) => r.status === "pending" && !MASTER_ACCOUNT_EMAILS.includes(r.email)),
+      pending: filtered.filter(
+        (r) => r.status === "pending" && !MASTER_ACCOUNT_EMAILS.includes(r.email),
+      ),
       // Approved: hide bar sub-accounts (chain bars) — only show real account owners
       // Master account always appears in approved list
-      approved: filtered.filter((r) => (r.status === "approved" || MASTER_ACCOUNT_EMAILS.includes(r.email)) && !r.is_bar_account),
-      suspended: filtered.filter((r) => r.status === "suspended" && !r.is_bar_account && !MASTER_ACCOUNT_EMAILS.includes(r.email)),
+      approved: filtered.filter(
+        (r) =>
+          (r.status === "approved" || MASTER_ACCOUNT_EMAILS.includes(r.email)) && !r.is_bar_account,
+      ),
+      suspended: filtered.filter(
+        (r) =>
+          r.status === "suspended" && !r.is_bar_account && !MASTER_ACCOUNT_EMAILS.includes(r.email),
+      ),
       expelled: filtered.filter((r) => r.status === "expelled"),
     };
   }, [rows, q]);
 
   const act = async (fn: () => Promise<unknown>, msg: string) => {
-    try { await fn(); toast.success(msg); await refresh(); }
-    catch (e) { toast.error((e as Error).message); }
+    try {
+      await fn();
+      toast.success(msg);
+      await refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   if (loading || !profile) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
   }
   if (profile.role !== "admin") return null;
 
@@ -1574,56 +2167,83 @@ export default function AdminPage() {
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-black leading-tight">Admin — {profile.username.charAt(0).toUpperCase() + profile.username.slice(1)}</h1>
+          <h1 className="text-xl font-black leading-tight">
+            Admin — {profile.username.charAt(0).toUpperCase() + profile.username.slice(1)}
+          </h1>
         </div>
       </div>
 
       <Tabs value={outerTab} onValueChange={setOuterTab}>
-        <TabsList className={`grid w-full ${user?.email === "renard@bartendazpro.com" ? "grid-cols-5" : "grid-cols-6"}`}>
-          {(["panel","billing","users","import","templates","youtube"] as const).filter(key => {
-            if (key === "youtube" && user?.email === "renard@bartendazpro.com") return false;
-            return true;
-          }).map((key) => (
-            <TabsTrigger
-              key={key}
-              value={key}
-              className="gap-1 relative text-[10px] sm:text-xs"
-              style={outerTab === key
-                ? { background: "var(--gradient-hero)", color: "#fff", boxShadow: "0 2px 8px rgba(251,146,60,0.4)" }
-                : { background: "transparent", boxShadow: "none", color: "var(--muted-foreground)" }
-              }
-            >
-              {key === "youtube" ? <Youtube className="h-3.5 w-3.5" /> : key.charAt(0).toUpperCase() + key.slice(1)}
-              {key === "billing" && pendingBillingCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                  {pendingBillingCount > 9 ? "9+" : pendingBillingCount}
-                </span>
-              )}
-              {key === "users" && buckets.pending.length > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
-                  {buckets.pending.length > 9 ? "9+" : buckets.pending.length}
-                </span>
-              )}
-            </TabsTrigger>
-          ))}
+        <TabsList
+          className={`grid w-full ${user?.email === "renard@bartendazpro.com" ? "grid-cols-5" : "grid-cols-6"}`}
+        >
+          {(["panel", "billing", "users", "import", "templates", "youtube"] as const)
+            .filter((key) => {
+              if (key === "youtube" && user?.email === "renard@bartendazpro.com") return false;
+              return true;
+            })
+            .map((key) => (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="gap-1 relative text-[10px] sm:text-xs"
+                style={
+                  outerTab === key
+                    ? {
+                        background: "var(--gradient-hero)",
+                        color: "#fff",
+                        boxShadow: "0 2px 8px rgba(251,146,60,0.4)",
+                      }
+                    : {
+                        background: "transparent",
+                        boxShadow: "none",
+                        color: "var(--muted-foreground)",
+                      }
+                }
+              >
+                {key === "youtube" ? (
+                  <Youtube className="h-3.5 w-3.5" />
+                ) : (
+                  key.charAt(0).toUpperCase() + key.slice(1)
+                )}
+                {key === "billing" && pendingBillingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {pendingBillingCount > 9 ? "9+" : pendingBillingCount}
+                  </span>
+                )}
+                {key === "users" && buckets.pending.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {buckets.pending.length > 9 ? "9+" : buckets.pending.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
         </TabsList>
 
         {/* ── Panel (Dashboard + History sub-tabs) ── */}
         <TabsContent value="panel" className="mt-4">
           <Tabs value={panelSubTab} onValueChange={setPanelSubTab}>
             <TabsList className="grid grid-cols-2 w-full mb-4">
-              <TabsTrigger value="dashboard" className="gap-1.5 font-bold"
-                style={panelSubTab === "dashboard"
-                  ? { background: "var(--gradient-hero)", color: "#fff" }
-                  : { background: "transparent", color: "var(--muted-foreground)" }
-                }>
+              <TabsTrigger
+                value="dashboard"
+                className="gap-1.5 font-bold"
+                style={
+                  panelSubTab === "dashboard"
+                    ? { background: "var(--gradient-hero)", color: "#fff" }
+                    : { background: "transparent", color: "var(--muted-foreground)" }
+                }
+              >
                 <BarChart3 className="h-3.5 w-3.5" /> Dashboard
               </TabsTrigger>
-              <TabsTrigger value="history" className="gap-1.5 font-bold"
-                style={panelSubTab === "history"
-                  ? { background: "var(--gradient-hero)", color: "#fff" }
-                  : { background: "transparent", color: "var(--muted-foreground)" }
-                }>
+              <TabsTrigger
+                value="history"
+                className="gap-1.5 font-bold"
+                style={
+                  panelSubTab === "history"
+                    ? { background: "var(--gradient-hero)", color: "#fff" }
+                    : { background: "transparent", color: "var(--muted-foreground)" }
+                }
+              >
                 <History className="h-3.5 w-3.5" /> History
               </TabsTrigger>
             </TabsList>
@@ -1632,35 +2252,61 @@ export default function AdminPage() {
             <TabsContent value="dashboard" className="space-y-5 mt-0">
               {/* Stat cards */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Pending Users</p>
                   <p className="text-3xl font-black">{buckets.pending.length}</p>
                   <p className="text-xs text-muted-foreground">awaiting billing approval</p>
                 </div>
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Approved Users</p>
                   <p className="text-3xl font-black text-green-400">{buckets.approved.length}</p>
                   <p className="text-xs text-muted-foreground">active accounts</p>
                 </div>
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Pending Payments</p>
                   <p className="text-3xl font-black text-yellow-400">{pendingBillingCount}</p>
                   <p className="text-xs text-muted-foreground">waiting review</p>
                 </div>
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Due Soon</p>
                   <p className="text-3xl font-black text-orange-400">{nearExpiryCount}</p>
                   <p className="text-xs text-muted-foreground">within 7 days</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Suspended</p>
                   <p className="text-2xl font-black text-red-400">{buckets.suspended.length}</p>
                 </div>
-                <div className="rounded-2xl border border-border p-4 space-y-1" style={{ background: "var(--gradient-card)" }}>
+                <div
+                  className="rounded-2xl border border-border p-4 space-y-1"
+                  style={{ background: "var(--gradient-card)" }}
+                >
                   <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
-                  <p className="text-2xl font-black">{rows.filter(r => !r.is_bar_account && !["renard.sankersingh@gmail.com", "isabel@gmail.com"].includes(r.email)).length}</p>
+                  <p className="text-2xl font-black">
+                    {
+                      rows.filter(
+                        (r) =>
+                          !r.is_bar_account &&
+                          !["renard.sankersingh@gmail.com", "isabel@gmail.com"].includes(r.email),
+                      ).length
+                    }
+                  </p>
                 </div>
               </div>
 
@@ -1668,22 +2314,36 @@ export default function AdminPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest">Shareholder Income</h2>
+                  <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest">
+                    Shareholder Income
+                  </h2>
                 </div>
 
                 {/* Total revenue row */}
-                <div className="rounded-2xl border border-primary/30 p-4" style={{ background: "linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03))" }}>
+                <div
+                  className="rounded-2xl border border-primary/30 p-4"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03))",
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium">Total Revenue This Month</p>
+                      <p className="text-xs text-muted-foreground font-medium">
+                        Total Revenue This Month
+                      </p>
                       <p className="text-3xl font-black text-primary">
-                        {incomeLoading ? "…" : `$${currentMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                        {incomeLoading
+                          ? "…"
+                          : `$${currentMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground font-medium">Last Month</p>
                       <p className="text-xl font-black text-muted-foreground">
-                        {incomeLoading ? "…" : `$${lastMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                        {incomeLoading
+                          ? "…"
+                          : `$${lastMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
                       </p>
                     </div>
                   </div>
@@ -1696,28 +2356,46 @@ export default function AdminPage() {
                       {sh.name} · {Math.round(sh.share * 100)}%
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className={`rounded-2xl border ${sh.bg} p-4 space-y-1`} style={{ background: sh.gradient }}>
+                      <div
+                        className={`rounded-2xl border ${sh.bg} p-4 space-y-1`}
+                        style={{ background: sh.gradient }}
+                      >
                         <div className="flex items-center gap-1.5">
                           <TrendingUp className={`h-3.5 w-3.5 ${sh.color}`} />
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">This Month</p>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                            This Month
+                          </p>
                         </div>
                         <p className={`text-2xl font-black ${sh.color}`}>
-                          {incomeLoading ? "…" : `$${Math.round(currentMonthIncome * sh.share).toLocaleString()}`}
+                          {incomeLoading
+                            ? "…"
+                            : `$${Math.round(currentMonthIncome * sh.share).toLocaleString()}`}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           {new Date().toLocaleString("en", { month: "long", year: "numeric" })}
                         </p>
                       </div>
-                      <div className={`rounded-2xl border ${sh.bg} p-4 space-y-1`} style={{ background: sh.gradient }}>
+                      <div
+                        className={`rounded-2xl border ${sh.bg} p-4 space-y-1`}
+                        style={{ background: sh.gradient }}
+                      >
                         <div className="flex items-center gap-1.5">
                           <Calendar className={`h-3.5 w-3.5 ${sh.color} opacity-60`} />
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Last Month</p>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                            Last Month
+                          </p>
                         </div>
                         <p className={`text-2xl font-black ${sh.color} opacity-70`}>
-                          {incomeLoading ? "…" : `$${Math.round(lastMonthIncome * sh.share).toLocaleString()}`}
+                          {incomeLoading
+                            ? "…"
+                            : `$${Math.round(lastMonthIncome * sh.share).toLocaleString()}`}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
-                          {(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toLocaleString("en", { month: "long", year: "numeric" }); })()}
+                          {(() => {
+                            const d = new Date();
+                            d.setMonth(d.getMonth() - 1);
+                            return d.toLocaleString("en", { month: "long", year: "numeric" });
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -1740,13 +2418,18 @@ export default function AdminPage() {
               ) : (
                 <Accordion type="multiple" className="space-y-2">
                   {/* Group by year */}
-                  {Array.from(new Set(monthlyHistory.map(h => h.year)))
+                  {Array.from(new Set(monthlyHistory.map((h) => h.year)))
                     .sort((a, b) => b - a)
-                    .map(year => {
-                      const yearRecords = monthlyHistory.filter(h => h.year === year);
+                    .map((year) => {
+                      const yearRecords = monthlyHistory.filter((h) => h.year === year);
                       const yearTotal = yearRecords.reduce((s, r) => s + r.total, 0);
                       return (
-                        <AccordionItem key={year} value={String(year)} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+                        <AccordionItem
+                          key={year}
+                          value={String(year)}
+                          className="rounded-2xl border border-border overflow-hidden"
+                          style={{ background: "var(--gradient-card)" }}
+                        >
                           <AccordionTrigger className="px-4 py-3 hover:no-underline">
                             <div className="flex items-center gap-3 flex-1">
                               <span className="text-lg font-black">{year}</span>
@@ -1762,19 +2445,35 @@ export default function AdminPage() {
                             <div className="divide-y divide-border">
                               {yearRecords
                                 .sort((a, b) => b.month - a.month)
-                                .map(rec => (
-                                  <div key={`${rec.year}-${rec.month}`} className="px-4 py-3 space-y-2">
+                                .map((rec) => (
+                                  <div
+                                    key={`${rec.year}-${rec.month}`}
+                                    className="px-4 py-3 space-y-2"
+                                  >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-black text-sm">{MONTH_NAMES[rec.month]}</span>
-                                      <span className="font-black text-primary">${rec.total.toLocaleString("en", { minimumFractionDigits: 0 })}</span>
+                                      <span className="font-black text-sm">
+                                        {MONTH_NAMES[rec.month]}
+                                      </span>
+                                      <span className="font-black text-primary">
+                                        $
+                                        {rec.total.toLocaleString("en", {
+                                          minimumFractionDigits: 0,
+                                        })}
+                                      </span>
                                     </div>
                                     {SHAREHOLDERS.map((sh, idx) => (
-                                      <div key={sh.name} className="flex items-center justify-between text-xs">
+                                      <div
+                                        key={sh.name}
+                                        className="flex items-center justify-between text-xs"
+                                      >
                                         <span className={`font-bold ${sh.color}`}>
                                           {sh.name.split(" ")[0]} ({Math.round(sh.share * 100)}%)
                                         </span>
                                         <span className={`font-black ${sh.color}`}>
-                                          ${rec.shares[idx].toLocaleString("en", { minimumFractionDigits: 0 })}
+                                          $
+                                          {rec.shares[idx].toLocaleString("en", {
+                                            minimumFractionDigits: 0,
+                                          })}
                                         </span>
                                       </div>
                                     ))}
@@ -1814,7 +2513,10 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">Pending</span>
                 <span className="sm:hidden text-lg">⏳</span>
                 {buckets.pending.length > 0 && (
-                  <Badge variant="default" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white">
+                  <Badge
+                    variant="default"
+                    className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white"
+                  >
                     {buckets.pending.length}
                   </Badge>
                 )}
@@ -1823,7 +2525,10 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">Approved</span>
                 <span className="sm:hidden text-lg">✅</span>
                 {nearExpiryCount > 0 && (
-                  <Badge variant="destructive" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center hidden sm:flex">
+                  <Badge
+                    variant="destructive"
+                    className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center hidden sm:flex"
+                  >
                     {nearExpiryCount}
                   </Badge>
                 )}
@@ -1832,7 +2537,10 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">Suspended</span>
                 <span className="sm:hidden text-lg">⛔</span>
                 {buckets.suspended.length > 0 && (
-                  <Badge variant="default" className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-orange-500 text-white">
+                  <Badge
+                    variant="default"
+                    className="rounded-full px-1.5 py-0 text-xs min-w-[20px] h-5 flex items-center justify-center bg-orange-500 text-white"
+                  >
                     {buckets.suspended.length}
                   </Badge>
                 )}
@@ -1849,7 +2557,10 @@ export default function AdminPage() {
                   <p className="text-sm text-muted-foreground py-8 text-center">No {k} users</p>
                 )}
                 {buckets[k].map((r) => (
-                  <div key={r.id} className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card">
+                  <div
+                    key={r.id}
+                    className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card"
+                  >
                     <div className="flex flex-row items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1857,7 +2568,8 @@ export default function AdminPage() {
                           {r.plan_type === "chain" && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
                               <GitBranch className="h-2.5 w-2.5" />
-                              Chain · {r.chain_bar_count ?? 0} bar{(r.chain_bar_count ?? 0) !== 1 ? "s" : ""}
+                              Chain · {r.chain_bar_count ?? 0} bar
+                              {(r.chain_bar_count ?? 0) !== 1 ? "s" : ""}
                             </span>
                           )}
                           {r.is_bar_account && (
@@ -1885,49 +2597,74 @@ export default function AdminPage() {
                           </a>
                         )}
                         {r.address && (
-                          <div className="text-xs text-muted-foreground">
-                            📍 {r.address}
-                          </div>
+                          <div className="text-xs text-muted-foreground">📍 {r.address}</div>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          Joined {new Date(r.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
+                          Joined{" "}
+                          {new Date(r.created_at).toLocaleDateString("en-GB", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </div>
                       </div>
                       {/* Annual fee — fetched by SubscriptionBadge, shown big on right */}
-                      {(k === "approved" || k === "suspended") && (
-                        <AnnualFeeBadge ownerId={r.id} />
-                      )}
+                      {(k === "approved" || k === "suspended") && <AnnualFeeBadge ownerId={r.id} />}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {k === "pending" && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Awaiting payment approval in Billing tab</span>
-                            <Button size="sm" variant="destructive" onClick={async () => {
+                      {k === "pending" && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            Awaiting payment approval in Billing tab
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
                               const ok = await confirm({
                                 title: `Delete ${r.username}?`,
-                                description: "This will permanently remove this account. Cannot be undone.",
+                                description:
+                                  "This will permanently remove this account. Cannot be undone.",
                                 confirmLabel: "Delete",
                                 destructive: true,
                               });
                               if (ok) act(() => adminDeleteUser(r.id), "Deleted");
-                            }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                        {k === "approved" && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "pending"), "Set to Pending")}
-                              title="Revert to pending — user will see the select a plan page">
-                              <RotateCcw className="h-4 w-4 mr-1" /> Pending
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "suspended"), "Suspended")}>
-                              <Ban className="h-4 w-4 mr-1" /> Suspend
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
-                              <UserMinus className="h-4 w-4 mr-1" /> Expel
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={async () => {
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {k === "approved" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              act(() => setUserStatus(r.id, "pending"), "Set to Pending")
+                            }
+                            title="Revert to pending — user will see the select a plan page"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-1" /> Pending
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(() => setUserStatus(r.id, "suspended"), "Suspended")}
+                          >
+                            <Ban className="h-4 w-4 mr-1" /> Suspend
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}
+                          >
+                            <UserMinus className="h-4 w-4 mr-1" /> Expel
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
                               const ok = await confirm({
                                 title: `Delete ${r.username}?`,
                                 description: "This cannot be undone.",
@@ -1935,20 +2672,33 @@ export default function AdminPage() {
                                 destructive: true,
                               });
                               if (ok) act(() => adminDeleteUser(r.id), "Deleted");
-                            }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {k === "suspended" && (
-                          <>
-                            <Button size="sm" onClick={() => act(() => setUserStatus(r.id, "approved"), "Re-activated")}>
-                              <RotateCw className="h-4 w-4 mr-1" /> Re-activate
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}>
-                              <UserMinus className="h-4 w-4 mr-1" /> Expel
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={async () => {
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {k === "suspended" && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              act(() => setUserStatus(r.id, "approved"), "Re-activated")
+                            }
+                          >
+                            <RotateCw className="h-4 w-4 mr-1" /> Re-activate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(() => setUserStatus(r.id, "expelled"), "Expelled")}
+                          >
+                            <UserMinus className="h-4 w-4 mr-1" /> Expel
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
                               const ok = await confirm({
                                 title: `Delete ${r.username}?`,
                                 description: "This cannot be undone.",
@@ -1956,15 +2706,18 @@ export default function AdminPage() {
                                 destructive: true,
                               });
                               if (ok) act(() => adminDeleteUser(r.id), "Deleted");
-                            }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {k === "expelled" && (
-                          <span className="text-xs text-muted-foreground">Account expelled - no actions available</span>
-                        )}
-                      </div>
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {k === "expelled" && (
+                        <span className="text-xs text-muted-foreground">
+                          Account expelled - no actions available
+                        </span>
+                      )}
+                    </div>
                     {/* Subscription reminder — show for approved/suspended users */}
                     {(k === "approved" || k === "suspended") && (
                       <SubscriptionBadge ownerId={r.id} />
@@ -2028,11 +2781,11 @@ type YtRecentSearch = {
 };
 
 function YouTubeAdminPanel() {
-  const [keys,    setKeys   ] = useState<YtKeySlot[]>([]);
-  const [stats,   setStats  ] = useState<YtStats | null>(null);
-  const [recent,  setRecent ] = useState<YtRecentSearch[]>([]);
+  const [keys, setKeys] = useState<YtKeySlot[]>([]);
+  const [stats, setStats] = useState<YtStats | null>(null);
+  const [recent, setRecent] = useState<YtRecentSearch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving ] = useState<number | null>(null); // slot being saved
+  const [saving, setSaving] = useState<number | null>(null); // slot being saved
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2046,9 +2799,9 @@ function YouTubeAdminPanel() {
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
-      if (keysRes.data)    setKeys(keysRes.data as YtKeySlot[]);
+      if (keysRes.data) setKeys(keysRes.data as YtKeySlot[]);
       if ((statsRes as any).data) setStats((statsRes as any).data as YtStats);
-      if (recentRes.data)  setRecent(recentRes.data as YtRecentSearch[]);
+      if (recentRes.data) setRecent(recentRes.data as YtRecentSearch[]);
     } catch (e) {
       toast.error("Failed to load YouTube stats");
     } finally {
@@ -2056,33 +2809,32 @@ function YouTubeAdminPanel() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const toggleSlot = async (slot: number, enabled: boolean) => {
     setSaving(slot);
-    const { error } = await supabase
-      .from("youtube_api_keys")
-      .update({ enabled })
-      .eq("slot", slot);
+    const { error } = await supabase.from("youtube_api_keys").update({ enabled }).eq("slot", slot);
     if (error) toast.error(error.message);
-    else { toast.success(`Slot ${slot} ${enabled ? "enabled" : "disabled"}`); await load(); }
+    else {
+      toast.success(`Slot ${slot} ${enabled ? "enabled" : "disabled"}`);
+      await load();
+    }
     setSaving(null);
   };
 
   const updateLabel = async (slot: number, label: string) => {
     setSaving(slot);
-    const { error } = await supabase
-      .from("youtube_api_keys")
-      .update({ label })
-      .eq("slot", slot);
+    const { error } = await supabase.from("youtube_api_keys").update({ label }).eq("slot", slot);
     if (error) toast.error(error.message);
     else await load();
     setSaving(null);
   };
 
-  const totalCapacity = keys.filter(k => k.enabled).reduce((s, k) => s + k.daily_limit, 0);
-  const totalUsed     = stats?.quota_used_today ?? 0;
-  const pctUsed       = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+  const totalCapacity = keys.filter((k) => k.enabled).reduce((s, k) => s + k.daily_limit, 0);
+  const totalUsed = stats?.quota_used_today ?? 0;
+  const pctUsed = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
 
   if (loading) {
     return (
@@ -2094,9 +2846,7 @@ function YouTubeAdminPanel() {
 
   return (
     <div className="space-y-6">
-
       {/* ── Daily Summary ────────────────────────────────────────────────── */}
-
 
       {/* ── Key Pool ─────────────────────────────────────────────────────── */}
       <div>
@@ -2105,43 +2855,59 @@ function YouTubeAdminPanel() {
             <Key className="h-4 w-4 text-yellow-400" />
             API Key Pool
           </h2>
-
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          Keys are stored as Supabase secrets <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> … <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_25</code>. Enable each slot once the secret is set.
+          Keys are stored as Supabase secrets{" "}
+          <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_1</code> …{" "}
+          <code className="text-xs bg-muted px-1 rounded">YOUTUBE_API_KEY_25</code>. Enable each
+          slot once the secret is set.
         </p>
 
         <div className="space-y-2">
-          {keys.map(key => {
+          {keys.map((key) => {
             const pct = key.daily_limit > 0 ? (key.used_today / key.daily_limit) * 100 : 0;
             return (
-              <div key={key.slot}
+              <div
+                key={key.slot}
                 className={`rounded-xl border p-3 space-y-2 transition ${
-                  key.exhausted ? "border-red-500/30 bg-red-500/5"
-                  : key.enabled  ? "border-green-500/20 bg-green-500/5"
-                  : "border-border bg-card"
-                }`}>
+                  key.exhausted
+                    ? "border-red-500/30 bg-red-500/5"
+                    : key.enabled
+                      ? "border-green-500/20 bg-green-500/5"
+                      : "border-border bg-card"
+                }`}
+              >
                 <div className="flex items-center gap-3">
                   {/* Slot number */}
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                    key.exhausted ? "bg-red-500/20 text-red-400"
-                    : key.enabled  ? "bg-green-500/20 text-green-400"
-                    : "bg-muted text-muted-foreground"
-                  }`}>
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                      key.exhausted
+                        ? "bg-red-500/20 text-red-400"
+                        : key.enabled
+                          ? "bg-green-500/20 text-green-400"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
                     {key.slot === 0 ? "★" : key.slot}
                   </div>
 
                   {/* Label (editable) */}
                   <Input
                     defaultValue={key.label}
-                    onBlur={e => { if (e.target.value !== key.label) updateLabel(key.slot, e.target.value); }}
-                    placeholder={key.slot === 0 ? "YOUTUBE_API_KEY (Primary)" : `YOUTUBE_API_KEY_${key.slot}`}
+                    onBlur={(e) => {
+                      if (e.target.value !== key.label) updateLabel(key.slot, e.target.value);
+                    }}
+                    placeholder={
+                      key.slot === 0 ? "YOUTUBE_API_KEY (Primary)" : `YOUTUBE_API_KEY_${key.slot}`
+                    }
                     className="h-7 text-xs flex-1 bg-transparent border-muted"
                   />
 
                   {/* Status badge */}
                   {key.exhausted && (
-                    <Badge variant="destructive" className="text-[10px] shrink-0">Exhausted</Badge>
+                    <Badge variant="destructive" className="text-[10px] shrink-0">
+                      Exhausted
+                    </Badge>
                   )}
 
                   {/* Enable/disable toggle */}
@@ -2154,10 +2920,13 @@ function YouTubeAdminPanel() {
                         : "bg-muted text-muted-foreground hover:bg-green-500/20 hover:text-green-400"
                     }`}
                   >
-                    {saving === key.slot
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : key.enabled ? "On" : "Off"
-                    }
+                    {saving === key.slot ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : key.enabled ? (
+                      "On"
+                    ) : (
+                      "Off"
+                    )}
                   </button>
                 </div>
 
@@ -2174,10 +2943,19 @@ function YouTubeAdminPanel() {
                       />
                     </div>
                     <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>{key.used_today.toLocaleString("en-GB")} / {key.daily_limit.toLocaleString("en-GB")}</span>
+                      <span>
+                        {key.used_today.toLocaleString("en-GB")} /{" "}
+                        {key.daily_limit.toLocaleString("en-GB")}
+                      </span>
                       <span>{pct.toFixed(1)}%</span>
                       {key.last_used_at && (
-                        <span>Last: {new Date(key.last_used_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span>
+                          Last:{" "}
+                          {new Date(key.last_used_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -2194,12 +2972,31 @@ function YouTubeAdminPanel() {
           <Zap className="h-4 w-4" /> Setup Checklist
         </p>
         <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
-          <li>Get a free YouTube Data API v3 key from <span className="text-primary">console.cloud.google.com</span></li>
-          <li>Run: <code className="bg-muted px-1 rounded">supabase secrets set YOUTUBE_API_KEY_1=AIzaSy...</code></li>
+          <li>
+            Get a free YouTube Data API v3 key from{" "}
+            <span className="text-primary">console.cloud.google.com</span>
+          </li>
+          <li>
+            Run:{" "}
+            <code className="bg-muted px-1 rounded">
+              supabase secrets set YOUTUBE_API_KEY_1=AIzaSy...
+            </code>
+          </li>
           <li>Repeat for each key (up to YOUTUBE_API_KEY_25)</li>
-          <li>Toggle each slot <span className="text-green-400 font-bold">On</span> in the table above</li>
-          <li>Run: <code className="bg-muted px-1 rounded">supabase functions deploy youtube-search</code></li>
-          <li>Set up daily cron: <code className="bg-muted px-1 rounded">SELECT cron.schedule('reset-youtube-keys', '0 0 * * *', 'SELECT public.reset_youtube_key_counts()')</code></li>
+          <li>
+            Toggle each slot <span className="text-green-400 font-bold">On</span> in the table above
+          </li>
+          <li>
+            Run:{" "}
+            <code className="bg-muted px-1 rounded">supabase functions deploy youtube-search</code>
+          </li>
+          <li>
+            Set up daily cron:{" "}
+            <code className="bg-muted px-1 rounded">
+              SELECT cron.schedule('reset-youtube-keys', '0 0 * * *', 'SELECT
+              public.reset_youtube_key_counts()')
+            </code>
+          </li>
         </ol>
       </div>
     </div>
