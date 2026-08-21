@@ -6449,7 +6449,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   // Machine sessions = machine_float_sessions rows (newest first)
   type FloatSessionRow = { id: string; set_at: string; amount: number };
   const [floatSessions, setFloatSessions] = useState<FloatSessionRow[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [loadingSessionsList, setLoadingSessionsList] = useState(true);
 
   useEffect(() => {
@@ -6474,7 +6473,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
 
   const handleFilterChange = (f: SummaryFilter) => {
     setSummaryFilter(f);
-    setSelectedSessionId(null);
     setPickerDate(today);
     setPickerMonth(new Date().getMonth());
     setPickerYear(availableYears[0] ?? new Date().getFullYear());
@@ -6509,16 +6507,33 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     return floatSessions;
   })();
 
-  // Entry range for the selected session:
-  // from session.set_at → the next session's set_at (floatSessions sorted newest-first)
+  // Entry range for the selected filter period
   const getEntryRange = (): { startIso: string; endIso: string } | null => {
-    if (!selectedSessionId) return null;
-    const idx = floatSessions.findIndex(s => s.id === selectedSessionId);
-    if (idx === -1) return null;
-    const sel = floatSessions[idx];
-    // Entries in this session run until the next newer session's set_at (idx-1)
-    const newerSession = idx > 0 ? floatSessions[idx - 1] : null;
-    return { startIso: sel.set_at, endIso: newerSession ? newerSession.set_at : new Date().toISOString() };
+    if (summaryFilter === "all") return null;
+    if (summaryFilter === "day") {
+      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
+      const e = new Date(pickerDate + "T23:59:59-04:00").toISOString();
+      return { startIso: s, endIso: e };
+    }
+    if (summaryFilter === "week") {
+      const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
+      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
+      const e = new Date(we.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
+      return { startIso: s, endIso: e };
+    }
+    if (summaryFilter === "month") {
+      const first = new Date(pickerYear, pickerMonth, 1);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0);
+      const s = new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString();
+      const e = new Date(last.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
+      return { startIso: s, endIso: e };
+    }
+    if (summaryFilter === "year") {
+      const s = new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString();
+      const e = new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString();
+      return { startIso: s, endIso: e };
+    }
+    return null;
   };
 
   const entryRange = getEntryRange();
@@ -6531,11 +6546,9 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
   }
 
-  // Only show data when a session is selected (or "all" tab with nothing selected = all entries)
-  const filteredEntries = selectedSessionId && entryRange
+  const filteredEntries = entryRange
     ? sorted.filter(e => e.created_at >= entryRange.startIso && e.created_at <= entryRange.endIso)
-    : !selectedSessionId && summaryFilter === "all" ? sorted
-    : [];
+    : sorted;
 
   const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
   const totalSessionExpense = filteredEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
@@ -6576,11 +6589,18 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       });
       // Build title from active filter
       let title = "All Time";
-      if (selectedSessionId) {
-        const s = floatSessions.find(b => b.id === selectedSessionId);
-        if (s) title = "Session: " + new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
-      } else if (summaryFilter !== "all") {
+      if (summaryFilter !== "all") {
         title = summaryFilter.charAt(0).toUpperCase() + summaryFilter.slice(1);
+        if (summaryFilter === "day") {
+          title = new Date(pickerDate + "T00:00:00-04:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        } else if (summaryFilter === "week") {
+          const d = new Date(pickerDate + "T00:00:00-04:00"); d.setDate(d.getDate() + 6);
+          title = `${new Date(pickerDate + "T00:00:00-04:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+        } else if (summaryFilter === "month") {
+          title = new Date(pickerYear, pickerMonth, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+        } else if (summaryFilter === "year") {
+          title = String(pickerYear);
+        }
       }
       let y = await drawHeader(doc, "All Machines", "Summary", title, generated);
       const bw = RM - LM;
@@ -6655,7 +6675,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
             {(["all", "day", "week", "month", "year"] as SummaryFilter[]).map(f => (
               <button key={f} onClick={() => handleFilterChange(f)}
                 className="flex-1 h-8 rounded-lg text-[10px] font-black transition active:scale-95 capitalize"
-                style={summaryFilter === f && !selectedSessionId
+                style={summaryFilter === f
                   ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
                   : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.5)" }}>
                 {f === "all" ? t("all", "All") : f === "day" ? "Day" : f === "week" ? t("filter_week", "Week") : f === "month" ? t("filter_month", "Month") : t("filter_year", "Year")}
@@ -6675,47 +6695,13 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
           </Button>
         </div>
 
-        {/* Sessions list — filtered by active date tab, always visible */}
-        <div className="space-y-1">
-          <p className="text-[9px] font-black text-white/40 uppercase tracking-wider">
-            {filteredSessions.length > 0 ? t("sessions_count", `Sessions (${filteredSessions.length})`) : t("sessions", "Sessions")}
-          </p>
-          {loadingSessionsList ? (
-            <div className="h-8 rounded-xl bg-muted/30 animate-pulse" />
-          ) : filteredSessions.length === 0 ? (
-            <p className="text-[10px] text-white/30 text-center py-2">No sessions for this period</p>
-          ) : (
-            <div className="rounded-xl border border-border/40 p-1" style={{ background: "oklch(0.18 0.015 60)" }}>
-              <div className="space-y-1 max-h-44 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "var(--primary) transparent" }}>
-                {filteredSessions.map(s => {
-                  const isSelected = selectedSessionId === s.id;
-                  const fmtd = new Date(s.set_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
-                  return (
-                    <button key={s.id}
-                      onClick={() => setSelectedSessionId(isSelected ? null : s.id)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition active:scale-[0.98]"
-                      style={isSelected
-                        ? { background: "var(--gradient-hero)", color: "var(--primary-foreground)" }
-                        : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.7)" }}>
-                      <span className="text-[10px] font-bold truncate">{fmtd}</span>
-                      <span className="text-[9px] shrink-0 ml-2" style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)" }}>
-                        Float ${fmtWhole(Number(s.amount))}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <CalendarPopover label={t("select_day", "Select Day")} value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+          <CalendarPopover label={t("select_day", "Select Day")} value={pickerDate} maxDate={today} onChange={v => setPickerDate(v)} />
         )}
         {summaryFilter === "week" && (
           <div className="space-y-1">
-            <CalendarPopover label="Inicio de Semana" value={pickerDate} maxDate={today} onChange={v => { setPickerDate(v); setSelectedSessionId(null); }} />
+            <CalendarPopover label="Inicio de Semana" value={pickerDate} maxDate={today} onChange={v => setPickerDate(v)} />
             <p className="text-xs text-muted-foreground pl-1">
               {(() => { const d = new Date(pickerDate + "T12:00:00"); d.setDate(d.getDate() + 6); return `${new Date(pickerDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} → ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`; })()}
             </p>
@@ -6723,24 +6709,24 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         )}
         {summaryFilter === "month" && (
           <div className="flex gap-2">
-            <select value={pickerMonth} onChange={e => { setPickerMonth(Number(e.target.value)); setSelectedSessionId(null); }}
+            <select value={pickerMonth} onChange={e => setPickerMonth(Number(e.target.value))}
               className="flex-1 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
               {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
-            <select value={pickerYear} onChange={e => { setPickerYear(Number(e.target.value)); setSelectedSessionId(null); }}
+            <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
               className="w-20 h-9 rounded-xl border border-border bg-background px-2 text-xs font-bold outline-none">
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
         )}
         {summaryFilter === "year" && (
-          <select value={pickerYear} onChange={e => { setPickerYear(Number(e.target.value)); setSelectedSessionId(null); }}
+          <select value={pickerYear} onChange={e => setPickerYear(Number(e.target.value))}
             className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none">
             {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         )}
 
-        {/* Stats — shown when session selected or on All tab */}
+        {/* Stats */}
         {filteredEntries.length > 0 && (
           <>
             <div className="grid grid-cols-4 gap-2">
@@ -6825,10 +6811,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
               </div>
             )}
           </>
-        )}
-
-        {!selectedSessionId && summaryFilter !== "all" && filteredSessions.length > 0 && (
-          <p className="text-[10px] text-white/40 text-center py-1">Select a session above to view its breakdown</p>
         )}
       </div>
     </div>

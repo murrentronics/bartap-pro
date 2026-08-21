@@ -25,6 +25,7 @@ import {
   DollarSign,
   UserCircle,
   Receipt,
+  User,
   Gamepad2,
   RotateCcw,
   Globe,
@@ -72,13 +73,13 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
-    // Manager landing page — redirect away from bar/wallet to items
+    // Manager landing page — redirect to bar
     if (
       !loading &&
       (profile?.role === "manager" || profile?.job_title === "manager") &&
-      (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")
+      (loc.pathname === "/" || loc.pathname === "/products")
     ) {
-      nav("/products", { replace: true });
+      nav("/register", { replace: true });
     }
     if (
       !loading &&
@@ -445,25 +446,28 @@ export default function AppLayout() {
           ]
         : isManager
           ? [
-              // Manager: Items, Machines, Manage, Stock Check, Stock Count, Customers, Manual
+              // Manager: Bar, Machines, Manage, Items, Stock Check, Stock Count, Customers, Manual
               ...(ownerHasBar
-                ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
+                ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }]
                 : []),
               ...(ownerHasMachines
                 ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }]
                 : []),
               { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
+              ...(ownerHasBar
+                ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
+                : []),
               { to: "/stock-check", label: t("stock_check", "Stock Check"), icon: ClipboardList },
               { to: "/stock-count", label: "Stock Count", icon: ClipboardList },
               ...(ownerHasBar
-                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
+                 ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: User }]
                 : []),
               { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
             ]
           : [
               ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
               ...(ownerHasBar
-                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
+                 ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: User }]
                 : []),
               ...(ownerHasMachines
                 ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }]

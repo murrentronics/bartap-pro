@@ -35,6 +35,7 @@ import {
   ChevronRight,
   FileDown,
   Users,
+  Pencil,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -53,6 +54,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
@@ -415,7 +419,7 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
   const [clockBusy, setClockBusy] = useState(false);
   const [showSetClockOut, setShowSetClockOut] = useState(false);
   const [setClockOutDate, setSetClockOutDate] = useState("");
-  const [setClockOutTime, setSetClockOutTime] = useState("");
+  const [setClockOutTime, setSetClockOutTime] = useState("12:00");
   const [setClockOutPeriod, setSetClockOutPeriod] = useState<"AM" | "PM">("PM");
 
   // Timesheets tab state
@@ -432,6 +436,13 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
   const [tsPdfBusy, setTsPdfBusy] = useState(false);
   const [openDate, setOpenDate] = useState<string | null>(null);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
+
+  // Timesheet edit state
+  const [tsEditCard, setTsEditCard] = useState<TimeCardRow | null>(null);
+  const [tsEditDate, setTsEditDate] = useState("");
+  const [tsEditTime, setTsEditTime] = useState("12:00");
+  const [tsEditPeriod, setTsEditPeriod] = useState<"AM" | "PM">("PM");
+  const [tsEditBusy, setTsEditBusy] = useState(false);
 
   const loadEmployees = useCallback(async () => {
     const { data } = await sb
@@ -547,8 +558,33 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
     });
   }
 
+  const handleTsEditSave = async () => {
+    if (!tsEditCard || !tsEditDate || !tsEditTime) return;
+    setTsEditBusy(true);
+    let hours = parseInt(tsEditTime.split(":")[0] || "0", 10);
+    const mins = parseInt(tsEditTime.split(":")[1] || "0", 10);
+    if (tsEditPeriod === "AM" && hours === 12) hours = 0;
+    if (tsEditPeriod === "PM" && hours < 12) hours += 12;
+    const localIso = `${tsEditDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+    const { error } = await sb
+      .from("time_cards")
+      .update({ clocked_out_at: localIso })
+      .eq("id", tsEditCard.id);
+    setTsEditBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Clock out updated for ${tsEditCard.employee_name}`);
+    setTsEditCard(null);
+    setTsEditDate("");
+    setTsEditTime("12:00");
+    setTsEditPeriod("PM");
+    loadCards();
+  };
+
   function roleLabel(emp: { role: string; job_title?: string }) {
-    if (emp.role === "manager") return "Manager";
+    if (emp.role === "manager" || emp.job_title === "manager") return "Manager";
     if (emp.role === "custom" && emp.job_title) return emp.job_title;
     return "Cashier";
   }
@@ -728,11 +764,11 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
                     )}
                   </button>
                   {isSel && (
-                    <div className="grid grid-cols-2 gap-3 pt-2 pb-4">
+                    <div className="grid grid-cols-3 gap-3 pt-2 pb-4">
                        <button
                          onClick={handleClockIn}
                          disabled={isCIn || clockBusy || !barIsOpen}
-                         className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                         className="col-span-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                          style={
                            !isCIn && barIsOpen
                              ? {
@@ -754,7 +790,7 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
                          )}{" "}
                          Clock In
                        </button>
-                       <div className="flex h-14 rounded-2xl overflow-hidden" style={{
+                       <div className="col-span-2 flex h-14 rounded-2xl overflow-hidden" style={{
                          border: isCIn ? "1.5px solid #f87171" : "1.5px solid var(--border)",
                        }}>
                          <button
@@ -849,43 +885,131 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
           <DialogHeader>
             <DialogTitle>Set Clock Out Time</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-5 pt-2">
+            {/* Date Picker */}
             <div>
-              <Label>Date</Label>
-              <input
-                type="date"
-                value={setClockOutDate}
-                onChange={(e) => setSetClockOutDate(e.target.value)}
-                className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-black mt-1"
-              />
+              <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-black flex items-center justify-between gap-2 hover:bg-accent/40 transition-colors"
+                  >
+                    <span>
+                      {setClockOutDate
+                        ? new Date(setClockOutDate + "T12:00:00").toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "Select date"}
+                    </span>
+                    <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-[200]" align="center" sideOffset={4}>
+                  <Calendar
+                    mode="single"
+                    selected={setClockOutDate ? new Date(setClockOutDate + "T12:00:00") : undefined}
+                    onSelect={(day) => {
+                      if (day) {
+                        const y = day.getFullYear();
+                        const m = String(day.getMonth() + 1).padStart(2, "0");
+                        const d = String(day.getDate()).padStart(2, "0");
+                        setSetClockOutDate(`${y}-${m}-${d}`);
+                      }
+                    }}
+                    captionLayout="dropdown"
+                    className="rounded-xl border-0"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {/* Time Picker */}
             <div>
-              <Label>Time</Label>
-              <div className="flex gap-2 mt-1">
-                <select
-                  value={setClockOutTime}
-                  onChange={(e) => setSetClockOutTime(e.target.value)}
-                  className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-sm font-black"
-                >
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const h = i + 1;
-                    return (
-                      <option key={h} value={String(h).padStart(2, "0")}>
-                        {String(h).padStart(2, "0")}
-                      </option>
-                    );
-                  })}
-                </select>
-                <select
-                  value={setClockOutPeriod}
-                  onChange={(e) => setSetClockOutPeriod(e.target.value as "AM" | "PM")}
-                  className="w-20 h-11 rounded-xl border border-border bg-background px-3 text-sm font-black"
-                >
-                  <option value="AM">AM</option>
-                  <option value="PM">PM</option>
-                </select>
+              <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Time</Label>
+              <div className="flex items-center gap-2">
+                {/* Hours */}
+                <ScrollArea className="h-40 flex-1 rounded-xl border border-border">
+                  <div className="p-2 space-y-1">
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const h = i + 1;
+                      const currentHour = setClockOutTime.split(":")[0] || "12";
+                      const isSelected = parseInt(currentHour) === h;
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => {
+                            const currentMins = setClockOutTime.split(":")[1] || "00";
+                            setSetClockOutTime(`${String(h).padStart(2, "0")}:${currentMins}`);
+                          }}
+                          className={`w-full h-10 rounded-lg text-sm font-black transition active:scale-95 ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-accent text-foreground"
+                          }`}
+                        >
+                          {String(h).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+
+                {/* Minutes */}
+                <ScrollArea className="h-40 flex-1 rounded-xl border border-border">
+                  <div className="p-2 space-y-1">
+                    {Array.from({ length: 60 }).map((_, i) => {
+                      const m = i;
+                      const isSelected = parseInt(setClockOutTime.split(":")[1] || "0") === m;
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSetClockOutTime(`${setClockOutTime.split(":")[0] || "12"}:${String(m).padStart(2, "0")}`)}
+                          className={`w-full h-10 rounded-lg text-sm font-black transition active:scale-95 ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-accent text-foreground"
+                          }`}
+                        >
+                          {String(m).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+
+                {/* AM/PM */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSetClockOutPeriod("AM")}
+                    className={`h-20 w-14 rounded-xl text-sm font-black transition active:scale-95 ${
+                      setClockOutPeriod === "AM"
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border hover:bg-accent text-foreground"
+                    }`}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSetClockOutPeriod("PM")}
+                    className={`h-20 w-14 rounded-xl text-sm font-black transition active:scale-95 ${
+                      setClockOutPeriod === "PM"
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border hover:bg-accent text-foreground"
+                    }`}
+                  >
+                    PM
+                  </button>
+                </div>
               </div>
             </div>
+
             <Button
               onClick={handleSetClockOut}
               disabled={clockBusy || !setClockOutDate || !setClockOutTime}
@@ -1307,18 +1431,33 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
                                             <span className="text-green-400 font-bold">
                                               {inTime}
                                             </span>
-                                            {outTime ? (
-                                              <>
-                                                <span className="text-muted-foreground/40">→</span>
-                                                <LogOut className="h-3 w-3 text-red-400 shrink-0" />
-                                                <span className="text-red-400 font-bold">
-                                                  {outTime}
-                                                </span>
-                                                <span className="text-muted-foreground ml-1">
-                                                  · {dur}
-                                                </span>
-                                              </>
-                                            ) : (
+                                             {outTime ? (
+                                               <>
+                                                 <span className="text-muted-foreground/40">→</span>
+                                                 <LogOut className="h-3 w-3 text-red-400 shrink-0" />
+                                                 <span className="text-red-400 font-bold">
+                                                   {outTime}
+                                                 </span>
+                                                 <span className="text-muted-foreground ml-1">
+                                                   · {dur}
+                                                 </span>
+                                                 <button
+                                                   onClick={() => {
+                                                     const d = tc.clocked_out_at ? tc.clocked_out_at.slice(0, 10) : "";
+                                                     const t = tc.clocked_out_at ? new Date(tc.clocked_out_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }) : "12:00";
+                                                     const [timeStr, period] = t.split(" ");
+                                                     setTsEditCard(tc);
+                                                     setTsEditDate(d);
+                                                     setTsEditTime(timeStr);
+                                                     setTsEditPeriod(period as "AM" | "PM");
+                                                   }}
+                                                   className="h-6 w-6 rounded flex items-center justify-center shrink-0 transition active:scale-90"
+                                                   style={{ background: "rgba(255,255,255,0.08)" }}
+                                                 >
+                                                   <Pencil className="h-3 w-3 text-muted-foreground" />
+                                                 </button>
+                                               </>
+                                             ) : (
                                               <span className="text-green-400 font-semibold">
                                                 · still on shift
                                               </span>
@@ -1352,6 +1491,148 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
               });
             })()
           )}
+
+          {/* Timesheet Edit Clock Out Modal */}
+          <Dialog open={!!tsEditCard} onOpenChange={(open) => !open && setTsEditCard(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit Clock Out Time</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 pt-2">
+                <div>
+                  <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-black flex items-center justify-between gap-2 hover:bg-accent/40 transition-colors"
+                      >
+                        <span>
+                          {tsEditDate
+                            ? new Date(tsEditDate + "T12:00:00").toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "Select date"}
+                        </span>
+                        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[200]" align="center" sideOffset={4}>
+                      <Calendar
+                        mode="single"
+                        selected={tsEditDate ? new Date(tsEditDate + "T12:00:00") : undefined}
+                        onSelect={(day) => {
+                          if (day) {
+                            const y = day.getFullYear();
+                            const m = String(day.getMonth() + 1).padStart(2, "0");
+                            const d = String(day.getDate()).padStart(2, "0");
+                            setTsEditDate(`${y}-${m}-${d}`);
+                          }
+                        }}
+                        captionLayout="dropdown"
+                        className="rounded-xl border-0"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Time</Label>
+                  <div className="flex items-center gap-2">
+                    <ScrollArea className="h-40 flex-1 rounded-xl border border-border">
+                      <div className="p-2 space-y-1">
+                        {Array.from({ length: 12 }).map((_, i) => {
+                          const h = i + 1;
+                          const currentHour = tsEditTime.split(":")[0] || "12";
+                          const isSelected = parseInt(currentHour) === h;
+                          return (
+                            <button
+                              key={h}
+                              type="button"
+                              onClick={() => {
+                                const currentMins = tsEditTime.split(":")[1] || "00";
+                                setTsEditTime(`${String(h).padStart(2, "0")}:${currentMins}`);
+                              }}
+                              className={`w-full h-10 rounded-lg text-sm font-black transition active:scale-95 ${
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "hover:bg-accent text-foreground"
+                              }`}
+                            >
+                              {String(h).padStart(2, "0")}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+
+                    <ScrollArea className="h-40 flex-1 rounded-xl border border-border">
+                      <div className="p-2 space-y-1">
+                        {Array.from({ length: 60 }).map((_, i) => {
+                          const m = i;
+                          const currentMins = parseInt(tsEditTime.split(":")[1] || "0");
+                          const isSelected = currentMins === m;
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                const currentHour = tsEditTime.split(":")[0] || "12";
+                                setTsEditTime(`${currentHour}:${String(m).padStart(2, "0")}`);
+                              }}
+                              className={`w-full h-10 rounded-lg text-sm font-black transition active:scale-95 ${
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "hover:bg-accent text-foreground"
+                              }`}
+                            >
+                              {String(m).padStart(2, "0")}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setTsEditPeriod("AM")}
+                        className={`h-20 w-14 rounded-xl text-sm font-black transition active:scale-95 ${
+                          tsEditPeriod === "AM"
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border hover:bg-accent text-foreground"
+                        }`}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTsEditPeriod("PM")}
+                        className={`h-20 w-14 rounded-xl text-sm font-black transition active:scale-95 ${
+                          tsEditPeriod === "PM"
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border hover:bg-accent text-foreground"
+                        }`}
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleTsEditSave}
+                  disabled={tsEditBusy || !tsEditDate || !tsEditTime}
+                  className="w-full h-12 font-black text-base"
+                  style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+                >
+                  {tsEditBusy ? "Saving…" : "Save Clock Out"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>

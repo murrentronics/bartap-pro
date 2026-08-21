@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-CvPu0oa7.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, R as Receipt, q as Link, B as Button, t as toast } from "./router-KQFuUJeL.js";
-import { T as TrendingDown } from "./trending-down-CY4BS10g.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-8GG21qKo.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, q as Link, B as Button, t as toast } from "./router-CZOM4-ob.js";
+import { T as TrendingDown, W as Wallet } from "./wallet-iUU-fOjA.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -54,23 +54,17 @@ const __iconNode$2 = [
 ];
 const UserMinus = createLucideIcon("user-minus", __iconNode$2);
 const __iconNode$1 = [
+  ["path", { d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", key: "975kel" }],
+  ["circle", { cx: "12", cy: "7", r: "4", key: "17ys0d" }]
+];
+const User = createLucideIcon("user", __iconNode$1);
+const __iconNode = [
   ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", key: "1yyitq" }],
   ["path", { d: "M16 3.128a4 4 0 0 1 0 7.744", key: "16gr8j" }],
   ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87", key: "kshegd" }],
   ["circle", { cx: "9", cy: "7", r: "4", key: "nufk8" }]
 ];
-const Users = createLucideIcon("users", __iconNode$1);
-const __iconNode = [
-  [
-    "path",
-    {
-      d: "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1",
-      key: "18etb6"
-    }
-  ],
-  ["path", { d: "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4", key: "xoc0q4" }]
-];
-const Wallet = createLucideIcon("wallet", __iconNode);
+const Users = createLucideIcon("users", __iconNode);
 function AppLayout() {
   const {
     session,
@@ -105,6 +99,20 @@ function AppLayout() {
     }
     setter(current === "0" || current === "" ? k : current + k);
   };
+  reactExports.useEffect(() => {
+    if (activeOpenBarField === null) return;
+    const onKey = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleOpenBarNumpad(activeOpenBarField, e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleOpenBarNumpad(activeOpenBarField, "⌫");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeOpenBarField]);
   reactExports.useEffect(() => {
     if (!loading && !session) nav({
       to: "/login"
@@ -238,6 +246,17 @@ function AppLayout() {
       return;
     }
     const {
+      data: cashiers
+    } = await supabase.from("profiles").select("id").eq("parent_id", ownerId).eq("role", "cashier");
+    if (cashiers?.length) {
+      const ids = cashiers.map((c) => c.id);
+      await supabase.from("profiles").update({
+        wallet_balance: 0
+      }).in("id", ids);
+      await supabase.from("wallet_transactions").delete().in("profile_id", ids);
+      await supabase.from("orders").delete().in("cashier_id", ids);
+    }
+    const {
       data: newSession
     } = await supabase.from("bar_sessions").insert({
       owner_id: ownerId,
@@ -363,7 +382,7 @@ function AppLayout() {
   }, {
     to: "/credit",
     label: "Customers",
-    icon: Receipt
+    icon: User
   }, {
     to: "/machines",
     label: "Machines",

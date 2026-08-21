@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-CvPu0oa7.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, H as downloadPdf } from "./router-KQFuUJeL.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-8GG21qKo.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, H as downloadPdf } from "./router-CZOM4-ob.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -38,7 +38,7 @@ async function printBill(account, ownerName) {
   new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-86L3G6Ah.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -949,6 +949,22 @@ function CreditNumPad({
   maxLen = 20,
   onDone
 }) {
+  reactExports.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (value.length < maxLen) onChange(value + e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        onChange(value.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [value, onChange, maxLen, onDone]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "done", "0", "⌫"].map((k, i) => k === "done" ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: onDone, className: "h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground", style: {
     background: "var(--gradient-hero)"
   }, children: "Done" }, "done") : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => {
@@ -972,6 +988,22 @@ function CreditContactPad({
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
+  reactExports.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (digits.length < 7) handle(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handle("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (complete) onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [digits, complete, handle, onDone]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2", children: [
     !complete && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs font-semibold text-amber-400 mb-1.5 text-center", children: [
       7 - digits.length,

@@ -14,6 +14,8 @@ import { useNetworkStatus } from "@/lib/useNetworkStatus";
 import { enqueue } from "@/lib/offlineQueue";
 import { useImageCache } from "@/lib/useImageCache";
 import { productImageUrl } from "@/lib/imageUrl";
+import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
+import { openCashDrawer } from "@/lib/cashDrawer";
 import {
   cacheProducts,
   getCachedProducts,
@@ -269,7 +271,7 @@ const ProductGrid = React.memo(function ProductGrid({
 
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
-  const { effectiveOwnerId } = useChain();
+  const { effectiveOwnerId, activeBar } = useChain();
   const { t } = useTranslation();
   const { isOnline } = useNetworkStatus();
   const nav = useNavigate();
@@ -387,6 +389,25 @@ export default function RegisterPage() {
   const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [activeFloatField, setActiveFloatField] = useState<"bar" | "machine" | null>(null);
   const [showBarOpenedOverlay, setShowBarOpenedOverlay] = useState(false);
+
+  // ── Receipt modal state ─────────────────────────────────────────────────
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [lastSale, setLastSale] = useState<ReceiptData | null>(null);
+  const [printingReceipt, setPrintingReceipt] = useState(false);
+
+  const handlePrintAndDone = async () => {
+    if (!lastSale) return;
+    setPrintingReceipt(true);
+    try {
+      await printReceipt(lastSale);
+    } catch {
+      // silent fail — user can still tap Done
+    } finally {
+      setPrintingReceipt(false);
+      setShowReceiptModal(false);
+      setLastSale(null);
+    }
+  };
 
   const handleFloatNumpad = (field: "bar" | "machine", k: string) => {
     const current = field === "bar" ? floatBarAmount : floatMachineAmount;
@@ -2151,9 +2172,15 @@ export default function RegisterPage() {
             revertPendingPacks();
           }}
           ownerId={ownerId}
+          activeBar={activeBar}
           editOrder={editOrder ?? undefined}
           editCreditOrder={editCreditOrder ?? undefined}
-          onSuccess={async (paidAmt, changeAmt) => {
+          onSuccess={async (paidAmt, changeAmt, receipt) => {
+            if (receipt) {
+              setLastSale(receipt);
+              setShowReceiptModal(true);
+            }
+
             // Write bottle variation tracking (needs openedBottles state — not available in CashOverlay)
             const shotItems = cart.filter((c) => (c as any)._bottle_id);
             const bottleUpdates = new Map<
@@ -2193,6 +2220,7 @@ export default function RegisterPage() {
             refreshProfile();
             fetchOpenedBottles();
             fetchOpenedPacks();
+            openCashDrawer().catch(() => {});
             if (editOrder || editCreditOrder) nav("/wallet");
           }}
         />
@@ -3783,6 +3811,16 @@ export default function RegisterPage() {
           </div>
         </div>
       )}
+
+      {/* ── Receipt Modal ── */}
+      {showReceiptModal && lastSale && (
+        <ReceiptModal
+          sale={lastSale}
+          onPrint={handlePrintAndDone}
+          onDone={() => { setShowReceiptModal(false); setLastSale(null); }}
+          printing={printingReceipt}
+        />
+      )}
     </>
   );
 }
@@ -3847,6 +3885,7 @@ function CashOverlay({
   onClose,
   onSuccess,
   ownerId,
+  activeBar,
   editOrder,
   editCreditOrder,
 }: {
@@ -3857,8 +3896,9 @@ function CashOverlay({
   onRemove: (id: string) => void;
   onClearCart: () => void;
   onClose: () => void;
-  onSuccess: (paid: number, change: number) => void;
+  onSuccess: (paid: number, change: number, receipt?: ReceiptData) => void;
   ownerId: string;
+  activeBar?: { bar_name: string } | null;
   editOrder?: {
     id: string;
     items: { id?: string; name: string; qty: number; price: number }[];
@@ -3882,6 +3922,29 @@ function CashOverlay({
   const [step, setStep] = useState<1 | 2>(1);
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const buildReceipt = (paidNum: number, changeNum: number): ReceiptData => ({
+    storeName: activeBar?.bar_name ?? profile?.username ?? "Bar",
+    locationName: "",
+    orderNumber: editOrder ? editOrder.id.slice(0, 8) : Date.now().toString().slice(-6),
+    serverName: profile?.username ?? "Staff",
+    items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
+    subtotal: total,
+    total,
+    paid: paidNum,
+    change: changeNum,
+    payMode: "cash",
+    customerName: undefined,
+    date: new Date().toLocaleString("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }),
+  });
 
   const handlePaidNumpad = (k: string) => {
     if (k === "⌫") setPaid((v) => v.slice(0, -1));
@@ -4073,10 +4136,10 @@ function CashOverlay({
       if (!isOnline) {
         await enqueue("rpc_record_credit_charge", creditPayload, groupId);
         await doStockAndShots(groupId);
-        setBusy(false);
-        toast.success(`💾 Saved offline — will sync when reconnected`);
-        onSuccess(paidNum, changeNum);
-        return;
+      setBusy(false);
+      toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
+      return;
       }
       // If editing an existing credit charge: delete the old one first
       if (editCreditOrder) {
@@ -4103,7 +4166,7 @@ function CashOverlay({
           ? `Credit sale updated for ${selectedCustomer.full_name}`
           : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`,
       );
-      onSuccess(paidNum, changeNum);
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
       return;
     }
 
@@ -4203,7 +4266,7 @@ function CashOverlay({
 
       setBusy(false);
       toast.success("Sale updated");
-      onSuccess(paidNum, changeNum);
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
       return;
     }
 
@@ -4236,7 +4299,7 @@ function CashOverlay({
     }
 
     setBusy(false);
-    onSuccess(paidNum, changeNum);
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
   };
 
   return (
@@ -5990,6 +6053,120 @@ function CreditAlphaKeyboard({
         >
           Done
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Receipt Modal ─────────────────────────────────────────────────────────────
+function ReceiptModal({ sale, onPrint, onDone, printing }: {
+  sale: ReceiptData;
+  onPrint: () => void;
+  onDone: () => void;
+  printing: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}>
+        <div className="px-5 pt-5 pb-2 shrink-0 space-y-1">
+          <div className="flex justify-center">
+            <div className="h-10 w-10 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-green-400" strokeWidth={1.5} />
+            </div>
+          </div>
+          <h2 className="font-black text-lg text-center">Sale Complete</h2>
+        </div>
+
+        {/* Receipt Paper Card */}
+        <div className="px-5 py-2 overflow-y-auto flex-1">
+          <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
+            {/* Store Header */}
+            <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
+              {sale.storeName || "My Business"}
+            </div>
+            {sale.locationName && (
+              <div className="text-center text-[11px] text-zinc-700">{sale.locationName}</div>
+            )}
+            <div className="text-center text-[10px] text-zinc-600">{sale.date || ""}</div>
+            <div className="text-center text-[10px] text-zinc-600">Served by {sale.serverName || "Staff"}</div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            {/* Order Header */}
+            <div className="text-center font-black text-base tracking-wide text-zinc-950 my-1">
+              ORDER #{sale.orderNumber || 1}
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            {/* Items */}
+            <div className="space-y-1 my-2">
+              {sale.items.map((it, idx) => (
+                <div key={idx} className="flex justify-between items-start">
+                  <span className="font-semibold text-zinc-900 pr-2 break-all">
+                    {it.qty}x {it.name}
+                  </span>
+                  <span className="font-bold text-zinc-950 whitespace-nowrap">
+                    ${(it.qty * it.price).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            {/* Subtotal & Total */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-zinc-700">
+                <span>Subtotal</span>
+                <span>${sale.subtotal.toFixed(2)}</span>
+              </div>
+              {sale.tax != null && sale.tax > 0 && (
+                <div className="flex justify-between text-zinc-700">
+                  <span>Tax</span>
+                  <span>${sale.tax.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-black text-sm text-zinc-950 pt-0.5">
+                <span>Total</span>
+                <span>${sale.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            {/* Payment Breakdown */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-zinc-700">
+                <span>{sale.payMode === "credit" ? "Credit" : "Cash Tendered"}</span>
+                <span>${sale.paid.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-zinc-900">
+                <span>Change</span>
+                <span>${sale.change.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
+          <button
+            onClick={onPrint}
+            disabled={printing}
+            className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
+          </button>
+          <button
+            onClick={onDone}
+            className="flex-1 h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );

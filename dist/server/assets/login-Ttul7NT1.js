@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports, V as React2 } from "./server-CvPu0oa7.js";
-import { c as composeRefs, a as createContextScope, u as useComposedRefs, b as useId, P as Primitive, d as composeEventHandlers, e as useControllableState, f as useCallbackRef, g as Presence, h as cn, i as useAuth, j as useNavigate, W as Wine, L as Label, I as Input, B as Button, k as usernameToEmail, s as supabase, t as toast, l as friendlyError, C as Capacitor } from "./router-KQFuUJeL.js";
+import { r as reactExports, W as jsxRuntimeExports, V as React2 } from "./server-8GG21qKo.js";
+import { c as composeRefs, a as createContextScope, u as useComposedRefs, b as useId, P as Primitive, d as composeEventHandlers, e as useControllableState, f as useCallbackRef, g as Presence, h as cn, i as useAuth, j as useNavigate, W as Wine, L as Label, I as Input, B as Button, k as usernameToEmail, s as supabase, t as toast, l as friendlyError, C as Capacitor } from "./router-CZOM4-ob.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -654,7 +654,7 @@ function OtpInput({
         if (Capacitor.isNativePlatform()) {
           const {
             Clipboard
-          } = await import("./index-CLPtw2Nk.js");
+          } = await import("./index-DZbwWhNf.js");
           const {
             value: text
           } = await Clipboard.read();
@@ -726,15 +726,6 @@ function ForgotPasswordFlow({
   const sendOtp = async (e) => {
     e.preventDefault();
     setBusy(true);
-    const {
-      data: profile,
-      error: profileError
-    } = await supabase.from("profiles").select("email").eq("email", email.trim()).single();
-    if (profileError || !profile) {
-      setBusy(false);
-      toast.error("No account found with this email");
-      return;
-    }
     const {
       error
     } = await supabase.auth.resetPasswordForEmail(email.trim(), {

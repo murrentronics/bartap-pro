@@ -4,6 +4,14 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/stock-count")({
   component: StockCountPage,
@@ -24,6 +32,9 @@ function StockCountPage() {
   const [newTableName, setNewTableName] = useState("");
   const [activeCell, setActiveCell] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
+  const [columnName, setColumnName] = useState("");
+  const [activeTableIdForColumn, setActiveTableIdForColumn] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
 
   const ownerId = profile?.parent_id ?? profile?.id ?? "";
@@ -192,18 +203,26 @@ function StockCountPage() {
   };
 
   const addColumn = (tableId: string) => {
-    const name = prompt("Column title:");
-    if (!name?.trim()) return;
+    setActiveTableIdForColumn(tableId);
+    setColumnName("");
+    setShowAddColumnModal(true);
+  };
+
+  const handleAddColumnConfirm = () => {
+    if (!columnName.trim() || !activeTableIdForColumn) return;
     persist(
       tables.map((t) => {
-        if (t.id !== tableId) return t;
+        if (t.id !== activeTableIdForColumn) return t;
         return {
           ...t,
-          columns: [...t.columns, name.trim()],
+          columns: [...t.columns, columnName.trim()],
           rows: t.rows.map((r) => [...r, ""]),
         };
       }),
     );
+    setShowAddColumnModal(false);
+    setColumnName("");
+    setActiveTableIdForColumn(null);
   };
 
   const updateCell = (tableId: string, rowIdx: number, colIdx: number, val: string) => {
@@ -434,6 +453,50 @@ function StockCountPage() {
           </div>
         )}
       </div>
+
+      {/* Add Column Modal */}
+      <Dialog open={showAddColumnModal} onOpenChange={setShowAddColumnModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">
+                Column Title
+              </Label>
+              <input
+                type="text"
+                value={columnName}
+                onChange={(e) => setColumnName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddColumnConfirm();
+                }}
+                placeholder="Enter column name..."
+                className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-black outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddColumnModal(false)}
+                className="flex-1 h-11 font-black text-sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddColumnConfirm}
+                disabled={!columnName.trim()}
+                className="flex-1 h-11 font-black text-sm"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                Add Column
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

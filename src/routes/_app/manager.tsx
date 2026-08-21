@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, TrendingDown, X, BarChart3, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingDown, X, BarChart3, Pencil, Trash2, AlertTriangle, Receipt, Wallet } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/manager")({
@@ -17,6 +17,14 @@ type Expense = {
   amount: number;
   description: string | null;
   expense_date: string;
+  created_at: string;
+};
+
+type WalletTx = {
+  id: string;
+  amount: number;
+  type: string;
+  note: string | null;
   created_at: string;
 };
 
@@ -139,6 +147,29 @@ function ManagerExpenses({
 
   const floatRemaining = floatSet !== null ? Math.max(0, floatSet - floatUsed) : null;
 
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  const [managerTab, setManagerTab] = useState<"sales" | "expenses">("sales");
+
+  // ── Sales tab state (manager wallet transactions) ──────────────────────────
+  const [walletTxs, setWalletTxs] = useState<WalletTx[]>([]);
+  const [loadingWallet, setLoadingWallet] = useState(true);
+
+  const loadWalletTxs = useCallback(async () => {
+    setLoadingWallet(true);
+    const { data } = await sb
+      .from("wallet_transactions")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setWalletTxs((data ?? []) as WalletTx[]);
+    setLoadingWallet(false);
+  }, [profile.id]);
+
+  useEffect(() => {
+    if (managerTab === "sales") loadWalletTxs();
+  }, [managerTab, loadWalletTxs]);
+
   // ── Expense list ──────────────────────────────────────────────────────────
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,35 +237,14 @@ function ManagerExpenses({
         : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${tag}`;
 
     try {
-      const { error: expErr } = await sb.from("owner_expenses").insert({
-        owner_id: ownerId,
-        amount: total,
-        description,
-        expense_date: today,
+      const { error: rpcErr } = await (supabase as any).rpc("add_manager_expense", {
+        _manager_id: profile.id,
+        _owner_id: ownerId,
+        _amount: total,
+        _description: description,
+        _expense_date: today,
       });
-      if (expErr) { toast.error(expErr.message); return; }
-
-      const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-      const newBal = Number(ownerRow?.wallet_balance ?? 0) - total;
-      await sb.from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
-
-      const expenseNote = valid.length === 1 ? `Expense: ${valid[0].description.trim()}` : `Bulk Expense (${valid.length} items)`;
-
-      // 1. Record on the manager's own cashier wallet (tracks against float)
-      await sb.from("wallet_transactions").insert({
-        profile_id: profile.id,
-        amount: total,
-        type: "cashier_expense",
-        note: expenseNote + ` ${tag}`,
-      });
-
-      // 2. Record on the owner's wallet so it appears in their Wallet expense history
-      await sb.from("wallet_transactions").insert({
-        profile_id: ownerId,
-        amount: total,
-        type: "cashier_expense",
-        note: expenseNote + ` ${tag}`,
-      });
+      if (rpcErr) { toast.error(rpcErr.message); return; }
 
       toast.success("Expense saved");
       setLines([{ description: "", amount: "" }]);
@@ -292,16 +302,28 @@ function ManagerExpenses({
         .eq("id", e.id);
       if (upErr) { toast.error(upErr.message); return; }
 
-      // Adjust owner wallet by the difference
-      if (diff !== 0) {
-        const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-        const newBal = Number(ownerRow?.wallet_balance ?? 0) - diff;
-        await sb.from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
+      if (diff > 0) {
+        const { error: rpcErr } = await (supabase as any).rpc("add_manager_expense", {
+          _manager_id: profile.id,
+          _owner_id: ownerId,
+          _amount: diff,
+          _description: `Adjustment: ${tag}`,
+          _expense_date: new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+        });
+        if (rpcErr) { toast.error(rpcErr.message); return; }
+      } else if (diff < 0) {
+        const { error: rpcErr } = await (supabase as any).rpc("refund_manager_expense", {
+          _manager_id: profile.id,
+          _owner_id: ownerId,
+          _amount: Math.abs(diff),
+        });
+        if (rpcErr) { toast.error(rpcErr.message); return; }
       }
 
       toast.success("Expense updated");
       setEditingId(null);
       loadExpenses();
+      loadFloat();
     } finally {
       setEditSaving(false);
     }
@@ -313,14 +335,17 @@ function ManagerExpenses({
       const { error: delErr } = await sb.from("owner_expenses").delete().eq("id", e.id);
       if (delErr) { toast.error(delErr.message); return; }
 
-      // Refund amount back to owner wallet
-      const { data: ownerRow } = await sb.from("profiles").select("wallet_balance").eq("id", ownerId).single();
-      const newBal = Number(ownerRow?.wallet_balance ?? 0) + Number(e.amount);
-      await sb.from("profiles").update({ wallet_balance: newBal }).eq("id", ownerId);
+      const { error: rpcErr } = await (supabase as any).rpc("refund_manager_expense", {
+        _manager_id: profile.id,
+        _owner_id: ownerId,
+        _amount: Number(e.amount),
+      });
+      if (rpcErr) { toast.error(rpcErr.message); return; }
 
       toast.success("Expense deleted and wallet refunded");
       setDeleteConfirmId(null);
       loadExpenses();
+      loadFloat();
     } finally {
       setDeleting(false);
     }
@@ -338,7 +363,88 @@ function ManagerExpenses({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="py-3 space-y-4 pb-24">
-      {/* Page header */}
+      {/* Sales / Expenses Tabs */}
+      <div className="rounded-2xl border border-border overflow-hidden">
+        <div className="grid grid-cols-2">
+          <button
+            onClick={() => setManagerTab("sales")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              managerTab === "sales"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Receipt className="h-4 w-4" /> Sales
+          </button>
+          <button
+            onClick={() => setManagerTab("expenses")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              managerTab === "expenses"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingDown className="h-4 w-4" /> Expenses
+          </button>
+        </div>
+      </div>
+
+      {managerTab === "sales" ? (
+        /* ── Sales Tab ── */
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black text-xl">{t("records", "Records")}</h2>
+            <span className="text-sm text-muted-foreground">{walletTxs.length} records</span>
+          </div>
+          {loadingWallet ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />
+              ))}
+            </div>
+          ) : walletTxs.length === 0 ? (
+            <div className="text-muted-foreground text-sm py-8 text-center">No records yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {walletTxs.map((tx) => {
+                const isExpense = tx.type === "cashier_expense";
+                const isTransferIn = tx.type === "transfer_in";
+                const isTransferOut = tx.type === "transfer_out";
+                return (
+                  <div key={tx.id} className="rounded-xl p-4 border border-border flex items-center gap-3"
+                    style={{ background: "var(--gradient-card)" }}>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border"
+                      style={{
+                        background: isExpense ? "rgba(239,68,68,0.10)" : isTransferIn ? "rgba(134,239,172,0.10)" : "rgba(255,255,255,0.06)",
+                        borderColor: isExpense ? "rgba(239,68,68,0.25)" : isTransferIn ? "rgba(134,239,172,0.25)" : "var(--border)",
+                      }}>
+                      {isExpense ? <TrendingDown className="h-4 w-4 text-red-400" /> : isTransferIn ? <Wallet className="h-4 w-4 text-green-400" /> : <Wallet className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(tx.created_at).toLocaleString("en-GB", {
+                          hour: "2-digit", minute: "2-digit", hour12: true,
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </div>
+                      <p className="text-sm font-semibold mt-0.5 truncate">
+                        {tx.note || tx.type}
+                      </p>
+                    </div>
+                    <span className="font-black text-sm shrink-0"
+                      style={{ color: isTransferIn ? "#86efac" : isExpense ? "#fca5a5" : "var(--muted-foreground)" }}>
+                      {isTransferIn ? "+" : isExpense ? "-" : ""}${fmt(Math.abs(Number(tx.amount)))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── Expenses Tab (original page content) ── */
+        <>
+          {/* Page header */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
           style={{ background: "var(--gradient-hero)" }}>
@@ -675,6 +781,8 @@ function ManagerExpenses({
           })
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

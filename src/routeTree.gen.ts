@@ -12,12 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as _rootCapacitorRouteImport } from './routes/__root.capacitor'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppStockCountRouteImport } from './routes/_app/stock-count'
 import { Route as AppStockCheckRouteImport } from './routes/_app/stock-check'
 import { Route as AppManagerRouteImport } from './routes/_app/manager'
 import { Route as AppMachinesRouteImport } from './routes/_app/machines'
 import { Route as AppFactoryResetRouteImport } from './routes/_app/factory-reset'
 import { Route as AppCreditRouteImport } from './routes/_app/credit'
-import { Route as AppStockCountRouteImport } from './routes/_app/stock-count'
 
 const _rootCapacitorRoute = _rootCapacitorRouteImport.update({
   id: '/__root/capacitor',
@@ -32,6 +32,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppStockCountRoute = AppStockCountRouteImport.update({
+  id: '/stock-count',
+  path: '/stock-count',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppStockCheckRoute = AppStockCheckRouteImport.update({
   id: '/stock-check',
@@ -56,11 +61,6 @@ const AppFactoryResetRoute = AppFactoryResetRouteImport.update({
 const AppCreditRoute = AppCreditRouteImport.update({
   id: '/credit',
   path: '/credit',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStockCountRoute = AppStockCountRouteImport.update({
-  id: '/stock-count',
-  path: '/stock-count',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -163,18 +163,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/stock-check': {
-      id: '/_app/stock-check'
-      path: '/stock-check'
-      fullPath: '/stock-check'
-      preLoaderRoute: typeof AppStockCheckRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/stock-count': {
       id: '/_app/stock-count'
       path: '/stock-count'
       fullPath: '/stock-count'
       preLoaderRoute: typeof AppStockCountRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/stock-check': {
+      id: '/_app/stock-check'
+      path: '/stock-check'
+      fullPath: '/stock-check'
+      preLoaderRoute: typeof AppStockCheckRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/manager': {

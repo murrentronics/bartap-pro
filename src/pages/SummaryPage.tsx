@@ -417,6 +417,193 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
   );
 }
 
+// ─── CombinedSummaryView ──────────────────────────────────────────────────────
+// Aggregates ALL sessions/sub-sessions within a date range into one summary
+function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, ownerId }: {
+  fromDate: string; toDate: string; products: ProductCost[]; categoryFilter: string; ownerId: string;
+}) {
+  const [data, setData] = useState<{ orders: Order[]; expenses: Expense[]; walletIncome: number; loading: boolean }>({ orders: [], expenses: [], walletIncome: 0, loading: true });
+
+  useEffect(() => {
+    let cancelled = false;
+    setData(d => ({ ...d, loading: true }));
+    const from = `${fromDate}T00:00:00.000Z`;
+    const to   = `${toDate}T23:59:59.999Z`;
+
+    Promise.all([
+      supabase.from("orders").select("id, total, paid, change_given, items, created_at")
+        .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
+      supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
+        .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
+      supabase.from("wallet_transactions").select("amount, type, created_at")
+        .eq("profile_id", ownerId).in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
+        .gte("created_at", from).lte("created_at", to),
+    ]).then(([ordRes, expRes, walletRes]: any[]) => {
+      if (cancelled) return;
+      setData({
+        orders: (ordRes.data ?? []) as Order[],
+        expenses: (expRes.data ?? []) as Expense[],
+        walletIncome: (walletRes.data ?? []).reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0),
+        loading: false,
+      });
+    });
+    return () => { cancelled = true; };
+  }, [fromDate, toDate, ownerId]);
+
+  const costMap = new Map<string, number>(products.map(p => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const nameMap = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const categoryMap = new Map<string, string>(products.map(p => [p.name, p.category ?? "miscellaneous"]));
+  const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap);
+  const items = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
+  const nonStockExpenses = data.expenses.filter(e => { const d = e.description ?? ""; return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense"); });
+  const totalNonStockExpenses = nonStockExpenses.filter(e => Number(e.amount) > 0).reduce((s, e) => s + Number(e.amount), 0);
+  const totalIncome    = items.reduce((s, it) => s + it.revenue, 0) + data.walletIncome;
+  const totalItemsCost = items.reduce((s, it) => s + it.costTotal, 0);
+  const totalExpenses  = totalNonStockExpenses;
+  const totalCostPrice = totalItemsCost + totalNonStockExpenses;
+  const totalProfit    = totalIncome - totalCostPrice;
+
+  return (
+    <div className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+      <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <span className="text-xs font-black text-foreground">
+          {filterLabel("period", fromDate, toDate)} · Combined Summary
+        </span>
+        {data.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+      </div>
+
+      {data.loading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+
+      {!data.loading && (
+        <>
+          {/* Mini stats — top row: Bar Sales, Items Cost */}
+          <div className="grid grid-cols-2 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            {[
+              { label: "Bar Sales",  value: totalIncome,    color: "#86efac" },
+              { label: "Items Cost", value: totalItemsCost, color: "#fca5a5" },
+            ].map((s, i, arr) => (
+              <div key={i} className="px-3 py-2.5 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
+                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
+                <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
+                  {s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+          {/* Mini stats — bottom row: Gross Profit, Expenses, Net Profit */}
+          {(() => {
+            const grossProfit = totalIncome - totalItemsCost;
+            const netProfit   = grossProfit - totalExpenses;
+            return (
+              <div className="grid grid-cols-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                {[
+                  { label: "Gross Profit", value: grossProfit, color: grossProfit >= 0 ? "#86efac" : "#fca5a5", sign: true },
+                  { label: "Expenses",     value: totalExpenses, color: "#fbbf24", sign: false },
+                  { label: "Net Profit",   value: netProfit,   color: netProfit >= 0 ? "#86efac" : "#fca5a5", sign: true },
+                ].map((s, i, arr) => (
+                  <div key={i} className="px-3 py-2.5 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
+                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
+                    <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
+                      {s.sign && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Items */}
+          {items.length === 0
+            ? <div className="py-6 text-center text-muted-foreground text-xs">No sales in this period</div>
+            : <div>
+                <div className="px-3 py-1.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <ShoppingBag className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-black">Items Sold</span>
+                  <span className="text-[9px] text-muted-foreground ml-auto">{data.orders.length} orders</span>
+                </div>
+                <div className="divide-y" style={{ "--tw-divide-opacity": 1 } as React.CSSProperties}>
+                  {items.map(it => {
+                    const rp = it.revenue - it.costTotal;
+                    return (
+                      <div key={it.name} className="px-3 py-2 space-y-0.5" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-xs flex-1">{it.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{it.qty} sold</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <p className="text-right font-semibold text-xs" style={{ color: "#86efac" }}>${fmt(it.revenue)}</p>
+                          <p className="text-right font-semibold text-xs" style={{ color: "#fca5a5" }}>{it.costTotal > 0 ? `$${fmt(it.costTotal)}` : "—"}</p>
+                          <p className="text-right font-black text-xs" style={{ color: rp >= 0 ? "#86efac" : "#fca5a5" }}>{rp >= 0 ? "+" : ""}${fmt(rp)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+          }
+          {/* Order records */}
+          {data.orders.length > 0 && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="px-3 py-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-black">Orders</span>
+                <span className="text-[9px] text-muted-foreground">{data.orders.length}</span>
+              </div>
+              {data.orders.map(o => (
+                <div key={o.id} className="px-3 py-2 flex items-start justify-between gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] text-muted-foreground block">{new Date(o.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ })}</span>
+                    <div className="mt-0.5 space-y-0.5">
+                      {o.items.map((item, idx) => {
+                        const saleTotal = item.qty * Number(item.price);
+                        const unitCost  = nameMap.get(item.name) ?? 0;
+                        const costTotal = item.qty * unitCost;
+                        const profit    = saleTotal - costTotal;
+                        return (
+                          <span key={idx} className="text-[9px] text-white/40 block">
+                            {item.qty}× {item.name}
+                            {" · "}
+                            <span style={{ color: "#86efac" }}>${fmt(saleTotal)}</span>
+                            {costTotal > 0 && <> · <span style={{ color: "#fca5a5" }}>${fmt(costTotal)}</span> · <span style={{ color: profit >= 0 ? "#86efac" : "#fca5a5" }}>{profit >= 0 ? "+" : ""}${fmt(profit)}</span></>}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <span className="font-black text-xs shrink-0" style={{ color: "#86efac" }}>${fmt(Number(o.total))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Expenses */}
+          {nonStockExpenses.length > 0 && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="px-3 py-1.5 flex items-center gap-2">
+                <TrendingDown className="h-3 w-3 text-red-400" />
+                <span className="text-[10px] font-black">Expenses</span>
+              </div>
+              {nonStockExpenses.map(e => {
+                const lines = (e.description ?? "").split("\n").filter(Boolean).slice(1).filter(l => !l.startsWith("[Cashier:") && !l.startsWith("[Manager:"));
+                const isRefund = Number(e.amount) < 0;
+                const dateTime = new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: TZ });
+                return (
+                  <div key={e.id} className="px-3 py-2 flex items-start justify-between gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div className="flex-1 min-w-0">
+                      {lines.length > 0 ? lines.map((l, i) => <p key={i} className="text-xs font-semibold">{l.split(" = ")[0]}</p>) : <p className="text-xs font-semibold">Expense</p>}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{dateTime}</p>
+                    </div>
+                    <p className="font-black text-xs shrink-0" style={{ color: isRefund ? "#86efac" : "#fca5a5" }}>
+                      {isRefund ? `+$${fmt(Math.abs(Number(e.amount)))}` : `$${fmt(Number(e.amount))}`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SummaryPage() {
   const { profile } = useAuth();
@@ -673,34 +860,46 @@ export default function SummaryPage() {
         </div>
       )}
 
-      {/* Sessions list */}
-      {loadingSessions ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-      ) : filteredSessions.length === 0 ? (
-        <div className="rounded-2xl border border-border p-8 text-center" style={{ background: "var(--gradient-card)" }}>
-          <div className="text-3xl mb-3">📊</div>
-          <p className="font-black text-sm">No sessions found</p>
-          <p className="text-xs text-muted-foreground mt-1">{filter === "session" ? "Bar was not opened this day." : `No sessions in this ${filter === "week" ? "week" : filter === "month" ? "month" : filter === "year" ? "year" : "period"}.`}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-              {filteredSessions.length} Session{filteredSessions.length !== 1 ? "s" : ""}{filter !== "session" && ` · ${filterLabel(filter, fromDate, toDate)}`}
-            </span>
+      {/* Sessions list / Combined summary */}
+      {filter === "session" ? (
+        loadingSessions ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="rounded-2xl border border-border p-8 text-center" style={{ background: "var(--gradient-card)" }}>
+            <div className="text-3xl mb-3">📊</div>
+            <p className="font-black text-sm">No sessions found</p>
+            <p className="text-xs text-muted-foreground mt-1">Bar was not opened this day.</p>
           </div>
-          {filteredSessions.map(session => (
-            <BarSessionAccordion
-              key={session.id}
-              session={session}
-              subSessions={allSubSessions}
-              products={products}
-              categoryFilter={categoryFilter}
-              activeSessionId={activeSessionId}
-              ownerId={ownerId}
-            />
-          ))}
-        </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                {filteredSessions.length} Session{filteredSessions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            {filteredSessions.map(session => (
+              <BarSessionAccordion
+                key={session.id}
+                session={session}
+                subSessions={allSubSessions}
+                products={products}
+                categoryFilter={categoryFilter}
+                activeSessionId={activeSessionId}
+                ownerId={ownerId}
+              />
+            ))}
+          </div>
+        )
+      ) : loadingSessions ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+      ) : (
+        <CombinedSummaryView
+          fromDate={fromDate}
+          toDate={toDate}
+          products={products}
+          categoryFilter={categoryFilter}
+          ownerId={ownerId}
+        />
       )}
     </div>
   );

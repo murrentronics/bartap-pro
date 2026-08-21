@@ -1183,6 +1183,9 @@ function BulkEditModal({
         const existSpecials = (p.bottle_variations ?? []).filter(
           (bv) => bv.key === "special" || bv.key.startsWith("special_"),
         );
+        // If no existing specials and all rows are empty, nothing changed
+        const allRowsEmpty = rows.every((row) => !row.qty.trim() && !row.price.trim());
+        if (existSpecials.length === 0 && allRowsEmpty) return false;
         if (rows.length !== existSpecials.length) return true;
         return rows.some((row, i) => {
           const sq = parseInt(row.qty, 10);
@@ -2411,7 +2414,7 @@ function BulkEditModal({
               </button>
               <button
                 onClick={save}
-                disabled={busy}
+                disabled={busy || allChanged.length === 0}
                 className="flex-[2] h-12 rounded-2xl font-black text-sm text-primary-foreground disabled:opacity-40 flex items-center justify-center gap-2 transition active:scale-[0.98]"
                 style={{ background: "var(--gradient-hero)" }}
               >

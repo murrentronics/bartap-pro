@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
 
 // ─── Typed supabase helpers for new tables ────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -266,11 +267,128 @@ function CashierWallet({
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [billData, setBillData] = useState<BillData | null>(null);
+  const [printingBill, setPrintingBill] = useState(false);
   const nav = useNavigate();
 
   const handleConfirmEdit = (order: Order) => {
     sessionStorage.setItem("edit_order", JSON.stringify(order));
     nav("/register");
+  };
+
+  const handlePrintBill = async () => {
+    if (!billData) return;
+    setPrintingBill(true);
+    try {
+      await printReceipt(billData);
+      toast.success("Receipt sent to printer");
+    } catch {
+      toast.error("Print failed");
+    } finally {
+      setPrintingBill(false);
+    }
+  };
+
+  const handlePdfShare = async () => {
+    if (!billData) return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const y = 20;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(billData.storeName || "My Business", LM, y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(billData.date, LM, y + 6);
+      doc.text("ORDER #" + billData.orderNumber, LM, y + 12);
+      doc.setFontSize(10);
+      let cy = y + 20;
+      billData.items.forEach((it) => {
+        doc.text(`${it.qty}x ${it.name}   $${(it.qty * it.price).toFixed(2)}`, LM, cy);
+        cy += 6;
+      });
+      cy += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total: $${billData.total.toFixed(2)}`, LM, cy); cy += 6;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Paid: $${billData.paid.toFixed(2)}`, LM, cy); cy += 6;
+      doc.text(`Change: $${billData.change.toFixed(2)}`, LM, cy);
+      if (billData.customerName) {
+        cy += 6;
+        doc.text(`Customer: ${billData.customerName}`, LM, cy);
+      }
+      const filename = `receipt-${billData.orderNumber}.pdf`;
+      const dataUri = doc.output("datauristring");
+      await downloadPdf(filename, dataUri);
+      toast.success("Receipt PDF downloaded");
+
+      const text = `Receipt: ${billData.storeName}\nORDER #${billData.orderNumber}\nDate: ${billData.date}\nTotal: $${billData.total.toFixed(2)}\nPaid: $${billData.paid.toFixed(2)}\nChange: $${billData.change.toFixed(2)}${billData.customerName ? "\nCustomer: " + billData.customerName : ""}`;
+      const waUrl = "https://wa.me/?text=" + encodeURIComponent(text);
+      window.open(waUrl, "_blank");
+    } catch (e) {
+      toast.error("Failed to generate PDF");
+    }
+  };
+
+  const openBillForOrder = async (order: Order) => {
+    const parts = (order as any).note_parts ?? [];
+    const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
+    const bill: BillData = {
+      storeName: profile.username || "Bar",
+      orderNumber: order.id.slice(0, 8),
+      date: new Date(order.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(order.total),
+      total: Number(order.total),
+      paid: Number(order.paid),
+      change: Number(order.change_given),
+      payMode: order.payment_method === "credit" ? "credit" : "cash",
+      customerName: customerName || undefined,
+    };
+    setBillData(bill);
+  };
+
+  const openBillForCreditTx = async (tx: WalletTx) => {
+    const ctid = tx.credit_tx_id;
+    if (!ctid) {
+      toast.error("No credit record linked");
+      return;
+    }
+    const { data: ct } = await sb
+      .from("credit_transactions")
+      .select("id, credit_account_id, amount, items, created_at")
+      .eq("id", ctid)
+      .maybeSingle();
+    if (!ct) {
+      toast.error("Could not load credit sale");
+      return;
+    }
+    const { data: acct } = await sb
+      .from("credit_accounts")
+      .select("full_name")
+      .eq("id", ct.credit_account_id)
+      .maybeSingle();
+    const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
+    const bill: BillData = {
+      storeName: profile.username || "Bar",
+      orderNumber: ct.id.slice(0, 8),
+      date: new Date(ct.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: items.map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(ct.amount),
+      total: Number(ct.amount),
+      paid: Number(ct.amount),
+      change: 0,
+      payMode: "credit",
+      customerName: acct?.full_name || undefined,
+    };
+    setBillData(bill);
   };
 
   // ── Float cards state ────────────────────────────────────────────────────────
@@ -1292,6 +1410,13 @@ function CashierWallet({
                             <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
                           </button>
                         )}
+                        <button
+                          onClick={() => openBillForCreditTx(tx)}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                          title="Print bill"
+                        >
+                          <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                        </button>
                       </div>
                     );
                   }
@@ -1382,6 +1507,13 @@ function CashierWallet({
                       <span className="font-black text-sm text-green-400">
                         +${fmt(Number(o.total))}
                       </span>
+                      <button
+                        onClick={() => openBillForOrder(o)}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                        title="Print bill"
+                      >
+                        <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                      </button>
                       {(profile.role === "owner" ||
                         profile.role === "manager" ||
                         (profile as any).job_title === "manager") && (
@@ -1708,6 +1840,16 @@ function CashierWallet({
             </div>
           </div>
         </div>
+      )}
+
+      {billData && (
+        <BillModal
+          bill={billData}
+          onClose={() => setBillData(null)}
+          onPrint={handlePrintBill}
+          onPdfShare={handlePdfShare}
+          printing={printingBill}
+        />
       )}
     </div>
   );
@@ -2961,7 +3103,7 @@ function FinancialsTab({
           color: [40, 140, 40] as [number, number, number],
         },
         {
-          label: "Total Expenses",
+          label: "Non-Stock Expenses",
           value: "$" + fmt(allTimeExpenses),
           color: [180, 40, 40] as [number, number, number],
         },
@@ -4579,6 +4721,66 @@ function OwnerWallet({
   const [showSetFloat, setShowSetFloat] = useState(false);
   const [floatInput, setFloatInput] = useState("");
   const [savingFloat, setSavingFloat] = useState(false);
+  const [billData, setBillData] = useState<BillData | null>(null);
+  const [printingBill, setPrintingBill] = useState(false);
+
+  async function openBillForOrder(order: Order) {
+    const bill: BillData = {
+      storeName: profile.username || "Bar",
+      orderNumber: order.id.slice(0, 8),
+      date: new Date(order.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(order.total),
+      total: Number(order.total),
+      paid: Number(order.paid),
+      change: Number(order.change_given),
+      payMode: order.payment_method === "credit" ? "credit" : "cash",
+      customerName: undefined,
+    };
+    setBillData(bill);
+  }
+
+  async function openBillForCreditTx(tx: WalletTx) {
+    const ctid = tx.credit_tx_id;
+    if (!ctid) {
+      toast.error("No credit record linked");
+      return;
+    }
+    const { data: ct } = await sb
+      .from("credit_transactions")
+      .select("id, credit_account_id, amount, items, created_at")
+      .eq("id", ctid)
+      .maybeSingle();
+    if (!ct) {
+      toast.error("Could not load credit sale");
+      return;
+    }
+    const { data: acct } = await sb
+      .from("credit_accounts")
+      .select("full_name")
+      .eq("id", ct.credit_account_id)
+      .maybeSingle();
+    const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
+    const bill: BillData = {
+      storeName: profile.username || "Bar",
+      orderNumber: ct.id.slice(0, 8),
+      date: new Date(ct.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: items.map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(ct.amount),
+      total: Number(ct.amount),
+      paid: Number(ct.amount),
+      change: 0,
+      payMode: "credit",
+      customerName: acct?.full_name || undefined,
+    };
+    setBillData(bill);
+  }
 
   // Load original float (from latest sub-session) + live remaining (cashier_float)
   const loadFloat = useCallback(async () => {
@@ -4617,6 +4819,61 @@ function OwnerWallet({
   useEffect(() => {
     loadFloatRef.current = loadFloat;
   }, [loadFloat]);
+
+  const handlePrintBill = async () => {
+    if (!billData) return;
+    setPrintingBill(true);
+    try {
+      await printReceipt(billData);
+      toast.success("Receipt sent to printer");
+    } catch {
+      toast.error("Print failed");
+    } finally {
+      setPrintingBill(false);
+    }
+  };
+
+  const handlePdfShare = async () => {
+    if (!billData) return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const y = 20;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(billData.storeName || "My Business", LM, y);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(billData.date, LM, y + 6);
+      doc.text("ORDER #" + billData.orderNumber, LM, y + 12);
+      doc.setFontSize(10);
+      let cy = y + 20;
+      billData.items.forEach((it) => {
+        doc.text(`${it.qty}x ${it.name}   $${(it.qty * it.price).toFixed(2)}`, LM, cy);
+        cy += 6;
+      });
+      cy += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total: $${billData.total.toFixed(2)}`, LM, cy); cy += 6;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Paid: $${billData.paid.toFixed(2)}`, LM, cy); cy += 6;
+      doc.text(`Change: $${billData.change.toFixed(2)}`, LM, cy);
+      if (billData.customerName) {
+        cy += 6;
+        doc.text(`Customer: ${billData.customerName}`, LM, cy);
+      }
+      const filename = `receipt-${billData.orderNumber}.pdf`;
+      const dataUri = doc.output("datauristring");
+      await downloadPdf(filename, dataUri);
+      toast.success("Receipt PDF downloaded");
+
+      const text = `Receipt: ${billData.storeName}\nORDER #${billData.orderNumber}\nDate: ${billData.date}\nTotal: $${billData.total.toFixed(2)}\nPaid: $${billData.paid.toFixed(2)}\nChange: $${billData.change.toFixed(2)}${billData.customerName ? "\nCustomer: " + billData.customerName : ""}`;
+      const waUrl = "https://wa.me/?text=" + encodeURIComponent(text);
+      window.open(waUrl, "_blank");
+    } catch (e) {
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   // Realtime — watch owner profile for float changes + cashier expenses
   useEffect(() => {
@@ -5804,6 +6061,121 @@ function OwnerWallet({
           onSessionChange={floatSet !== null ? setFloatSessionMode : undefined}
         />
       )}
+
+      {billData && (
+        <BillModal
+          bill={billData}
+          onClose={() => setBillData(null)}
+          onPrint={handlePrintBill}
+          onPdfShare={handlePdfShare}
+          printing={printingBill}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Bill Data ──────────────────────────────────────────────────────────────────
+type BillData = {
+  storeName: string;
+  orderNumber: string;
+  date: string;
+  items: { name: string; qty: number; price: number }[];
+  subtotal: number;
+  total: number;
+  paid: number;
+  change: number;
+  payMode: string;
+  customerName?: string;
+};
+
+// ── Bill Modal ────────────────────────────────────────────────────────────────
+function BillModal({ bill, onClose, onPrint, onPdfShare, printing }: {
+  bill: BillData;
+  onClose: () => void;
+  onPrint: () => void;
+  onPdfShare: () => void;
+  printing: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
+        style={{ background: "var(--gradient-card)" }}>
+        <div className="px-5 pt-5 pb-2 shrink-0 space-y-1">
+          <div className="flex justify-between items-center">
+            <h2 className="font-black text-lg">Bill</h2>
+            <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Receipt Paper Card */}
+        <div className="px-5 py-2 overflow-y-auto flex-1">
+          <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
+            <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
+              {bill.storeName || "My Business"}
+            </div>
+            <div className="text-center text-[10px] text-zinc-600">{bill.date || ""}</div>
+            <div className="text-center text-[10px] text-zinc-600">ORDER #{bill.orderNumber || 1}</div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            <div className="space-y-1 my-2">
+              {bill.items.map((it, idx) => (
+                <div key={idx} className="flex justify-between items-start">
+                  <span className="font-semibold text-zinc-900 pr-2 break-all">
+                    {it.qty}x {it.name}
+                  </span>
+                  <span className="font-bold text-zinc-950 whitespace-nowrap">
+                    ${(it.qty * it.price).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-zinc-700">
+                <span>Total</span>
+                <span>${bill.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-zinc-700">
+                <span>{bill.payMode === "credit" ? "Credit" : "Cash Tendered"}</span>
+                <span>${bill.paid.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-zinc-900">
+                <span>Change</span>
+                <span>${bill.change.toFixed(2)}</span>
+              </div>
+              {bill.customerName && (
+                <div className="border-t border-dashed border-zinc-400 my-2">
+                  <span className="text-zinc-700">Customer: {bill.customerName}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
+          <button
+            onClick={onPrint}
+            disabled={printing}
+            className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
+          </button>
+          <button
+            onClick={onPdfShare}
+            className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+          >
+            PDF / WhatsApp
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

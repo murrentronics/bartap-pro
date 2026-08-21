@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Receipt,
+  User,
   Gamepad2,
   TrendingDown,
   ClipboardList,
@@ -455,7 +456,7 @@ function AppLayout() {
         ]
       : [
           { to: "/register", label: "Cashier", icon: Wine },
-          { to: "/credit", label: "Customers", icon: Receipt },
+           { to: "/credit", label: "Customers", icon: User },
           { to: "/machines", label: "Machines", icon: Gamepad2 },
           ...(isOwner ? [{ to: "/products", label: "Items", icon: Package }] : []),
           ...(isOwner ? [{ to: "/stock-check", label: "Stock Check", icon: ClipboardList }] : []),
