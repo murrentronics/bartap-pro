@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
   ImagePlus,
@@ -916,9 +916,10 @@ function BulkEditModal({
   const { t } = useTranslation();
   // newQty keyed by product id — only items with a value > 0 will be processed
   const [newQtys, setNewQtys] = useState<Record<string, string>>({});
-  // editable cost price and sell price — pre-seeded from items
+  // editable sell price — pre-seeded from items
+  // costPrices stores TOTAL batch cost for added qty — starts empty until user enters it
   const [costPrices, setCostPrices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(items.map((p) => [p.id, String(p.cost_price ?? "")])),
+    Object.fromEntries(items.map((p) => [p.id, ""])),
   );
   const [sellPrices, setSellPrices] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((p) => [p.id, String(p.price ?? "")])),
@@ -1205,7 +1206,10 @@ function BulkEditModal({
   });
 
   // All items with any change — shown in preview
-  const allChanged = [...updates, ...priceOnlyChanges];
+  const allChanged = useMemo(() => [...updates, ...priceOnlyChanges], [
+    updates,
+    priceOnlyChanges,
+  ]);
 
   // costPrices now stores TOTAL batch cost for added qty
   const totalCost = updates.reduce((sum, p) => {
@@ -1490,43 +1494,46 @@ function BulkEditModal({
     onClose();
   };
 
-  const SaveBar = () => (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
-      <div className="text-sm font-black">
-        {allChanged.length > 0 ? (
-          <span style={{ color: "var(--primary)" }}>
-            {allChanged.length} item{allChanged.length !== 1 ? "s" : ""}
-            {updates.length > 0 && (
-              <span className="text-green-400"> · ${totalCost.toFixed(2)}</span>
-            )}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
-        )}
+  const SaveBar = () => {
+    const handleClick = useCallback(() => {
+      const invalid = updates.find((p) => {
+        const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
+        return sp === 0;
+      });
+      if (invalid) {
+        toast.error(
+          `"${invalid.name}" has qty > 0 but Sell Price is $0.00 — set a sell price first.`,
+        );
+        return;
+      }
+      setShowPreview(true);
+    }, [updates, sellPrices]);
+
+    return (
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
+        <div className="text-sm font-black">
+          {allChanged.length > 0 ? (
+            <span style={{ color: "var(--primary)" }}>
+              {allChanged.length} item{allChanged.length !== 1 ? "s" : ""}
+              {updates.length > 0 && (
+                <span className="text-green-400"> · ${totalCost.toFixed(2)}</span>
+              )}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
+          )}
+        </div>
+        <button
+          onClick={handleClick}
+          disabled={busy || allChanged.length === 0}
+          className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
+          style={{ background: "var(--gradient-hero)" }}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Bulk"}
+        </button>
       </div>
-      <button
-        onClick={() => {
-          // Block if any item has qty > 0 but cp or sp is 0
-          const invalid = updates.find((p) => {
-            const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
-            return sp === 0;
-          });
-          if (invalid) {
-            toast.error(
-              `"${invalid.name}" has qty > 0 but Sell Price is $0.00 — set a sell price first.`,
-            );
-            return;
-          }
-          if (allChanged.length > 0) setShowPreview(true);
-        }}
-        disabled={busy || allChanged.length === 0}
-        className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
-        style={{ background: "var(--gradient-hero)" }}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Bulk"}
-      </button>
-    </div>
-  );
+    );
+  };
 
   // shared input style
   const numInputCls =

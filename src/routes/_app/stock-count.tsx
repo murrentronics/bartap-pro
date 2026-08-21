@@ -238,24 +238,24 @@ function StockCountPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={{ minWidth: "max-content" }}>
                 <thead>
                   <tr
                     className="border-b border-border/40"
                     style={{ background: "rgba(255,255,255,0.02)" }}
                   >
-                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[140px]">
+                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[200px]">
                       Item name
                     </th>
                     {table.columns.map((col, ci) => (
                       <th
                         key={ci}
-                        className="text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[70px] min-w-[70px]"
+                        className="text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]"
                       >
                         {col}
                       </th>
                     ))}
-                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[70px]">
+                    <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]">
                       Total
                     </th>
                     <th className="w-[40px] min-w-[40px]"></th>
@@ -264,7 +264,7 @@ function StockCountPage() {
                 <tbody>
                   {table.rows.map((row, ri) => (
                     <tr key={ri} className="border-b border-border/20">
-                      <td className="px-2 py-1 min-w-[140px]">
+                      <td className="px-2 py-1 min-w-[200px]">
                         <input
                           type="text"
                           value={row[0] ?? ""}
@@ -278,7 +278,7 @@ function StockCountPage() {
                       {table.columns.map((_, ci) => {
                         const val = row[ci + 1] ?? "";
                         return (
-                          <td key={ci} className="px-2 py-1 w-[70px] min-w-[70px]">
+                          <td key={ci} className="px-2 py-1 w-[90px] min-w-[90px]">
                             <input
                               type="text"
                               inputMode="numeric"
@@ -300,7 +300,7 @@ function StockCountPage() {
                           </td>
                         );
                       })}
-                      <td className="px-2 py-1 w-[60px] min-w-[60px]">
+                      <td className="px-2 py-1 w-[80px] min-w-[80px]">
                         <div className="h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary">
                           {calcTotal(row)}
                         </div>

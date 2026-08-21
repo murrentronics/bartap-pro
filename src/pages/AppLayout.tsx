@@ -471,6 +471,11 @@ export default function AppLayout() {
               ...(isOwner && ownerHasBar
                 ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
                 : []),
+              ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
+              ...(isOwner && ownerHasBar
+                ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }]
+                : []),
+              { to: "/wallet", label: t("wallet", "Wallet"), icon: Wallet },
               ...(isOwner && ownerHasBar
                 ? [
                     {
@@ -480,12 +485,7 @@ export default function AppLayout() {
                     },
                   ]
                 : []),
-              ...(isOwner && ownerHasBar
-                ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }]
-                : []),
-              ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
               { to: "/stock-count", label: "Stock Count", icon: ClipboardList },
-              { to: "/wallet", label: t("wallet", "Wallet"), icon: Wallet },
               ...(isOwner
                 ? [{ to: "/summary", label: t("summary", "Summary"), icon: BarChart3 }]
                 : []),
