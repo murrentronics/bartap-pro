@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +114,36 @@ function ManagerMain({
   const [isMachinesAccount, setIsMachinesAccount] = useState(false);
   const [showCloseBarConfirm, setShowCloseBarConfirm] = useState(false);
   const [activeOpenBarField, setActiveOpenBarField] = useState<"bar" | "machine" | null>(null);
+  const openBarFloatRef = useRef(openBarFloat);
+  openBarFloatRef.current = openBarFloat;
+  const openMachineFloatRef = useRef(openMachineFloat);
+  openMachineFloatRef.current = openMachineFloat;
+
+  useEffect(() => {
+    if (activeOpenBarField === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        const current =
+          activeOpenBarField === "bar" ? openBarFloatRef.current : openMachineFloatRef.current;
+        const setter =
+          activeOpenBarField === "bar" ? setOpenBarFloat : setOpenMachineFloat;
+        setter(current + e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        const current =
+          activeOpenBarField === "bar" ? openBarFloatRef.current : openMachineFloatRef.current;
+        const setter =
+          activeOpenBarField === "bar" ? setOpenBarFloat : setOpenMachineFloat;
+        setter(current.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        setActiveOpenBarField(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeOpenBarField]);
   const barIsOpen = !!barSessionStart && !barClosedAt;
 
   useEffect(() => {
@@ -723,6 +753,30 @@ function DashboardTab({
   const [setFloatInput, setSetFloatInput] = useState("");
   const [setFloatBusy, setSetFloatBusy] = useState(false);
   const [barFloatMode, setBarFloatMode] = useState<"same" | "new">("new");
+  const setFloatInputRef = useRef(setFloatInput);
+  setFloatInputRef.current = setFloatInput;
+
+  useEffect(() => {
+    if (!showSetBarFloat && !showSetMachFloat) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        setSetFloatInput((prev) => prev + e.key);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        setSetFloatInput((prev) => (prev.includes(".") ? prev : prev + "."));
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        setSetFloatInput((prev) => prev.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (showSetBarFloat) handleSetBarFloat();
+        else if (showSetMachFloat) handleSetMachFloat();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showSetBarFloat, showSetMachFloat]);
 
   const handleSetBarFloat = async () => {
     const val = parseFloat(setFloatInput);

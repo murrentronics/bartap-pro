@@ -688,62 +688,32 @@ function CashierWallet({
       return;
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-
-    // Load current owner float + cashier wallet fresh from DB
-    const { data: ownerProfile } = await sb
-      .from("profiles")
-      .select("cashier_float, wallet_balance")
-      .eq("id", ownerId)
-      .single();
-
-    const { data: cashierProfile } = await sb
-      .from("profiles")
-      .select("wallet_balance")
-      .eq("id", profile.id)
-      .single();
-
-    const currentFloat = Number(ownerProfile?.cashier_float ?? 0);
-    const cashierWallet = Number(cashierProfile?.wallet_balance ?? 0);
-
-    // Wallet covers first — float only kicks in when wallet hits 0
-    const walletCovers = Math.min(cashierWallet, total); // how much wallet pays
-    const floatCovers = total - walletCovers; // remainder from float
-
-    if (floatCovers > currentFloat) {
-      const shortfall = floatCovers - currentFloat;
-      toast.error(
-        cashierWallet > 0
-          ? `Insufficient funds. Wallet covers $${fmt(walletCovers)}, float covers $${fmt(currentFloat)} — short $${fmt(shortfall)}`
-          : `Insufficient funds. Float: $${fmt(currentFloat)} · Expense: $${fmt(total)}`,
-      );
-      return;
-    }
-
-    setSavingExpense(true);
     const cashierName = profile.username ?? profile.id;
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" });
 
-    try {
-      let description: string;
-      if (valid.length === 1) {
-        description = `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} [Cashier: ${cashierName}]`;
-      } else {
-        description =
-          "Non-Stock Expense\n" +
-          valid
-            .map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`)
-            .join("\n") +
-          `\n[Cashier: ${cashierName}]`;
-      }
+    let description: string;
+    if (valid.length === 1) {
+      description = `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} [Cashier: ${cashierName}]`;
+    } else {
+      description =
+        "Non-Stock Expense\n" +
+        valid
+          .map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`)
+          .join("\n") +
+        `\n[Cashier: ${cashierName}]`;
+    }
 
-      const { error: expError } = await sb.from("owner_expenses").insert({
-        owner_id: ownerId,
-        amount: total,
-        description,
-        expense_date: today,
+    setSavingExpense(true);
+    try {
+      const { error } = await (supabase as any).rpc("add_cashier_expense", {
+        _cashier_id: profile.id,
+        _owner_id: ownerId,
+        _amount: total,
+        _description: description,
+        _expense_date: today,
       });
-      if (expError) {
-        toast.error(expError.message);
+      if (error) {
+        toast.error(error.message);
         return;
       }
 
@@ -751,64 +721,8 @@ function CashierWallet({
         valid.length === 1
           ? `Expense: ${valid[0].description.trim()}`
           : `Bulk Expense (${valid.length} items)`;
-
-      // Deduct from wallet first
-      if (walletCovers > 0) {
-        const { error: txError } = await sb.from("wallet_transactions").insert({
-          profile_id: profile.id,
-          amount: walletCovers,
-          type: "cashier_expense",
-          note: expenseNote,
-        });
-        if (txError) {
-          toast.error(txError.message);
-          return;
-        }
-
-        const { error: balError } = await (supabase as any)
-          .from("profiles")
-          .update({ wallet_balance: cashierWallet - walletCovers })
-          .eq("id", profile.id);
-        if (balError) {
-          toast.error(balError.message);
-          return;
-        }
-      }
-
-      // Deduct remainder from float — cashier_float is the live remaining balance
-      if (floatCovers > 0) {
-        const newFloat = currentFloat - floatCovers;
-        const { error: floatErr } = await sb.from("profiles")
-          .update({ cashier_float: newFloat })
-          .eq("id", ownerId);
-        if (floatErr) {
-          toast.error(floatErr.message);
-          return;
-        }
-        if (walletCovers === 0) {
-          const { error: txError } = await sb.from("wallet_transactions").insert({
-            profile_id: profile.id,
-            amount: total,
-            type: "cashier_expense",
-            note: expenseNote + " [from float]",
-          });
-          if (txError) {
-            toast.error(txError.message);
-            return;
-          }
-        } else {
-          const { error: txError } = await sb.from("wallet_transactions").insert({
-            profile_id: profile.id,
-            amount: floatCovers,
-            type: "cashier_expense",
-            note: expenseNote + " [from float]",
-          });
-          if (txError) {
-            toast.error(txError.message);
-            return;
-          }
-        }
-      }
+      const walletCovers = Math.min(Number(profile.wallet_balance), total);
+      const floatCovers = total - walletCovers;
 
       toast.success(
         walletCovers > 0 && floatCovers === 0
@@ -821,10 +735,6 @@ function CashierWallet({
       setShowAddExpense(false);
       setConfirmingExpense(false);
       loadCashierExpenses();
-      if (floatCovers > 0) {
-        const updatedFloat = currentFloat - floatCovers;
-        setFloatRemaining(updatedFloat > 0 ? updatedFloat : null);
-      }
       refreshProfile();
       loadFloat();
     } finally {

@@ -1148,6 +1148,23 @@ function Spinner() {
 function CreditNumPad({ value, onChange, maxLen = 20, onDone }: {
   value: string; onChange: (v: string) => void; maxLen?: number; onDone: () => void;
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (value.length < maxLen) onChange(value + e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        onChange(value.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [value, onChange, maxLen, onDone]);
+
   return (
     <div className="mt-2">
       <div className="grid grid-cols-3 gap-1.5">
@@ -1183,6 +1200,24 @@ function CreditContactPad({ value, onChange, onDone }: {
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (digits.length < 7) handle(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handle("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (complete) onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [digits, complete, handle, onDone]);
+
   return (
     <div className="mt-2">
       {!complete && (

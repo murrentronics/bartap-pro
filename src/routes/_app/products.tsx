@@ -1509,7 +1509,9 @@ function BulkEditModal({
         )}
       </div>
       <button
-        onClick={() => {
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
           const invalid = updates.find((p) => {
             const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
             return sp === 0;

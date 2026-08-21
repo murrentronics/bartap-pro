@@ -1389,6 +1389,60 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   // first log diff is accurate for an already-running machine.
   const [firstEntryLastIn,  setFirstEntryLastIn]  = useState<string>("");
   const [firstEntryLastOut, setFirstEntryLastOut] = useState<string>("");
+  const monitorInRef = useRef(monitorIn);
+  monitorInRef.current = monitorIn;
+  const monitorOutRef = useRef(monitorOut);
+  monitorOutRef.current = monitorOut;
+  const firstEntryLastInRef = useRef(firstEntryLastIn);
+  firstEntryLastInRef.current = firstEntryLastIn;
+  const firstEntryLastOutRef = useRef(firstEntryLastOut);
+  firstEntryLastOutRef.current = firstEntryLastOut;
+
+  useEffect(() => {
+    if (monitorFocus === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (monitorFocus === "in") {
+          const parts = monitorInRef.current.split(".");
+          if (parts[1] !== undefined && parts[1].length >= 2) return;
+          setMonitorIn((prev) => prev + e.key);
+        } else if (monitorFocus === "out") {
+          const parts = monitorOutRef.current.split(".");
+          if (parts[1] !== undefined && parts[1].length >= 2) return;
+          setMonitorOut((prev) => prev + e.key);
+        } else if (monitorFocus === "lastIn") {
+          const parts = firstEntryLastInRef.current.split(".");
+          if (parts[1] !== undefined && parts[1].length >= 2) return;
+          setFirstEntryLastIn((prev) => prev + e.key);
+        } else if (monitorFocus === "lastOut") {
+          const parts = firstEntryLastOutRef.current.split(".");
+          if (parts[1] !== undefined && parts[1].length >= 2) return;
+          setFirstEntryLastOut((prev) => prev + e.key);
+        }
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (monitorFocus === "in") setMonitorIn((prev) => (prev.includes(".") ? prev : prev + "."));
+        else if (monitorFocus === "out")
+          setMonitorOut((prev) => (prev.includes(".") ? prev : prev + "."));
+        else if (monitorFocus === "lastIn")
+          setFirstEntryLastIn((prev) => (prev.includes(".") ? prev : prev + "."));
+        else if (monitorFocus === "lastOut")
+          setFirstEntryLastOut((prev) => (prev.includes(".") ? prev : prev + "."));
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        if (monitorFocus === "in") setMonitorIn((prev) => prev.slice(0, -1));
+        else if (monitorFocus === "out") setMonitorOut((prev) => prev.slice(0, -1));
+        else if (monitorFocus === "lastIn") setFirstEntryLastIn((prev) => prev.slice(0, -1));
+        else if (monitorFocus === "lastOut") setFirstEntryLastOut((prev) => prev.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        setMonitorFocus(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [monitorFocus]);
 
   // Reset the "already saved" lock whenever the owner changes an input
   useEffect(() => { setMonitorUpdateDone(false); }, [monitorIn, monitorOut]);
@@ -1874,6 +1928,31 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
   const [amount, setAmount] = useState("");
   const [amountFocused, setAmountFocused] = useState(false);
+  const amountRef = useRef(amount);
+  amountRef.current = amount;
+
+  useEffect(() => {
+    if (!amountFocused) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        const parts = amountRef.current.split(".");
+        if (parts[1] !== undefined && parts[1].length >= 2) return;
+        setAmount((prev) => prev + e.key);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (!amountRef.current.includes(".")) setAmount((prev) => prev + ".");
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        setAmount((prev) => prev.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        setAmountFocused(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [amountFocused]);
 
 
   const [busy, setBusy] = useState(false);
