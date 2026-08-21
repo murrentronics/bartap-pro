@@ -9,7 +9,33 @@ import { usePushNotifications } from "@/lib/usePushNotifications";
 import { useTranslation } from "@/lib/i18n";
 import { useOffline } from "@/lib/OfflineProvider";
 import { OfflinePageGuard } from "@/components/OfflinePageGuard";
-import { Loader2, Wine, Package, Wallet, Users, ShieldAlert, Ban, UserMinus, Menu, X, CreditCard, Building2, DollarSign, UserCircle, Receipt, Gamepad2, RotateCcw, Globe, Tag, GitBranch, BarChart3, TrendingDown, ClipboardList, BookOpen, ShieldCheck } from "lucide-react";
+import {
+  Loader2,
+  Wine,
+  Package,
+  Wallet,
+  Users,
+  ShieldAlert,
+  Ban,
+  UserMinus,
+  Menu,
+  X,
+  CreditCard,
+  Building2,
+  DollarSign,
+  UserCircle,
+  Receipt,
+  Gamepad2,
+  RotateCcw,
+  Globe,
+  Tag,
+  GitBranch,
+  BarChart3,
+  TrendingDown,
+  ClipboardList,
+  BookOpen,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
@@ -37,7 +63,7 @@ export default function AppLayout() {
     if (!loading && session && !profile && isOnline) {
       signOut().then(() => nav("/login", { replace: true }));
     }
-  }, [loading, session, profile, isOnline]);
+  }, [loading, session, profile, isOnline, nav, signOut]);
 
   useEffect(() => {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
@@ -47,10 +73,21 @@ export default function AppLayout() {
       nav("/register", { replace: true });
     }
     // Manager landing page — redirect away from bar/wallet to items
-    if (!loading && (profile?.role === "manager" || profile?.job_title === "manager") && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
+    if (
+      !loading &&
+      (profile?.role === "manager" || profile?.job_title === "manager") &&
+      (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")
+    ) {
       nav("/products", { replace: true });
     }
-    if (!loading && profile && profile.role === "owner" && profile.status === "pending" && loc.pathname !== "/billing" && !DEMO_EMAILS.includes(ownerEmail)) {
+    if (
+      !loading &&
+      profile &&
+      profile.role === "owner" &&
+      profile.status === "pending" &&
+      loc.pathname !== "/billing" &&
+      !DEMO_EMAILS.includes(ownerEmail)
+    ) {
       nav("/billing", { replace: true });
     }
     // Approved owner on /register or /machines → redirect to correct landing page based on plan
@@ -62,10 +99,16 @@ export default function AppLayout() {
     }
     // Multi-bar owner or chain owner with no bar selected → force them to pick a bar first
     // Allow billing page so they can manage subscriptions
-    if (!loading && hasMultipleBars && !activeBarId && loc.pathname !== "/switch-bar" && loc.pathname !== "/billing") {
+    if (
+      !loading &&
+      hasMultipleBars &&
+      !activeBarId &&
+      loc.pathname !== "/switch-bar" &&
+      loc.pathname !== "/billing"
+    ) {
       nav("/switch-bar", { replace: true });
     }
-  }, [loading, profile, loc.pathname, nav, isChainOwner, activeBarId]);
+  }, [loading, profile, loc.pathname, nav, isChainOwner, activeBarId, hasMultipleBars]); // ownerEmail is intentionally omitted — it's set after load and won't affect this redirect
 
   // Close menu on outside click
   useEffect(() => {
@@ -89,7 +132,7 @@ export default function AppLayout() {
     if (loc.pathname !== "/music" && yt.ytFullscreen) {
       yt.setYtFullscreen(false);
     }
-  }, [loc.pathname]);
+  }, [loc.pathname, yt]);
 
   // Auto-play next history track when current video ends (YT player state 0 = ended)
   useEffect(() => {
@@ -100,17 +143,25 @@ export default function AppLayout() {
         if (data?.event === "infoDelivery" && data?.info?.playerState === 0) {
           yt.playNextFromHistory();
         }
-      } catch { /* ignore non-JSON messages */ }
+      } catch {
+        /* ignore non-JSON messages */
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [yt.playNextFromHistory]);
+  }, [yt]);
 
   // Register FCM push token for the owner's device — must be before any early returns (Rules of Hooks)
   usePushNotifications(profile?.role === "owner" ? profile.id : null);
 
   // ── In-app payout alert modal ─────────────────────────────────────────────
-  const [payoutAlert, setPayoutAlert] = useState<{ title: string; body: string; machineName: string; barId?: string; navigate?: (to: string) => void } | null>(null);
+  const [payoutAlert, setPayoutAlert] = useState<{
+    title: string;
+    body: string;
+    machineName: string;
+    barId?: string;
+    navigate?: (to: string) => void;
+  } | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -118,6 +169,7 @@ export default function AppLayout() {
       setPayoutAlert({ title, body, machineName, barId, navigate: navFn });
       // Play alert sound using Web Audio API
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         // Three ascending beeps
         [0, 0.3, 0.6].forEach((delay) => {
@@ -132,7 +184,9 @@ export default function AppLayout() {
           osc.start(ctx.currentTime + delay);
           osc.stop(ctx.currentTime + delay + 0.3);
         });
-      } catch { /* audio not available */ }
+      } catch {
+        /* audio not available */
+      }
     };
     window.addEventListener("payoutAlert", handler);
     return () => window.removeEventListener("payoutAlert", handler);
@@ -156,13 +210,20 @@ export default function AppLayout() {
   useEffect(() => {
     const load = async () => {
       // Use getSession (reads localStorage, no network) to avoid blocking offline startup
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const user = session?.user ?? null;
       setOwnerEmail(user?.email ?? "");
       if (!profile?.id) return;
-      const ownerId = isChainOwner && activeBarId
-        ? activeBarId
-        : (profile.role === "cashier" || profile.role === "manager" || profile.job_title === "manager") ? profile.parent_id : profile.id;
+      const ownerId =
+        isChainOwner && activeBarId
+          ? activeBarId
+          : profile.role === "cashier" ||
+              profile.role === "manager" ||
+              profile.job_title === "manager"
+            ? profile.parent_id
+            : profile.id;
       if (!ownerId) return;
       const isMasterAccount = user?.email === "renard.sankersingh@gmail.com";
 
@@ -172,22 +233,49 @@ export default function AppLayout() {
       const seedAddon = profile.machines_addon_active ?? false;
       const seedMachinesOnly = seedPlan === "machines_only" || seedPlan === "machines_only_20";
       setIsMachinesOnlyUser(seedMachinesOnly);
-      setOwnerHasMachines(seedPlan === "premium" || seedPlan === "premium_20" || seedPlan === "chain" || seedAddon || seedMachinesOnly || isMasterAccount);
+      setOwnerHasMachines(
+        seedPlan === "premium" ||
+          seedPlan === "premium_20" ||
+          seedPlan === "chain" ||
+          seedAddon ||
+          seedMachinesOnly ||
+          isMasterAccount,
+      );
       setOwnerHasBar(!seedMachinesOnly || isMasterAccount);
 
       // Then fetch the definitive plan from the owner profile row
-      const { data } = await (supabase as any).from("profiles")
-        .select("plan_type, machines_addon_active").eq("id", ownerId).single();
+      const { data } = await supabase
+        .from("profiles")
+        .select("plan_type, machines_addon_active")
+        .eq("id", ownerId)
+        .single();
       if (!data) return; // offline — keep the seeded values above
       const planType = data.plan_type ?? "basic";
       const addonActive = data.machines_addon_active ?? false;
       const machinesOnly = planType === "machines_only" || planType === "machines_only_20";
       setIsMachinesOnlyUser(machinesOnly);
-      setOwnerHasMachines(planType === "premium" || planType === "premium_20" || planType === "chain" || addonActive || machinesOnly || isMasterAccount);
+      setOwnerHasMachines(
+        planType === "premium" ||
+          planType === "premium_20" ||
+          planType === "chain" ||
+          addonActive ||
+          machinesOnly ||
+          isMasterAccount,
+      );
       setOwnerHasBar(!machinesOnly || isMasterAccount);
     };
     load();
-  }, [profile?.id, profile?.status, profile?.plan_type, profile?.machines_addon_active, isChainOwner, activeBarId]);
+  }, [
+    profile?.id,
+    profile?.status,
+    profile?.plan_type,
+    profile?.machines_addon_active,
+    profile?.job_title,
+    profile?.parent_id,
+    profile?.role,
+    isChainOwner,
+    activeBarId,
+  ]);
 
   // Realtime: re-check machines status when the active bar's profile updates
   // (e.g. after enabling machines from within the machines page)
@@ -199,15 +287,20 @@ export default function AppLayout() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${activeBarId}` },
         async () => {
-          const { data } = await (supabase as any)
-            .from("profiles").select("machines_addon_active").eq("id", activeBarId).single();
+          const { data } = await supabase
+            .from("profiles")
+            .select("machines_addon_active")
+            .eq("id", activeBarId)
+            .single();
           if (data) {
             setOwnerHasMachines((prev) => prev || !!data.machines_addon_active);
           }
-        }
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [isChainOwner, activeBarId]);
 
   if (loading || !session || !profile) {
@@ -218,15 +311,16 @@ export default function AppLayout() {
     );
   }
 
-  const isOwner    = profile.role === "owner";
-  const isAdmin    = profile.role === "admin";
-  const isCashier  = profile.role === "cashier";
-  const isManager  = profile.role === "manager" || (profile as any).job_title === "manager";
-  const isDemo     = DEMO_EMAILS.includes(ownerEmail);
-  const isPending  = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "pending";
-  const isSuspended = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "suspended";
-  const hasMusic   = isOwner || isCashier;
-  const isOnMusic  = loc.pathname === "/music";
+  const isOwner = profile.role === "owner";
+  const isAdmin = profile.role === "admin";
+  const isCashier = profile.role === "cashier";
+  const isManager = profile.role === "manager" || profile.job_title === "manager";
+  const isDemo = DEMO_EMAILS.includes(ownerEmail);
+  const isPending = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "pending";
+  const isSuspended =
+    !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "suspended";
+  const hasMusic = isOwner || isCashier;
+  const isOnMusic = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {
     return (
@@ -234,7 +328,10 @@ export default function AppLayout() {
         icon={UserMinus}
         title="Account expelled"
         message="Your account has been expelled. You no longer have access to Bartendaz Pro."
-        onSignOut={() => { signOut(); nav("/login"); }}
+        onSignOut={() => {
+          signOut();
+          nav("/login");
+        }}
       />
     );
   }
@@ -245,7 +342,10 @@ export default function AppLayout() {
         icon={Ban}
         title="Account suspended"
         message="Your account is suspended. Please check your billing page or contact admin."
-        onSignOut={() => { signOut(); nav("/login"); }}
+        onSignOut={() => {
+          signOut();
+          nav("/login");
+        }}
         showBillingButton={() => nav("/billing")}
       />
     );
@@ -261,7 +361,9 @@ export default function AppLayout() {
           <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
             <div className="flex items-center gap-2" ref={menuRef}>
-              <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">{profile.username}</span>
+              <span className="text-xs font-semibold text-muted-foreground truncate max-w-[100px]">
+                {profile.username}
+              </span>
               <button
                 onClick={() => setMenuOpen((o) => !o)}
                 className="flex items-center gap-1.5 px-3 h-8 rounded-lg font-bold text-xs transition text-primary-foreground"
@@ -271,13 +373,27 @@ export default function AppLayout() {
                 Menu
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[9999]"
-                  style={{ background: "var(--gradient-card)" }}>
-                  <Link to="/billing" className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary">
+                <div
+                  className="absolute right-0 top-10 w-44 rounded-2xl border border-border shadow-2xl overflow-hidden z-[9999]"
+                  style={{ background: "var(--gradient-card)" }}
+                >
+                  <Link
+                    to="/billing"
+                    className="flex items-center gap-3 px-4 py-4 text-sm font-bold transition border-b border-border/50 text-primary"
+                  >
                     <CreditCard className="h-5 w-5 shrink-0" /> {t("billing", "Billing")}
                   </Link>
-                  <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                      } catch {
+                        /* ignore */
+                      }
+                      nav("/login");
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-4 text-sm font-bold text-destructive hover:bg-muted/50 transition"
+                  >
                     <X className="h-5 w-5 shrink-0" /> {t("logout", "Logout")}
                   </button>
                 </div>
@@ -292,8 +408,15 @@ export default function AppLayout() {
                 <ShieldAlert className="h-10 w-10 text-yellow-500" />
               </div>
               <h1 className="text-3xl font-black">{t("awaiting_approval", "Account Pending")}</h1>
-              <p className="text-muted-foreground">{t("account_pending_msg", "Your account is awaiting admin approval. Please complete your billing setup to activate your account.")}</p>
-              <Button onClick={() => nav("/billing")} size="lg">{t("go_to_billing", "Go to Billing")}</Button>
+              <p className="text-muted-foreground">
+                {t(
+                  "account_pending_msg",
+                  "Your account is awaiting admin approval. Please complete your billing setup to activate your account.",
+                )}
+              </p>
+              <Button onClick={() => nav("/billing")} size="lg">
+                {t("go_to_billing", "Go to Billing")}
+              </Button>
             </div>
           </div>
         </main>
@@ -304,50 +427,93 @@ export default function AppLayout() {
   const navItems = isPending
     ? [] // pending users get no nav items — only Billing + Logout shown separately below
     : isAdmin
-    ? [
-        { to: "/admin",          label: "Panel",   icon: Users },
-        { to: "/admin/banking",  label: "Banking", icon: Building2 },
-      ]
-    : isMachinesOnlyUser ? [
-        // Machines-only plan: Machines first, then Cashiers, Billing, Profile only
-        { to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 },
-        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
-        ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"),   icon: CreditCard }] : []),
-        ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"),   icon: UserCircle }] : []),
-      ]
-    : isManager ? [
-        // Manager: Items, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
-        ...(ownerHasBar ? [{ to: "/products",    label: t("products_title", "Items"),       icon: Package      }] : []),
-        { to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList },
-        ...(ownerHasBar ? [{ to: "/credit",      label: t("customers_title", "Customers"),  icon: Receipt      }] : []),
-        { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
-        ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
-        { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
-      ]
-    : [
-        ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
-        ...(ownerHasBar ? [{ to: "/credit",   label: t("customers_title", "Customers"), icon: Receipt }] : []),
-        ...(ownerHasMachines ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }] : []),
-        ...(isOwner && ownerHasBar ? [{ to: "/products",    label: t("products_title", "Items"),       icon: Package      }] : []),
-        ...(isOwner && ownerHasBar ? [{ to: "/stock-check", label: t("stock_check", "Stock Check"),    icon: ClipboardList }] : []),
-        ...(isOwner && ownerHasBar ? [{ to: "/specials",    label: t("specials", "Specials"),           icon: Tag          }] : []),
-        ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
-        ...((isCashier || isManager) ? [{ to: "/stock-count", label: "Stock Count", icon: ClipboardList }] : []),
-        { to: "/wallet",   label: t("wallet", "Wallet"),     icon: Wallet },
-        ...(isOwner ? [{ to: "/summary",  label: t("summary", "Summary"),       icon: BarChart3 }] : []),
-        ...(isOwner ? [{ to: "/billing",  label: t("billing", "Billing"), icon: CreditCard }] : []),
-        ...(isOwner ? [{ to: "/profile",  label: t("profile", "Profile"), icon: UserCircle }] : []),
-        { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
-      ];
+      ? [
+          { to: "/admin", label: "Panel", icon: Users },
+          { to: "/admin/banking", label: "Banking", icon: Building2 },
+        ]
+      : isMachinesOnlyUser
+        ? [
+            // Machines-only plan: Machines first, then Cashiers, Billing, Profile only
+            { to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 },
+            ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
+            ...(isOwner
+              ? [{ to: "/billing", label: t("billing", "Billing"), icon: CreditCard }]
+              : []),
+            ...(isOwner
+              ? [{ to: "/profile", label: t("profile", "Profile"), icon: UserCircle }]
+              : []),
+          ]
+        : isManager
+          ? [
+              // Manager: Items, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
+              ...(ownerHasBar
+                ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
+                : []),
+              { to: "/stock-check", label: t("stock_check", "Stock Check"), icon: ClipboardList },
+              ...(ownerHasBar
+                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
+                : []),
+              { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
+              ...(ownerHasMachines
+                ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }]
+                : []),
+              { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
+              { to: "/stock-count", label: "Stock Count", icon: ClipboardList },
+            ]
+          : [
+              ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
+              ...(ownerHasBar
+                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
+                : []),
+              ...(ownerHasMachines
+                ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }]
+                : []),
+              ...(isOwner && ownerHasBar
+                ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
+                : []),
+              ...(isOwner && ownerHasBar
+                ? [
+                    {
+                      to: "/stock-check",
+                      label: t("stock_check", "Stock Check"),
+                      icon: ClipboardList,
+                    },
+                  ]
+                : []),
+              ...(isOwner && ownerHasBar
+                ? [{ to: "/specials", label: t("specials", "Specials"), icon: Tag }]
+                : []),
+              ...(isOwner ? [{ to: "/cashiers", label: t("cashiers", "Staff"), icon: Users }] : []),
+              { to: "/stock-count", label: "Stock Count", icon: ClipboardList },
+              { to: "/wallet", label: t("wallet", "Wallet"), icon: Wallet },
+              ...(isOwner
+                ? [{ to: "/summary", label: t("summary", "Summary"), icon: BarChart3 }]
+                : []),
+              ...(isOwner
+                ? [{ to: "/billing", label: t("billing", "Billing"), icon: CreditCard }]
+                : []),
+              ...(isOwner
+                ? [{ to: "/profile", label: t("profile", "Profile"), icon: UserCircle }]
+                : []),
+              { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
+            ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "fixed", inset: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        overflow: "hidden",
+        position: "fixed",
+        inset: 0,
+      }}
+    >
       <header
         className="shrink-0 z-50 bg-background/90 backdrop-blur border-b border-border"
         style={{ paddingTop: "calc(var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))" }}
       >
         <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-
           {/* Logo */}
           <div className="flex items-center gap-2">
             <span className="font-black tracking-tight text-sm">Bartendaz Pro</span>
@@ -359,9 +525,19 @@ export default function AppLayout() {
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
-              title={isOnMusic ? (isMachinesOnlyUser ? "Back to Machines" : "Back to Bar") : "Open Music Player"}
+              title={
+                isOnMusic
+                  ? isMachinesOnlyUser
+                    ? "Back to Machines"
+                    : "Back to Bar"
+                  : "Open Music Player"
+              }
             >
-            {isOnMusic ? (isMachinesOnlyUser ? t("machines", "Machines") : t("bar", "Bar")) : t("music", "Music")}
+              {isOnMusic
+                ? isMachinesOnlyUser
+                  ? t("machines", "Machines")
+                  : t("bar", "Bar")
+                : t("music", "Music")}
             </Link>
           )}
 
@@ -385,8 +561,14 @@ export default function AppLayout() {
       {/* ── CASHIER MENU — at root level, always above page content ── */}
       {menuOpen && (isCashier || isManager) && (
         <>
-          <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+          <div
+            className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl rounded-b-2xl border border-border shadow-2xl z-[9999] overflow-y-auto"
+            style={{
+              top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))",
+              bottom: 0,
+              background: "var(--gradient-card)",
+              scrollbarWidth: "none",
+            }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
@@ -399,34 +581,103 @@ export default function AppLayout() {
                   const active = loc.pathname.startsWith(it.to);
                   const Icon = it.icon;
                   return (
-                    <button key={it.to} onClick={() => { setMenuOpen(false); nav(it.to); }}
+                    <button
+                      key={it.to}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        nav(it.to);
+                      }}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                      style={{ background: active ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: active ? "var(--primary)" : "var(--border)", boxShadow: active ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                      <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                      style={{
+                        background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
+                        borderColor: active ? "var(--primary)" : "var(--border)",
+                        boxShadow: active
+                          ? "0 6px 18px rgba(251,146,60,0.35)"
+                          : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                        }}
+                      >
                         <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
                       </div>
-                      <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>{it.label}</span>
+                      <span
+                        className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}
+                      >
+                        {it.label}
+                      </span>
                     </button>
                   );
                 })}
-                <button onClick={() => { setMenuOpen(false); nav("/language"); }}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    nav("/language");
+                  }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                  style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                    <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
+                  style={{
+                    background:
+                      loc.pathname === "/language"
+                        ? "var(--gradient-hero)"
+                        : "var(--gradient-card)",
+                    borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
+                    boxShadow:
+                      loc.pathname === "/language"
+                        ? "0 6px 18px rgba(251,146,60,0.35)"
+                        : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div
+                    className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background:
+                        loc.pathname === "/language"
+                          ? "rgba(255,255,255,0.20)"
+                          : "rgba(255,255,255,0.06)",
+                      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    <Globe
+                      className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`}
+                    />
                   </div>
-                  <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
+                  <span
+                    className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}
+                  >
+                    {t("language", "Language")}
+                  </span>
                 </button>
-                <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                <button
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                    } catch {
+                      /* ignore */
+                    }
+                    nav("/login");
+                  }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
-                  style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(239,68,68,0.12)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
+                  style={{
+                    background: "rgba(239,68,68,0.08)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  <div
+                    className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: "rgba(239,68,68,0.12)",
+                      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                    }}
+                  >
                     <X className="h-6 w-6 text-destructive" />
                   </div>
-                  <span className="text-xs font-black text-destructive text-center leading-tight">{t("logout", "Logout")}</span>
+                  <span className="text-xs font-black text-destructive text-center leading-tight">
+                    {t("logout", "Logout")}
+                  </span>
                 </button>
               </div>
             </div>
@@ -435,143 +686,349 @@ export default function AppLayout() {
       )}
 
       {/* ── OWNER / ADMIN MENU — at root level, always above page content ── */}
-      {menuOpen && !isCashier && (
+      {menuOpen && !isCashier && !isManager && (
         <>
-          <div className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl border border-border shadow-2xl z-[9999] overflow-y-auto"
-            style={{ top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))", bottom: 0, background: "var(--gradient-card)", scrollbarWidth: "none" }}
+          <div
+            className="fixed inset-x-0 mx-auto max-w-2xl lg:max-w-4xl border border-border shadow-2xl z-[9999] overflow-y-auto"
+            style={{
+              top: "calc(56px + var(--offline-banner-h, 0px) + env(safe-area-inset-top, 0px))",
+              bottom: 0,
+              background: "var(--gradient-card)",
+              scrollbarWidth: "none",
+            }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-border/50">
-              <span className="text-sm font-semibold text-muted-foreground truncate block">{profile.username}</span>
-              {isChainOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
-              {isChainOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">{t("no_bar_selected", "⚠ No bar selected")}</span>}
-              {!isChainOwner && isMultiBarOwner && activeBar && <span className="text-xs font-black text-primary truncate block mt-0.5">📍 {activeBar.bar_name}</span>}
-              {!isChainOwner && isMultiBarOwner && !activeBar && <span className="text-xs font-black text-amber-400 truncate block mt-0.5">{t("no_bar_selected", "⚠ No bar selected")}</span>}
-
+              <span className="text-sm font-semibold text-muted-foreground truncate block">
+                {profile.username}
+              </span>
+              {isChainOwner && activeBar && (
+                <span className="text-xs font-black text-primary truncate block mt-0.5">
+                  📍 {activeBar.bar_name}
+                </span>
+              )}
+              {isChainOwner && !activeBar && (
+                <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
+                  {t("no_bar_selected", "⚠ No bar selected")}
+                </span>
+              )}
+              {!isChainOwner && isMultiBarOwner && activeBar && (
+                <span className="text-xs font-black text-primary truncate block mt-0.5">
+                  📍 {activeBar.bar_name}
+                </span>
+              )}
+              {!isChainOwner && isMultiBarOwner && !activeBar && (
+                <span className="text-xs font-black text-amber-400 truncate block mt-0.5">
+                  {t("no_bar_selected", "⚠ No bar selected")}
+                </span>
+              )}
             </div>
-
             {/* Pending users — only Billing + Logout */}
             {isPending ? (
               <div className="p-4 space-y-3">
-                <button onClick={() => { setMenuOpen(false); nav("/billing"); }}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    nav("/billing");
+                  }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 w-full active:scale-95 transition-transform select-none"
-                  style={{ background: "var(--gradient-card)", borderColor: "var(--primary)", boxShadow: "0 6px 18px rgba(251,146,60,0.35)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(255,255,255,0.06)" }}>
+                  style={{
+                    background: "var(--gradient-card)",
+                    borderColor: "var(--primary)",
+                    boxShadow: "0 6px 18px rgba(251,146,60,0.35)",
+                  }}
+                >
+                  <div
+                    className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(255,255,255,0.06)" }}
+                  >
                     <CreditCard className="h-6 w-6 text-primary" />
                   </div>
-                  <span className="text-xs font-black text-center leading-tight text-primary">{t("billing", "Billing")}</span>
+                  <span className="text-xs font-black text-center leading-tight text-primary">
+                    {t("billing", "Billing")}
+                  </span>
                 </button>
-                <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
+                <button
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                    } catch {
+                      /* ignore */
+                    }
+                    nav("/login");
+                  }}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 w-full active:scale-95 transition-transform select-none"
-                  style={{ background: "rgba(239,68,68,0.08)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(239,68,68,0.12)" }}>
+                  style={{ background: "rgba(239,68,68,0.08)" }}
+                >
+                  <div
+                    className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(239,68,68,0.12)" }}
+                  >
                     <X className="h-6 w-6 text-destructive" />
                   </div>
-                  <span className="text-xs font-black text-destructive text-center leading-tight">{t("logout", "Logout")}</span>
+                  <span className="text-xs font-black text-destructive text-center leading-tight">
+                    {t("logout", "Logout")}
+                  </span>
                 </button>
               </div>
             ) : (
-            <div className="p-4 pb-[30vh]">
-              <div className="grid grid-cols-3 gap-3">
-                {navItems.map((it) => {
-                  const active = loc.pathname.startsWith(it.to);
-                  const Icon = it.icon;
-                  return (
-                    <button key={it.to} onClick={() => { setMenuOpen(false); nav(it.to); }}
+              <div className="p-4 pb-[30vh]">
+                <div className="grid grid-cols-3 gap-3">
+                  {navItems.map((it) => {
+                    const active = loc.pathname.startsWith(it.to);
+                    const Icon = it.icon;
+                    return (
+                      <button
+                        key={it.to}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          nav(it.to);
+                        }}
+                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                        style={{
+                          background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
+                          borderColor: active ? "var(--primary)" : "var(--border)",
+                          boxShadow: active
+                            ? "0 6px 18px rgba(251,146,60,0.35)"
+                            : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <div
+                          className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: active
+                              ? "rgba(255,255,255,0.20)"
+                              : "rgba(255,255,255,0.06)",
+                            boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                          }}
+                        >
+                          <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
+                        </div>
+                        <span
+                          className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}
+                        >
+                          {it.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {!isAdmin && !isMachinesOnlyUser && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        nav("/language");
+                      }}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                      style={{ background: active ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: active ? "var(--primary)" : "var(--border)", boxShadow: active ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                      <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                        <Icon className={`h-6 w-6 ${active ? "text-white" : "text-primary"}`} />
+                      style={{
+                        background:
+                          loc.pathname === "/language"
+                            ? "var(--gradient-hero)"
+                            : "var(--gradient-card)",
+                        borderColor:
+                          loc.pathname === "/language" ? "var(--primary)" : "var(--border)",
+                        boxShadow:
+                          loc.pathname === "/language"
+                            ? "0 6px 18px rgba(251,146,60,0.35)"
+                            : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background:
+                            loc.pathname === "/language"
+                              ? "rgba(255,255,255,0.20)"
+                              : "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        <Globe
+                          className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`}
+                        />
                       </div>
-                      <span className={`text-xs font-black text-center leading-tight ${active ? "text-white" : "text-foreground"}`}>{it.label}</span>
+                      <span
+                        className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}
+                      >
+                        {t("language", "Language")}
+                      </span>
                     </button>
-                  );
-                })}
-                {!isAdmin && !isMachinesOnlyUser && (
-                <button onClick={() => { setMenuOpen(false); nav("/language"); }}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                  style={{ background: loc.pathname === "/language" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/language" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/language" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: loc.pathname === "/language" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                    <Globe className={`h-6 w-6 ${loc.pathname === "/language" ? "text-white" : "text-primary"}`} />
-                  </div>
-                  <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/language" ? "text-white" : "text-foreground"}`}>{t("language", "Language")}</span>
-                </button>
-                )}
-                {hasMultipleBars && (
-                  <button onClick={() => { setMenuOpen(false); nav("/switch-bar"); }}
-                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                    style={{ background: loc.pathname === "/switch-bar" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/switch-bar" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/switch-bar" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: loc.pathname === "/switch-bar" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                      <GitBranch className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`} />
+                  )}
+                  {hasMultipleBars && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        nav("/switch-bar");
+                      }}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{
+                        background:
+                          loc.pathname === "/switch-bar"
+                            ? "var(--gradient-hero)"
+                            : "var(--gradient-card)",
+                        borderColor:
+                          loc.pathname === "/switch-bar" ? "var(--primary)" : "var(--border)",
+                        boxShadow:
+                          loc.pathname === "/switch-bar"
+                            ? "0 6px 18px rgba(251,146,60,0.35)"
+                            : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background:
+                            loc.pathname === "/switch-bar"
+                              ? "rgba(255,255,255,0.20)"
+                              : "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        <GitBranch
+                          className={`h-6 w-6 ${loc.pathname === "/switch-bar" ? "text-white" : "text-primary"}`}
+                        />
+                      </div>
+                      <span
+                        className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}
+                      >
+                        {isMachinesOnlyUser
+                          ? t("switch_account", "Switch Account")
+                          : t("switch_bar", "Switch Bar")}
+                      </span>
+                    </button>
+                  )}
+                  {isOwner && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        nav("/factory-reset");
+                      }}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{
+                        background:
+                          loc.pathname === "/factory-reset"
+                            ? "var(--gradient-hero)"
+                            : "var(--gradient-card)",
+                        borderColor:
+                          loc.pathname === "/factory-reset" ? "var(--primary)" : "var(--border)",
+                        boxShadow:
+                          "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        <RotateCcw className="h-6 w-6 text-primary" />
+                      </div>
+                      <span className="text-xs font-black text-center leading-tight text-foreground">
+                        {t("factory_reset", "Factory Reset")}
+                      </span>
+                    </button>
+                  )}
+                  {(isOwner || isManager) && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        nav("/privacy");
+                      }}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                      style={{
+                        background:
+                          loc.pathname === "/privacy"
+                            ? "var(--gradient-hero)"
+                            : "var(--gradient-card)",
+                        borderColor:
+                          loc.pathname === "/privacy" ? "var(--primary)" : "var(--border)",
+                        boxShadow:
+                          loc.pathname === "/privacy"
+                            ? "0 6px 18px rgba(251,146,60,0.35)"
+                            : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background:
+                            loc.pathname === "/privacy"
+                              ? "rgba(255,255,255,0.20)"
+                              : "rgba(255,255,255,0.06)",
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        <ShieldCheck
+                          className={`h-6 w-6 ${loc.pathname === "/privacy" ? "text-white" : "text-primary"}`}
+                        />
+                      </div>
+                      <span
+                        className={`text-xs font-black text-center leading-tight ${loc.pathname === "/privacy" ? "text-white" : "text-foreground"}`}
+                      >
+                        Privacy
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                      } catch {
+                        /* ignore */
+                      }
+                      nav("/login");
+                    }}
+                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
+                    style={{
+                      background: "rgba(239,68,68,0.08)",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    <div
+                      className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "rgba(239,68,68,0.12)",
+                        boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)",
+                      }}
+                    >
+                      <X className="h-6 w-6 text-destructive" />
                     </div>
-                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/switch-bar" ? "text-white" : "text-foreground"}`}>
-                      {isMachinesOnlyUser ? t("switch_account", "Switch Account") : t("switch_bar", "Switch Bar")}
+                    <span className="text-xs font-black text-destructive text-center leading-tight">
+                      {t("logout", "Logout")}
                     </span>
                   </button>
-                )}
-                {isOwner && (
-                  <button onClick={() => { setMenuOpen(false); nav("/factory-reset"); }}
-                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                    style={{ background: loc.pathname === "/factory-reset" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/factory-reset" ? "var(--primary)" : "var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                      <RotateCcw className="h-6 w-6 text-primary" />
-                    </div>
-                    <span className="text-xs font-black text-center leading-tight text-foreground">{t("factory_reset", "Factory Reset")}</span>
-                  </button>
-                )}
-                {(isOwner || isManager) && (
-                  <button onClick={() => { setMenuOpen(false); nav("/privacy"); }}
-                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                    style={{ background: loc.pathname === "/privacy" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/privacy" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/privacy" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: loc.pathname === "/privacy" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                      <ShieldCheck className={`h-6 w-6 ${loc.pathname === "/privacy" ? "text-white" : "text-primary"}`} />
-                    </div>
-                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/privacy" ? "text-white" : "text-foreground"}`}>Privacy</span>
-                  </button>
-                )}
-                {(isOwner || isManager) && (
-                  <button onClick={() => { setMenuOpen(false); nav("/manual"); }}
-                    className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
-                    style={{ background: loc.pathname === "/manual" ? "var(--gradient-hero)" : "var(--gradient-card)", borderColor: loc.pathname === "/manual" ? "var(--primary)" : "var(--border)", boxShadow: loc.pathname === "/manual" ? "0 6px 18px rgba(251,146,60,0.35)" : "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
-                    <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: loc.pathname === "/manual" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                      <BookOpen className={`h-6 w-6 ${loc.pathname === "/manual" ? "text-white" : "text-primary"}`} />
-                    </div>
-                    <span className={`text-xs font-black text-center leading-tight ${loc.pathname === "/manual" ? "text-white" : "text-foreground"}`}>Manual</span>
-                  </button>
-                )}
-                <button onClick={async () => { try { await signOut(); } catch { /* ignore */ } nav("/login"); }}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-destructive/40 py-4 px-2 active:scale-95 transition-transform select-none"
-                  style={{ background: "rgba(239,68,68,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(239,68,68,0.12)", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.25)" }}>
-                    <X className="h-6 w-6 text-destructive" />
-                  </div>
-                  <span className="text-xs font-black text-destructive text-center leading-tight">{t("logout", "Logout")}</span>
-                </button>
+                </div>
               </div>
-            </div>
-            )} {/* end isPending ternary */}
+            )}{" "}
+            {/* end isPending ternary */}
           </div>
         </>
       )}
 
-      <main className="max-w-2xl lg:max-w-4xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none" style={{ overscrollBehavior: "none", WebkitOverflowScrolling: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+      <main
+        className="max-w-2xl lg:max-w-4xl mx-auto w-full px-3 overflow-y-auto flex-1 scrollbar-none"
+        style={{
+          overscrollBehavior: "none",
+          WebkitOverflowScrolling: "auto",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
         <OfflinePageGuard>
           {/* Block outlet while a redirect is pending — prevents register flashing for managers */}
           {(() => {
             if (!loading && profile) {
-              const isManagerUser = profile.role === "manager" || (profile as any)?.job_title === "manager";
-              if (isManagerUser && (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")) {
-                return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+              const isManagerUser = profile.role === "manager" || profile.job_title === "manager";
+              if (
+                isManagerUser &&
+                (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")
+              ) {
+                return (
+                  <div className="flex min-h-screen items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                );
               }
             }
             return <Outlet />;
@@ -613,9 +1070,7 @@ export default function AppLayout() {
             title="YouTube Player"
             onLoad={(e) => {
               const iframe = e.currentTarget as HTMLIFrameElement;
-              iframe.contentWindow?.postMessage(
-                JSON.stringify({ event: "listening" }), "*"
-              );
+              iframe.contentWindow?.postMessage(JSON.stringify({ event: "listening" }), "*");
             }}
           />
         </div>
@@ -623,16 +1078,20 @@ export default function AppLayout() {
 
       {/* ── In-app payout alert modal ── */}
       {payoutAlert && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
-          onClick={() => setPayoutAlert(null)}>
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
+          onClick={() => setPayoutAlert(null)}
+        >
           <div
             className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/60"
             style={{ background: "oklch(0.15 0.04 45)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Orange flash header */}
-            <div className="px-6 pt-6 pb-4 text-center"
-              style={{ background: "linear-gradient(135deg, #c0441a, #f0a030)" }}>
+            <div
+              className="px-6 pt-6 pb-4 text-center"
+              style={{ background: "linear-gradient(135deg, #c0441a, #f0a030)" }}
+            >
               <div className="text-5xl mb-2">⚠️</div>
               <h2 className="font-black text-white text-xl leading-tight">Payout Alert</h2>
               <p className="text-white/90 font-bold text-base mt-1">{payoutAlert.machineName}</p>
@@ -650,7 +1109,8 @@ export default function AppLayout() {
                     setPayoutAlert(null);
                     localStorage.setItem("payout_alert_open_machine", payoutAlert.machineName);
                     localStorage.setItem("payout_alert_open_tab", "history");
-                    if (payoutAlert.barId) localStorage.setItem("payout_alert_open_bar", payoutAlert.barId);
+                    if (payoutAlert.barId)
+                      localStorage.setItem("payout_alert_open_bar", payoutAlert.barId);
                     nav("/machines");
                   }}
                   className="w-full h-12 rounded-2xl font-black text-sm text-white active:scale-95 transition"
@@ -670,13 +1130,16 @@ export default function AppLayout() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 function FullScreenStatus({
-  icon: Icon, title, message, onSignOut, showBillingButton,
+  icon: Icon,
+  title,
+  message,
+  onSignOut,
+  showBillingButton,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -685,8 +1148,13 @@ function FullScreenStatus({
   showBillingButton?: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
-      style={{ background: "radial-gradient(circle at 50% 0%, oklch(0.25 0.05 30) 0%, oklch(0.12 0.02 30) 70%)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style={{
+        background:
+          "radial-gradient(circle at 50% 0%, oklch(0.25 0.05 30) 0%, oklch(0.12 0.02 30) 70%)",
+      }}
+    >
       <div className="max-w-md text-center space-y-6">
         <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-destructive/20 border border-destructive/40">
           <Icon className="h-10 w-10 text-destructive" />
@@ -695,7 +1163,9 @@ function FullScreenStatus({
         <p className="text-muted-foreground">{message}</p>
         <div className="flex gap-3 justify-center">
           {showBillingButton && <Button onClick={showBillingButton}>Go to Billing</Button>}
-          <Button variant="outline" onClick={onSignOut}>Sign out</Button>
+          <Button variant="outline" onClick={onSignOut}>
+            Sign out
+          </Button>
         </div>
       </div>
     </div>

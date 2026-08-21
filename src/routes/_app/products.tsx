@@ -295,18 +295,38 @@ function StockNumpad({
     patch: Partial<
       Pick<
         Product,
-        "stock_qty" | "stock_qty_undo" | "stock_qty_undo_saved" | "stock_last_expense_id"
+        | "stock_qty"
+        | "stock_qty_undo"
+        | "stock_qty_undo_saved"
+        | "stock_last_expense_id"
+        | "cost_price"
       >
     >,
   ) => void;
 }) {
   const [counts, setCounts] = useState([0, 0, 0, 0, 0, 0]);
+  const [totalCost, setTotalCost] = useState("");
   const [busy, setBusy] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
   const confirmDialog = useConfirm();
 
   const addAmount = STOCK_BTNS.reduce((s, b, i) => s + b.qty * counts[i], 0);
   const newTotal = currentQty + addAmount;
+  const batchTotal = parseFloat(totalCost) || 0;
+  const perItemCost = addAmount > 0 && batchTotal > 0 ? batchTotal / addAmount : 0;
+
+  const stockNumpadKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
+  const handleStockNumpad = (k: string) => {
+    if (k === "⌫") {
+      setTotalCost((v) => v.slice(0, -1));
+    } else if (k === ".") {
+      if (!totalCost.includes(".")) setTotalCost((v) => v + ".");
+    } else {
+      const dotIdx = totalCost.indexOf(".");
+      if (dotIdx !== -1 && totalCost.length - dotIdx > 2) return;
+      setTotalCost((v) => (v === "0" ? k : v + k));
+    }
+  };
 
   const tap = (i: number) => setCounts((c) => c.map((v, j) => (j === i ? v + 1 : v)));
   const untap = (i: number) =>
@@ -321,17 +341,27 @@ function StockNumpad({
     if (addAmount === 0) return;
     setBusy(true);
 
-    // Auto-generate expense record if cost_price is set
+    // Derive per-item cost from total cost
+    const newCpPerItem = addAmount > 0 && batchTotal > 0 ? batchTotal / addAmount : costPrice;
+
+    // Weighted average cost
+    const oldValue = currentQty * costPrice;
+    const newValue = addAmount * newCpPerItem;
+    const totalValue = oldValue + newValue;
+    const totalQty = currentQty + addAmount;
+    const finalCp = totalQty > 0 ? totalValue / totalQty : newCpPerItem;
+
+    // Auto-generate expense record using the new weighted average cost
     let newExpenseId: string | null = null;
-    if (costPrice > 0) {
-      const expenseAmount = costPrice * addAmount;
+    if (finalCp > 0) {
+      const expenseAmount = finalCp * addAmount;
       const today = new Date().toISOString().split("T")[0];
       const { data: expData, error: expErr } = await supabase
         .from("owner_expenses")
         .insert({
           owner_id: ownerId,
           amount: expenseAmount,
-          description: `${productName} ×${addAmount} @ $${costPrice.toFixed(2)} each`,
+          description: `${productName} ×${addAmount} total $${batchTotal.toFixed(2)} ($${finalCp.toFixed(2)} each)`,
           expense_date: today,
         })
         .select("id")
@@ -344,8 +374,6 @@ function StockNumpad({
       newExpenseId = expData?.id ?? null;
     }
 
-    // stock_qty_undo = what qty was before this add (for reverting)
-    // stock_qty_undo_saved = what qty became after this add (to detect any sales)
     const { error } = await supabase
       .from("products")
       .update({
@@ -353,6 +381,7 @@ function StockNumpad({
         stock_qty_undo: currentQty,
         stock_qty_undo_saved: newTotal,
         stock_last_expense_id: newExpenseId,
+        cost_price: finalCp,
       })
       .eq("id", productId);
     setBusy(false);
@@ -365,8 +394,10 @@ function StockNumpad({
       stock_qty_undo: currentQty,
       stock_qty_undo_saved: newTotal,
       stock_last_expense_id: newExpenseId,
+      cost_price: finalCp,
     });
     reset();
+    setTotalCost("");
     onClose();
   };
 
@@ -460,6 +491,40 @@ function StockNumpad({
             >
               <Pencil className="h-3 w-3 text-black" />
             </button>
+          </div>
+        </div>
+
+        {/* Total Cost input */}
+        <div className="px-5 pb-3">
+          <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">
+            Total Cost Paid
+          </label>
+          <div className="h-12 rounded-xl border border-border bg-muted/30 flex items-center px-4">
+            <span className="text-lg font-black text-muted-foreground">
+              ${batchTotal > 0 ? batchTotal.toFixed(2) : "0.00"}
+            </span>
+          </div>
+          {addAmount > 0 && batchTotal > 0 && (
+            <p className="text-xs mt-1 text-primary font-bold">
+              Per item: ${perItemCost.toFixed(2)}
+            </p>
+          )}
+          {/* Inline numpad for total cost */}
+          <div className="grid grid-cols-3 gap-1.5 mt-2">
+            {stockNumpadKeys.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => handleStockNumpad(k)}
+                className={`h-10 rounded-xl font-black text-sm transition active:scale-95 ${
+                  k === "⌫"
+                    ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
+                    : "bg-muted hover:bg-muted/70 text-foreground"
+                }`}
+              >
+                {k}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -558,7 +623,7 @@ function StockNumpad({
           <div>
             <button
               onClick={save}
-              disabled={busy || addAmount === 0}
+              disabled={busy || addAmount === 0 || batchTotal === 0}
               className="w-full rounded-2xl font-black text-base text-primary-foreground transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 py-4"
               style={{ background: "var(--gradient-hero)" }}
             >
@@ -1586,24 +1651,10 @@ function BulkEditModal({
                                 {p.name}
                               </span>
                             </td>
-                            {/* Cost per item — auto-calculated from Total Cost / Add Qty */}
+                            {/* Cost per item — shows existing cost, updates only after save */}
                             <td className="px-2 py-1.5 w-[76px] sm:w-[96px]">
-                              <div
-                                className={`h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black flex items-center justify-end transition ${
-                                  hasAdd
-                                    ? "border-primary bg-primary/5 text-primary"
-                                    : "border-transparent bg-transparent text-muted-foreground"
-                                }`}
-                              >
-                                {hasAdd
-                                  ? (() => {
-                                      const qty = parseInt(addVal, 10);
-                                      const total = parseFloat(costPrices[p.id] ?? "") || 0;
-                                      return qty > 0 && total > 0
-                                        ? (total / qty).toFixed(2)
-                                        : "0.00";
-                                    })()
-                                  : cpVal || "0.00"}
+                              <div className="h-8 sm:h-11 rounded-lg border border-transparent bg-transparent text-right pr-2 text-xs sm:text-sm font-black text-muted-foreground flex items-center justify-end">
+                                {cpVal || "0.00"}
                               </div>
                             </td>
                             {/* Sell price — editable */}
@@ -1713,28 +1764,37 @@ function BulkEditModal({
                                 {addVal || "0"}
                               </div>
                             </td>
-                            {/* Total cost for added qty — editable */}
+                            {/* Total cost for added qty — disabled until add qty > 0 */}
                             <td className="pr-4 pl-2 py-1.5 text-right w-[76px] sm:w-[96px]">
                               <div
-                                onClick={() =>
+                                onClick={() => {
+                                  if (!hasAdd) return;
+                                  const opening = !(
+                                    activeNumpad?.id === p.id && activeNumpad.field === "cp"
+                                  );
+                                  if (opening) {
+                                    setCostPrices((prev) => ({ ...prev, [p.id]: "" }));
+                                  }
                                   setActiveNumpad(
                                     activeNumpad?.id === p.id && activeNumpad.field === "cp"
                                       ? null
                                       : { id: p.id, field: "cp" },
-                                  )
-                                }
-                                className={`h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black flex items-center justify-end cursor-pointer active:bg-muted/70 transition ${
-                                  activeNumpad?.id === p.id && activeNumpad.field === "cp"
-                                    ? "border-primary bg-background"
-                                    : "border-transparent bg-transparent text-muted-foreground"
+                                  );
+                                }}
+                                className={`h-8 sm:h-11 rounded-lg border text-right pr-2 text-xs sm:text-sm font-black flex items-center justify-end transition ${
+                                  hasAdd
+                                    ? activeNumpad?.id === p.id && activeNumpad.field === "cp"
+                                      ? "border-primary bg-background"
+                                      : "border-transparent bg-transparent text-muted-foreground cursor-pointer active:bg-muted/70"
+                                    : "border-border bg-muted/30 text-muted-foreground cursor-not-allowed"
                                 }`}
                               >
                                 {hasAdd
                                   ? (() => {
                                       const total = parseFloat(costPrices[p.id] ?? "") || 0;
-                                      return total > 0 ? `$${total.toFixed(2)}` : "$0.00";
+                                      return total > 0 ? `$${total.toFixed(2)}` : "";
                                     })()
-                                  : "—"}
+                                  : "0"}
                               </div>
                             </td>
                           </tr>
@@ -2923,10 +2983,9 @@ function AddItemDialog({
   const isEdit = !!editProduct;
   const [name, setName] = useState(editProduct?.name ?? "");
   const [price, setPrice] = useState(editProduct ? String(editProduct.price) : "");
-  const [totalCost, setTotalCost] = useState(
-    editProduct && (editProduct.stock_qty ?? 0) > 0 ? String(editProduct.cost_price ?? "") : "",
+  const [costPrice, setCostPrice] = useState(
+    editProduct ? String(editProduct.cost_price ?? "") : "",
   );
-  const [addQty, setAddQty] = useState("");
   const [unitsPerItem, setUnitsPerItem] = useState(
     editProduct ? String(editProduct.units_per_item || "") : "",
   );
@@ -3072,34 +3131,26 @@ function AddItemDialog({
     }
 
     const setter =
-      activeNumpad === "cost"
-        ? setTotalCost
-        : activeNumpad === "addqty"
-          ? setAddQty
-          : activeNumpad === "units"
-            ? setUnitsPerItem
-            : activeNumpad === "shotprice"
-              ? setShotPricePerUnit
-              : activeNumpad === "cigretail"
-                ? setCigRetailPrice
-                : setPrice;
+      activeNumpad === "units"
+        ? setUnitsPerItem
+        : activeNumpad === "shotprice"
+          ? setShotPricePerUnit
+          : activeNumpad === "cigretail"
+            ? setCigRetailPrice
+            : setPrice;
     const current =
-      activeNumpad === "cost"
-        ? totalCost
-        : activeNumpad === "addqty"
-          ? addQty
-          : activeNumpad === "units"
-            ? unitsPerItem
-            : activeNumpad === "shotprice"
-              ? shotPricePerUnit
-              : activeNumpad === "cigretail"
-                ? cigRetailPrice
-                : price;
+      activeNumpad === "units"
+        ? unitsPerItem
+        : activeNumpad === "shotprice"
+          ? shotPricePerUnit
+          : activeNumpad === "cigretail"
+            ? cigRetailPrice
+            : price;
     if (k === "⌫") {
       setter(current.slice(0, -1));
       return;
     }
-    if (activeNumpad !== "units" && activeNumpad !== "addqty") {
+    if (activeNumpad !== "units") {
       if (k === ".") {
         if (!current.includes(".")) setter(current + ".");
         return;
@@ -3136,28 +3187,7 @@ function AddItemDialog({
       image_url = editProduct?.image_url ?? null;
     }
 
-    const addQtyVal = parseInt(addQty, 10) || 0;
-    const batchTotal = parseFloat(totalCost) || 0;
-    const existingCp = isEdit && editProduct ? Number(editProduct.cost_price ?? 0) : 0;
-    const existingQty = isEdit && editProduct ? (editProduct.stock_qty ?? 0) : 0;
-
-    // Derive per-item cost: if adding stock with a total cost, divide to get per-item
-    // Otherwise keep existing cost (edits without stock addition)
-    let costVal = existingCp || 0;
-    if (addQtyVal > 0 && batchTotal > 0) {
-      const newCpPerItem = batchTotal / addQtyVal;
-      if (isEdit && existingQty > 0) {
-        // Weighted average: old inventory value + new batch value
-        const oldValue = existingQty * existingCp;
-        const newValue = addQtyVal * newCpPerItem;
-        const totalQty = existingQty + addQtyVal;
-        costVal = totalQty > 0 ? (oldValue + newValue) / totalQty : newCpPerItem;
-      } else {
-        // New item or first stock entry
-        costVal = newCpPerItem;
-      }
-    }
-
+    const costVal = parseFloat(costPrice) || 0;
     const unitsVal = parseInt(unitsPerItem, 10) || 0;
     const variationsVal =
       category === "liquor"
@@ -3252,8 +3282,7 @@ function AddItemDialog({
       toast.success("Item added");
       setName("");
       setPrice("");
-      setTotalCost("");
-      setAddQty("");
+      setCostPrice("");
       setUnitsPerItem("");
       setShotPricePerUnit("");
       setCigSpecialQty("");
@@ -3515,51 +3544,6 @@ function AddItemDialog({
                   </select>
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs">Add Qty</Label>
-                  <div
-                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                    onClick={() => setActiveNumpad(activeNumpad === "addqty" ? null : "addqty")}
-                  >
-                    <span
-                      className={`text-base font-black ${activeNumpad === "addqty" ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      {addQty || "0"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <Label className="text-xs">Total Cost</Label>
-                  <div
-                    className="mt-1 h-9 rounded-lg border border-border bg-muted/30 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                    onClick={() => setActiveNumpad(activeNumpad === "cost" ? null : "cost")}
-                  >
-                    <span
-                      className={`text-base font-black ${activeNumpad === "cost" ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      ${totalCost || "0.00"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {/* Cost per item — auto-calculated, read-only */}
-              <div className="flex gap-2 mt-1">
-                <div className="flex-1">
-                  <Label className="text-xs">Cost Per Item</Label>
-                  <div className="mt-1 h-9 rounded-lg border border-primary/30 bg-primary/5 flex items-center px-3">
-                    <span className="text-base font-black text-primary">
-                      $
-                      {(() => {
-                        const qty = parseInt(addQty, 10) || 0;
-                        const total = parseFloat(totalCost) || 0;
-                        if (qty > 0 && total > 0) return (total / qty).toFixed(2);
-                        if (isEdit && editProduct)
-                          return Number(editProduct.cost_price ?? 0).toFixed(2);
-                        return "0.00";
-                      })()}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex-1">
                   <Label className="text-xs">
                     {category === "cigarettes"
                       ? t("sell_price_label", "Sell Price") + " (Pack)"
@@ -3579,8 +3563,6 @@ function AddItemDialog({
                   </div>
                 </div>
               </div>
-              <InlineNumpad forField="addqty" />
-              <InlineNumpad forField="cost" />
               <InlineNumpad forField="selling" />
             </div>
 
@@ -3619,34 +3601,11 @@ function AddItemDialog({
                 </div>
                 <InlineNumpad forField="units" />
                 <InlineNumpad forField="shotprice" />
-                {unitsPerItem &&
-                  parseInt(unitsPerItem) > 0 &&
-                  (() => {
-                    const qty = parseInt(addQty, 10) || 0;
-                    const total = parseFloat(totalCost) || 0;
-                    const cp =
-                      qty > 0 && total > 0
-                        ? total / qty
-                        : isEdit
-                          ? Number(editProduct?.cost_price ?? 0)
-                          : 0;
-                    return cp > 0;
-                  })() && (
-                    <p className="text-xs" style={{ color: "var(--primary)" }}>
-                      Cost per shot: $
-                      {(() => {
-                        const qty = parseInt(addQty, 10) || 0;
-                        const total = parseFloat(totalCost) || 0;
-                        const cp =
-                          qty > 0 && total > 0
-                            ? total / qty
-                            : isEdit
-                              ? Number(editProduct?.cost_price ?? 0)
-                              : 0;
-                        return (cp / parseInt(unitsPerItem)).toFixed(2);
-                      })()}
-                    </p>
-                  )}
+                {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
+                  <p className="text-xs" style={{ color: "var(--primary)" }}>
+                    Cost per shot: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -3666,34 +3625,11 @@ function AddItemDialog({
                     </span>
                   </div>
                   <InlineNumpad forField="units" />
-                  {unitsPerItem &&
-                    parseInt(unitsPerItem) > 0 &&
-                    (() => {
-                      const qty = parseInt(addQty, 10) || 0;
-                      const total = parseFloat(totalCost) || 0;
-                      const cp =
-                        qty > 0 && total > 0
-                          ? total / qty
-                          : isEdit
-                            ? Number(editProduct?.cost_price ?? 0)
-                            : 0;
-                      return cp > 0;
-                    })() && (
-                      <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
-                        Cost per unit: $
-                        {(() => {
-                          const qty = parseInt(addQty, 10) || 0;
-                          const total = parseFloat(totalCost) || 0;
-                          const cp =
-                            qty > 0 && total > 0
-                              ? total / qty
-                              : isEdit
-                                ? Number(editProduct?.cost_price ?? 0)
-                                : 0;
-                          return (cp / parseInt(unitsPerItem)).toFixed(2);
-                        })()}
-                      </p>
-                    )}
+                  {unitsPerItem && parseInt(unitsPerItem) > 0 && parseFloat(costPrice) > 0 && (
+                    <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                      Cost per unit: ${(parseFloat(costPrice) / parseInt(unitsPerItem)).toFixed(2)}
+                    </p>
+                  )}
                 </div>
                 {/* Retail Sale Price per cigarette */}
                 <div>
@@ -3888,21 +3824,7 @@ function AddItemDialog({
               skipStockRef.current = false;
               submit();
             }}
-            disabled={
-              busy ||
-              !name ||
-              !price ||
-              (() => {
-                const aq = parseInt(addQty, 10) || 0;
-                const tc = parseFloat(totalCost) || 0;
-                const derivedCp = aq > 0 && tc > 0 ? tc / aq : 0;
-                const existingCp = isEdit && editProduct ? Number(editProduct.cost_price ?? 0) : 0;
-                const effectiveCp = derivedCp > 0 ? derivedCp : existingCp;
-                return (
-                  (!isEdit && effectiveCp <= 0) || (isEdit && existingCp === 0 && effectiveCp <= 0)
-                );
-              })()
-            }
+            disabled={busy || !name || !price}
             className="w-full font-bold h-11 shrink-0"
             style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
           >
@@ -3913,21 +3835,7 @@ function AddItemDialog({
               skipStockRef.current = true;
               submit();
             }}
-            disabled={
-              busy ||
-              !name ||
-              !price ||
-              (() => {
-                const aq = parseInt(addQty, 10) || 0;
-                const tc = parseFloat(totalCost) || 0;
-                const derivedCp = aq > 0 && tc > 0 ? tc / aq : 0;
-                const existingCp = isEdit && editProduct ? Number(editProduct.cost_price ?? 0) : 0;
-                const effectiveCp = derivedCp > 0 ? derivedCp : existingCp;
-                return (
-                  (!isEdit && effectiveCp <= 0) || (isEdit && existingCp === 0 && effectiveCp <= 0)
-                );
-              })()
-            }
+            disabled={busy || !name || !price}
             variant="outline"
             className="w-full font-bold h-11 shrink-0"
           >

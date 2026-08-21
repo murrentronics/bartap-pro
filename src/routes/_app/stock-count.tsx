@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { ClipboardList, Plus, Trash2, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ClipboardList, Plus, Trash2, X, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/stock-count")({
   component: StockCountPage,
@@ -21,21 +22,61 @@ function StockCountPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [newTableName, setNewTableName] = useState("");
   const [activeCell, setActiveCell] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const ownerId = profile?.parent_id ?? profile?.id ?? "";
 
   useEffect(() => {
     if (!profile?.id) return;
-    try {
-      const raw = localStorage.getItem(`stock-count-${profile.id}`);
-      if (raw) setTables(JSON.parse(raw));
-    } catch {
-      /* ignore */
-    }
+    let cancelled = false;
+    setLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("stock_count_tables")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: true })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }: { data: any[] | null }) => {
+        if (cancelled) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loaded = (data ?? []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          columns: Array.isArray(row.columns) ? row.columns : [],
+          rows: Array.isArray(row.rows) ? row.rows : [],
+        }));
+        setTables(loaded);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [profile?.id]);
+
+  const persistToDb = async (next: Table[]) => {
+    if (!profile?.id) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("stock_count_tables").upsert(
+      next.map((t) => ({
+        id: t.id,
+        profile_id: profile.id,
+        owner_id: ownerId,
+        name: t.name,
+        columns: t.columns,
+        rows: t.rows,
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: "id" },
+    );
+    if (error) {
+      console.error("Failed to save stock count table:", error);
+    }
+  };
 
   const persist = (next: Table[]) => {
     setTables(next);
-    if (!profile?.id) return;
-    localStorage.setItem(`stock-count-${profile.id}`, JSON.stringify(next));
+    persistToDb(next);
   };
 
   const createTable = () => {
@@ -50,8 +91,11 @@ function StockCountPage() {
     setNewTableName("");
   };
 
-  const deleteTable = (id: string) => {
-    persist(tables.filter((t) => t.id !== id));
+  const deleteTable = async (id: string) => {
+    const next = tables.filter((t) => t.id !== id);
+    persist(next);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("stock_count_tables").delete().eq("id", id);
   };
 
   const addRow = (tableId: string) => {
@@ -121,6 +165,14 @@ function StockCountPage() {
     return (
       <div className="text-center text-muted-foreground py-20">
         Stock Count is available for cashiers and managers.
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
