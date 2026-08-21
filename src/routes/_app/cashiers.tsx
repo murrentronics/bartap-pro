@@ -2957,6 +2957,10 @@ export default function CashiersPage() {
       return;
     }
 
+    // Clear cashier session records for new shift
+    await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
+    await supabase.from("orders").delete().eq("cashier_id", c.id);
+
     // Mark the start of a new shift for this cashier — old records stay in DB for owner,
     // but the cashier's view will only show records from this point forward.
     await (supabase as any)
@@ -3068,6 +3072,20 @@ export default function CashiersPage() {
       setBarToggleBusy(false);
       toast.error("Failed to open bar: " + error.message);
       return;
+    }
+
+    // Clear all cashier wallet records for new bar session
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: cashiers } = await (supabase as any)
+      .from("profiles")
+      .select("id")
+      .eq("parent_id", ownerIdForBar)
+      .eq("role", "cashier");
+    if (cashiers?.length) {
+      const ids = cashiers.map((c: { id: string }) => c.id);
+      await (supabase as any).from("profiles").update({ wallet_balance: 0 }).in("id", ids);
+      await (supabase as any).from("wallet_transactions").delete().in("profile_id", ids);
+      await (supabase as any).from("orders").delete().in("cashier_id", ids);
     }
 
     // Insert machine float session

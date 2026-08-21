@@ -274,13 +274,13 @@ function CashierWallet({
   };
 
   // ── Float cards state ────────────────────────────────────────────────────────
-  const [floatAmount, setFloatAmount] = useState<number | null>(null);
+  const [floatRemaining, setFloatRemaining] = useState<number | null>(null);
+  const [floatSet, setFloatSet] = useState<number | null>(null);
   const [floatSetAt, setFloatSetAt] = useState<string | null>(null);
-  const [floatUsed, setFloatUsed] = useState<number>(0);
 
   const ownerId = profile.parent_id ?? profile.id;
 
-  // Load owner float — cashier_float IS the live remaining balance
+  // Load original float (from latest sub-session) + live remaining (cashier_float)
   const loadFloat = useCallback(async () => {
     const { data: ownerData } = await sb
       .from("profiles")
@@ -288,12 +288,24 @@ function CashierWallet({
       .eq("id", ownerId)
       .single();
 
-    const famt = Number(ownerData?.cashier_float ?? 0);
+    const remaining = Number(ownerData?.cashier_float ?? 0);
     const since: string | null = ownerData?.cashier_float_set_at ?? null;
 
-    setFloatAmount(famt > 0 ? famt : null);
+    setFloatRemaining(remaining > 0 ? remaining : null);
     setFloatSetAt(since);
-    setFloatUsed(0);
+
+    let original = remaining;
+    if (since) {
+      const { data: lastSubSession } = await sb
+        .from("bar_sub_sessions")
+        .select("cashier_float")
+        .eq("owner_id", ownerId)
+        .order("opened_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      original = Number(lastSubSession?.cashier_float ?? remaining);
+    }
+    setFloatSet(original > 0 ? original : null);
   }, [ownerId]);
 
   useEffect(() => {
@@ -342,9 +354,7 @@ function CashierWallet({
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [profile.id, ownerId]);
-
-  const floatRemaining = floatAmount;
+   }, [profile.id, ownerId]);
 
   const totalRecords = totalOrders + totalTxs;
   const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
@@ -923,21 +933,45 @@ function CashierWallet({
           </div>
           <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
 
-          {/* Float remaining — only shown when owner has set a float */}
-          {floatAmount !== null && (
-            <div className="mt-4">
+          {/* Float cards — only shown when owner has set a float */}
+          {floatSet !== null && (
+            <div className="grid grid-cols-2 gap-2 mt-4">
               <div
-                className="rounded-xl px-4 py-3 flex items-center justify-between"
+                className="rounded-xl px-3 py-2.5 flex flex-col gap-0.5 text-center"
                 style={{ background: "oklch(0.18 0.04 60)" }}
               >
                 <div
-                  className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider"
+                  className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider"
                   style={{ color: "rgba(255,255,255,0.45)" }}
                 >
-                  Float Remaining
+                  Float
                 </div>
-                <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                  ${fmt(floatAmount)}
+                <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
+                  ${fmt(floatSet)}
+                </div>
+              </div>
+              <div
+                className="rounded-xl px-3 py-2.5 flex flex-col gap-0.5 text-center"
+                style={{ background: "oklch(0.18 0.04 60)" }}
+              >
+                <div
+                  className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.45)" }}
+                >
+                  Remaining
+                </div>
+                <div
+                  className="font-black text-xs"
+                  style={{
+                    color:
+                      floatRemaining !== null && floatRemaining > 0
+                        ? "#86efac"
+                        : "rgba(255,255,255,0.3)",
+                  }}
+                >
+                  {floatRemaining !== null && floatRemaining > 0
+                    ? `$${fmt(floatRemaining)}`
+                    : "—"}
                 </div>
               </div>
             </div>

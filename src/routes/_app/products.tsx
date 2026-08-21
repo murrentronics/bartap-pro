@@ -1613,7 +1613,7 @@ function BulkEditModal({
                     {products.map((p) => {
                       const addVal = newQtys[p.id] ?? "";
                       const hasAdd = parseInt(addVal, 10) > 0;
-                      const cpVal = costPrices[p.id] ?? "";
+                      const cpVal = Number(p.cost_price ?? 0).toFixed(2);
                       const spVal = sellPrices[p.id] ?? "";
                       const unitsVal = unitsPerItems[p.id] ?? "";
                       const isBottleOrPack = p.category === "liquor" || p.category === "cigarettes";

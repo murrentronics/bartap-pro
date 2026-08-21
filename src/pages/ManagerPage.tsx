@@ -218,6 +218,17 @@ function ManagerMain({
       toast.error("Failed to open bar");
       return;
     }
+    const { data: cashiers } = await sb
+      .from("profiles")
+      .select("id")
+      .eq("parent_id", ownerId)
+      .eq("role", "cashier");
+    if (cashiers?.length) {
+      const ids = cashiers.map((c: { id: string }) => c.id);
+      await sb.from("profiles").update({ wallet_balance: 0 }).in("id", ids);
+      await sb.from("wallet_transactions").delete().in("profile_id", ids);
+      await sb.from("orders").delete().in("cashier_id", ids);
+    }
     const { data: newSession } = await sb
       .from("bar_sessions")
       .insert({ owner_id: ownerId, opened_at: now })
