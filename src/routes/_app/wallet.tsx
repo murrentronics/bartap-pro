@@ -280,7 +280,7 @@ function CashierWallet({
 
   const ownerId = profile.parent_id ?? profile.id;
 
-  // Load owner float + cashier_float_set_at + how much spent SINCE last reset
+  // Load owner float — cashier_float IS the live remaining balance
   const loadFloat = useCallback(async () => {
     const { data: ownerData } = await sb
       .from("profiles")
@@ -293,29 +293,8 @@ function CashierWallet({
 
     setFloatAmount(famt > 0 ? famt : null);
     setFloatSetAt(since);
-
-    // Only count expenses AFTER the last float reset AND after current shift start
-    let query = sb
-      .from("wallet_transactions")
-      .select("amount")
-      .eq("profile_id", profile.id)
-      .eq("type", "cashier_expense");
-    if (since) query = query.gte("created_at", since);
-    if (profile.cashier_shift_start) {
-      const shiftDate = new Date(profile.cashier_shift_start);
-      const sinceDate = since ? new Date(since) : null;
-      const effectiveSince =
-        sinceDate && sinceDate > shiftDate ? sinceDate.toISOString() : profile.cashier_shift_start;
-      query = query.gte("created_at", effectiveSince);
-    }
-
-    const { data: expTxs } = await query;
-    const used = (expTxs ?? []).reduce(
-      (s: number, tx: { amount: number }) => s + Number(tx.amount),
-      0,
-    );
-    setFloatUsed(used);
-  }, [ownerId, profile.id]);
+    setFloatUsed(0);
+  }, [ownerId]);
 
   useEffect(() => {
     loadFloat();
@@ -327,7 +306,7 @@ function CashierWallet({
     loadFloatRef.current = loadFloat;
   }, [loadFloat]);
 
-  // Realtime — watch owner profile for float changes + own expense txs
+  // Realtime — watch owner profile for float changes + own expense txs + owner expenses
   useEffect(() => {
     const ch = supabase
       .channel(`cashier-float-${profile.id}`)
@@ -337,7 +316,7 @@ function CashierWallet({
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         () => loadFloatRef.current(),
       )
-      // Cashier logs an expense → used ticks up
+      // Cashier logs an expense → reload float
       .on(
         "postgres_changes",
         {
@@ -348,13 +327,24 @@ function CashierWallet({
         },
         () => loadFloatRef.current(),
       )
+      // Manager adds expense (owner_expenses) → float changes → reload
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "owner_expenses",
+          filter: `owner_id=eq.${ownerId}`,
+        },
+        () => loadFloatRef.current(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
   }, [profile.id, ownerId]);
 
-  const floatRemaining = floatAmount !== null ? Math.max(0, floatAmount - floatUsed) : null;
+  const floatRemaining = floatAmount;
 
   const totalRecords = totalOrders + totalTxs;
   const totalPages = Math.max(1, Math.ceil(totalRecords / ORDERS_PAGE_SIZE));
@@ -769,9 +759,16 @@ function CashierWallet({
         }
       }
 
-      // Record float deduction as a transaction — do NOT touch cashier_float.
-      // The fixed float amount stays constant; only floatUsed / floatRemaining change.
+      // Deduct remainder from float — cashier_float is the live remaining balance
       if (floatCovers > 0) {
+        const newFloat = currentFloat - floatCovers;
+        const { error: floatErr } = await sb.from("profiles")
+          .update({ cashier_float: newFloat })
+          .eq("id", ownerId);
+        if (floatErr) {
+          toast.error(floatErr.message);
+          return;
+        }
         if (walletCovers === 0) {
           const { error: txError } = await sb.from("wallet_transactions").insert({
             profile_id: profile.id,
@@ -926,60 +923,21 @@ function CashierWallet({
           </div>
           <div className="mt-3 text-primary-foreground/80 text-sm">Cashier — clears to owner</div>
 
-          {/* Float cards — only shown when owner has set a float */}
+          {/* Float remaining — only shown when owner has set a float */}
           {floatAmount !== null && (
-            <div className="grid grid-cols-3 gap-2 mt-4">
+            <div className="mt-4">
               <div
-                className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
+                className="rounded-xl px-4 py-3 flex items-center justify-between"
                 style={{ background: "oklch(0.18 0.04 60)" }}
               >
                 <div
-                  className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider"
+                  className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider"
                   style={{ color: "rgba(255,255,255,0.45)" }}
                 >
-                  Float
+                  Float Remaining
                 </div>
-                <div className="font-black text-xs" style={{ color: "#fbbf24" }}>
+                <div className="font-black text-sm" style={{ color: "#86efac" }}>
                   ${fmt(floatAmount)}
-                </div>
-              </div>
-              <div
-                className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
-                style={{ background: "oklch(0.18 0.04 60)" }}
-              >
-                <div
-                  className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: "rgba(255,255,255,0.45)" }}
-                >
-                  Used
-                </div>
-                <div
-                  className="font-black text-xs"
-                  style={{ color: floatUsed > 0 ? "#fca5a5" : "rgba(255,255,255,0.3)" }}
-                >
-                  {floatUsed > 0 ? `$${fmt(floatUsed)}` : "—"}
-                </div>
-              </div>
-              <div
-                className="rounded-xl px-2 py-2 flex flex-col gap-0.5 text-center"
-                style={{ background: "oklch(0.18 0.04 60)" }}
-              >
-                <div
-                  className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: "rgba(255,255,255,0.45)" }}
-                >
-                  Remaining
-                </div>
-                <div
-                  className="font-black text-xs"
-                  style={{
-                    color:
-                      floatRemaining !== null && floatRemaining > 0
-                        ? "#86efac"
-                        : "rgba(255,255,255,0.3)",
-                  }}
-                >
-                  {floatRemaining !== null && floatRemaining > 0 ? `$${fmt(floatRemaining)}` : "—"}
                 </div>
               </div>
             </div>

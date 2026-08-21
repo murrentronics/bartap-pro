@@ -552,8 +552,7 @@ function DashboardTab({
   const tag = `[Manager: ${managerName}]`;
 
   // ── Bar float (live) ───────────────────────────────────────────────────────
-  // floatBalance = fixed barFloatSet minus expenses since last float reset.
-  // cashier_float in profiles stays FIXED at the set amount — we never decrement it.
+  // cashier_float in profiles IS the live remaining balance
   const [floatBalance, setFloatBalance] = useState<number>(0);
   const loadFloat = useCallback(async () => {
     const { data: ownerRow } = await sb
@@ -561,23 +560,8 @@ function DashboardTab({
       .select("cashier_float, cashier_float_set_at")
       .eq("id", ownerId)
       .single();
-    const fixedFloat = Number(ownerRow?.cashier_float ?? 0);
-    const since: string | null = ownerRow?.cashier_float_set_at ?? null;
-
-    let query = sb
-      .from("owner_expenses")
-      .select("amount")
-      .eq("owner_id", ownerId)
-      .ilike("description", `%${tag}%`);
-    if (since) query = query.gte("created_at", since);
-
-    const { data: expTxs } = await query;
-    const used = (expTxs ?? []).reduce(
-      (s: number, e: { amount: number }) => s + Number(e.amount),
-      0,
-    );
-    setFloatBalance(Math.max(0, fixedFloat - used));
-  }, [ownerId, tag]); // eslint-disable-line react-hooks/exhaustive-deps
+    setFloatBalance(Math.max(0, Number(ownerRow?.cashier_float ?? 0)));
+  }, [ownerId]);
   useEffect(() => {
     loadFloat();
   }, [loadFloat]);
@@ -878,6 +862,9 @@ function DashboardTab({
         toast.error(expErr.message);
         return;
       }
+      const newFloat = Math.max(0, floatBalance - total);
+      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+      setFloatBalance(newFloat);
       const note =
         valid.length === 1
           ? `Expense: ${valid[0].description.trim()}`
@@ -949,6 +936,11 @@ function DashboardTab({
         toast.error("Could not update expense — permission denied");
         return;
       }
+      if (diff !== 0) {
+        const newFloat = Math.max(0, floatBalance - diff);
+        await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+        setFloatBalance(newFloat);
+      }
       toast.success("Expense updated");
       setEditingId(null);
       loadExpenses();
@@ -974,6 +966,9 @@ function DashboardTab({
         toast.error("Could not delete expense — permission denied");
         return;
       }
+      const newFloat = floatBalance + Number(e.amount);
+      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
+      setFloatBalance(newFloat);
       toast.success("Expense deleted and float refunded");
       setDeleteConfirmId(null);
       loadExpenses();
