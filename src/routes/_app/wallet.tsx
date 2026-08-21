@@ -689,15 +689,21 @@ function CashierWallet({
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
 
-    // Load current owner float
+    // Load current owner float + cashier wallet fresh from DB
     const { data: ownerProfile } = await sb
       .from("profiles")
       .select("cashier_float, wallet_balance")
       .eq("id", ownerId)
       .single();
 
+    const { data: cashierProfile } = await sb
+      .from("profiles")
+      .select("wallet_balance")
+      .eq("id", profile.id)
+      .single();
+
     const currentFloat = Number(ownerProfile?.cashier_float ?? 0);
-    const cashierWallet = Number(profile.wallet_balance);
+    const cashierWallet = Number(cashierProfile?.wallet_balance ?? 0);
 
     // Wallet covers first — float only kicks in when wallet hits 0
     const walletCovers = Math.min(cashierWallet, total); // how much wallet pays
@@ -815,7 +821,11 @@ function CashierWallet({
       setShowAddExpense(false);
       setConfirmingExpense(false);
       loadCashierExpenses();
-      setTimeout(() => refreshProfile(), 500);
+      if (floatCovers > 0) {
+        const updatedFloat = currentFloat - floatCovers;
+        setFloatRemaining(updatedFloat > 0 ? updatedFloat : null);
+      }
+      refreshProfile();
       loadFloat();
     } finally {
       setSavingExpense(false);

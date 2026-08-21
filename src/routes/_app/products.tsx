@@ -1494,46 +1494,42 @@ function BulkEditModal({
     onClose();
   };
 
-  const SaveBar = () => {
-    const handleClick = useCallback(() => {
-      const invalid = updates.find((p) => {
-        const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
-        return sp === 0;
-      });
-      if (invalid) {
-        toast.error(
-          `"${invalid.name}" has qty > 0 but Sell Price is $0.00 — set a sell price first.`,
-        );
-        return;
-      }
-      setShowPreview(true);
-    }, [updates, sellPrices]);
-
-    return (
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
-        <div className="text-sm font-black">
-          {allChanged.length > 0 ? (
-            <span style={{ color: "var(--primary)" }}>
-              {allChanged.length} item{allChanged.length !== 1 ? "s" : ""}
-              {updates.length > 0 && (
-                <span className="text-green-400"> · ${totalCost.toFixed(2)}</span>
-              )}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
-          )}
-        </div>
-        <button
-          onClick={handleClick}
-          disabled={busy || allChanged.length === 0}
-          className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
-          style={{ background: "var(--gradient-hero)" }}
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Bulk"}
-        </button>
+  const SaveBar = () => (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background/95 shrink-0">
+      <div className="text-sm font-black">
+        {allChanged.length > 0 ? (
+          <span style={{ color: "var(--primary)" }}>
+            {allChanged.length} item{allChanged.length !== 1 ? "s" : ""}
+            {updates.length > 0 && (
+              <span className="text-green-400"> · ${totalCost.toFixed(2)}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Edit prices or enter qty to add stock</span>
+        )}
       </div>
-    );
-  };
+      <button
+        onClick={() => {
+          const invalid = updates.find((p) => {
+            const sp = parseFloat(sellPrices[p.id] ?? "") || Number(p.price ?? 0);
+            return sp === 0;
+          });
+          if (invalid) {
+            toast.error(
+              `"${invalid.name}" has qty > 0 but Sell Price is $0.00 — set a sell price first.`,
+            );
+            return;
+          }
+          setShowPreview(true);
+        }}
+        disabled={busy || allChanged.length === 0}
+        className="h-10 px-5 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 flex items-center gap-2"
+        style={{ background: "var(--gradient-hero)" }}
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Bulk"}
+      </button>
+    </div>
+  );
 
   // shared input style
   const numInputCls =
@@ -1792,7 +1788,9 @@ function BulkEditModal({
                                   hasAdd
                                     ? activeNumpad?.id === p.id && activeNumpad.field === "cp"
                                       ? "border-primary bg-background"
-                                      : "border-transparent bg-transparent text-muted-foreground cursor-pointer active:bg-muted/70"
+                                      : (parseFloat(costPrices[p.id] ?? "") || 0) === 0
+                                        ? "border-red-500 bg-transparent text-red-500 cursor-pointer active:bg-muted/70"
+                                        : "border-transparent bg-transparent text-muted-foreground cursor-pointer active:bg-muted/70"
                                     : "border-border bg-muted/30 text-muted-foreground cursor-not-allowed"
                                 }`}
                               >
