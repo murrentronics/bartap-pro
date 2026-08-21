@@ -445,20 +445,20 @@ export default function AppLayout() {
           ]
         : isManager
           ? [
-              // Manager: Items, Stock Check, Customers, Expenses, Machines — no Bar, no Wallet
+              // Manager: Items, Machines, Manage, Stock Check, Stock Count, Customers, Manual
               ...(ownerHasBar
                 ? [{ to: "/products", label: t("products_title", "Items"), icon: Package }]
                 : []),
-              { to: "/stock-check", label: t("stock_check", "Stock Check"), icon: ClipboardList },
-              ...(ownerHasBar
-                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
-                : []),
-              { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
               ...(ownerHasMachines
                 ? [{ to: "/machines", label: t("machines", "Machines"), icon: Gamepad2 }]
                 : []),
-              { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
+              { to: "/manager", label: t("manage", "Manage"), icon: TrendingDown },
+              { to: "/stock-check", label: t("stock_check", "Stock Check"), icon: ClipboardList },
               { to: "/stock-count", label: "Stock Count", icon: ClipboardList },
+              ...(ownerHasBar
+                ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: Receipt }]
+                : []),
+              { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
             ]
           : [
               ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
