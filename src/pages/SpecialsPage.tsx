@@ -225,31 +225,39 @@ function SpecialForm({
                 className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
             </div>
 
-            {/* Qty + Price row */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("how_many_items", "How Many Items")}</label>
-                <div
-                  className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                  onClick={() => setActiveNumpad(activeNumpad === "qty" ? null : "qty")}
-                >
-                  <span className={`text-base font-black ${activeNumpad === "qty" ? "text-primary" : "text-muted-foreground"}`}>
-                    {reqQty || "0"}
-                  </span>
-                </div>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("special_price_lbl", "Special Price $")}</label>
-                <div
-                  className="h-10 rounded-xl border border-border bg-muted/40 flex items-center px-3 cursor-pointer active:bg-muted/50 transition"
-                  onClick={() => setActiveNumpad(activeNumpad === "price" ? null : "price")}
-                >
-                  <span className={`text-base font-black ${activeNumpad === "price" ? "text-primary" : "text-muted-foreground"}`}>
-                    ${price || "0.00"}
-                  </span>
-                </div>
-              </div>
-            </div>
+             {/* Qty + Price row */}
+             <div className="flex gap-3">
+               <div className="flex-1">
+                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("how_many_items", "How Many Items")}</label>
+                 <input
+                   type="text"
+                   inputMode="numeric"
+                   pattern="[0-9]*"
+                   value={reqQty}
+                   onChange={(e) => setReqQty(e.target.value.replace(/[^0-9]/g, ""))}
+                   onFocus={() => setActiveNumpad("qty")}
+                   placeholder="0"
+                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                 />
+               </div>
+               <div className="flex-1">
+                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("special_price_lbl", "Special Price $")}</label>
+                 <input
+                   type="text"
+                   inputMode="decimal"
+                   value={price}
+                   onChange={(e) => {
+                     const val = e.target.value;
+                     if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                       setPrice(val);
+                     }
+                   }}
+                   onFocus={() => setActiveNumpad("price")}
+                   placeholder="0.00"
+                   className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-base font-black outline-none focus:ring-1 focus:ring-primary"
+                 />
+               </div>
+             </div>
 
             {/* Inline numpad — shows below qty/price when either is active */}
             {activeNumpad !== null && (

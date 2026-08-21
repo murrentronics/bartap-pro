@@ -46,7 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
 
 
-  Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil, Receipt,
+  Plus, Loader2, ChevronLeft, Trash2, Download, X, Pencil, Receipt, History,
   TrendingDown, TrendingUp, DollarSign, Gamepad2, Camera, AlertTriangle, Bell, BarChart3, CalendarIcon,
 } from "lucide-react";
 
@@ -4554,7 +4554,7 @@ function CreateTab({ ownerId, machineCount, maxScreens, onCreated }: { ownerId: 
 // ── Screens Tab (machine grid + hero) ─────────────────────────────────────────
 
 
-function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onDeleteMachine, barSessionStart, barIsOpen, monitorRefreshKey }: {
+function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, onSelect, floatSession, remainingFloat, isCashier, isOwner, isManager, onSetFloat, onAddExpense, onShowExpenseHistory, onDeleteMachine, barSessionStart, barIsOpen, monitorRefreshKey }: {
 
 
   machines: Machine[]; entries: MachineEntry[];
@@ -4586,9 +4586,9 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   onSetFloat: () => void;
 
-
   onAddExpense: () => void;
 
+  onShowExpenseHistory: () => void;
 
   onDeleteMachine: (id: string) => void;
 
@@ -5189,14 +5189,22 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
         {/* Add Expense — full width on mobile, one column on tablet+ */}
         {orderedMachines.length > 0 && (
-          <div className="relative">
+          <div className="relative flex flex-wrap items-center gap-2">
             <button
               onClick={() => onAddExpense()}
               disabled={!barIsOpen}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "oklch(0.28 0.06 60)", color: "#fbbf24", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
               <Receipt className="h-4 w-4" />
               {t("add_expense", "Add Expense")}
+            </button>
+            <button
+              onClick={onShowExpenseHistory}
+              disabled={!barIsOpen}
+              className="flex items-center justify-center gap-2 px-5 rounded-xl font-black text-sm active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "oklch(0.22 0.04 60)", color: "#fca5a5", border: "1.5px solid oklch(0.38 0.10 60)", height: "2.75rem" }}>
+              <History className="h-4 w-4" />
+              Expense History
             </button>
           </div>
         )}
@@ -6894,6 +6902,7 @@ export default function MachinesPage() {
 
   const isOwner = profile?.role === "owner";
   const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+  const isCashier = profile?.role === "cashier";
 
 
   // Bar session state — used by ScreensTab for session stats anchor
@@ -7212,6 +7221,7 @@ export default function MachinesPage() {
 
   const [showAddMachineExpense, setShowAddMachineExpense] = useState(false);
 
+  const [showMachineExpenseHistory, setShowMachineExpenseHistory] = useState(false);
 
   const [expenseMachineId, setExpenseMachineId] = useState<string | null>(null);
 
@@ -7224,6 +7234,18 @@ export default function MachinesPage() {
 
   const [savingExpense, setSavingExpense] = useState(false);
 
+  const [machineExpenses, setMachineExpenses] = useState<MachineEntry[]>([]);
+
+  const [loadingMachineExpenses, setLoadingMachineExpenses] = useState(false);
+
+  const [editingMachineExpenseId, setEditingMachineExpenseId] = useState<string | null>(null);
+
+  const [editingMachineExpenseAmount, setEditingMachineExpenseAmount] = useState("");
+
+  const [editingMachineExpenseNote, setEditingMachineExpenseNote] = useState("");
+  const [savingMachineExpenseEdit, setSavingMachineExpenseEdit] = useState(false);
+
+  const [deletingMachineExpenseId, setDeletingMachineExpenseId] = useState<string | null>(null);
 
   const [floatAmount, setFloatAmount] = useState("");
 
@@ -7466,6 +7488,63 @@ export default function MachinesPage() {
     load();
 
 
+  };
+
+  const loadMachineExpenses = useCallback(async () => {
+    setLoadingMachineExpenses(true);
+    let query = sb
+      .from("machine_entries")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .eq("type", "expense")
+      .order("created_at", { ascending: false });
+    if (!isOwner && barSessionStart) {
+      query = query.gte("created_at", barSessionStart);
+    }
+    if (isCashier) {
+      query = query.eq("cashier_id", profile.id);
+    }
+    const { data } = await query;
+    setMachineExpenses((data ?? []) as MachineEntry[]);
+    setLoadingMachineExpenses(false);
+  }, [ownerId, isOwner, isCashier, profile!.id, barSessionStart]);
+
+  const startEditMachineExpense = (e: MachineEntry) => {
+    setEditingMachineExpenseId(e.id);
+    setEditingMachineExpenseAmount(String(e.amount));
+    setEditingMachineExpenseNote(e.note ?? "");
+  };
+
+  const handleSaveMachineExpenseEdit = async (e: MachineEntry) => {
+    const newAmount = parseFloat(editingMachineExpenseAmount);
+    if (isNaN(newAmount) || newAmount < 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    setSavingMachineExpenseEdit(true);
+    const { error } = await sb
+      .from("machine_entries")
+      .update({ amount: newAmount, note: editingMachineExpenseNote.trim() || null })
+      .eq("id", e.id);
+    setSavingMachineExpenseEdit(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Expense updated");
+    setEditingMachineExpenseId(null);
+    loadMachineExpenses();
+    load();
+  };
+
+  const handleDeleteMachineExpense = async (e: MachineEntry) => {
+    setDeletingMachineExpenseId(e.id);
+    const { error } = await sb
+      .from("machine_entries")
+      .delete()
+      .eq("id", e.id);
+    setDeletingMachineExpenseId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Expense deleted and float refunded");
+    loadMachineExpenses();
+    load();
   };
 
 
@@ -8278,6 +8357,7 @@ export default function MachinesPage() {
 
               onAddExpense={() => { setShowAddMachineExpense(true); setExpenseAmount(""); setExpenseNote(""); }}
 
+              onShowExpenseHistory={() => { setShowMachineExpenseHistory(true); loadMachineExpenses(); }}
 
               onDeleteMachine={(id) => {
 
@@ -8936,6 +9016,112 @@ export default function MachinesPage() {
 
       )}
 
+      {/* Machine Expense History modal */}
+      {showMachineExpenseHistory && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-t-3xl pb-8 pt-4 px-4 space-y-3 max-h-[80vh] flex flex-col"
+            style={{ background: "oklch(0.13 0.03 60)", border: "1px solid oklch(0.3 0.08 60)" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-black" style={{ color: "#f87171" }}>Expense History</p>
+              <button onClick={() => setShowMachineExpenseHistory(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-white/10 active:opacity-70">
+                <X className="h-4 w-4 text-white" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2" style={{ scrollbarWidth: "thin" }}>
+              {loadingMachineExpenses ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />
+                  ))}
+                </div>
+              ) : machineExpenses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No expenses recorded yet.
+                </div>
+              ) : (
+                machineExpenses.map((e, i) => {
+                  const isLast = i === 0;
+                  const isEditing = editingMachineExpenseId === e.id;
+                  return (
+                    <div key={e.id} className="rounded-xl border border-border/40 overflow-hidden"
+                      style={{ background: "var(--gradient-card)" }}>
+                      {isEditing ? (
+                        <div className="p-3 space-y-2">
+                          <input
+                            type="number"
+                            value={editingMachineExpenseAmount}
+                            onChange={(ev) => setEditingMachineExpenseAmount(ev.target.value)}
+                            className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-black outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Amount"
+                          />
+                          <input
+                            type="text"
+                            value={editingMachineExpenseNote}
+                            onChange={(ev) => setEditingMachineExpenseNote(ev.target.value)}
+                            className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Note"
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditingMachineExpenseId(null)}
+                              className="flex-1 h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">
+                              Cancel
+                            </button>
+                            <button onClick={() => handleSaveMachineExpenseEdit(e)}
+                              disabled={savingMachineExpenseEdit}
+                              className="flex-1 h-9 rounded-xl font-black text-xs text-primary-foreground transition active:scale-95 disabled:opacity-50"
+                              style={{ background: "var(--gradient-hero)" }}>
+                              {savingMachineExpenseEdit ? "Saving…" : "Save"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(e.created_at).toLocaleString("en-GB", {
+                                timeZone: "America/Port_of_Spain",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </p>
+                            <p className="text-sm font-bold mt-0.5">
+                              {e.note || "Expense"}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="font-black text-sm text-red-400">
+                              -${Number(e.amount).toFixed(2)}
+                            </span>
+                            {isLast && barIsOpenMachines && (
+                              <div className="flex gap-1 mt-0.5">
+                                <button onClick={() => startEditMachineExpense(e)}
+                                  className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                                  style={{ background: "rgba(255,255,255,0.08)" }}>
+                                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                                <button onClick={() => handleDeleteMachineExpense(e)}
+                                  className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                                  style={{ background: "rgba(255,255,255,0.08)" }}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Set Alerts modal */}
 

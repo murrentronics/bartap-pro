@@ -859,13 +859,12 @@ function DashboardTab({
       .from("owner_expenses")
       .select("*")
       .eq("owner_id", ownerId)
-      .ilike("description", `%[Manager: ${managerName}]%`)
       .order("created_at", { ascending: false });
     if (barSessionStart) query = query.gte("created_at", barSessionStart);
     const { data } = await query;
     setExpenses((data ?? []) as Expense[]);
     setLoading(false);
-  }, [ownerId, managerName, barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ownerId, barSessionStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadExpenses();
@@ -1640,6 +1639,9 @@ function DashboardTab({
                 .filter((l) => l && l !== "Non-Stock Expense")
                 .map((l) => l.trim());
               const isEditing = editingId === e.id;
+              const cashierMatch = (e.description ?? "").match(/\[Cashier:\s*([^\]]+)\]/);
+              const managerMatch = (e.description ?? "").match(/\[Manager:\s*([^\]]+)\]/);
+              const who = cashierMatch ? cashierMatch[1] : managerMatch ? managerMatch[1] : null;
               return (
                 <div key={e.id} className="px-4 py-3 space-y-2">
                   {isEditing ? (
@@ -1752,6 +1754,11 @@ function DashboardTab({
                         <TrendingDown className="h-3.5 w-3.5 text-red-400" />
                       </div>
                       <div className="flex-1 min-w-0">
+                        {who && (
+                          <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-0.5">
+                            {who}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {new Date(e.created_at).toLocaleString("en-GB", {
                             timeZone: "America/Port_of_Spain",

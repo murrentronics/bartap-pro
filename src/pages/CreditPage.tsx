@@ -714,16 +714,24 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Record Payment</p>
                 <div className="flex gap-2">
                   {/* Tappable amount display — opens numpad */}
-                  <button
-                    onClick={() => setPadOpen((o) => !o)}
-                    className="flex items-center flex-[2] h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left"
-                  >
-                    <span className="text-base font-bold text-muted-foreground">$</span>
-                    <span className={`text-xl font-black flex-1 ${payAmount ? "text-foreground" : "text-muted-foreground"}`}>
-                      {payAmount || `0.00`}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">max ${Number(a.balance_owed).toFixed(2)}</span>
-                  </button>
+                 <div className="flex items-center flex-[2] h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left">
+                   <span className="text-base font-bold text-muted-foreground">$</span>
+                   <input
+                     type="text"
+                     inputMode="decimal"
+                     value={payAmount}
+                     onChange={(e) => {
+                       const val = e.target.value;
+                       if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                         setPayAmount(val);
+                       }
+                     }}
+                     onFocus={() => setPadOpen(true)}
+                     placeholder="0.00"
+                     className="flex-1 bg-transparent outline-none text-xl font-black"
+                   />
+                   <span className="text-[10px] text-muted-foreground">max ${Number(a.balance_owed).toFixed(2)}</span>
+                 </div>
                   <Button
                     className="h-14 px-6 font-black text-base shrink-0 rounded-xl"
                     disabled={paying || !payAmount}
@@ -1148,70 +1156,78 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
         </div>
       )}
 
-      <form onSubmit={submit} className="space-y-3">
-        {/* Full Name */}
-        <div>
-          <Label>Full Name *</Label>
-          <button type="button" onClick={() => { setDone(false); toggle("name"); }}
-            className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-            style={{ background: "#ffffff" }}>
-            <span className={`text-sm font-black ${name ? "text-black" : "text-gray-400"}`}>
-              {name || "e.g. John Smith"}
-            </span>
-          </button>
-          {activeField === "name" && <AlphaKeyboard value={name} onChange={setName} onDone={() => setActiveField(null)} />}
-        </div>
+       <form onSubmit={submit} className="space-y-3">
+         {/* Full Name */}
+         <div>
+           <Label>Full Name *</Label>
+           <input
+             type="text"
+             value={name}
+             onChange={(e) => { setDone(false); setName(e.target.value); }}
+             onFocus={() => setActiveField("name")}
+             placeholder="e.g. John Smith"
+             className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+             style={{ background: "#ffffff" }}
+           />
+           {activeField === "name" && <AlphaKeyboard value={name} onChange={setName} onDone={() => setActiveField(null)} />}
+         </div>
 
-        {/* ID Type */}
-        <div>
-          <Label htmlFor="credit-idtype">ID Type</Label>
-          <select id="credit-idtype" value={idType}
-            onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
-            className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
-            style={{ background: "#ffffff", color: "#000000" }}>
-            <option value="drivers_permit">Driver's Permit</option>
-            <option value="national_id">National ID</option>
-          </select>
-        </div>
+         {/* ID Type */}
+         <div>
+           <Label htmlFor="credit-idtype">ID Type</Label>
+           <select id="credit-idtype" value={idType}
+             onChange={(e) => setIdType(e.target.value as "drivers_permit" | "national_id")}
+             className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+             style={{ background: "#ffffff", color: "#000000" }}>
+             <option value="drivers_permit">Driver's Permit</option>
+             <option value="national_id">National ID</option>
+           </select>
+         </div>
 
-        {/* ID Number */}
-        <div>
-          <Label>ID Number</Label>
-          <button type="button" onClick={() => toggle("idNumber")}
-            className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-            style={{ background: "#ffffff" }}>
-            <span className={`text-sm font-black ${idNumber ? "text-black" : "text-gray-400"}`}>
-              {idNumber || "e.g. 00000000"}
-            </span>
-          </button>
-          {activeField === "idNumber" && (
-            <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
-          )}
-        </div>
+         {/* ID Number */}
+         <div>
+           <Label>ID Number</Label>
+           <input
+             type="text"
+             inputMode="numeric"
+             value={idNumber}
+             onChange={(e) => setIdNumber(e.target.value.replace(/[^0-9]/g, ""))}
+             onFocus={() => setActiveField("idNumber")}
+             placeholder="e.g. 00000000"
+             className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+             style={{ background: "#ffffff" }}
+           />
+           {activeField === "idNumber" && (
+             <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+           )}
+         </div>
 
-        {/* Contact Number */}
-        <div>
-          <Label>Contact Number</Label>
-          <div className="flex items-center mt-1">
-            <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-            <button type="button" onClick={() => toggle("contact")}
-              className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-              style={{ background: "#ffffff" }}>
-              <span className={`text-sm font-black ${contact ? "text-black" : "text-gray-400"}`}>
-                {contact || "XXX-XXXX"}
-              </span>
-            </button>
-          </div>
-          {activeField === "contact" && (
-            <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
-          )}
-        </div>
+         {/* Contact Number */}
+         <div>
+           <Label>Contact Number</Label>
+           <div className="flex items-center mt-1">
+             <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+             <input
+               type="text"
+               inputMode="tel"
+               value={contact}
+               onChange={(e) => setContact(e.target.value.replace(/[^0-9-]/g, ""))}
+               onFocus={() => setActiveField("contact")}
+               placeholder="XXX-XXXX"
+               className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+               style={{ background: "#ffffff" }}
+             />
+           </div>
+           {activeField === "contact" && (
+             <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+           )}
+         </div>
 
-        <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)} className="w-full h-12 font-black text-base"
-          style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
-          {busy ? "Creating…" : "Create Account"}
-        </Button>
-      </form>
+         <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)} className="w-full h-12 font-black text-base"
+           style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
+           {busy ? "Creating…" : "Create Account"}
+         </Button>
+       </form>
     </div>
   );
 }
@@ -1378,11 +1394,15 @@ function EditCustomerModal({ account, onClose, onSaved }: {
           <form onSubmit={submit} className="space-y-3">
             <div>
               <Label>Full Name *</Label>
-              <button type="button" onClick={() => setActiveField(f => f === "name" ? null : "name")}
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onFocus={() => setActiveField("name")}
+                placeholder="e.g. John Smith"
                 className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-                style={{ background: "#ffffff" }}>
-                <span className={`text-sm font-black ${name ? "text-black" : "text-gray-400"}`}>{name || "e.g. John Smith"}</span>
-              </button>
+                style={{ background: "#ffffff" }}
+              />
               {activeField === "name" && <AlphaKeyboard value={name} onChange={setName} onDone={() => setActiveField(null)} />}
             </div>
             <div>
@@ -1396,22 +1416,32 @@ function EditCustomerModal({ account, onClose, onSaved }: {
             </div>
             <div>
               <Label>ID Number</Label>
-              <button type="button" onClick={() => setActiveField(f => f === "idNumber" ? null : "idNumber")}
+              <input
+                type="text"
+                inputMode="numeric"
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value.replace(/[^0-9]/g, ""))}
+                onFocus={() => setActiveField("idNumber")}
+                placeholder="e.g. 00000000"
                 className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-                style={{ background: "#ffffff" }}>
-                <span className={`text-sm font-black ${idNumber ? "text-black" : "text-gray-400"}`}>{idNumber || "e.g. 00000000"}</span>
-              </button>
+                style={{ background: "#ffffff" }}
+              />
               {activeField === "idNumber" && <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />}
             </div>
             <div>
               <Label>Contact Number</Label>
               <div className="flex items-center mt-1">
                 <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-                <button type="button" onClick={() => setActiveField(f => f === "contact" ? null : "contact")}
+                <input
+                  type="text"
+                  inputMode="tel"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value.replace(/[^0-9-]/g, ""))}
+                  onFocus={() => setActiveField("contact")}
+                  placeholder="XXX-XXXX"
                   className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-                  style={{ background: "#ffffff" }}>
-                  <span className={`text-sm font-black ${contact ? "text-black" : "text-gray-400"}`}>{contact || "XXX-XXXX"}</span>
-                </button>
+                  style={{ background: "#ffffff" }}
+                />
               </div>
               {activeField === "contact" && <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />}
             </div>

@@ -47,6 +47,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
@@ -407,6 +413,10 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
   // Clock tab state
   const [selectedEmp, setSelectedEmp] = useState<{ id: string; username: string } | null>(null);
   const [clockBusy, setClockBusy] = useState(false);
+  const [showSetClockOut, setShowSetClockOut] = useState(false);
+  const [setClockOutDate, setSetClockOutDate] = useState("");
+  const [setClockOutTime, setSetClockOutTime] = useState("");
+  const [setClockOutPeriod, setSetClockOutPeriod] = useState<"AM" | "PM">("PM");
 
   // Timesheets tab state
   const [tsSelectedDate, setTsSelectedDate] = useState<string | null>(null);
@@ -503,6 +513,39 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
     toast.success(`${openCard.employee_name} clocked out`);
     loadCards();
   };
+
+  const handleSetClockOut = async () => {
+    if (!openCard || !setClockOutDate || !setClockOutTime) return;
+    setClockBusy(true);
+    let hours = parseInt(setClockOutTime.split(":")[0] || "0", 10);
+    const mins = parseInt(setClockOutTime.split(":")[1] || "0", 10);
+    if (setClockOutPeriod === "AM" && hours === 12) hours = 0;
+    if (setClockOutPeriod === "PM" && hours < 12) hours += 12;
+    const localIso = `${setClockOutDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+    const { error } = await sb
+      .from("time_cards")
+      .update({ clocked_out_at: localIso })
+      .eq("id", openCard.id);
+    setClockBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${openCard.employee_name} clocked out at ${formatClockOutTime(localIso)}`);
+    setShowSetClockOut(false);
+    setSetClockOutDate("");
+    setSetClockOutTime("");
+    setSetClockOutPeriod("PM");
+    loadCards();
+  };
+
+  function formatClockOutTime(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", hour12: true,
+    });
+  }
 
   function roleLabel(emp: { role: string; job_title?: string }) {
     if (emp.role === "manager") return "Manager";
@@ -686,57 +729,65 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
                   </button>
                   {isSel && (
                     <div className="grid grid-cols-2 gap-3 pt-2 pb-4">
-                      <button
-                        onClick={handleClockIn}
-                        disabled={isCIn || clockBusy || !barIsOpen}
-                        className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={
-                          !isCIn && barIsOpen
-                            ? {
-                                background: "rgba(134,239,172,0.15)",
-                                border: "1.5px solid #86efac",
-                                color: "#86efac",
-                              }
-                            : {
-                                background: "var(--gradient-card)",
-                                border: "1.5px solid var(--border)",
-                                color: "var(--muted-foreground)",
-                              }
-                        }
-                      >
-                        {clockBusy && !isCIn ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <LogIn className="h-4 w-4" />
-                        )}{" "}
-                        Clock In
-                      </button>
-                      <button
-                        onClick={handleClockOut}
-                        disabled={!isCIn || clockBusy}
-                        className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={
-                          isCIn
-                            ? {
-                                background: "rgba(239,68,68,0.12)",
-                                border: "1.5px solid #f87171",
-                                color: "#f87171",
-                              }
-                            : {
-                                background: "var(--gradient-card)",
-                                border: "1.5px solid var(--border)",
-                                color: "var(--muted-foreground)",
-                              }
-                        }
-                      >
-                        {clockBusy && isCIn ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <LogOut className="h-4 w-4" />
-                        )}{" "}
-                        Clock Out
-                      </button>
-                    </div>
+                       <button
+                         onClick={handleClockIn}
+                         disabled={isCIn || clockBusy || !barIsOpen}
+                         className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                         style={
+                           !isCIn && barIsOpen
+                             ? {
+                                 background: "rgba(134,239,172,0.15)",
+                                 border: "1.5px solid #86efac",
+                                 color: "#86efac",
+                               }
+                             : {
+                                 background: "var(--gradient-card)",
+                                 border: "1.5px solid var(--border)",
+                                 color: "var(--muted-foreground)",
+                               }
+                         }
+                       >
+                         {clockBusy && !isCIn ? (
+                           <Loader2 className="h-4 w-4 animate-spin" />
+                         ) : (
+                           <LogIn className="h-4 w-4" />
+                         )}{" "}
+                         Clock In
+                       </button>
+                       <div className="flex h-14 rounded-2xl overflow-hidden" style={{
+                         border: isCIn ? "1.5px solid #f87171" : "1.5px solid var(--border)",
+                       }}>
+                         <button
+                           onClick={handleClockOut}
+                           disabled={!isCIn || clockBusy}
+                           className="flex-1 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                           style={{
+                             background: isCIn ? "rgba(239,68,68,0.12)" : "var(--gradient-card)",
+                             color: isCIn ? "#f87171" : "var(--muted-foreground)",
+                           }}
+                         >
+                           {clockBusy && isCIn ? (
+                             <Loader2 className="h-4 w-4 animate-spin" />
+                           ) : (
+                             <LogOut className="h-4 w-4" />
+                           )}{" "}
+                           <span className="text-sm font-black">Clock Out</span>
+                         </button>
+                         <div className="w-px" style={{ background: isCIn ? "rgba(248,113,113,0.4)" : "var(--border)" }} />
+                         <button
+                           onClick={() => setShowSetClockOut(true)}
+                           disabled={!isCIn || clockBusy}
+                           className="flex-1 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                           style={{
+                             background: isCIn ? "rgba(239,68,68,0.12)" : "var(--gradient-card)",
+                             color: isCIn ? "#f87171" : "var(--muted-foreground)",
+                           }}
+                         >
+                           <CalendarDays className="h-4 w-4" />
+                           <span className="text-sm font-black">Set Clock Out</span>
+                         </button>
+                       </div>
+                     </div>
                   )}
                 </div>
               );
@@ -788,9 +839,64 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
                 ))}
               </div>
             );
-          })()}
+          }          )()}
         </div>
       )}
+
+      {/* Set Clock Out Dialog */}
+      <Dialog open={showSetClockOut} onOpenChange={setShowSetClockOut}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Clock Out Time</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Date</Label>
+              <input
+                type="date"
+                value={setClockOutDate}
+                onChange={(e) => setSetClockOutDate(e.target.value)}
+                className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm font-black mt-1"
+              />
+            </div>
+            <div>
+              <Label>Time</Label>
+              <div className="flex gap-2 mt-1">
+                <select
+                  value={setClockOutTime}
+                  onChange={(e) => setSetClockOutTime(e.target.value)}
+                  className="flex-1 h-11 rounded-xl border border-border bg-background px-3 text-sm font-black"
+                >
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const h = i + 1;
+                    return (
+                      <option key={h} value={String(h).padStart(2, "0")}>
+                        {String(h).padStart(2, "0")}
+                      </option>
+                    );
+                  })}
+                </select>
+                <select
+                  value={setClockOutPeriod}
+                  onChange={(e) => setSetClockOutPeriod(e.target.value as "AM" | "PM")}
+                  className="w-20 h-11 rounded-xl border border-border bg-background px-3 text-sm font-black"
+                >
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </div>
+            <Button
+              onClick={handleSetClockOut}
+              disabled={clockBusy || !setClockOutDate || !setClockOutTime}
+              className="w-full h-12 font-black text-base"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              {clockBusy ? "Saving…" : "Set Clockout"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ══ TIMESHEETS TAB ══ */}
       {hoursSubTab === "timesheets" && (
@@ -2831,6 +2937,27 @@ export default function CashiersPage() {
     setList(((data ?? []) as Cashier[]).sort((a, b) => a.username.localeCompare(b.username)));
   };
 
+  const copyStockCountTables = async (targetProfileId: string) => {
+    if (!profile?.id) return;
+    const ownerIdForQuery = effectiveOwnerId(profile.id);
+    const { data: ownerTables } = await (supabase as any)
+      .from("stock_count_tables")
+      .select("*")
+      .eq("profile_id", profile.id);
+    if (!ownerTables || ownerTables.length === 0) return;
+    const copies = ownerTables.map((t: any) => ({
+      id: crypto.randomUUID(),
+      profile_id: targetProfileId,
+      owner_id: ownerIdForQuery,
+      name: t.name,
+      columns: t.columns,
+      rows: t.rows,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+    await (supabase as any).from("stock_count_tables").insert(copies);
+  };
+
   useEffect(() => {
     load();
   }, [profile?.id]);
@@ -2893,12 +3020,15 @@ export default function CashiersPage() {
     setUsernameError(null);
     setBusy(true);
     try {
-      await create({
+      const result = await create({
         username: u,
         password: p,
         role: selectedRole === "manager" ? "manager" : "cashier",
         ...(activeBarId ? { barOwnerId: activeBarId } : {}),
       });
+      if (result.id) {
+        await copyStockCountTables(result.id);
+      }
       setU("");
       setP("");
       setSelectedRole(null);

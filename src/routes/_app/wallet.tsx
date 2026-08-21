@@ -4572,65 +4572,86 @@ function OwnerWallet({
   const balance = Number(profile.wallet_balance);
 
   // ── Cashier Float ───────────────────────────────────────────────────────────
-  const [cashierFloat, setCashierFloat] = useState<number>(Number(profile.cashier_float ?? 0));
-  const [floatSetAt, setFloatSetAt] = useState<string | null>(
-    (profile as { cashier_float_set_at?: string | null }).cashier_float_set_at ?? null,
-  );
+  // cashier_float in profiles IS the live remaining balance
+  const [floatRemaining, setFloatRemaining] = useState<number | null>(null);
+  const [floatSet, setFloatSet] = useState<number | null>(null);
+  const [floatSetAt, setFloatSetAt] = useState<string | null>(null);
   const [showSetFloat, setShowSetFloat] = useState(false);
   const [floatInput, setFloatInput] = useState("");
   const [savingFloat, setSavingFloat] = useState(false);
 
-  // Keep local float in sync when profile refreshes
-  useEffect(() => {
-    setCashierFloat(Number(profile.cashier_float ?? 0));
-    setFloatSetAt(
-      (profile as { cashier_float_set_at?: string | null }).cashier_float_set_at ?? null,
-    );
-  }, [
-    profile.cashier_float,
-    (profile as { cashier_float_set_at?: string | null }).cashier_float_set_at,
-  ]);
-
-  // ── Float used: sum of cashier_expense txs AFTER the last float reset ──────
-  const [floatUsed, setFloatUsed] = useState<number>(0);
-
-  const loadFloatUsed = useCallback(async () => {
-    // Get all cashier profiles under this owner
-    const { data: ownerRow } = await sb
+  // Load original float (from latest sub-session) + live remaining (cashier_float)
+  const loadFloat = useCallback(async () => {
+    const { data: ownerData } = await sb
       .from("profiles")
-      .select("cashier_float_set_at")
+      .select("cashier_float, cashier_float_set_at")
       .eq("id", profile.id)
       .single();
-    const since: string | null = ownerRow?.cashier_float_set_at ?? null;
 
-    const { data: cashiers } = await sb.from("profiles").select("id").eq("parent_id", profile.id);
-    if (!cashiers || cashiers.length === 0) {
-      setFloatUsed(0);
-      return;
+    const remaining = Number(ownerData?.cashier_float ?? 0);
+    const since: string | null = ownerData?.cashier_float_set_at ?? null;
+
+    setFloatRemaining(remaining > 0 ? remaining : null);
+    setFloatSetAt(since);
+
+    let original = remaining;
+    if (since) {
+      const { data: lastSubSession } = await sb
+        .from("bar_sub_sessions")
+        .select("cashier_float")
+        .eq("owner_id", profile.id)
+        .order("opened_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      original = Number(lastSubSession?.cashier_float ?? remaining);
     }
-    const cashierIds = cashiers.map((c: { id: string }) => c.id);
-
-    let query = sb
-      .from("wallet_transactions")
-      .select("amount")
-      .in("profile_id", cashierIds)
-      .eq("type", "cashier_expense");
-    // Only count expenses recorded after the last float reset
-    if (since) query = query.gte("created_at", since);
-
-    const { data: expTxs } = await query;
-    const used = (expTxs ?? []).reduce(
-      (s: number, tx: { amount: number }) => s + Number(tx.amount),
-      0,
-    );
-    setFloatUsed(used);
+    setFloatSet(original > 0 ? original : null);
   }, [profile.id]);
 
   useEffect(() => {
-    loadFloatUsed();
-  }, [loadFloatUsed]);
+    loadFloat();
+  }, [loadFloat]);
 
-  const floatRemaining = cashierFloat > 0 ? Math.max(0, cashierFloat - floatUsed) : 0;
+  // Stable ref for realtime callbacks
+  const loadFloatRef = useRef(loadFloat);
+  useEffect(() => {
+    loadFloatRef.current = loadFloat;
+  }, [loadFloat]);
+
+  // Realtime — watch owner profile for float changes + cashier expenses
+  useEffect(() => {
+    const ch = supabase
+      .channel(`owner-float-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${profile.id}` },
+        () => loadFloatRef.current(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "wallet_transactions",
+          filter: `profile_id=in.(${profile.id},${profile.id})`,
+        },
+        () => loadFloatRef.current(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "owner_expenses",
+          filter: `owner_id=eq.${profile.id}`,
+        },
+        () => loadFloatRef.current(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [profile.id]);
 
   // Session mode for float update — set before opening numpad
   const [floatSessionMode, setFloatSessionMode] = useState<"same" | "new">("new");
@@ -4647,7 +4668,8 @@ function OwnerWallet({
     if (floatSessionMode === "same") {
       // Same Session — add the entered amount to the current float total
       // Does NOT reset float_set_at so the used calculation window stays the same
-      const newTotal = cashierFloat + val;
+      const currentRemaining = floatRemaining ?? 0;
+      const newTotal = currentRemaining + val;
       const { error } = await sb
         .from("profiles")
         .update({ cashier_float: newTotal })
@@ -4657,7 +4679,7 @@ function OwnerWallet({
         toast.error(error.message);
         return;
       }
-      setCashierFloat(newTotal);
+      setFloatRemaining(newTotal);
       setFloatInput("");
       setShowSetFloat(false);
       toast.success(`Float topped up by $${val.toFixed(2)} — total now $${newTotal.toFixed(2)}`);
@@ -4703,9 +4725,9 @@ function OwnerWallet({
         toast.error(error.message);
         return;
       }
-      setCashierFloat(val);
+      setFloatRemaining(val > 0 ? val : null);
+      setFloatSet(val > 0 ? val : null);
       setFloatSetAt(now);
-      setFloatUsed(0);
       setFloatInput("");
       setShowSetFloat(false);
       toast.success(
@@ -5100,11 +5122,11 @@ function OwnerWallet({
     loadSummaryRef.current = loadSummary;
   }, [loadSummary]);
 
-  // Stable ref for loadFloatUsed
-  const loadFloatUsedRef = useRef(loadFloatUsed);
+  // Stable ref for loadFloat
+  const ownerLoadFloatRef = useRef(loadFloat);
   useEffect(() => {
-    loadFloatUsedRef.current = loadFloatUsed;
-  }, [loadFloatUsed]);
+    ownerLoadFloatRef.current = loadFloat;
+  }, [loadFloat]);
 
   // Realtime — one stable channel, never torn down on data refresh
   useEffect(() => {
@@ -5179,7 +5201,7 @@ function OwnerWallet({
           table: "wallet_transactions",
           filter: `profile_id=eq.${profile.id}`,
         },
-        () => loadFloatUsedRef.current(),
+        () => ownerLoadFloatRef.current(),
       )
       .subscribe();
     return () => {
@@ -5229,19 +5251,19 @@ function OwnerWallet({
                 border: "1.5px solid oklch(0.35 0.10 60)",
               }}
             >
-              {cashierFloat > 0 ? "Update\nFloat" : "Set\nFloat"}
+              {floatSet !== null ? "Update\nFloat" : "Set\nFloat"}
             </button>
             <div
               className="flex-1 flex flex-col justify-center gap-0.5 rounded-2xl px-4 py-2"
               style={{
                 background: "oklch(0.18 0.02 60)",
                 border:
-                  cashierFloat > 0
+                  floatSet !== null
                     ? "1px solid oklch(0.38 0.12 60)"
                     : "1px solid oklch(0.28 0.04 60)",
               }}
             >
-              {cashierFloat > 0 ? (
+              {floatSet !== null ? (
                 <>
                   <div className="flex items-center justify-between gap-2">
                     <span
@@ -5251,7 +5273,7 @@ function OwnerWallet({
                       {t("established", "Set")}
                     </span>
                     <span className="font-black text-sm sm:text-base" style={{ color: "#fbbf24" }}>
-                      ${fmt(cashierFloat)}
+                      ${fmt(floatSet)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -5263,9 +5285,9 @@ function OwnerWallet({
                     </span>
                     <span
                       className="font-black text-sm sm:text-base"
-                      style={{ color: floatRemaining > 0 ? "#86efac" : "#fca5a5" }}
+                      style={{ color: floatRemaining !== null && floatRemaining > 0 ? "#86efac" : "#fca5a5" }}
                     >
-                      ${fmt(floatRemaining)}
+                      {floatRemaining !== null && floatRemaining > 0 ? `$${fmt(floatRemaining)}` : "—"}
                     </span>
                   </div>
                 </>
@@ -5667,7 +5689,7 @@ function OwnerWallet({
                     className="text-[9px] font-semibold leading-tight"
                     style={{ color: "rgba(255,255,255,0.5)" }}
                   >
-                    {t("stock_value", "Current\nStock Value")}
+                     {t("stock_value", "Projected\nStock Value")}
                   </div>
                   <div className="font-black text-xs" style={{ color: "#86efac" }}>
                     ${fmt(stockResaleValue)}
@@ -5695,7 +5717,7 @@ function OwnerWallet({
                     className="text-[9px] font-semibold leading-tight"
                     style={{ color: "rgba(255,255,255,0.5)" }}
                   >
-                    {t("stock_profit", "Current\nStock Profit")}
+                     {t("stock_profit", "Projected\nStock Profit")}
                   </div>
                   <div
                     className="font-black text-xs"
@@ -5747,7 +5769,7 @@ function OwnerWallet({
           totalIncome={totalIncome}
           onDataChange={() => {
             loadSummary();
-            loadFloatUsed();
+            ownerLoadFloatRef.current();
             refreshProfile();
           }}
           barSessionStart={(profile as any).bar_session_start ?? null}
@@ -5766,7 +5788,7 @@ function OwnerWallet({
       {/* Set / Update Float numpad */}
       {showSetFloat && (
         <NumPad
-          label={cashierFloat > 0 ? "Actualizar Float de Cajero" : "Establecer Float de Cajero"}
+          label={floatSet !== null ? "Update Cashier Float" : "Set Cashier Float"}
           value={floatInput}
           onChange={setFloatInput}
           onCancel={() => {
@@ -5776,10 +5798,10 @@ function OwnerWallet({
           }}
           onDone={handleSetFloat}
           confirmLabel={
-            savingFloat ? "Guardando…" : cashierFloat > 0 ? "Actualizar Float" : "Establecer Float"
+            savingFloat ? "Saving…" : floatSet !== null ? "Update Float" : "Set Float"
           }
-          sessionType={cashierFloat > 0 ? floatSessionMode : undefined}
-          onSessionChange={cashierFloat > 0 ? setFloatSessionMode : undefined}
+          sessionType={floatSet !== null ? floatSessionMode : undefined}
+          onSessionChange={floatSet !== null ? setFloatSessionMode : undefined}
         />
       )}
     </div>

@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, Plus, Trash2, X, Loader2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/stock-count")({
   component: StockCountPage,
@@ -23,8 +24,88 @@ function StockCountPage() {
   const [newTableName, setNewTableName] = useState("");
   const [activeCell, setActiveCell] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copying, setCopying] = useState(false);
 
   const ownerId = profile?.parent_id ?? profile?.id ?? "";
+
+  const copyToStaff = async () => {
+    if (!profile?.id || !ownerId) return;
+    setCopying(true);
+    try {
+      // Get owner's tables
+      const { data: ownerTables, error: ownerError } = await (supabase as any)
+        .from("stock_count_tables")
+        .select("*")
+        .eq("profile_id", profile.id);
+
+      if (ownerError) throw ownerError;
+      if (!ownerTables || ownerTables.length === 0) {
+        toast.error("You have no stock count tables to copy");
+        setCopying(false);
+        return;
+      }
+
+      // Get all cashiers/managers under this owner
+      const { data: staff, error: staffError } = await (supabase as any)
+        .from("profiles")
+        .select("id")
+        .eq("parent_id", ownerId)
+        .in("role", ["cashier", "manager"]);
+
+      if (staffError) throw staffError;
+      if (!staff || staff.length === 0) {
+        toast.error("No cashiers or managers found to copy to");
+        setCopying(false);
+        return;
+      }
+
+      // Get staff who already have tables
+      const staffIds = staff.map((s: any) => s.id);
+      const { data: existingTables, error: existingError } = await (supabase as any)
+        .from("stock_count_tables")
+        .select("profile_id")
+        .in("profile_id", staffIds);
+
+      if (existingError) throw existingError;
+      const staffWithTables = new Set((existingTables ?? []).map((t: any) => t.profile_id));
+
+      // Filter to only staff without tables
+      const staffWithoutTables = staff.filter((s: any) => !staffWithTables.has(s.id));
+      if (staffWithoutTables.length === 0) {
+        toast.success("All staff already have stock count tables");
+        setCopying(false);
+        return;
+      }
+
+      // Copy tables to each staff member without tables
+      const copies = [];
+      for (const staffMember of staffWithoutTables) {
+        for (const table of ownerTables) {
+          copies.push({
+            id: crypto.randomUUID(),
+            profile_id: staffMember.id,
+            owner_id: ownerId,
+            name: table.name,
+            columns: table.columns,
+            rows: table.rows,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      const { error: insertError } = await (supabase as any)
+        .from("stock_count_tables")
+        .insert(copies);
+
+      if (insertError) throw insertError;
+      toast.success(`Copied ${ownerTables.length} table(s) to ${staffWithoutTables.length} staff member(s)`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to copy tables");
+    } finally {
+      setCopying(false);
+    }
+  };
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -158,13 +239,13 @@ function StockCountPage() {
   };
 
   const isCashier = profile?.role === "cashier";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
+  const isOwner = profile?.role === "owner";
 
-  if (!isCashier && !isManager) {
+  if (!isCashier && !isManager && !isOwner) {
     return (
       <div className="text-center text-muted-foreground py-20">
-        Stock Count is available for cashiers and managers.
+        Stock Count is available for owners, managers and cashiers.
       </div>
     );
   }
@@ -180,10 +261,25 @@ function StockCountPage() {
   return (
     <div className="space-y-5">
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
-        <h1 className="text-xl font-black leading-tight">Stock Count</h1>
-        <p className="text-xs text-muted-foreground">
-          Personal stock count sheets — does not affect system stock
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black leading-tight">Stock Count</h1>
+            <p className="text-xs text-muted-foreground">
+              Personal stock count sheets — does not affect system stock
+            </p>
+          </div>
+          {profile?.role === "owner" && (
+            <button
+              onClick={copyToStaff}
+              disabled={copying}
+              className="h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40"
+              style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+            >
+              {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+              {copying ? "Copying…" : "Copy To Staff"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
