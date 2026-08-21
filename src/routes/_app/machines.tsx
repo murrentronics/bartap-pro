@@ -6796,15 +6796,20 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                   <div>
                     <p className="text-[9px] font-black text-amber-400/70 uppercase tracking-wider mb-1.5">Expense</p>
                     <div className="space-y-1">
-                      {expenseEntries.map((e, i) => (
-                        <div key={e.id} className="flex items-center gap-2">
-                          <span className="text-[9px] font-black text-white/30 w-4 shrink-0">{i + 1}</span>
-                          <span className="text-xs text-white/60 truncate flex-1">
-                            {e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                          </span>
-                          <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
-                        </div>
-                      ))}
+                       {expenseEntries.map((e, i) => (
+                         <div key={e.id} className="flex items-start gap-2">
+                           <span className="text-[9px] font-black text-white/30 w-4 shrink-0 pt-0.5">{i + 1}</span>
+                           <div className="flex-1 min-w-0">
+                             <span className="text-xs text-white/60 block truncate">
+                               {e.note || "Expense"}
+                             </span>
+                             <span className="text-[9px] text-muted-foreground block">
+                               {new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                             </span>
+                           </div>
+                           <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
+                         </div>
+                       ))}
                     </div>
                   </div>
                 )}
@@ -7228,6 +7233,34 @@ export default function MachinesPage() {
   const [savingMachineExpenseEdit, setSavingMachineExpenseEdit] = useState(false);
 
   const [deletingMachineExpenseId, setDeletingMachineExpenseId] = useState<string | null>(null);
+
+  const expenseAmountRef = useRef(expenseAmount);
+  expenseAmountRef.current = expenseAmount;
+
+  useEffect(() => {
+    if (!showAddMachineExpense) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        const parts = expenseAmountRef.current.split(".");
+        if (parts[1] !== undefined && parts[1].length >= 2) return;
+        setExpenseAmount((prev) => prev + e.key);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (!expenseAmountRef.current.includes(".")) {
+          setExpenseAmount((prev) => prev + ".");
+        }
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        setExpenseAmount((prev) => prev.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSaveMachineExpense();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAddMachineExpense]);
 
   const [floatAmount, setFloatAmount] = useState("");
 

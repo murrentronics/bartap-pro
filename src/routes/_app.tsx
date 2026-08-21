@@ -96,12 +96,9 @@ function AppLayout() {
   }, [loading, profile, loc.pathname, nav]);
 
   useEffect(() => {
-    const isMgr = profile?.role === "manager" || (profile as any)?.job_title === "manager";
     const isMachinesOnly =
       (profile as any)?.is_machines_account || profile?.plan_type === "machines_only";
-    if (!loading && isMgr && loc.pathname === "/register") {
-      nav({ to: "/products" as "/" });
-    } else if (!loading && isMachinesOnly && loc.pathname === "/register") {
+    if (!loading && isMachinesOnly && loc.pathname === "/register") {
       nav({ to: "/machines" as "/" });
     }
   }, [loading, profile, loc.pathname, nav]);

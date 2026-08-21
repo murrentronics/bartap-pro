@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-8GG21qKo.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-IgbPzm8M.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BpgIZSYS.js");
+          const { PushNotifications } = await import("./index-BFY-X5QP.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-De3KR8q7.css";
+const appCss = "/assets/styles-Bf5UMYR7.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30761,11 +30761,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$3, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$3.displayName;
-const $$splitComponentImporter$3 = () => import("./login-Ttul7NT1.js");
+const $$splitComponentImporter$3 = () => import("./login-BG1ZVc28.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-CNPGbCY-.js");
+const $$splitComponentImporter$2 = () => import("./_app-CXG63UyH.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -33471,8 +33471,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-CentmBTW.js");
-    const { Share } = await import("./index-D9yMDW_8.js");
+    const { Filesystem, Directory } = await import("./index-Bb2msEaa.js");
+    const { Share } = await import("./index-4tmjj_LY.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -33988,7 +33988,7 @@ function StockCheckPage() {
     const key = catFilter ?? "all";
     setPdfBusy(key);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const now = /* @__PURE__ */ new Date();
       const dateStr = now.toLocaleDateString("en-GB");
@@ -34439,7 +34439,7 @@ function StockCheckPage() {
     )
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-BdMYjlds.js");
+const $$splitComponentImporter$1 = () => import("./manager-CONdyZPH.js");
 const Route$3 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -53233,7 +53233,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-BtXrYJ-8.js");
+      const { LocalNotifications } = await import("./index-B9IwFbOh.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -53252,7 +53252,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-BtXrYJ-8.js");
+    const { LocalNotifications } = await import("./index-B9IwFbOh.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -53287,7 +53287,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-BtXrYJ-8.js");
+      const { LocalNotifications } = await import("./index-B9IwFbOh.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -53993,7 +53993,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (logs.length === 0) return;
     setDownloadingMonthKey(monthKey);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const TZ = "America/Port_of_Spain";
       const fmt2 = (n) => n.toFixed(2);
@@ -54430,7 +54430,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -54535,7 +54535,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -56254,7 +56254,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -56702,7 +56702,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DvpTXiPl.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -56963,9 +56963,12 @@ function SummaryTab({ entries, machines, ownerId }) {
         ] }),
         expenseEntries.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[9px] font-black text-amber-400/70 uppercase tracking-wider mb-1.5", children: "Expense" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: expenseEntries.map((e, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-black text-white/30 w-4 shrink-0", children: i + 1 }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-white/60 truncate flex-1", children: e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: expenseEntries.map((e, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] font-black text-white/30 w-4 shrink-0 pt-0.5", children: i + 1 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-white/60 block truncate", children: e.note || "Expense" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[9px] text-muted-foreground block", children: new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" }) })
+            ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-black text-amber-400 shrink-0", children: [
               "$",
               fmtWhole(Number(e.amount))
@@ -57113,6 +57116,32 @@ function MachinesPage() {
   const [editingMachineExpenseNote, setEditingMachineExpenseNote] = reactExports.useState("");
   const [savingMachineExpenseEdit, setSavingMachineExpenseEdit] = reactExports.useState(false);
   const [deletingMachineExpenseId, setDeletingMachineExpenseId] = reactExports.useState(null);
+  const expenseAmountRef = reactExports.useRef(expenseAmount);
+  expenseAmountRef.current = expenseAmount;
+  reactExports.useEffect(() => {
+    if (!showAddMachineExpense) return;
+    const onKey = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        const parts = expenseAmountRef.current.split(".");
+        if (parts[1] !== void 0 && parts[1].length >= 2) return;
+        setExpenseAmount((prev) => prev + e.key);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (!expenseAmountRef.current.includes(".")) {
+          setExpenseAmount((prev) => prev + ".");
+        }
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        setExpenseAmount((prev) => prev.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSaveMachineExpense();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAddMachineExpense]);
   const [floatAmount, setFloatAmount] = reactExports.useState("");
   const [machineFloatMode, setMachineFloatMode] = reactExports.useState("new");
   const [savingFloat, setSavingFloat] = reactExports.useState(false);
@@ -58800,7 +58829,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-BEMKLDLP.js");
+const $$splitComponentImporter = () => import("./credit-BNj1g0b8.js");
 const Route2 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

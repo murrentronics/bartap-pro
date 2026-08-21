@@ -182,15 +182,14 @@ export async function printReceipt(
   const vid = parseInt(readStorage("bartap-receipt-vid") ?? "", 10);
   const pid = parseInt(readStorage("bartap-receipt-pid") ?? "", 10);
 
-  try {
-    if (
-      typeof navigator !== "undefined" &&
-      (navigator as unknown as { serial?: { requestPort?: unknown } }).serial?.requestPort
-    ) {
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (serial?.requestPort) {
+    try {
       return await printViaWebSerial(payload, vid, pid);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { opened: false, method: "none", error: message };
     }
-  } catch {
-    // fall through to browser fallback
   }
 
   return printViaBrowserWindow(fullData, payload);
@@ -253,6 +252,16 @@ async function printViaWebSerial(
   } finally {
     await new Promise((r) => setTimeout(r, 200));
     await port.close().catch(() => undefined);
+  }
+
+  // Persist device info so we can filter the picker next time
+  try {
+    const info = port.getInfo();
+    if (info.usbVendorId != null) {
+      localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
+    }
+  } catch {
+    /* ignore */
   }
 
   return { opened: true, method: "webserial" };

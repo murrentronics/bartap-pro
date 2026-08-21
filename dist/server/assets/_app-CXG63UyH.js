@@ -1,6 +1,6 @@
-import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-8GG21qKo.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, q as Link, B as Button, t as toast } from "./router-CZOM4-ob.js";
-import { T as TrendingDown, W as Wallet } from "./wallet-iUU-fOjA.js";
+import { O as useRouter, r as reactExports, W as jsxRuntimeExports, a1 as Outlet } from "./server-IgbPzm8M.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, j as useNavigate, s as supabase, o as LoaderCircle, W as Wine, X, p as ClipboardList, G as Gamepad2, q as Link, B as Button, t as toast } from "./router-MRDiWsF1.js";
+import { T as TrendingDown, W as Wallet } from "./wallet-DXY7G7aE.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -136,13 +136,8 @@ function AppLayout() {
     }
   }, [loading, profile, loc.pathname, nav]);
   reactExports.useEffect(() => {
-    const isMgr = profile?.role === "manager" || profile?.job_title === "manager";
     const isMachinesOnly = profile?.is_machines_account || profile?.plan_type === "machines_only";
-    if (!loading && isMgr && loc.pathname === "/register") {
-      nav({
-        to: "/products"
-      });
-    } else if (!loading && isMachinesOnly && loc.pathname === "/register") {
+    if (!loading && isMachinesOnly && loc.pathname === "/register") {
       nav({
         to: "/machines"
       });

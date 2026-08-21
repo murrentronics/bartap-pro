@@ -17,7 +17,7 @@ type OrderItem = { id?: string; name: string; qty: number; price: number; units_
 type Order = { id: string; total: number; paid: number; change_given: number; items: OrderItem[]; created_at: string };
 type Expense = { id: string; amount: number; description: string | null; expense_date: string; created_at: string };
 type ProductCost = { id: string; name: string; cost_price: number; units_per_item: number; category: string | null };
-type FilterType = "session" | "week" | "month" | "year" | "period";
+type FilterType = "day" | "week" | "month" | "year" | "period";
 
 // Parent bar session (Open Bar → Close Bar)
 type BarSession = { id: string; opened_at: string; closed_at: string | null };
@@ -40,7 +40,7 @@ function isoDateTT(iso: string) { return new Date(iso).toLocaleDateString("en-CA
 
 function filterLabel(filter: FilterType, from: string, to: string): string {
   const f2 = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  if (filter === "session") return f2(from);
+  if (filter === "day") return f2(from);
   if (filter === "week")    return `${f2(from)} – ${f2(to)}`;
   if (filter === "month")   return new Date(from + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   if (filter === "year")    return from.slice(0, 4);
@@ -434,7 +434,7 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
         .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
       supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
-        .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
+        .eq("owner_id", ownerId).gte("expense_date", fromDate).lte("expense_date", toDate).order("expense_date", { ascending: false }),
       supabase.from("wallet_transactions").select("amount, type, created_at")
         .eq("profile_id", ownerId).in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
         .gte("created_at", from).lte("created_at", to),
@@ -612,7 +612,7 @@ export default function SummaryPage() {
   const tzNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: TZ }));
   const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 
-  const [filter,   setFilter]   = useState<FilterType>("session");
+  const [filter,   setFilter]   = useState<FilterType>("day");
   const [fromDate, setFromDate] = useState(today);
   const [toDate,   setToDate]   = useState(today);
   const [selMonth, setSelMonth] = useState(() => tzNow().getMonth());
@@ -682,7 +682,7 @@ export default function SummaryPage() {
   useEffect(() => {
     const nowTZ = tzNow();
     const nowDay = nowTZ.toLocaleDateString("en-CA");
-    if (filter === "session") { setFromDate(nowDay); setToDate(nowDay); }
+    if (filter === "day") { setFromDate(nowDay); setToDate(nowDay); }
     else if (filter === "week") {
       setFromDate(nowDay);
       const end = new Date(nowTZ); end.setDate(end.getDate() + 6);
@@ -714,7 +714,7 @@ export default function SummaryPage() {
   const filteredSessions: BarSession[] = (() => {
     const res = allSessions.filter(s => {
       const d = isoDateTT(s.opened_at);
-      return filter === "session" ? d === fromDate : (d >= fromDate && d <= toDate);
+      return filter === "day" ? (d >= fromDate && d <= toDate) : (d >= fromDate && d <= toDate);
     });
     if (res.length === 0) {
       return [{
@@ -729,11 +729,11 @@ export default function SummaryPage() {
   const activeSessionId = allSessions.find(s => !s.closed_at)?.id ?? null;
 
   const FILTERS: { key: FilterType; label: string }[] = [
-    { key: "session", label: t("filter_session", "Session") },
-    { key: "week",    label: t("filter_week",    "Week")    },
-    { key: "month",   label: t("filter_month",   "Month")   },
-    { key: "year",    label: t("filter_year",    "Year")    },
-    { key: "period",  label: t("filter_period",  "Period")  },
+    { key: "day",    label: t("filter_day",    "Day")    },
+    { key: "week",   label: t("filter_week",   "Week")   },
+    { key: "month",  label: t("filter_month",  "Month")  },
+    { key: "year",   label: t("filter_year",   "Year")   },
+    { key: "period", label: t("filter_period", "Period") },
   ];
 
   const handleDownloadPdf = async () => {
@@ -790,9 +790,8 @@ export default function SummaryPage() {
         ))}
       </div>
 
-      {/* Bar status badge (non-session tabs) */}
-      {filter !== "session" && (
-        <div className="rounded-xl px-4 py-2.5 flex items-center gap-3"
+      {/* Bar status badge */}
+      <div className="rounded-xl px-4 py-2.5 flex items-center gap-3"
           style={{ background: barIsOpen ? "rgba(134,239,172,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${barIsOpen ? "rgba(134,239,172,0.25)" : "rgba(255,255,255,0.08)"}` }}>
           <span className="text-sm shrink-0">{barIsOpen ? "🟢" : "🔴"}</span>
           <div className="min-w-0 flex-1">
@@ -804,13 +803,13 @@ export default function SummaryPage() {
               {filter === "month" && <span className="font-bold text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>}
               {filter === "year" && <span className="font-bold text-foreground">{fromDate.slice(0, 4)}</span>}
               {filter === "period" && <><span className="font-bold text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>{" → "}<span className="font-bold text-foreground">{new Date(toDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></>}
+              {filter === "day" && <span className="font-bold text-foreground">{new Date(fromDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
             </p>
           </div>
         </div>
-      )}
 
       {/* Date pickers */}
-      {filter === "session" && (
+      {filter === "day" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
           <CalendarPopover label={t("select_day", "Select Day")} value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
           {!loadingSessions && (
@@ -861,36 +860,7 @@ export default function SummaryPage() {
       )}
 
       {/* Sessions list / Combined summary */}
-      {filter === "session" ? (
-        loadingSessions ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-        ) : filteredSessions.length === 0 ? (
-          <div className="rounded-2xl border border-border p-8 text-center" style={{ background: "var(--gradient-card)" }}>
-            <div className="text-3xl mb-3">📊</div>
-            <p className="font-black text-sm">No sessions found</p>
-            <p className="text-xs text-muted-foreground mt-1">Bar was not opened this day.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                {filteredSessions.length} Session{filteredSessions.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            {filteredSessions.map(session => (
-              <BarSessionAccordion
-                key={session.id}
-                session={session}
-                subSessions={allSubSessions}
-                products={products}
-                categoryFilter={categoryFilter}
-                activeSessionId={activeSessionId}
-                ownerId={ownerId}
-              />
-            ))}
-          </div>
-        )
-      ) : loadingSessions ? (
+      {loadingSessions ? (
         <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
       ) : (
         <CombinedSummaryView

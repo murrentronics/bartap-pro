@@ -1,5 +1,5 @@
-import { a4 as commonjsGlobal, R as getDefaultExportFromCjs } from "./server-8GG21qKo.js";
-import { _ as _typeof$1 } from "./jspdf.es.min-DvpTXiPl.js";
+import { a4 as commonjsGlobal, R as getDefaultExportFromCjs } from "./server-IgbPzm8M.js";
+import { _ as _typeof$1 } from "./jspdf.es.min-Dgf245qv.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";

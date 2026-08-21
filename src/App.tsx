@@ -1,9 +1,10 @@
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/lib/auth";
+import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { I18nProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { SplashScreen } from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { useAppUpdate } from "@/lib/useAppUpdate";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { OfflineProvider, useOffline } from "@/lib/OfflineProvider";
@@ -82,6 +83,22 @@ function OfflineBanner() {
   );
 }
 
+function RootRedirect() {
+  const { profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading || !profile) return;
+    navigate("/register", { replace: true });
+  }, [profile, loading, navigate]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
 function AppWithUpdateCheck() {
   const { update, dismiss } = useAppUpdate();
 
@@ -91,7 +108,7 @@ function AppWithUpdateCheck() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<AppLayout />}>
-            <Route index element={<Navigate to="/register" replace />} />
+            <Route index element={<RootRedirect />} />
             <Route path="register" element={<RegisterPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="wallet" element={<WalletPage />} />

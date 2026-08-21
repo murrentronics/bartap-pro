@@ -316,6 +316,9 @@ function StockNumpad({
   const perItemCost = addAmount > 0 && batchTotal > 0 ? batchTotal / addAmount : 0;
 
   const stockNumpadKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
+  const totalCostRef = useRef(totalCost);
+  totalCostRef.current = totalCost;
+
   const handleStockNumpad = (k: string) => {
     if (k === "⌫") {
       setTotalCost((v) => v.slice(0, -1));
@@ -327,6 +330,28 @@ function StockNumpad({
       setTotalCost((v) => (v === "0" ? k : v + k));
     }
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        const v = totalCostRef.current;
+        const dotIdx = v.indexOf(".");
+        if (dotIdx !== -1 && v.length - dotIdx > 2) return;
+        setTotalCost((prev) => (prev === "0" ? e.key : prev + e.key));
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (!totalCostRef.current.includes(".")) {
+          setTotalCost((prev) => prev + ".");
+        }
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        setTotalCost((prev) => prev.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const tap = (i: number) => setCounts((c) => c.map((v, j) => (j === i ? v + 1 : v)));
   const untap = (i: number) =>

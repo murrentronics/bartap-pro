@@ -1020,23 +1020,7 @@ export default function AppLayout() {
         }}
       >
         <OfflinePageGuard>
-          {/* Block outlet while a redirect is pending — prevents register flashing for managers */}
-          {(() => {
-            if (!loading && profile) {
-              const isManagerUser = profile.role === "manager" || profile.job_title === "manager";
-              if (
-                isManagerUser &&
-                (loc.pathname === "/register" || loc.pathname === "/" || loc.pathname === "/wallet")
-              ) {
-                return (
-                  <div className="flex min-h-screen items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                );
-              }
-            }
-            return <Outlet />;
-          })()}
+          <Outlet />
         </OfflinePageGuard>
       </main>
 

@@ -153,6 +153,10 @@ async function openViaWebSerial(cfg: CashDrawerConfig): Promise<CashDrawerResult
     const info = port.getInfo();
     if (info.usbVendorId != null && info.usbProductId != null) {
       device = `VID ${info.usbVendorId} PID ${info.usbProductId}`;
+      // Persist device info so we can filter the picker next time
+      if (info.usbVendorId != null) {
+        try { localStorage.setItem("bartap-drawer-vid", String(info.usbVendorId)); } catch {}
+      }
     }
   } catch {
     /* best-effort label */

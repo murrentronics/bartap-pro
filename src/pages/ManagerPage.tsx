@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ import {
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 type Expense = {
   id: string;
   amount: number;
@@ -48,7 +48,18 @@ type TimeCard = {
   work_date: string;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+type Order = {
+  id: string;
+  total: number;
+  paid: number;
+  change_given: number;
+  items: { name: string; qty: number; price: number }[];
+  created_at: string;
+  payment_method?: string | null;
+  cashier_id?: string | null;
+};
+
+// --- Helpers ------------------------------------------------------------------
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -81,7 +92,7 @@ function fmtDuration(inIso: string, outIso: string | null) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-// ─── Root export ──────────────────────────────────────────────────────────────
+// --- Root export --------------------------------------------------------------
 export default function ManagerPage() {
   const { profile } = useAuth();
   const { effectiveOwnerId } = useChain();
@@ -92,7 +103,7 @@ export default function ManagerPage() {
   return <ManagerMain profile={profile} ownerId={ownerId} />;
 }
 
-// ─── Main shell ───────────────────────────────────────────────────────────────
+// --- Main shell ---------------------------------------------------------------
 function ManagerMain({
   profile,
   ownerId,
@@ -158,6 +169,12 @@ function ManagerMain({
         .then(({ data }: any) => {
           setBarSessionStart(data?.bar_session_start ?? null);
           setBarClosedAt(data?.bar_closed_at ?? null);
+        })
+        .catch(() => {
+          setBarSessionStart(null);
+          setBarClosedAt(null);
+        })
+        .finally(() => {
           setBarStateLoading(false);
         });
     fetchBarState();
@@ -282,7 +299,7 @@ function ManagerMain({
     setBarToggleBusy(false);
     setBarSessionStart(now);
     setBarClosedAt(null);
-    toast.success("🟢 Bar opened");
+    toast.success("?? Bar opened");
   };
 
   const handleCloseBar = async () => {
@@ -311,7 +328,7 @@ function ManagerMain({
       return;
     }
     setBarClosedAt(now);
-    toast.success("🔴 Bar closed");
+    toast.success("?? Bar closed");
   };
 
   const [tab, setTab] = useState<"dashboard" | "timecards">("dashboard");
@@ -355,7 +372,7 @@ function ManagerMain({
             {barToggleBusy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <span className="text-[11px]">{barIsOpen ? "🟢" : "🔴"}</span>
+              <span className="text-[11px]">{barIsOpen ? "??" : "??"}</span>
             )}
             {barIsOpen ? "Open" : "Closed"}
           </button>
@@ -414,7 +431,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}
               >
-                <span className="text-2xl">🔴</span>
+                <span className="text-2xl">??</span>
               </div>
               <h2 className="font-black text-xl">Close Bar?</h2>
               <p className="text-sm text-muted-foreground mt-2">
@@ -460,7 +477,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}
               >
-                <span className="text-2xl">🟢</span>
+                <span className="text-2xl">??</span>
               </div>
               <h2 className="font-black text-xl">Open Bar</h2>
               <p className="text-sm text-muted-foreground mt-1">Set the opening float</p>
@@ -512,10 +529,10 @@ function ManagerMain({
                   </div>
                 </div>
               )}
-              {/* Inline numpad — integers only, no decimal */}
+              {/* Inline numpad � integers only, no decimal */}
               {activeOpenBarField !== null && (
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((k, i) =>
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "?"].map((k, i) =>
                     k === "" ? (
                       <div key={i} />
                     ) : (
@@ -527,14 +544,14 @@ function ManagerMain({
                             activeOpenBarField === "bar" ? openBarFloat : openMachineFloat;
                           const setter =
                             activeOpenBarField === "bar" ? setOpenBarFloat : setOpenMachineFloat;
-                          if (k === "⌫") {
+                          if (k === "?") {
                             setter(current.slice(0, -1));
                             return;
                           }
                           setter(current === "0" || current === "" ? k : current + k);
                         }}
                         className={`h-12 rounded-xl font-black text-lg transition active:scale-95 ${
-                          k === "⌫"
+                          k === "?"
                             ? "bg-destructive/20 text-destructive hover:bg-destructive/30"
                             : "bg-muted hover:bg-muted/70 text-foreground"
                         }`}
@@ -573,7 +590,7 @@ function ManagerMain({
   );
 }
 
-// ─── Dashboard Tab ────────────────────────────────────────────────────────────
+// --- Dashboard Tab ------------------------------------------------------------
 function DashboardTab({
   profile,
   ownerId,
@@ -592,7 +609,7 @@ function DashboardTab({
   const sb = supabase as any;
   const tag = `[Manager: ${managerName}]`;
 
-  // ── Bar float (live) ───────────────────────────────────────────────────────
+  // -- Bar float (live) -------------------------------------------------------
   // cashier_float in profiles IS the live remaining balance
   const [floatBalance, setFloatBalance] = useState<number>(0);
   const loadFloat = useCallback(async () => {
@@ -628,7 +645,7 @@ function DashboardTab({
     };
   }, [ownerId, loadFloat]);
 
-  // ── Dashboard data (floats, sales, machine) ────────────────────────────────
+  // -- Dashboard data (floats, sales, machine) --------------------------------
   const [barFloatSet, setBarFloatSet] = useState<number>(0);
   const [machineFloatSet, setMachineFloatSet] = useState<number>(0);
   const [machineFloatBal, setMachineFloatBal] = useState<number>(0);
@@ -637,6 +654,25 @@ function DashboardTab({
   const [sessionMachineIn, setSessionMachineIn] = useState<number>(0);
   const [sessionMachinePayout, setSessionMachinePayout] = useState<number>(0);
   const [hasMachinesEnabled, setHasMachinesEnabled] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [dashTab, setDashTab] = useState<"sales" | "expenses">("sales");
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    const { data } = await sb
+      .from("orders")
+      .select("id, total, paid, change_given, items, created_at, payment_method, cashier_id")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setOrders((data ?? []) as Order[]);
+    setOrdersLoading(false);
+  }, [ownerId]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const loadDashboard = useCallback(async () => {
     const { data: ownerRow } = await sb
@@ -719,7 +755,7 @@ function DashboardTab({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `owner_id=eq.${ownerId}` },
-        () => loadDashboard(),
+        () => { loadDashboard(); loadOrders(); },
       )
       .on(
         "postgres_changes",
@@ -745,9 +781,9 @@ function DashboardTab({
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [ownerId, loadDashboard]);
+  }, [ownerId, loadDashboard, loadOrders]);
 
-  // ── Set float modal state ──────────────────────────────────────────────────
+  // -- Set float modal state --------------------------------------------------
   const [showSetBarFloat, setShowSetBarFloat] = useState(false);
   const [showSetMachFloat, setShowSetMachFloat] = useState(false);
   const [setFloatInput, setSetFloatInput] = useState("");
@@ -792,7 +828,7 @@ function DashboardTab({
       await sb.from("profiles").update({ cashier_float: newTotal }).eq("id", ownerId);
       setFloatBalance(newTotal);
       setBarFloatSet(newTotal);
-      toast.success(`Float topped up by $${val.toFixed(2)} — total $${newTotal.toFixed(2)}`);
+      toast.success(`Float topped up by $${val.toFixed(2)} � total $${newTotal.toFixed(2)}`);
     } else {
       // New session: close current sub-session, open new one, reset float anchor
       const { data: openBarSession } = await sb
@@ -823,7 +859,7 @@ function DashboardTab({
         .eq("id", ownerId);
       setFloatBalance(val);
       setBarFloatSet(val);
-      toast.success(`New session started — float set to $${val.toFixed(2)}`);
+      toast.success(`New session started � float set to $${val.toFixed(2)}`);
     }
     setSetFloatBusy(false);
     setShowSetBarFloat(false);
@@ -849,7 +885,7 @@ function DashboardTab({
     loadDashboard();
   };
 
-  // ── Expenses state ─────────────────────────────────────────────────────────
+  // -- Expenses state ---------------------------------------------------------
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -892,7 +928,7 @@ function DashboardTab({
     .filter((e) => barSessionStart && new Date(e.created_at) >= new Date(barSessionStart))
     .reduce((s, e) => s + Number(e.amount), 0);
 
-  // ── Add expense form ───────────────────────────────────────────────────────
+  // -- Add expense form -------------------------------------------------------
   const [showForm, setShowForm] = useState(false);
   const [lines, setLines] = useState<{ description: string; amount: string }[]>([
     { description: "", amount: "" },
@@ -909,7 +945,7 @@ function DashboardTab({
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
     if (total > floatBalance) {
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float � balance is $${fmt(floatBalance)}`);
       return;
     }
     setSaving(true);
@@ -954,6 +990,10 @@ function DashboardTab({
   const [deleting, setDeleting] = useState(false);
   const lastExpenseId = expenses.length > 0 ? expenses[0].id : null;
 
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [deleteOrderConfirmId, setDeleteOrderConfirmId] = useState<string | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
+
   const startEdit = (e: Expense) => {
     const raw = (e.description ?? "").replace(tag, "").trim();
     const parsed = raw
@@ -979,7 +1019,7 @@ function DashboardTab({
     const diff = newTotal - Number(e.amount);
     if (diff > 0 && diff > floatBalance) {
       setEditSaving(false);
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float � balance is $${fmt(floatBalance)}`);
       return;
     }
     const description =
@@ -997,7 +1037,7 @@ function DashboardTab({
         return;
       }
       if (!updated || updated.length === 0) {
-        toast.error("Could not update expense — permission denied");
+        toast.error("Could not update expense � permission denied");
         return;
       }
       if (diff !== 0) {
@@ -1027,7 +1067,7 @@ function DashboardTab({
         return;
       }
       if (!deleted || deleted.length === 0) {
-        toast.error("Could not delete expense — permission denied");
+        toast.error("Could not delete expense � permission denied");
         return;
       }
       const newFloat = floatBalance + Number(e.amount);
@@ -1044,6 +1084,48 @@ function DashboardTab({
 
   const sessionTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
+  const handleEditOrder = (order: Order) => {
+    sessionStorage.setItem("edit_order", JSON.stringify(order));
+    toast.success("Order loaded for editing � switch to register");
+    navigate("/");
+  };
+
+  const handlePrintBill = async (order: Order) => {
+    try {
+      const { printReceipt } = await import("@/lib/receiptPrinter");
+      await printReceipt({
+        id: order.id,
+        items: order.items,
+        total: Number(order.total),
+        paid: Number(order.paid),
+        change: Number(order.change_given),
+        created_at: order.created_at,
+        payment_method: order.payment_method,
+        cashier_name: order.cashier_id,
+      });
+      toast.success("Receipt sent to printer");
+    } catch {
+      toast.error("Print failed");
+    }
+  };
+
+  const handleDeleteOrder = async (order: Order) => {
+    setDeletingOrder(true);
+    try {
+      const { data: deleted, error } = await sb.from("orders").delete().eq("id", order.id).select("id");
+      if (error || !deleted?.length) {
+        toast.error("Could not delete order");
+        return;
+      }
+      toast.success("Order deleted");
+      setDeleteOrderConfirmId(null);
+      loadOrders();
+      loadDashboard();
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Bar closed banner */}
@@ -1054,12 +1136,28 @@ function DashboardTab({
         >
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
           <span className="text-sm font-semibold text-red-400">
-            Bar is closed — expenses cannot be added, edited, or deleted.
+            Bar is closed � expenses cannot be added, edited, or deleted.
           </span>
         </div>
       )}
 
-      {/* ── Hero 1: Floats ── */}
+      {/* -- Hero: Wallet Balance -- */}
+      <div
+        className="rounded-3xl p-4 space-y-1 relative overflow-hidden"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}
+      >
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>
+            Wallet Balance
+          </p>
+          <p className="text-3xl font-black tracking-tight" style={{ color: "rgba(0,0,0,0.85)" }}>
+            ${fmt(Number(profile.wallet_balance))}
+          </p>
+        </div>
+      </div>
+
+      {/* -- Hero 1: Floats -- */}
       <div
         className="rounded-3xl p-4 space-y-3 relative overflow-hidden"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}
@@ -1085,7 +1183,7 @@ function DashboardTab({
                 color: "rgba(255,255,255,0.85)",
               }}
             >
-              <span className="text-base">💰</span>
+              <span className="text-base">??</span>
               <span>{barFloatSet > 0 ? "Update" : "Set"} Float</span>
             </button>
             <div
@@ -1136,7 +1234,7 @@ function DashboardTab({
                   color: "rgba(255,255,255,0.85)",
                 }}
               >
-                <span className="text-base">🎰</span>
+                <span className="text-base">??</span>
                 <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
               </button>
               <div
@@ -1177,7 +1275,7 @@ function DashboardTab({
         )}
       </div>
 
-      {/* ── Hero 2: Session ── */}
+      {/* -- Hero 2: Session -- */}
       <div
         className="rounded-3xl p-4 space-y-3 relative overflow-hidden"
         style={{ background: "oklch(0.18 0.02 60)", border: "1px solid rgba(255,255,255,0.07)" }}
@@ -1208,7 +1306,7 @@ function DashboardTab({
                 Cash Sales
               </div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                {barIsOpen ? `$${fmt(sessionBarSales)}` : "—"}
+                {barIsOpen ? `$${fmt(sessionBarSales)}` : "�"}
               </div>
             </div>
             <div
@@ -1222,7 +1320,7 @@ function DashboardTab({
                 Bar Expenses
               </div>
               <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                {barIsOpen ? `$${fmt(sessionExpenses)}` : "—"}
+                {barIsOpen ? `$${fmt(sessionExpenses)}` : "�"}
               </div>
             </div>
           </div>
@@ -1250,7 +1348,7 @@ function DashboardTab({
                   Cash in Machine
                 </div>
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "—"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "�"}
                 </div>
               </div>
               <div
@@ -1267,7 +1365,7 @@ function DashboardTab({
                   Machines Payout
                 </div>
                 <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "—"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "�"}
                 </div>
               </div>
             </div>
@@ -1275,134 +1373,42 @@ function DashboardTab({
         )}
       </div>
 
-      {/* Add Expense */}
-      {barIsOpen && (
-        <div className="space-y-2">
+      {/* -- Sales / Expenses Tabs -- */}
+      <div className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
+        <div className="grid grid-cols-2">
           <button
-            onClick={() => {
-              setShowForm((v) => !v);
-              setConfirming(false);
-            }}
-            className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] border"
-            style={
-              showForm
-                ? {
-                    background: "var(--gradient-hero)",
-                    color: "var(--primary-foreground)",
-                    borderColor: "transparent",
-                  }
-                : {
-                    background: "var(--gradient-card)",
-                    borderColor: "var(--border)",
-                    color: "var(--primary)",
-                  }
-            }
+            onClick={() => setDashTab("sales")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              dashTab === "sales"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            {showForm ? "✕ Cancel" : "+ Add Expense"}
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            Sales
           </button>
-          {showForm && (
-            <div
-              className="rounded-2xl border border-border p-4 space-y-3"
-              style={{ background: "var(--gradient-card)" }}
-            >
-              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                Expense Lines
-              </p>
-              {lines.map((line, i) => (
-                <div key={i} className="space-y-1.5">
-                  <input
-                    value={line.description}
-                    onChange={(e) =>
-                      setLines((l) =>
-                        l.map((ll, idx) =>
-                          idx === i ? { ...ll, description: e.target.value } : ll,
-                        ),
-                      )
-                    }
-                    placeholder="Description (e.g. Supplies)"
-                    className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <div className="flex gap-2 items-center">
-                    <input
-                      value={line.amount}
-                      onChange={(e) =>
-                        setLines((l) =>
-                          l.map((ll, idx) => (idx === i ? { ...ll, amount: e.target.value } : ll)),
-                        )
-                      }
-                      placeholder="$0.00"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    {lines.length > 1 && (
-                      <button
-                        onClick={() => setLines((l) => l.filter((_, idx) => idx !== i))}
-                        className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => setLines((l) => [...l, { description: "", amount: "" }])}
-                className="w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]"
-              >
-                + Add Line
-              </button>
-              <div className="pt-1 space-y-2">
-                <span className="text-xs text-muted-foreground font-semibold">
-                  Total: <span className="font-black text-foreground">${lineTotal.toFixed(2)}</span>
-                </span>
-                {!confirming ? (
-                  <button
-                    onClick={() => setConfirming(true)}
-                    disabled={lineTotal <= 0}
-                    className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40"
-                    style={{ background: "var(--gradient-hero)" }}
-                  >
-                    Save Expense
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <div
-                      className="rounded-xl px-3 py-2 text-xs text-center font-semibold"
-                      style={{
-                        background: "rgba(239,68,68,0.08)",
-                        border: "1px solid rgba(239,68,68,0.25)",
-                        color: "#f87171",
-                      }}
-                    >
-                      Deduct ${lineTotal.toFixed(2)} from bar float? (Balance: ${fmt(floatBalance)})
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setConfirming(false)}
-                        className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95"
-                      >
-                        Back
-                      </button>
-                      <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-                        style={{ background: "#dc2626" }}
-                      >
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => setDashTab("expenses")}
+            className={`flex items-center justify-center gap-2 py-3 text-sm font-black transition ${
+              dashTab === "expenses"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingDown className="h-4 w-4" /> Expenses
+          </button>
         </div>
+      </div>
+
+      {dashTab === "sales" && (
+        <SalesTab orders={orders} loading={ordersLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} />
       )}
 
-      {/* ── Set Bar Float Modal ── */}
+      {dashTab === "expenses" && (
+        <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
+      )}
+
+      {/* ?? Set Bar Float Modal ?? */}
       {showSetBarFloat && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -1423,7 +1429,7 @@ function DashboardTab({
             >
               {barFloatSet > 0 ? "Update Bar Float" : "Set Bar Float"}
             </p>
-            {/* Same / New session selector — only when a float is already set */}
+            {/* Same / New session selector � only when a float is already set */}
             {barFloatSet > 0 && (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -1449,8 +1455,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float — used amount unchanged"
-                    : "Starts fresh — used amount resets to $0"}
+                    ? "Adds to current float � used amount unchanged"
+                    : "Starts fresh � used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1506,7 +1512,7 @@ function DashboardTab({
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}
               >
-                ⌫
+                ?
               </button>
             </div>
             <button
@@ -1515,13 +1521,13 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving�" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Set Machine Float Modal ── */}
+      {/* -- Set Machine Float Modal -- */}
       {showSetMachFloat && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -1591,7 +1597,7 @@ function DashboardTab({
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}
               >
-                ⌫
+                ?
               </button>
             </div>
             <button
@@ -1600,7 +1606,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving�" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -1811,7 +1817,7 @@ function DashboardTab({
         )}
       </div>
 
-      {/* ── Set Bar Float Modal ── */}
+      {/* -- Set Bar Float Modal -- */}
       {showSetBarFloat && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -1857,8 +1863,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float — used amount unchanged"
-                    : "Starts fresh — used amount resets to $0"}
+                    ? "Adds to current float � used amount unchanged"
+                    : "Starts fresh � used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1912,7 +1918,7 @@ function DashboardTab({
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}
               >
-                ⌫
+                ?
               </button>
             </div>
             <button
@@ -1921,13 +1927,13 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving�" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Set Machine Float Modal ── */}
+      {/* -- Set Machine Float Modal -- */}
       {showSetMachFloat && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -1997,7 +2003,7 @@ function DashboardTab({
                 className="rounded-2xl py-4 text-xl font-black active:scale-95 transition"
                 style={{ background: "oklch(0.20 0.05 60)", color: "oklch(0.75 0.15 65)" }}
               >
-                ⌫
+                ?
               </button>
             </div>
             <button
@@ -2006,7 +2012,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving�" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -2015,7 +2021,7 @@ function DashboardTab({
   );
 }
 
-// ─── Mini calendar ────────────────────────────────────────────────────────────
+// --- Mini calendar ------------------------------------------------------------
 function MgrCalendar({
   workedDates,
   selectedDate,
@@ -2102,14 +2108,14 @@ function MgrCalendar({
           onClick={() => onSelect(null)}
           className="mt-2 w-full text-[11px] font-black text-muted-foreground hover:text-foreground transition text-center"
         >
-          Show all dates ✕
+          Show all dates ?
         </button>
       )}
     </div>
   );
 }
 
-// ─── Timesheet PDF (manager) ──────────────────────────────────────────────────
+// --- Timesheet PDF (manager) --------------------------------------------------
 async function downloadTimesheetPdf(
   cards: TimeCard[],
   staffName: string | null,
@@ -2209,7 +2215,7 @@ async function downloadTimesheetPdf(
   );
 }
 
-// ─── Time Cards Tab ───────────────────────────────────────────────────────────
+// --- Time Cards Tab -----------------------------------------------------------
 export function TimeCardsTab({
   profile,
   ownerId,
@@ -2332,7 +2338,7 @@ export function TimeCardsTab({
     return "Cashier";
   }
 
-  // ── Timesheets filter helpers ──────────────────────────────────────────────
+  // -- Timesheets filter helpers ----------------------------------------------
   function getTsFilteredCards(): TimeCard[] {
     const base = (
       tsStaffEmp ? timeCards.filter((tc) => tc.employee_id === tsStaffEmp.id) : timeCards
@@ -2376,7 +2382,7 @@ export function TimeCardsTab({
       start.setDate(ref.getDate() - dow);
       const end = new Date(ref);
       end.setDate(ref.getDate() + (6 - dow));
-      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} � ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     }
     if (tsPeriod === "month")
       return ref.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -2423,7 +2429,7 @@ export function TimeCardsTab({
         ))}
       </div>
 
-      {/* ══ CLOCK TAB ══════════════════════════════════════════════════════ */}
+      {/* -- CLOCK TAB ------------------------------------------------------ */}
       {tcSubTab === "clock" && (
         <div className="space-y-3">
           {empLoading ? (
@@ -2476,7 +2482,7 @@ export function TimeCardsTab({
                           className="text-[10px] mt-0.5"
                           style={{ color: "rgba(134,239,172,0.8)" }}
                         >
-                          Since {fmtTime(empOpen.clocked_in_at)} ·{" "}
+                          Since {fmtTime(empOpen.clocked_in_at)} �{" "}
                           {fmtDuration(empOpen.clocked_in_at, null)} on shift
                         </p>
                       )}
@@ -2564,7 +2570,7 @@ export function TimeCardsTab({
             })
           )}
 
-          {/* ── Active workers flat list ── */}
+          {/* -- Active workers flat list -- */}
           {(() => {
             const activeCards = timeCards.filter((tc) => !tc.clocked_out_at);
             if (activeCards.length === 0) return null;
@@ -2591,7 +2597,7 @@ export function TimeCardsTab({
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-sm truncate">{tc.employee_name}</p>
                       <p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>
-                        Since {fmtTime(tc.clocked_in_at)} · {fmtDuration(tc.clocked_in_at, null)} on
+                        Since {fmtTime(tc.clocked_in_at)} � {fmtDuration(tc.clocked_in_at, null)} on
                         shift
                       </p>
                     </div>
@@ -2613,7 +2619,7 @@ export function TimeCardsTab({
         </div>
       )}
 
-      {/* ══ TIMESHEETS TAB ═════════════════════════════════════════════════ */}
+      {/* -- TIMESHEETS TAB ------------------------------------------------- */}
       {tcSubTab === "timesheets" && (
         <div className="space-y-3">
           {/* Filter row: date picker + staff picker + PDF button */}
@@ -2726,7 +2732,7 @@ export function TimeCardsTab({
                   onClick={() => setTsShowStaffPicker(false)}
                   className="text-xs font-black text-muted-foreground hover:text-foreground"
                 >
-                  ✕
+                  ?
                 </button>
               </div>
               <div className="divide-y divide-border/50">
@@ -2796,7 +2802,7 @@ export function TimeCardsTab({
             </div>
           )}
 
-          {/* Week / Month / Year / Day period pickers — only shown when a date is selected */}
+          {/* Week / Month / Year / Day period pickers � only shown when a date is selected */}
           {tsSelectedDate && (
             <div className="flex gap-1.5">
               {(["day", "week", "month", "year"] as const).map((p) => (
@@ -2856,12 +2862,12 @@ export function TimeCardsTab({
                 }}
                 className="text-[11px] font-black text-muted-foreground hover:text-foreground transition"
               >
-                Clear ✕
+                Clear ?
               </button>
             </div>
           )}
 
-          {/* Records — Month accordion → Day rows → Employee entries */}
+          {/* Records � Month accordion ? Day rows ? Employee entries */}
           {tcLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -2924,7 +2930,7 @@ export function TimeCardsTab({
                         <p className="font-black text-sm">{mLabel}</p>
                         <p className="text-xs text-muted-foreground">
                           {mDays.length} day{mDays.length !== 1 ? "s" : ""}
-                          {mActive && <span className="text-green-400 ml-1">· active</span>}
+                          {mActive && <span className="text-green-400 ml-1">� active</span>}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2977,7 +2983,7 @@ export function TimeCardsTab({
                                     {cards.length} record{cards.length !== 1 ? "s" : ""}
                                     {dActive > 0 && (
                                       <span className="text-green-400 ml-1">
-                                        · {dActive} active
+                                        � {dActive} active
                                       </span>
                                     )}
                                   </p>
@@ -3018,18 +3024,18 @@ export function TimeCardsTab({
                                           </span>
                                           {tc.clocked_out_at ? (
                                             <>
-                                              <span className="text-muted-foreground/40">→</span>
+                                              <span className="text-muted-foreground/40">?</span>
                                               <LogOut className="h-3 w-3 text-red-400 shrink-0" />
                                               <span className="text-red-400 font-bold">
                                                 {fmtTime(tc.clocked_out_at)}
                                               </span>
                                               <span className="text-muted-foreground ml-1">
-                                                · {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
+                                                � {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
                                               </span>
                                             </>
                                           ) : (
                                             <span className="text-green-400 font-semibold">
-                                              · Still on shift
+                                              � Still on shift
                                             </span>
                                           )}
                                         </div>
@@ -3062,6 +3068,501 @@ export function TimeCardsTab({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Sales Tab ────────────────────────────────────────────────────────────────
+function SalesTab({
+  orders,
+  loading,
+  barIsOpen,
+  onPrint,
+  onEdit,
+  onDeleteConfirm,
+  deletingOrder,
+  onDeleteOrder,
+}: {
+  orders: Order[];
+  loading: boolean;
+  barIsOpen: boolean;
+  onPrint: (o: Order) => void;
+  onEdit: (o: Order) => void;
+  onDeleteConfirm: (id: string) => void;
+  deletingOrder: boolean;
+  onDeleteOrder: (o: Order) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground text-sm">No sales yet.</div>
+      ) : (
+        <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
+          {orders.map((o) => {
+            const canEdit = o.id === orders[0]?.id && barIsOpen;
+            return (
+              <div key={o.id} className="px-4 py-3 flex items-start gap-3">
+                <div
+                  className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border"
+                  style={{
+                    background: "rgba(134,239,172,0.10)",
+                    borderColor: "rgba(134,239,172,0.25)",
+                  }}
+                >
+                  <svg className="h-4 w-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(o.created_at).toLocaleString("en-GB", {
+                      timeZone: "America/Port_of_Spain",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-sm font-semibold leading-snug mt-0.5 break-words">
+                    {(o.items || []).map((it: any) => `${it.qty}� ${it.name}`).join(", ")}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="font-black text-sm text-green-400">${fmt(Number(o.total))}</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => onPrint(o)}
+                      className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                      style={{ background: "rgba(255,255,255,0.08)" }}
+                      title="Print bill"
+                    >
+                      <svg className="h-3 w-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18 4 18v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M6 14h12v6H6z"/></svg>
+                    </button>
+                    {canEdit && (
+                      <>
+                        <button
+                          onClick={() => onEdit(o)}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                          style={{ background: "rgba(255,255,255,0.08)" }}
+                          title="Edit this sale"
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteConfirm(o.id)}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                          style={{ background: "rgba(239,68,68,0.12)" }}
+                          title="Delete this sale"
+                        >
+                          <Trash2 className="h-3 w-3 text-red-400" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Expenses Tab ─────────────────────────────────────────────────────────────
+function ExpensesTab({
+  expenses,
+  loading,
+  barIsOpen,
+  tag,
+  floatBalance,
+  sessionTotal,
+  lastExpenseId,
+  editingId,
+  editLines,
+  setEditLines,
+  editSaving,
+  handleEditSave,
+  deleteConfirmId,
+  setDeleteConfirmId,
+  deleting,
+  handleDelete,
+  startEdit,
+  showForm,
+  setShowForm,
+  confirming,
+  setConfirming,
+  lineTotal,
+  handleSave,
+  saving,
+  lines,
+  setLines,
+}: {
+  expenses: Expense[];
+  loading: boolean;
+  barIsOpen: boolean;
+  tag: string;
+  floatBalance: number;
+  sessionTotal: number;
+  lastExpenseId: string | null;
+  editingId: string | null;
+  editLines: { description: string; amount: string }[];
+  setEditLines: React.Dispatch<React.SetStateAction<{ description: string; amount: string }[]>>;
+  editSaving: boolean;
+  handleEditSave: (e: Expense) => void;
+  deleteConfirmId: string | null;
+  setDeleteConfirmId: React.Dispatch<React.SetStateAction<string | null>>;
+  deleting: boolean;
+  handleDelete: (e: Expense) => void;
+  startEdit: (e: Expense) => void;
+  showForm: boolean;
+  setShowForm: React.Dispatch<React.SetStateAction<boolean>>;
+  confirming: boolean;
+  setConfirming: React.Dispatch<React.SetStateAction<boolean>>;
+  lineTotal: number;
+  handleSave: () => void;
+  saving: boolean;
+  lines: { description: string; amount: string }[];
+  setLines: React.Dispatch<React.SetStateAction<{ description: string; amount: string }[]>>;
+}) {
+  return (
+    <div className="space-y-2">
+      {barIsOpen && (
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              setShowForm((v) => !v);
+              setConfirming(false);
+            }}
+            className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] border"
+            style={
+              showForm
+                ? {
+                    background: "var(--gradient-hero)",
+                    color: "var(--primary-foreground)",
+                    borderColor: "transparent",
+                  }
+                : {
+                    background: "var(--gradient-card)",
+                    borderColor: "var(--border)",
+                    color: "var(--primary)",
+                  }
+            }
+          >
+            {showForm ? "✕ Cancel" : "+ Add Expense"}
+          </button>
+          {showForm && (
+            <div
+              className="rounded-2xl border border-border p-4 space-y-3"
+              style={{ background: "var(--gradient-card)" }}
+            >
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Expense Lines
+              </p>
+              {lines.map((line, i) => (
+                <div key={i} className="space-y-1.5">
+                  <input
+                    value={line.description}
+                    onChange={(e) =>
+                      setLines((l) =>
+                        l.map((ll, idx) =>
+                          idx === i ? { ...ll, description: e.target.value } : ll,
+                        ),
+                      )
+                    }
+                    placeholder="Description (e.g. Supplies)"
+                    className="w-full h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={line.amount}
+                      onChange={(e) =>
+                        setLines((l) =>
+                          l.map((ll, idx) => (idx === i ? { ...ll, amount: e.target.value } : ll)),
+                        )
+                      }
+                      placeholder=".00"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="flex-1 h-10 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    {lines.length > 1 && (
+                      <button
+                        onClick={() => setLines((l) => l.filter((_, idx) => idx !== i))}
+                        className="h-10 w-10 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => setLines((l) => [...l, { description: "", amount: "" }])}
+                className="w-full h-9 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground hover:text-foreground transition active:scale-[0.98]"
+              >
+                + Add Line
+              </button>
+              <div className="pt-1 space-y-2">
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Total: <span className="font-black text-foreground"></span>
+                </span>
+                {!confirming ? (
+                  <button
+                    onClick={() => setConfirming(true)}
+                    disabled={lineTotal <= 0}
+                    className="w-full h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    Save Expense
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <div
+                      className="rounded-xl px-3 py-2 text-xs text-center font-semibold"
+                      style={{
+                        background: "rgba(239,68,68,0.08)",
+                        border: "1px solid rgba(239,68,68,0.25)",
+                        color: "#f87171",
+                      }}
+                    >
+                      Deduct  from bar float? (Balance: )
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setConfirming(false)}
+                        className="h-10 rounded-xl font-black text-sm border border-border transition active:scale-95"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="h-10 rounded-xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+                        style={{ background: "#dc2626" }}
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expense History */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+            Session Expenses
+          </p>
+          {expenses.length > 0 && (
+            <span className="text-xs font-black text-red-400"></span>
+          )}
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />
+            ))}
+          </div>
+        ) : expenses.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            No expenses this session.
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40"
+            style={{ background: "var(--gradient-card)" }}
+          >
+            {expenses.map((e) => {
+              const canEdit = e.id === lastExpenseId && barIsOpen;
+              const raw = (e.description ?? "").replace(tag, "").trim();
+              const descLines = raw
+                .split("\n")
+                .filter((l) => l && l !== "Non-Stock Expense")
+                .map((l) => l.trim());
+              const isEditing = editingId === e.id;
+              const cashierMatch = (e.description ?? "").match(/\[Cashier:\s*([^\]]+)\]/);
+              const managerMatch = (e.description ?? "").match(/\[Manager:\s*([^\]]+)\]/);
+              const who = cashierMatch ? cashierMatch[1] : managerMatch ? managerMatch[1] : null;
+              return (
+                <div key={e.id} className="px-4 py-3 space-y-2">
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                        Edit Expense
+                      </p>
+                      {editLines.map((el, i) => (
+                        <div key={i} className="space-y-1">
+                          <input
+                            value={el.description}
+                            onChange={(ev) =>
+                              setEditLines((ls) =>
+                                ls.map((l, idx) =>
+                                  idx === i ? { ...l, description: ev.target.value } : l,
+                                ),
+                              )
+                            }
+                            placeholder="Description"
+                            className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <div className="flex gap-2">
+                            <input
+                              value={el.amount}
+                              onChange={(ev) =>
+                                setEditLines((ls) =>
+                                  ls.map((l, idx) =>
+                                    idx === i ? { ...l, amount: ev.target.value } : l,
+                                  ),
+                                )
+                              }
+                              placeholder=".00"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            {editLines.length > 1 && (
+                              <button
+                                onClick={() =>
+                                  setEditLines((ls) => ls.filter((_, idx) => idx !== i))
+                                }
+                                className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() =>
+                          setEditLines((ls) => [...ls, { description: "", amount: "" }])
+                        }
+                        className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]"
+                      >
+                        + Add Line
+                      </button>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditLines([]);
+                          }}
+                          className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleEditSave(e)}
+                          disabled={editSaving}
+                          className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                          style={{ background: "var(--gradient-hero)" }}
+                        >
+                          {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : deleteConfirmId === e.id ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-center text-red-400">
+                        Delete  expense and refund to float?
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setDeleteConfirmId(null)}
+                          className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleDelete(e)}
+                          disabled={deleting}
+                          className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                          style={{ background: "#dc2626" }}
+                        >
+                          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
+                        style={{
+                          background: "rgba(239,68,68,0.10)",
+                          borderColor: "rgba(239,68,68,0.25)",
+                        }}
+                      >
+                        <TrendingDown className="h-3.5 w-3.5 text-red-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {who && (
+                          <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-0.5">
+                            {who}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(e.created_at).toLocaleString("en-GB", {
+                            timeZone: "America/Port_of_Spain",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                        {descLines.map((l, i) => (
+                          <p
+                            key={i}
+                            className="text-sm font-semibold leading-snug mt-0.5 break-words"
+                          >
+                            {l}
+                          </p>
+                        ))}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="font-black text-sm text-red-400">
+                          
+                        </span>
+                        {canEdit && (
+                          <div className="flex gap-1 mt-0.5">
+                            <button
+                              onClick={() => startEdit(e)}
+                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                              style={{ background: "rgba(255,255,255,0.08)" }}
+                            >
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(e.id)}
+                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                              style={{ background: "rgba(239,68,68,0.12)" }}
+                            >
+                              <Trash2 className="h-3 w-3 text-red-400" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -348,6 +348,7 @@ function CashierWallet({
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
       customerName: customerName || undefined,
+      serverName: profile.username || "Staff",
     };
     setBillData(bill);
   };
@@ -387,6 +388,7 @@ function CashierWallet({
       change: 0,
       payMode: "credit",
       customerName: acct?.full_name || undefined,
+      serverName: profile.username || "Staff",
     };
     setBillData(bill);
   };
@@ -2508,11 +2510,11 @@ function OwnerStatement({
                           }
                           const o = rec.data as Order;
                           return (
-                            <div key={o.id} className="px-4 py-3">
+                            <div key={o.id} className="px-4 py-3 md:px-6 md:py-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  <span className="text-xs text-muted-foreground">
+                                  <Receipt className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary shrink-0" />
+                                  <span className="text-xs md:text-sm text-muted-foreground">
                                     {new Date(o.created_at).toLocaleString("en-GB", {
                                       hour: "2-digit",
                                       minute: "2-digit",
@@ -2523,11 +2525,11 @@ function OwnerStatement({
                                     })}
                                   </span>
                                 </div>
-                                <span className="font-black text-primary text-sm ml-2">
+                                <span className="font-black text-primary text-sm md:text-base ml-2">
                                   ${fmt(Number(o.total))}
                                 </span>
                               </div>
-                              <div className="mt-1 text-xs text-muted-foreground break-words whitespace-normal">
+                              <div className="mt-1 text-xs md:text-sm text-muted-foreground break-words whitespace-normal">
                                 {(o.items || [])
                                   .slice()
                                   .sort((a, b) => a.name.localeCompare(b.name))
@@ -2542,12 +2544,12 @@ function OwnerStatement({
                                       {i.discount && Number(i.discount) > 0 ? (
                                         <>
                                           {i.original_price != null && (
-                                            <span className="text-[9px] text-muted-foreground line-through">
+                                            <span className="text-[9px] md:text-[10px] text-muted-foreground line-through">
                                               ${fmt(Number(i.original_price))}
                                             </span>
                                           )}
                                           <span
-                                            className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                                            className="inline-flex items-center px-1 py-0 rounded-full text-[9px] md:text-[10px] font-black leading-tight"
                                             style={{
                                               background: "rgba(251,191,36,0.2)",
                                               color: "#fbbf24",
@@ -2564,12 +2566,12 @@ function OwnerStatement({
                               {o.discount_amount != null && Number(o.discount_amount) > 0 && (
                                 <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                                   {o.original_total != null && (
-                                    <span className="text-[9px] text-muted-foreground line-through">
+                                    <span className="text-[9px] md:text-[10px] text-muted-foreground line-through">
                                       ${fmt(Number(o.original_total))}
                                     </span>
                                   )}
                                   <span
-                                    className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-black leading-tight"
                                     style={{
                                       background: "rgba(251,191,36,0.2)",
                                       color: "#fbbf24",
@@ -2580,7 +2582,7 @@ function OwnerStatement({
                                   </span>
                                 </div>
                               )}
-                              <div className="mt-0.5 text-xs text-muted-foreground">
+                              <div className="mt-0.5 text-xs md:text-sm text-muted-foreground">
                                 Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                               </div>
                             </div>
@@ -4705,7 +4707,7 @@ function OwnerWallet({
   };
 }) {
   const { t } = useTranslation();
-  const { chainBars } = useChain();
+  const { chainBars, activeBar } = useChain();
   const chainBarIds = chainBars.map((b) => b.id);
   const { refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<"transactions" | "financials">("transactions");
@@ -4726,7 +4728,7 @@ function OwnerWallet({
 
   async function openBillForOrder(order: Order) {
     const bill: BillData = {
-      storeName: profile.username || "Bar",
+      storeName: activeBar?.bar_name || profile.username || "Bar",
       orderNumber: order.id.slice(0, 8),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
@@ -4739,6 +4741,7 @@ function OwnerWallet({
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
       customerName: undefined,
+      serverName: profile.username || "Staff",
     };
     setBillData(bill);
   }
@@ -4765,7 +4768,7 @@ function OwnerWallet({
       .maybeSingle();
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     const bill: BillData = {
-      storeName: profile.username || "Bar",
+      storeName: activeBar?.bar_name || profile.username || "Bar",
       orderNumber: ct.id.slice(0, 8),
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
@@ -4778,6 +4781,7 @@ function OwnerWallet({
       change: 0,
       payMode: "credit",
       customerName: acct?.full_name || undefined,
+      serverName: profile.username || "Staff",
     };
     setBillData(bill);
   }
@@ -6087,6 +6091,7 @@ type BillData = {
   change: number;
   payMode: string;
   customerName?: string;
+  serverName?: string;
 };
 
 // ── Bill Modal ────────────────────────────────────────────────────────────────
@@ -6117,6 +6122,9 @@ function BillModal({ bill, onClose, onPrint, onPdfShare, printing }: {
               {bill.storeName || "My Business"}
             </div>
             <div className="text-center text-[10px] text-zinc-600">{bill.date || ""}</div>
+            {bill.serverName && (
+              <div className="text-center text-[10px] text-zinc-600">Served by {bill.serverName}</div>
+            )}
             <div className="text-center text-[10px] text-zinc-600">ORDER #{bill.orderNumber || 1}</div>
 
             <div className="border-t border-dashed border-zinc-400 my-2" />
