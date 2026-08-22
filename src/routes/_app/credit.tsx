@@ -674,10 +674,10 @@ function EditCustomerModal({
               <button type="button" onClick={() => setActiveField(f => f === "idNumber" ? null : "idNumber")}
                 className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
                 style={{ background: "#ffffff", color: idNumber ? "#000000" : "#9ca3af" }}>
-                {idNumber || "e.g. 00000000"}
+                {idNumber || "e.g. 000-0000"}
               </button>
               {activeField === "idNumber" && (
-                <CreditNumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+                <CreditIdPad value={idNumber} onChange={setIdNumber} onDone={() => setActiveField(null)} />
               )}
             </div>
 
@@ -813,10 +813,10 @@ function CreateTab({
           <button type="button" onClick={() => toggle("idNumber")}
             className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
             style={{ background: "#ffffff", color: idNumber ? "#000000" : "#9ca3af" }}>
-            {idNumber || "e.g. 00000000"}
+            {idNumber || "e.g. 000-0000"}
           </button>
           {activeField === "idNumber" && (
-            <CreditNumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+            <CreditIdPad value={idNumber} onChange={setIdNumber} onDone={() => setActiveField(null)} />
           )}
         </div>
 
@@ -1225,6 +1225,56 @@ function CreditContactPad({ value, onChange, onDone }: {
           {7 - digits.length} digit{7 - digits.length !== 1 ? "s" : ""} remaining
         </p>
       )}
+      <div className="grid grid-cols-3 gap-1.5">
+        {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k) =>
+          k === "done"
+            ? <button key="done" type="button"
+                onClick={() => { if (complete) onDone(); }}
+                className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
+                style={{ background: "var(--gradient-hero)" }}>Done</button>
+            : <button key={k} type="button" onClick={() => handle(k)}
+                className={`h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`}
+              >{k}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreditIdPad({ value, onChange, onDone }: {
+  value: string; onChange: (v: string) => void; onDone: () => void;
+}) {
+  const digits = value.replace("-", "");
+  const complete = digits.length === 7;
+  const handle = (k: string) => {
+    if (k === "⌫") {
+      const d = value.replace("-", "").slice(0, -1);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    } else {
+      const d = (value.replace("-", "") + k).slice(0, 7);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (digits.length < 7) handle(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handle("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (complete) onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [digits, complete, handle, onDone]);
+
+  return (
+    <div className="mt-2">
       <div className="grid grid-cols-3 gap-1.5">
         {["1","2","3","4","5","6","7","8","9","done","0","⌫"].map((k) =>
           k === "done"

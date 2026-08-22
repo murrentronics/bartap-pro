@@ -670,6 +670,7 @@ export type Database = {
           id: string
           items: Json
           original_total: number | null
+          order_number: number | null
           owner_id: string
           paid: number
           total: number
@@ -681,6 +682,7 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           items: Json
+          order_number?: number | null
           original_total?: number | null
           owner_id: string
           paid: number
@@ -693,6 +695,7 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           items?: Json
+          order_number?: number | null
           original_total?: number | null
           owner_id?: string
           paid?: number
@@ -1048,6 +1051,8 @@ export type Database = {
           job_title: string | null
           has_login: boolean | null
           cashier_access: string | string[] | null
+          daily_order_count: number | null
+          last_order_date: string | null
         }
         Insert: {
           created_at?: string
@@ -1081,6 +1086,8 @@ export type Database = {
           job_title?: string | null
           has_login?: boolean | null
           cashier_access?: string[] | null
+          daily_order_count?: number | null
+          last_order_date?: string | null
         }
         Update: {
           created_at?: string
@@ -1114,6 +1121,8 @@ export type Database = {
           job_title?: string | null
           has_login?: boolean | null
           cashier_access?: string[] | null
+          daily_order_count?: number | null
+          last_order_date?: string | null
         }
         Relationships: [
           {

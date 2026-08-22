@@ -47,6 +47,7 @@ type Order = {
   created_at: string;
   payment_method?: string | null;
   cashier_id?: string | null;
+  order_number?: number | null;
 };
 
 type WalletTx = {
@@ -334,9 +335,10 @@ function CashierWallet({
   const openBillForOrder = async (order: Order) => {
     const parts = (order as any).note_parts ?? [];
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
+    const orderNum = order.order_number ?? Number(order.id.slice(0, 8));
     const bill: BillData = {
       storeName: profile.username || "Bar",
-      orderNumber: order.id.slice(0, 8),
+      orderNumber: orderNum,
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,

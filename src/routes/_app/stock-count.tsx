@@ -481,7 +481,7 @@ function StockCountPage() {
       {/* ── Right Panel: Split View ─────────────────────────────────── */}
       {splitView && (
         <div className="w-full min-w-[50vw] shrink-0 border-l border-border">
-          <SplitRightPanel role={profile?.role} ownerId={ownerId} />
+          <RightPanel role={profile?.role} ownerId={ownerId} />
         </div>
       )}
     </div>
@@ -533,20 +533,35 @@ function StockCountPage() {
   );
 }
 
-// ─── Split Right Panel ────────────────────────────────────────────────────────
-type SplitRightPanelProps = {
+// ─── Right Panel for Split View ───────────────────────────────────────────────
+type RightPanelProps = {
   role?: string;
   ownerId?: string;
 };
 
-function SplitRightPanel({ role, ownerId }: SplitRightPanelProps) {
+function RightPanel({ role, ownerId }: RightPanelProps) {
   const isManager = role === "manager" || (role as any) === "manager";
   const isOwner = role === "owner";
   const isCashier = role === "cashier";
+
+  if (isManager || isOwner) {
+    return <StockCheckPanel ownerId={ownerId} />;
+  }
+  if (isCashier) {
+    return <RegisterPanel />;
+  }
+  return (
+    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+      Split view not available for your role.
+    </div>
+  );
+}
+
+// ─── Stock Check Panel (Manager / Owner) ──────────────────────────────────────
+function StockCheckPanel({ ownerId }: { ownerId?: string }) {
   const [products, setProducts] = useState<any[]>([]);
   const [actuals, setActuals] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState("beers");
 
   useEffect(() => {
     let cancelled = false;
@@ -585,121 +600,160 @@ function SplitRightPanel({ role, ownerId }: SplitRightPanelProps) {
     };
   }, [ownerId]);
 
+  const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
+  const grouped = CATEGORIES.map((cat) => ({
+    cat,
+    products: sorted.filter((p) => (p.category || "beers") === cat.value),
+  })).filter((g) => g.products.length > 0);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
+        <h2 className="text-sm font-black">Stock Check</h2>
+        <p className="text-[10px] text-muted-foreground">{products.length} items</p>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          grouped.map(({ cat, products }) => (
+            <div key={cat.value}>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--primary)" }}>
+                {cat.icon} {cat.label}
+              </p>
+              <div className="space-y-1">
+                {products.map((p) => {
+                  const actual = actuals[p.id] ?? p.stock_qty;
+                  const diff = p.stock_qty - actual;
+                  const loss = diff > 0 ? diff * p.price : 0;
+                  const gain = diff < 0 ? Math.abs(diff) * p.price : 0;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2" style={{ background: "var(--gradient-card)" }}>
+                      <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
+                      <span className="text-[10px] text-muted-foreground mr-2">Qty: {p.stock_qty ?? 0}</span>
+                      <span className="text-[10px] font-black text-primary">Actual: {actual}</span>
+                      {loss > 0 && <span className="text-[10px] font-black text-red-400 ml-2">-${loss.toFixed(2)}</span>}
+                      {gain > 0 && <span className="text-[10px] font-black text-green-400 ml-2">+${gain.toFixed(2)}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Register Panel (Cashier) ─────────────────────────────────────────────────
+function RegisterPanel() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cat, setCat] = useState("beers");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    (supabase as any)
+      .from("products")
+      .select("*")
+      .order("name", { ascending: true })
+      .then(({ data }: any) => {
+        if (cancelled) return;
+        setProducts(data ?? []);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filtered = products.filter((p) => (p.category || "beers") === cat);
 
-  if (isManager || isOwner) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
-          <h2 className="text-sm font-black">Stock Check</h2>
-          <p className="text-[10px] text-muted-foreground">{products.length} items</p>
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
+        <h2 className="text-sm font-black">Bar</h2>
+        <p className="text-[10px] text-muted-foreground">{products.length} items</p>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {/* Category tabs */}
+        <div className="sticky top-0 z-20 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setCat(c.value)}
+                className={`h-9 shrink-0 rounded-xl font-black transition flex items-center justify-center px-3 ${
+                  cat === c.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}
+                style={cat === c.value ? { background: "var(--gradient-hero)" } : {}}
+              >
+                <span className="text-xs leading-none whitespace-nowrap">{c.icon} {c.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+
+        {/* Product grid */}
+        <div className="p-3 grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
           {loading ? (
-            <div className="flex justify-center py-10">
+            <div className="col-span-full flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="col-span-full text-center text-muted-foreground text-xs py-10">
+              No items in this category.
+            </div>
           ) : (
-            CATEGORIES.map((c) => {
-              const prods = products.filter((p) => (p.category || "beers") === c.value);
-              if (prods.length === 0) return null;
-              return (
-                <div key={c.value}>
-                  <p className="text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--primary)" }}>
-                    {c.icon} {c.label}
-                  </p>
-                  <div className="space-y-1">
-                    {prods.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2" style={{ background: "var(--gradient-card)" }}>
-                        <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
-                        <span className="text-[10px] text-muted-foreground mr-2">Qty: {p.stock_qty ?? 0}</span>
-                        <span className="text-[10px] font-black text-primary">Actual: {actuals[p.id] ?? "—"}</span>
-                      </div>
-                    ))}
+            filtered.map((p) => (
+              <div
+                key={p.id}
+                className="relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square"
+                style={{
+                  background: "var(--gradient-card)",
+                  borderColor: "rgba(251,146,60,0.8)",
+                }}
+              >
+                {/* Qty badge top-left */}
+                {(p.stock_qty ?? 0) > 0 && (
+                  <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow z-10">
+                    <span className="text-[10px] font-black text-white leading-none">
+                      {p.stock_qty}
+                    </span>
                   </div>
+                )}
+
+                {/* Product image / icon */}
+                <div className="aspect-[3/4] relative w-full flex items-center justify-center text-4xl">
+                  {p.image_url ? (
+                    <img
+                      src={p.image_url}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <span className="text-4xl">{categoryIcon(p.category ?? "drinks")}</span>
+                  )}
                 </div>
-              );
-            })
+
+                {/* Name + price */}
+                <div className="px-2 py-1.5 w-full text-center">
+                  <p className="text-[11px] font-bold leading-tight truncate">{p.name}</p>
+                  <p className="text-[10px] font-black text-primary">${Number(p.price).toFixed(2)}</p>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
-    );
-  }
-
-  if (isCashier) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
-          <h2 className="text-sm font-black">Bar</h2>
-          <p className="text-[10px] text-muted-foreground">{products.length} items</p>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="sticky top-0 z-20 px-3 py-2 bg-background/95 backdrop-blur border-b border-border">
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.value}
-                  onClick={() => setCat(c.value)}
-                  className={`h-9 shrink-0 rounded-xl font-black transition flex items-center justify-center px-3 ${
-                    cat === c.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"
-                  }`}
-                  style={cat === c.value ? { background: "var(--gradient-hero)" } : {}}
-                >
-                  <span className="text-xs leading-none whitespace-nowrap">{c.icon} {c.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="p-3 grid grid-cols-3 gap-2">
-            {loading ? (
-              <div className="col-span-3 flex justify-center py-10">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="col-span-3 text-center text-muted-foreground text-xs py-10">
-                No items in this category.
-              </div>
-            ) : (
-              filtered.map((p) => (
-                <div
-                  key={p.id}
-                  className="relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square"
-                  style={{
-                    background: "var(--gradient-card)",
-                    borderColor: "rgba(251,146,60,0.8)",
-                  }}
-                >
-                  <div className="aspect-[3/4] relative w-full flex items-center justify-center text-4xl">
-                    {p.image_url ? (
-                      <img
-                        src={p.image_url}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          const img = e.currentTarget as HTMLImageElement;
-                          img.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      categoryIcon(p.category ?? "drinks")
-                    )}
-                  </div>
-                  <div className="px-2 py-1.5 w-full text-center">
-                    <p className="text-[11px] font-bold leading-tug truncate">{p.name}</p>
-                    <p className="text-[10px] font-black text-primary">${Number(p.price).toFixed(2)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-      Split view not available for your role.
     </div>
   );
 }

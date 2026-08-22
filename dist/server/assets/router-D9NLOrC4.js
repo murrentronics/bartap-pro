@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-Db6rHqEp.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-BEtx3_4v.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BpXy3rHm.js");
+          const { PushNotifications } = await import("./index-BUio2VOC.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-DsJiSAjW.css";
+const appCss = "/assets/styles-D-T2gcFc.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30761,11 +30761,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$3, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$3.displayName;
-const $$splitComponentImporter$3 = () => import("./login-DUvQx5OC.js");
+const $$splitComponentImporter$3 = () => import("./login-DoCy-KMO.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-DWTYcpjq.js");
+const $$splitComponentImporter$2 = () => import("./_app-C7gLXt3I.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -33439,7 +33439,7 @@ function StockCountPage() {
           /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Create a table above to start your personal stock count." })
         ] })
       ] }),
-      splitView && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full min-w-[50vw] shrink-0 border-l border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SplitRightPanel, { role: profile?.role, ownerId }) })
+      splitView && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full min-w-[50vw] shrink-0 border-l border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(RightPanel, { role: profile?.role, ownerId }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showAddColumnModal, onOpenChange: setShowAddColumnModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-sm", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Add Column" }) }),
@@ -33486,14 +33486,22 @@ function StockCountPage() {
     ] }) })
   ] });
 }
-function SplitRightPanel({ role, ownerId }) {
+function RightPanel({ role, ownerId }) {
   const isManager = role === "manager" || role === "manager";
   const isOwner = role === "owner";
   const isCashier = role === "cashier";
+  if (isManager || isOwner) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(StockCheckPanel, { ownerId });
+  }
+  if (isCashier) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(RegisterPanel, {});
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-full text-muted-foreground text-sm", children: "Split view not available for your role." });
+}
+function StockCheckPanel({ ownerId }) {
   const [products, setProducts] = reactExports.useState([]);
   const [actuals, setActuals] = reactExports.useState({});
   const [loading, setLoading] = reactExports.useState(true);
-  const [cat, setCat] = reactExports.useState("beers");
   reactExports.useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -33521,100 +33529,128 @@ function SplitRightPanel({ role, ownerId }) {
       cancelled = true;
     };
   }, [ownerId]);
-  const filtered = products.filter((p) => (p.category || "beers") === cat);
-  if (isManager || isOwner) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Stock Check" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
-          products.length,
-          " items"
-        ] })
+  const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
+  const grouped = CATEGORIES.map((cat) => ({
+    cat,
+    products: sorted.filter((p) => (p.category || "beers") === cat.value)
+  })).filter((g) => g.products.length > 0);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Stock Check" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
+        products.length,
+        " items"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto p-3 space-y-3", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : grouped.map(({ cat, products: products2 }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black uppercase tracking-widest mb-1.5", style: { color: "var(--primary)" }, children: [
+        cat.icon,
+        " ",
+        cat.label
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto p-3 space-y-3", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : CATEGORIES.map((c) => {
-        const prods = products.filter((p) => (p.category || "beers") === c.value);
-        if (prods.length === 0) return null;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black uppercase tracking-widest mb-1.5", style: { color: "var(--primary)" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: products2.map((p) => {
+        const actual = actuals[p.id] ?? p.stock_qty;
+        const diff = p.stock_qty - actual;
+        const loss = diff > 0 ? diff * p.price : 0;
+        const gain = diff < 0 ? Math.abs(diff) * p.price : 0;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between rounded-xl border border-border/60 px-3 py-2", style: { background: "var(--gradient-card)" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold truncate flex-1", children: p.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-muted-foreground mr-2", children: [
+            "Qty: ",
+            p.stock_qty ?? 0
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black text-primary", children: [
+            "Actual: ",
+            actual
+          ] }),
+          loss > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black text-red-400 ml-2", children: [
+            "-$",
+            loss.toFixed(2)
+          ] }),
+          gain > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black text-green-400 ml-2", children: [
+            "+$",
+            gain.toFixed(2)
+          ] })
+        ] }, p.id);
+      }) })
+    ] }, cat.value)) })
+  ] });
+}
+function RegisterPanel() {
+  const [products, setProducts] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [cat, setCat] = reactExports.useState("beers");
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    supabase.from("products").select("*").order("name", { ascending: true }).then(({ data }) => {
+      if (cancelled) return;
+      setProducts(data ?? []);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const filtered = products.filter((p) => (p.category || "beers") === cat);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Bar" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
+        products.length,
+        " items"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sticky top-0 z-20 px-3 py-2 bg-background/95 backdrop-blur border-b border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5", children: CATEGORIES.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => setCat(c.value),
+          className: `h-9 shrink-0 rounded-xl font-black transition flex items-center justify-center px-3 ${cat === c.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"}`,
+          style: cat === c.value ? { background: "var(--gradient-hero)" } : {},
+          children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs leading-none whitespace-nowrap", children: [
             c.icon,
             " ",
             c.label
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: prods.map((p) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between rounded-xl border border-border/60 px-3 py-2", style: { background: "var(--gradient-card)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold truncate flex-1", children: p.name }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-muted-foreground mr-2", children: [
-              "Qty: ",
-              p.stock_qty ?? 0
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black text-primary", children: [
-              "Actual: ",
-              actuals[p.id] ?? "—"
-            ] })
-          ] }, p.id)) })
-        ] }, c.value);
-      }) })
-    ] });
-  }
-  if (isCashier) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Bar" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
-          products.length,
-          " items"
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sticky top-0 z-20 px-3 py-2 bg-background/95 backdrop-blur border-b border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5", children: CATEGORIES.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => setCat(c.value),
-            className: `h-9 shrink-0 rounded-xl font-black transition flex items-center justify-center px-3 ${cat === c.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"}`,
-            style: cat === c.value ? { background: "var(--gradient-hero)" } : {},
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs leading-none whitespace-nowrap", children: [
-              c.icon,
-              " ",
-              c.label
-            ] })
+          ] })
+        },
+        c.value
+      )) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-full flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-full text-center text-muted-foreground text-xs py-10", children: "No items in this category." }) : filtered.map((p) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square",
+          style: {
+            background: "var(--gradient-card)",
+            borderColor: "rgba(251,146,60,0.8)"
           },
-          c.value
-        )) }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 grid grid-cols-3 gap-2", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-3 flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-3 text-center text-muted-foreground text-xs py-10", children: "No items in this category." }) : filtered.map((p) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square",
-            style: {
-              background: "var(--gradient-card)",
-              borderColor: "rgba(251,146,60,0.8)"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "aspect-[3/4] relative w-full flex items-center justify-center text-4xl", children: p.image_url ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "img",
-                {
-                  src: p.image_url,
-                  alt: "",
-                  className: "absolute inset-0 w-full h-full object-cover",
-                  onError: (e) => {
-                    const img = e.currentTarget;
-                    img.style.display = "none";
-                  }
+          children: [
+            (p.stock_qty ?? 0) > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow z-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-black text-white leading-none", children: p.stock_qty }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "aspect-[3/4] relative w-full flex items-center justify-center text-4xl", children: p.image_url ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "img",
+              {
+                src: p.image_url,
+                alt: "",
+                className: "absolute inset-0 w-full h-full object-cover",
+                onError: (e) => {
+                  const img = e.currentTarget;
+                  img.style.display = "none";
                 }
-              ) : categoryIcon(p.category ?? "drinks") }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-2 py-1.5 w-full text-center", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-bold leading-tug truncate", children: p.name }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black text-primary", children: [
-                  "$",
-                  Number(p.price).toFixed(2)
-                ] })
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-4xl", children: categoryIcon(p.category ?? "drinks") }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-2 py-1.5 w-full text-center", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-bold leading-tight truncate", children: p.name }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black text-primary", children: [
+                "$",
+                Number(p.price).toFixed(2)
               ] })
-            ]
-          },
-          p.id
-        )) })
-      ] })
-    ] });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-full text-muted-foreground text-sm", children: "Split view not available for your role." });
+            ] })
+          ]
+        },
+        p.id
+      )) })
+    ] })
+  ] });
 }
 const ChainCtx = reactExports.createContext(null);
 function useChain() {
@@ -33629,8 +33665,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-D0duyGzL.js");
-    const { Share } = await import("./index-C6t-JlWY.js");
+    const { Filesystem, Directory } = await import("./index-DLD2oUe7.js");
+    const { Share } = await import("./index-qTd8-cmN.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -34146,7 +34182,7 @@ function StockCheckPage() {
     const key = catFilter ?? "all";
     setPdfBusy(key);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const now = /* @__PURE__ */ new Date();
       const dateStr = now.toLocaleDateString("en-GB");
@@ -34597,7 +34633,7 @@ function StockCheckPage() {
     )
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-BQL2BKg5.js");
+const $$splitComponentImporter$1 = () => import("./manager-GMWo7hhz.js");
 const Route$3 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -53391,7 +53427,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C_-OAA_c.js");
+      const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -53410,7 +53446,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-C_-OAA_c.js");
+    const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -53445,7 +53481,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-C_-OAA_c.js");
+      const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -54151,7 +54187,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (logs.length === 0) return;
     setDownloadingMonthKey(monthKey);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const TZ = "America/Port_of_Spain";
       const fmt2 = (n) => n.toFixed(2);
@@ -54588,7 +54624,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -54693,7 +54729,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -56412,7 +56448,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -56860,7 +56896,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -58987,7 +59023,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-B62FY_82.js");
+const $$splitComponentImporter = () => import("./credit-BwIBw_21.js");
 const Route2 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

@@ -1,5 +1,5 @@
-import { r as reactExports, W as jsxRuntimeExports } from "./server-Db6rHqEp.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, H as downloadPdf } from "./router-Pg2sn0UL.js";
+import { r as reactExports, W as jsxRuntimeExports } from "./server-BEtx3_4v.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, p as ClipboardList, x as ChevronRight, o as LoaderCircle, F as FileDown, v as Pencil, L as Label, I as Input, B as Button, X, w as Trash2, t as toast, y as drawHeader, z as LM, A as RM, D as CONTENT_BOTTOM, E as addFootersToAllPages, H as downloadPdf } from "./router-D9NLOrC4.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -38,7 +38,7 @@ async function printBill(account, ownerName) {
   new Map((products ?? []).map((p) => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const {
     jsPDF
-  } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
+  } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
   const doc = new jsPDF({
     unit: "mm",
     format: "a4"
@@ -566,8 +566,8 @@ function EditCustomerModal({
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setActiveField((f) => f === "idNumber" ? null : "idNumber"), className: "w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold", style: {
           background: "#ffffff",
           color: idNumber ? "#000000" : "#9ca3af"
-        }, children: idNumber || "e.g. 00000000" }),
-        activeField === "idNumber" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreditNumPad, { value: idNumber, onChange: setIdNumber, maxLen: 20, onDone: () => setActiveField(null) })
+        }, children: idNumber || "e.g. 000-0000" }),
+        activeField === "idNumber" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreditIdPad, { value: idNumber, onChange: setIdNumber, onDone: () => setActiveField(null) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { children: "Contact Number" }),
@@ -671,8 +671,8 @@ function CreateTab({
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => toggle("idNumber"), className: "w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold", style: {
           background: "#ffffff",
           color: idNumber ? "#000000" : "#9ca3af"
-        }, children: idNumber || "e.g. 00000000" }),
-        activeField === "idNumber" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreditNumPad, { value: idNumber, onChange: setIdNumber, maxLen: 20, onDone: () => setActiveField(null) })
+        }, children: idNumber || "e.g. 000-0000" }),
+        activeField === "idNumber" && /* @__PURE__ */ jsxRuntimeExports.jsx(CreditIdPad, { value: idNumber, onChange: setIdNumber, onDone: () => setActiveField(null) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { children: "Contact Number" }),
@@ -943,35 +943,6 @@ function PaymentOverlay({
 function Spinner() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-12", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin" }) });
 }
-function CreditNumPad({
-  value,
-  onChange,
-  maxLen = 20,
-  onDone
-}) {
-  reactExports.useEffect(() => {
-    const onKey = (e) => {
-      if (e.key >= "0" && e.key <= "9") {
-        e.preventDefault();
-        if (value.length < maxLen) onChange(value + e.key);
-      } else if (e.key === "Backspace" || e.key === "Delete") {
-        e.preventDefault();
-        onChange(value.slice(0, -1));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        onDone();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [value, onChange, maxLen, onDone]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "done", "0", "⌫"].map((k, i) => k === "done" ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: onDone, className: "h-12 rounded-xl font-black text-sm active:scale-95 transition text-primary-foreground", style: {
-    background: "var(--gradient-hero)"
-  }, children: "Done" }, "done") : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => {
-    if (k === "⌫") onChange(value.slice(0, -1));
-    else if (value.length < maxLen) onChange(value + k);
-  }, className: `h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`, children: k }, k)) }) });
-}
 function CreditContactPad({
   value,
   onChange,
@@ -1017,6 +988,44 @@ function CreditContactPad({
       background: "var(--gradient-hero)"
     }, children: "Done" }, "done") : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => handle(k), className: `h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`, children: k }, k)) })
   ] });
+}
+function CreditIdPad({
+  value,
+  onChange,
+  onDone
+}) {
+  const digits = value.replace("-", "");
+  const complete = digits.length === 7;
+  const handle = (k) => {
+    if (k === "⌫") {
+      const d = value.replace("-", "").slice(0, -1);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    } else {
+      const d = (value.replace("-", "") + k).slice(0, 7);
+      onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    }
+  };
+  reactExports.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        if (digits.length < 7) handle(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handle("⌫");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (complete) onDone();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [digits, complete, handle, onDone]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-1.5", children: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "done", "0", "⌫"].map((k) => k === "done" ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => {
+    if (complete) onDone();
+  }, className: `h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`, style: {
+    background: "var(--gradient-hero)"
+  }, children: "Done" }, "done") : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: () => handle(k), className: `h-12 rounded-xl font-black text-xl transition active:scale-95 ${k === "⌫" ? "bg-destructive/20 text-destructive" : "bg-muted text-foreground"}`, children: k }, k)) }) });
 }
 export {
   CreditPage as component

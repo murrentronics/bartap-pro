@@ -73,14 +73,6 @@ export default function AppLayout() {
     if (!loading && profile && profile.role !== "admin" && loc.pathname.startsWith("/admin")) {
       nav("/register", { replace: true });
     }
-    // Manager landing page — redirect to bar
-    if (
-      !loading &&
-      (profile?.role === "manager" || profile?.job_title === "manager") &&
-      (loc.pathname === "/" || loc.pathname === "/products")
-    ) {
-      nav("/register", { replace: true });
-    }
     if (
       !loading &&
       profile &&

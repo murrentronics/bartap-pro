@@ -3913,11 +3913,29 @@ function CashOverlay({
   const [step, setStep] = useState<1 | 2>(1);
   const [paid, setPaid] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ownerProfile, setOwnerProfile] = useState<{ username?: string | null } | null>(null);
 
-  const buildReceipt = (paidNum: number, changeNum: number): ReceiptData => ({
-    storeName: activeBar?.bar_name ?? profile?.username ?? "Bar",
+  useEffect(() => {
+    if (!ownerId) return;
+    let cancelled = false;
+    (supabase as any)
+      .from("profiles")
+      .select("username")
+      .eq("id", ownerId)
+      .single()
+      .then(({ data }: any) => {
+        if (cancelled) return;
+        setOwnerProfile(data);
+      });
+    return () => { cancelled = true; };
+  }, [ownerId]);
+
+  const businessName = ownerProfile?.username ?? activeBar?.bar_name ?? "Bar";
+
+  const buildReceipt = (paidNum: number, changeNum: number, orderNumber?: number): ReceiptData => ({
+    storeName: businessName,
     locationName: "",
-    orderNumber: editOrder ? editOrder.id.slice(0, 8) : Date.now().toString().slice(-6),
+    orderNumber: orderNumber ?? editOrder ? editOrder.id.slice(0, 8) : Date.now().toString().slice(-6),
     serverName: profile?.username ?? "Staff",
     items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
     subtotal: total,
@@ -4257,11 +4275,15 @@ function CashOverlay({
 
       setBusy(false);
       toast.success("Sale updated");
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, editOrder.order_number));
       return;
     }
 
-    const { error } = await supabase.from("orders").insert(orderPayload);
+    const { data: newOrder, error } = await supabase
+      .from("orders")
+      .insert(orderPayload)
+      .select("order_number")
+      .single();
     if (error) {
       setBusy(false);
       toast.error(error.message);
@@ -4290,7 +4312,7 @@ function CashOverlay({
     }
 
     setBusy(false);
-    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.order_number));
   };
 
   return (
@@ -4979,7 +5001,11 @@ function CashCustomerOverlay({
     }
 
     // 1. Normal cash order (triggers cashier wallet update)
-    const { error: orderErr } = await supabase.from("orders").insert(orderPayload);
+    const { data: newOrder, error: orderErr } = await supabase
+      .from("orders")
+      .insert(orderPayload)
+      .select("order_number")
+      .single();
     if (orderErr) {
       setBusy(false);
       toast.error(orderErr.message);
@@ -4996,7 +5022,7 @@ function CashCustomerOverlay({
     await (supabase as any).from("credit_transactions").insert(creditTxPayload);
 
     setBusy(false);
-    onSuccess(paidNum, changeNum);
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.order_number));
   };
 
   const createAndPay = async (e: React.FormEvent) => {

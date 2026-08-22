@@ -19,6 +19,7 @@ import {
   FileDown,
   Users,
   CalendarDays,
+  Banknote,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
@@ -299,7 +300,7 @@ function ManagerMain({
     setBarToggleBusy(false);
     setBarSessionStart(now);
     setBarClosedAt(null);
-    toast.success("?? Bar opened");
+    toast.success("ðŸŸ¢ Bar opened");
   };
 
   const handleCloseBar = async () => {
@@ -328,7 +329,7 @@ function ManagerMain({
       return;
     }
     setBarClosedAt(now);
-    toast.success("?? Bar closed");
+    toast.success("ðŸ”´ Bar closed");
   };
 
   const [tab, setTab] = useState<"dashboard" | "timecards">("dashboard");
@@ -372,7 +373,7 @@ function ManagerMain({
             {barToggleBusy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <span className="text-[11px]">{barIsOpen ? "??" : "??"}</span>
+              <span className="text-[11px]">{barIsOpen ? "ðŸŸ¢" : "ðŸ”´"}</span>
             )}
             {barIsOpen ? "Open" : "Closed"}
           </button>
@@ -431,7 +432,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}
               >
-                <span className="text-2xl">??</span>
+                <span className="text-2xl">ðŸ”´</span>
               </div>
               <h2 className="font-black text-xl">Close Bar?</h2>
               <p className="text-sm text-muted-foreground mt-2">
@@ -477,7 +478,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}
               >
-                <span className="text-2xl">??</span>
+                <span className="text-2xl">ðŸŸ¢</span>
               </div>
               <h2 className="font-black text-xl">Open Bar</h2>
               <p className="text-sm text-muted-foreground mt-1">Set the opening float</p>
@@ -529,7 +530,7 @@ function ManagerMain({
                   </div>
                 </div>
               )}
-              {/* Inline numpad — integers only, no decimal */}
+              {/* Inline numpad ï¿½ integers only, no decimal */}
               {activeOpenBarField !== null && (
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                   {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "?"].map((k, i) =>
@@ -828,7 +829,7 @@ function DashboardTab({
       await sb.from("profiles").update({ cashier_float: newTotal }).eq("id", ownerId);
       setFloatBalance(newTotal);
       setBarFloatSet(newTotal);
-      toast.success(`Float topped up by $${val.toFixed(2)} — total $${newTotal.toFixed(2)}`);
+      toast.success(`Float topped up by $${val.toFixed(2)} ï¿½ total $${newTotal.toFixed(2)}`);
     } else {
       // New session: close current sub-session, open new one, reset float anchor
       const { data: openBarSession } = await sb
@@ -859,7 +860,7 @@ function DashboardTab({
         .eq("id", ownerId);
       setFloatBalance(val);
       setBarFloatSet(val);
-      toast.success(`New session started — float set to $${val.toFixed(2)}`);
+      toast.success(`New session started ï¿½ float set to $${val.toFixed(2)}`);
     }
     setSetFloatBusy(false);
     setShowSetBarFloat(false);
@@ -945,7 +946,7 @@ function DashboardTab({
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
     if (total > floatBalance) {
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float ï¿½ balance is $${fmt(floatBalance)}`);
       return;
     }
     setSaving(true);
@@ -1019,7 +1020,7 @@ function DashboardTab({
     const diff = newTotal - Number(e.amount);
     if (diff > 0 && diff > floatBalance) {
       setEditSaving(false);
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float ï¿½ balance is $${fmt(floatBalance)}`);
       return;
     }
     const description =
@@ -1037,7 +1038,7 @@ function DashboardTab({
         return;
       }
       if (!updated || updated.length === 0) {
-        toast.error("Could not update expense — permission denied");
+        toast.error("Could not update expense ï¿½ permission denied");
         return;
       }
       if (diff !== 0) {
@@ -1067,7 +1068,7 @@ function DashboardTab({
         return;
       }
       if (!deleted || deleted.length === 0) {
-        toast.error("Could not delete expense — permission denied");
+        toast.error("Could not delete expense ï¿½ permission denied");
         return;
       }
       const newFloat = floatBalance + Number(e.amount);
@@ -1086,7 +1087,7 @@ function DashboardTab({
 
   const handleEditOrder = (order: Order) => {
     sessionStorage.setItem("edit_order", JSON.stringify(order));
-    toast.success("Order loaded for editing — switch to register");
+    toast.success("Order loaded for editing ï¿½ switch to register");
     navigate("/");
   };
 
@@ -1136,7 +1137,7 @@ function DashboardTab({
         >
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
           <span className="text-sm font-semibold text-red-400">
-            Bar is closed — expenses cannot be added, edited, or deleted.
+            Bar is closed ï¿½ expenses cannot be added, edited, or deleted.
           </span>
         </div>
       )}
@@ -1183,7 +1184,7 @@ function DashboardTab({
                 color: "rgba(255,255,255,0.85)",
               }}
             >
-              <span className="text-base">??</span>
+              <Banknote className="h-4 w-4" />
               <span>{barFloatSet > 0 ? "Update" : "Set"} Float</span>
             </button>
             <div
@@ -1233,9 +1234,9 @@ function DashboardTab({
                   border: "1.5px solid rgba(255,255,255,0.12)",
                   color: "rgba(255,255,255,0.85)",
                 }}
-              >
-                <span className="text-base">??</span>
-                <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
+                >
+                  <Banknote className="h-4 w-4" />
+                  <span>{machineFloatSet > 0 ? "Update" : "Set"} Float</span>
               </button>
               <div
                 className="rounded-2xl p-2.5 flex flex-col gap-0.5 text-center"
@@ -1306,7 +1307,7 @@ function DashboardTab({
                 Cash Sales
               </div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                {barIsOpen ? `$${fmt(sessionBarSales)}` : "—"}
+                {barIsOpen ? `$${fmt(sessionBarSales)}` : "ï¿½"}
               </div>
             </div>
             <div
@@ -1320,7 +1321,7 @@ function DashboardTab({
                 Bar Expenses
               </div>
               <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                {barIsOpen ? `$${fmt(sessionExpenses)}` : "—"}
+                {barIsOpen ? `$${fmt(sessionExpenses)}` : "ï¿½"}
               </div>
             </div>
           </div>
@@ -1348,7 +1349,7 @@ function DashboardTab({
                   Cash in Machine
                 </div>
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "—"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "ï¿½"}
                 </div>
               </div>
               <div
@@ -1365,7 +1366,7 @@ function DashboardTab({
                   Machines Payout
                 </div>
                 <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "—"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "ï¿½"}
                 </div>
               </div>
             </div>
@@ -1408,7 +1409,7 @@ function DashboardTab({
         <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
       )}
 
-      {/* ?? Set Bar Float Modal ?? */}
+      {/* Set Bar Float Modal */}
       {showSetBarFloat && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -1429,7 +1430,7 @@ function DashboardTab({
             >
               {barFloatSet > 0 ? "Update Bar Float" : "Set Bar Float"}
             </p>
-            {/* Same / New session selector — only when a float is already set */}
+            {/* Same / New session selector ï¿½ only when a float is already set */}
             {barFloatSet > 0 && (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -1455,8 +1456,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float — used amount unchanged"
-                    : "Starts fresh — used amount resets to $0"}
+                    ? "Adds to current float ï¿½ used amount unchanged"
+                    : "Starts fresh ï¿½ used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1521,7 +1522,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Savingï¿½" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -1606,7 +1607,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Savingï¿½" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -1863,8 +1864,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float — used amount unchanged"
-                    : "Starts fresh — used amount resets to $0"}
+                    ? "Adds to current float ï¿½ used amount unchanged"
+                    : "Starts fresh ï¿½ used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1927,7 +1928,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Savingï¿½" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -2012,7 +2013,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving…" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Savingï¿½" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -2382,7 +2383,7 @@ export function TimeCardsTab({
       start.setDate(ref.getDate() - dow);
       const end = new Date(ref);
       end.setDate(ref.getDate() + (6 - dow));
-      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ï¿½ ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     }
     if (tsPeriod === "month")
       return ref.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -2482,7 +2483,7 @@ export function TimeCardsTab({
                           className="text-[10px] mt-0.5"
                           style={{ color: "rgba(134,239,172,0.8)" }}
                         >
-                          Since {fmtTime(empOpen.clocked_in_at)} ·{" "}
+                          Since {fmtTime(empOpen.clocked_in_at)} ï¿½{" "}
                           {fmtDuration(empOpen.clocked_in_at, null)} on shift
                         </p>
                       )}
@@ -2597,7 +2598,7 @@ export function TimeCardsTab({
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-sm truncate">{tc.employee_name}</p>
                       <p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>
-                        Since {fmtTime(tc.clocked_in_at)} · {fmtDuration(tc.clocked_in_at, null)} on
+                        Since {fmtTime(tc.clocked_in_at)} ï¿½ {fmtDuration(tc.clocked_in_at, null)} on
                         shift
                       </p>
                     </div>
@@ -2802,7 +2803,7 @@ export function TimeCardsTab({
             </div>
           )}
 
-          {/* Week / Month / Year / Day period pickers — only shown when a date is selected */}
+          {/* Week / Month / Year / Day period pickers ï¿½ only shown when a date is selected */}
           {tsSelectedDate && (
             <div className="flex gap-1.5">
               {(["day", "week", "month", "year"] as const).map((p) => (
@@ -2867,7 +2868,7 @@ export function TimeCardsTab({
             </div>
           )}
 
-          {/* Records — Month accordion ? Day rows ? Employee entries */}
+          {/* Records ï¿½ Month accordion ? Day rows ? Employee entries */}
           {tcLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -2930,7 +2931,7 @@ export function TimeCardsTab({
                         <p className="font-black text-sm">{mLabel}</p>
                         <p className="text-xs text-muted-foreground">
                           {mDays.length} day{mDays.length !== 1 ? "s" : ""}
-                          {mActive && <span className="text-green-400 ml-1">· active</span>}
+                          {mActive && <span className="text-green-400 ml-1">ï¿½ active</span>}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2983,7 +2984,7 @@ export function TimeCardsTab({
                                     {cards.length} record{cards.length !== 1 ? "s" : ""}
                                     {dActive > 0 && (
                                       <span className="text-green-400 ml-1">
-                                        · {dActive} active
+                                        ï¿½ {dActive} active
                                       </span>
                                     )}
                                   </p>
@@ -3030,12 +3031,12 @@ export function TimeCardsTab({
                                                 {fmtTime(tc.clocked_out_at)}
                                               </span>
                                               <span className="text-muted-foreground ml-1">
-                                                · {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
+                                                ï¿½ {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
                                               </span>
                                             </>
                                           ) : (
                                             <span className="text-green-400 font-semibold">
-                                              · Still on shift
+                                              ï¿½ Still on shift
                                             </span>
                                           )}
                                         </div>
@@ -3130,7 +3131,7 @@ function SalesTab({
                     })}
                   </p>
                   <p className="text-sm font-semibold leading-snug mt-0.5 break-words">
-                    {(o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ")}
+                    {(o.items || []).map((it: any) => `${it.qty}ï¿½ ${it.name}`).join(", ")}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
@@ -3566,3 +3567,4 @@ function ExpensesTab({
     </div>
   );
 }
+
