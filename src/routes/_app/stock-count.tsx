@@ -38,6 +38,8 @@ function StockCountPage() {
   const [activeTableIdForColumn, setActiveTableIdForColumn] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
   const [splitView, setSplitView] = useState(false);
+  const [deleteRowModal, setDeleteRowModal] = useState<{ tableId: string; rowIdx: number } | null>(null);
+  const [selectedCols, setSelectedCols] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     return () => {
@@ -246,15 +248,42 @@ function StockCountPage() {
   };
 
   const deleteRow = (tableId: string, rowIdx: number) => {
+    setDeleteRowModal({ tableId, rowIdx });
+    setSelectedCols(new Set());
+  };
+
+  const confirmDeleteColumns = () => {
+    if (!deleteRowModal) return;
+    const { tableId, rowIdx } = deleteRowModal;
+    const colsToDelete = Array.from(selectedCols).sort((a, b) => b - a);
+    
     persist(
       tables.map((t) => {
         if (t.id !== tableId) return t;
+        const newColumns = [...t.columns];
+        const newRows = t.rows.map((row) => {
+          const newRow = [...row];
+          colsToDelete.forEach((ci) => {
+            newRow.splice(ci + 1, 1);
+          });
+          return newRow;
+        });
+        colsToDelete.forEach((ci) => {
+          newColumns.splice(ci, 1);
+        });
+        const filteredRows = newRows.filter((row) => {
+          const dataCols = row.slice(1);
+          return dataCols.some((val) => val.trim() !== "");
+        });
         return {
           ...t,
-          rows: t.rows.filter((_, i) => i !== rowIdx),
+          columns: newColumns,
+          rows: filteredRows,
         };
       }),
     );
+    setDeleteRowModal(null);
+    setSelectedCols(new Set());
   };
 
   const calcTotal = (row: string[]) => {
@@ -431,7 +460,7 @@ function StockCountPage() {
                       </td>
                       <td className="px-2 py-1 text-center w-[40px] min-w-[40px]">
                         <button
-                          onClick={() => deleteRow(table.id, ri)}
+                          onClick={() => setDeleteRowModal({ tableId: table.id, rowIdx: ri })}
                           className="h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -515,6 +544,85 @@ function StockCountPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Columns Modal */}
+      {deleteRowModal && (() => {
+        const table = tables.find((t) => t.id === deleteRowModal.tableId);
+        if (!table) return null;
+        const row = table.rows[deleteRowModal.rowIdx];
+        if (!row) return null;
+        const allSelected = selectedCols.size === table.columns.length;
+        return (
+          <Dialog open={!!deleteRowModal} onOpenChange={(open) => !open && setDeleteRowModal(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete Columns</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <p className="text-xs text-muted-foreground">Select columns to remove from this row:</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (allSelected) {
+                        setSelectedCols(new Set());
+                      } else {
+                        setSelectedCols(new Set(table.columns.map((_, ci) => ci)));
+                      }
+                    }}
+                    className="h-9 px-4 rounded-lg text-xs font-black border border-border hover:bg-muted/50 transition"
+                  >
+                    {allSelected ? "Deselect All" : "Select All"}
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedCols.size} of {table.columns.length} selected
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {table.columns.map((col, ci) => (
+                    <label
+                      key={ci}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-muted/30 transition"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCols.has(ci)}
+                        onChange={(e) => {
+                          const next = new Set(selectedCols);
+                          if (e.target.checked) {
+                            next.add(ci);
+                          } else {
+                            next.delete(ci);
+                          }
+                          setSelectedCols(next);
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm font-semibold">{col}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteRowModal(null)}
+                    className="flex-1 h-11 font-black text-sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmDeleteColumns}
+                    disabled={selectedCols.size === 0}
+                    className="flex-1 h-11 font-black text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirm Delete
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

@@ -3366,7 +3366,8 @@ export default function CashiersPage() {
   const onClear = async (c: Cashier) => {
     const isMgr = (c as any).role === "manager" || (c as any).job_title === "manager";
     const rpc = isMgr ? "transfer_manager_to_owner" : "transfer_cashier_to_owner";
-    const { error } = await supabase.rpc(rpc, { _cashier_id: c.id });
+    const params = isMgr ? { _manager_id: c.id } : { _cashier_id: c.id };
+    const { error } = await supabase.rpc(rpc, params);
     if (error) {
       toast.error(error.message);
       return;
@@ -4061,7 +4062,7 @@ export default function CashiersPage() {
                             {roleBadge.label}
                           </span>
                         </div>
-                        {!isCustom && !isManager && (
+                        {!isCustom && (
                           <div className="text-sm text-muted-foreground">
                             Balance:{" "}
                             <span className="text-primary font-black">

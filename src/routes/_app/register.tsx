@@ -631,6 +631,7 @@ export default function RegisterPage() {
   // sessionStorage key "edit_order" holds the full Order JSON written by wallet.tsx.
   type EditOrder = {
     id: string;
+    order_number?: number;
     items: { id?: string; name: string; qty: number; price: number }[];
     total: number;
     paid: number;
@@ -3931,10 +3932,10 @@ function CashOverlay({
 
   const businessName = ownerProfile?.username ?? activeBar?.bar_name ?? "Bar";
 
-  const buildReceipt = (paidNum: number, changeNum: number, orderId?: string): ReceiptData => ({
+  const buildReceipt = (paidNum: number, changeNum: number, orderId?: string, orderNumber?: number): ReceiptData => ({
     storeName: businessName,
     locationName: "",
-    orderNumber: orderId ? Number(orderId.slice(0, 8)) : 1,
+    orderNumber: orderNumber ?? (orderId ? parseInt(orderId.slice(0, 8), 16) : 1),
     serverName: profile?.username ?? "Staff",
     items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
     subtotal: total,
@@ -4146,7 +4147,7 @@ function CashOverlay({
         await doStockAndShots(groupId);
       setBusy(false);
       toast.success(`💾 Saved offline — will sync when reconnected`);
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, ""));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
       return;
       }
       // If editing an existing credit charge: delete the old one first
@@ -4174,7 +4175,7 @@ function CashOverlay({
           ? `Credit sale updated for ${selectedCustomer.full_name}`
           : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`,
       );
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, ""));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
       return;
     }
 
@@ -4274,7 +4275,7 @@ function CashOverlay({
 
       setBusy(false);
       toast.success("Sale updated");
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, editOrder.order_number, editOrder.id));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, editOrder.id, editOrder.order_number));
       return;
     }
 
@@ -4311,7 +4312,7 @@ function CashOverlay({
     }
 
     setBusy(false);
-    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.order_number, newOrder?.id));
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number));
   };
 
   return (
@@ -5021,7 +5022,7 @@ function CashCustomerOverlay({
     await (supabase as any).from("credit_transactions").insert(creditTxPayload);
 
     setBusy(false);
-    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.order_number, newOrder?.id));
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number));
   };
 
   const createAndPay = async (e: React.FormEvent) => {

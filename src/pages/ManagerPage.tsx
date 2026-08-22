@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 // --- Types --------------------------------------------------------------------
 type Expense = {
@@ -2085,6 +2089,10 @@ export function TimeCardsTab({
   // Clock sub-tab state
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [clockBusy, setClockBusy] = useState(false);
+  const [showSetClockOut, setShowSetClockOut] = useState(false);
+  const [setClockOutDate, setSetClockOutDate] = useState<string | null>(null);
+  const [setClockOutTime, setSetClockOutTime] = useState("");
+  const [setClockOutBusy, setSetClockOutBusy] = useState(false);
   const [openDate, setOpenDate] = useState<string | null>(null);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const [tsSelectedDate, setTsSelectedDate] = useState<string | null>(null);
@@ -2130,6 +2138,27 @@ export function TimeCardsTab({
       return;
     }
     toast.success(`${openCard.employee_name} clocked out`);
+    loadTimeCards();
+  };
+
+  const handleSetClockOut = async () => {
+    if (!openCard || !setClockOutDate || !setClockOutTime) return;
+    setSetClockOutBusy(true);
+    const [hours, minutes] = setClockOutTime.split(":").map(Number);
+    const dt = new Date(`${setClockOutDate}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00-04:00`);
+    const { error } = await sb
+      .from("time_cards")
+      .update({ clocked_out_at: dt.toISOString() })
+      .eq("id", openCard.id);
+    setSetClockOutBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${openCard.employee_name} clock out time set`);
+    setShowSetClockOut(false);
+    setSetClockOutDate(null);
+    setSetClockOutTime("");
     loadTimeCards();
   };
 
@@ -2321,7 +2350,7 @@ export function TimeCardsTab({
                     )}
                   </button>
                   {isSel && (
-                    <div className="grid grid-cols-2 gap-3 pt-2 pb-4">
+                    <div className="grid grid-cols-3 gap-3 pt-2 pb-4">
                       <button
                         onClick={handleClockIn}
                         disabled={isCIn || clockBusy || !barIsOpen}
@@ -2347,37 +2376,122 @@ export function TimeCardsTab({
                         )}{" "}
                         Clock In
                       </button>
-                      <button
-                        onClick={handleClockOut}
-                        disabled={!isCIn || clockBusy}
-                        className="h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={
-                          isCIn
-                            ? {
-                                background: "rgba(239,68,68,0.12)",
-                                border: "1.5px solid #f87171",
-                                color: "#f87171",
-                              }
-                            : {
-                                background: "var(--gradient-card)",
-                                border: "1.5px solid var(--border)",
-                                color: "var(--muted-foreground)",
-                              }
-                        }
-                      >
-                        {clockBusy && isCIn ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <LogOut className="h-4 w-4" />
-                        )}{" "}
-                        Clock Out
-                      </button>
+                      <div className="col-span-2 flex h-14 rounded-2xl overflow-hidden" style={{
+                        border: isCIn ? "1.5px solid #f87171" : "1.5px solid var(--border)",
+                      }}>
+                        <button
+                          onClick={handleClockOut}
+                          disabled={!isCIn || clockBusy}
+                          className="flex-1 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            background: isCIn ? "rgba(239,68,68,0.12)" : "var(--gradient-card)",
+                            color: isCIn ? "#f87171" : "var(--muted-foreground)",
+                          }}
+                        >
+                          {clockBusy && isCIn ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <LogOut className="h-4 w-4" />
+                          )}{" "}
+                          <span className="text-sm font-black">Clock Out</span>
+                        </button>
+                        <div className="w-px" style={{ background: isCIn ? "rgba(248,113,113,0.4)" : "var(--border)" }} />
+                        <button
+                          onClick={() => setShowSetClockOut(true)}
+                          disabled={!isCIn || clockBusy}
+                          className="flex-1 flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            background: isCIn ? "rgba(239,68,68,0.12)" : "var(--gradient-card)",
+                            color: isCIn ? "#f87171" : "var(--muted-foreground)",
+                          }}
+                        >
+                          <CalendarDays className="h-4 w-4" />
+                          <span className="text-sm font-black">Set Clock Out</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               );
-            })
+            }            )
           )}
+
+          {/* Set Clock Out Dialog */}
+          <Dialog open={showSetClockOut} onOpenChange={setShowSetClockOut}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Set Clock Out Time</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 pt-2">
+                <div>
+                  <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-black flex items-center justify-between gap-2 hover:bg-accent/40 transition-colors"
+                      >
+                        <span>
+                          {setClockOutDate
+                            ? new Date(setClockOutDate + "T12:00:00").toLocaleDateString("en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "Select date"}
+                        </span>
+                        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[200]" align="center" sideOffset={4}>
+                      <Calendar
+                        mode="single"
+                        selected={setClockOutDate ? new Date(setClockOutDate + "T12:00:00") : undefined}
+                        onSelect={(day) => {
+                          if (day) {
+                            const y = day.getFullYear();
+                            const m = String(day.getMonth() + 1).padStart(2, "0");
+                            const d = String(day.getDate()).padStart(2, "0");
+                            setSetClockOutDate(`${y}-${m}-${d}`);
+                          }
+                        }}
+                        captionLayout="dropdown"
+                        className="rounded-xl border-0"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 block">Time</Label>
+                  <input
+                    type="time"
+                    value={setClockOutTime}
+                    onChange={(e) => setSetClockOutTime(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSetClockOut}
+                  disabled={!setClockOutDate || !setClockOutTime || setClockOutBusy}
+                  className="w-full h-12 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: "rgba(239,68,68,0.12)",
+                    border: "1.5px solid #f87171",
+                    color: "#f87171",
+                  }}
+                >
+                  {setClockOutBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4" />
+                  )}{" "}
+                  {setClockOutBusy ? "Saving…" : "Save Clock Out"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* -- Active workers flat list -- */}
           {(() => {

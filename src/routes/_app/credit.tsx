@@ -716,11 +716,20 @@ function EditCustomerModal({
   };
 
   const [name, setName] = useState(account.full_name);
-  const [contact, setContact] = useState(parseContact(account.contact_number));
+  const [contact, setContactRaw] = useState(parseContact(account.contact_number));
   const [idType, setIdType] = useState<"drivers_permit" | "national_id">(parseIdType(account.id_number));
-  const [idNumber, setIdNumber] = useState(parseIdNumber(account.id_number));
+  const [idNumber, setIdNumberRaw] = useState(parseIdNumber(account.id_number));
   const [busy, setBusy] = useState(false);
   const [activeField, setActiveField] = useState<null | "idNumber" | "contact">(null);
+
+  const setContact = (v: string) => {
+    const digits = v.replace("-", "");
+    if (digits.length <= 7) setContactRaw(v);
+  };
+  const setIdNumber = (v: string) => {
+    const digits = v.replace("-", "");
+    if (digits.length <= 7) setIdNumberRaw(v);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -851,13 +860,22 @@ function CreateTab({
   onCreated: (a: CreditAccount) => void;
 }) {
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [contactRaw, setContactRaw] = useState("");
   const [idType, setIdType] = useState<"drivers_permit" | "national_id">("national_id");
-  const [idNumber, setIdNumber] = useState("");
+  const [idNumberRaw, setIdNumberRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [activeField, setActiveField] = useState<null | "idNumber" | "contact">(null);
   const toggle = (f: "idNumber" | "contact") => setActiveField(cur => cur === f ? null : f);
+
+  const setContact = (v: string) => {
+    const digits = v.replace("-", "");
+    if (digits.length <= 7) setContactRaw(v);
+  };
+  const setIdNumber = (v: string) => {
+    const digits = v.replace("-", "");
+    if (digits.length <= 7) setIdNumberRaw(v);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -868,8 +886,8 @@ function CreateTab({
       .insert({
         owner_id: ownerId,
         full_name: name.trim(),
-        contact_number: contact.trim() ? "868-" + contact.trim() : null,
-        id_number: idNumber.trim() ? `${idType === "drivers_permit" ? "DP" : "NID"}: ${idNumber.trim()}` : null,
+        contact_number: contactRaw.trim() ? "868-" + contactRaw.trim() : null,
+        id_number: idNumberRaw.trim() ? `${idType === "drivers_permit" ? "DP" : "NID"}: ${idNumberRaw.trim()}` : null,
         status: "closed",
       })
       .select()
@@ -879,8 +897,8 @@ function CreateTab({
     setDone(true);
     onCreated(data as CreditAccount);
     setName("");
-    setContact("");
-    setIdNumber("");
+    setContactRaw("");
+    setIdNumberRaw("");
     setIdType("national_id");
     setActiveField(null);
   };
@@ -942,11 +960,11 @@ function CreateTab({
           <Label>ID Number</Label>
           <button type="button" onClick={() => toggle("idNumber")}
             className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
-            style={{ background: "#ffffff", color: idNumber ? "#000000" : "#9ca3af" }}>
-            {idNumber || "e.g. 000-0000"}
+            style={{ background: "#ffffff", color: idNumberRaw ? "#000000" : "#9ca3af" }}>
+            {idNumberRaw || "e.g. 000-0000"}
           </button>
           {activeField === "idNumber" && (
-            <CreditIdPad value={idNumber} onChange={setIdNumber} onDone={() => setActiveField(null)} />
+            <CreditIdPad value={idNumberRaw} onChange={setIdNumber} onDone={() => setActiveField(null)} />
           )}
         </div>
 
@@ -957,23 +975,23 @@ function CreateTab({
             <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
             <button type="button" onClick={() => toggle("contact")}
               className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm text-left font-semibold"
-              style={{ background: "#ffffff", color: contact ? "#000000" : "#9ca3af" }}>
-              {contact || "XXX-XXXX"}
+              style={{ background: "#ffffff", color: contactRaw ? "#000000" : "#9ca3af" }}>
+              {contactRaw || "XXX-XXXX"}
             </button>
           </div>
-          {contact.replace("-", "").length > 0 && contact.replace("-", "").length < 7 && (
+          {contactRaw.replace("-", "").length > 0 && contactRaw.replace("-", "").length < 7 && (
             <p className="text-xs font-semibold text-amber-400 mt-1">
-              {7 - contact.replace("-", "").length} more digit{7 - contact.replace("-", "").length !== 1 ? "s" : ""} needed
+              {7 - contactRaw.replace("-", "").length} more digit{7 - contactRaw.replace("-", "").length !== 1 ? "s" : ""} needed
             </p>
           )}
           {activeField === "contact" && (
-            <CreditContactPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+            <CreditContactPad value={contactRaw} onChange={setContact} onDone={() => setActiveField(null)} />
           )}
         </div>
 
         <Button
           type="submit"
-          disabled={busy || !name.trim() || (contact.replace("-", "").length > 0 && contact.replace("-", "").length < 7)}
+          disabled={busy || !name.trim() || (contactRaw.replace("-", "").length > 0 && contactRaw.replace("-", "").length < 7)}
           className="w-full h-12 font-black text-base"
           style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
         >
@@ -1322,28 +1340,33 @@ function CreditContactPad({ value, onChange, onDone }: {
     if (k === "⌫") {
       const d = value.replace("-", "").slice(0, -1);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    } else if (k === "done") {
+      if (complete) onDone();
     } else {
       const d = (value.replace("-", "") + k).slice(0, 7);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
 
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
-        if (digits.length < 7) handle(e.key);
+        handleRef.current(e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
-        handle("⌫");
+        handleRef.current("⌫");
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (complete) onDone();
+        handleRef.current("done");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [digits, complete, handle, onDone]);
+  }, [value, onChange, onDone]);
 
   return (
     <div className="mt-2">
@@ -1377,28 +1400,33 @@ function CreditIdPad({ value, onChange, onDone }: {
     if (k === "⌫") {
       const d = value.replace("-", "").slice(0, -1);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
+    } else if (k === "done") {
+      if (complete) onDone();
     } else {
       const d = (value.replace("-", "") + k).slice(0, 7);
       onChange(d.length > 3 ? d.slice(0, 3) + "-" + d.slice(3) : d);
     }
   };
 
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
-        if (digits.length < 7) handle(e.key);
+        handleRef.current(e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
-        handle("⌫");
+        handleRef.current("⌫");
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (complete) onDone();
+        handleRef.current("done");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [digits, complete, handle, onDone]);
+  }, [value, onChange, onDone]);
 
   return (
     <div className="mt-2">

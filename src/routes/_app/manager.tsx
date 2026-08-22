@@ -363,6 +363,16 @@ function ManagerExpenses({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="py-3 space-y-4 pb-24">
+      {/* Wallet Balance Card */}
+      <div className="rounded-3xl px-5 py-4 flex items-center justify-between"
+        style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-glow)" }}>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(0,0,0,0.55)" }}>Wallet Balance</p>
+          <p className="text-2xl font-black mt-0.5">${Number(profile.wallet_balance).toFixed(2)}</p>
+        </div>
+        <Wallet className="h-8 w-8" style={{ color: "rgba(0,0,0,0.25)" }} />
+      </div>
+
       {/* Sales / Expenses Tabs */}
       <div className="rounded-2xl border border-border overflow-hidden">
         <div className="grid grid-cols-2">

@@ -1351,6 +1351,10 @@ export type Database = {
         Args: { _cashier_id: string }
         Returns: undefined
       }
+      transfer_manager_to_owner: {
+        Args: { _manager_id: string }
+        Returns: undefined
+      }
       open_bottle: {
         Args: { p_owner_id: string; p_product_id: string; p_shot_price: number }
         Returns: string
