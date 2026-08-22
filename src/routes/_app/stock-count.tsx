@@ -298,9 +298,9 @@ function StockCountPage() {
           </button>
         </div>
       )}
-      <div className={splitView ? "flex overflow-x-auto snap-x snap-mandatory h-[calc(100vh-52px)]" : "space-y-5"}>
+      <div className={splitView ? "flex flex-col md:flex-row h-[calc(100vh-52px)]" : "space-y-5"}>
         {/* Left Panel: Stock Count */}
-        <div className={splitView ? "w-[100vw] shrink-0 snap-start overflow-y-auto" : ""}>
+        <div className={splitView ? "w-full md:w-1/2 overflow-y-auto" : ""}>
           <div className="flex items-center gap-2">
           <input
             type="text"
@@ -466,7 +466,7 @@ function StockCountPage() {
 
       {/* -- Right Panel: Split View ----------------------------------- */}
       {splitView && (
-        <div className="w-[100vw] shrink-0 snap-start border-l border-border">
+        <div className="w-full md:w-1/2 border-l border-border overflow-y-auto">
           <RightPanel role={profile?.role} ownerId={ownerId} />
         </div>
       )}

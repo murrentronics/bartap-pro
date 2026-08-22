@@ -336,7 +336,7 @@ function CashierWallet({
   const openBillForOrder = async (order: Order) => {
     const parts = (order as any).note_parts ?? [];
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
-    const orderNum = order.order_number ?? Number(order.id.slice(0, 8));
+    const orderNum = Number(order.id.slice(0, 8));
     const bill: BillData = {
       storeName: profile.username || "Bar",
       orderNumber: orderNum,
@@ -3689,9 +3689,11 @@ function StaffBadge({ label = "Cashier" }: { label?: string }) {
 function TransactionsTab({
   profile,
   onDeleted,
+  onPrintBill,
 }: {
   profile: { id: string };
   onDeleted?: () => void;
+  onPrintBill?: (order: Order) => void;
 }) {
   const { refreshProfile } = useAuth();
   const { profile: authProfile } = useAuth();
@@ -4554,11 +4556,9 @@ function TransactionsTab({
                       year: "numeric",
                     })}
                   </div>
-                  {o.order_number != null && (
-                    <div className="text-xs font-black text-primary mt-0.5">
-                      ORDER #{o.order_number}
-                    </div>
-                  )}
+                  <div className="text-xs font-black text-primary mt-0.5">
+                    ORDER #{o.id.slice(0, 8)}
+                  </div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
                     {(o as any).cashier_id === (o as any).owner_id ? "Owner: Sale" : (o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
                   </div>
@@ -4619,7 +4619,7 @@ function TransactionsTab({
                   </span>
                   <div className="flex flex-col gap-1.5">
                     <button
-                      onClick={() => openBillForOrder(o)}
+                      onClick={() => onPrintBill?.(o)}
                       className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                       title="Print bill"
                     >
@@ -4760,7 +4760,7 @@ function OwnerWallet({
   async function openBillForOrder(order: Order) {
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
-      orderNumber: order.id.slice(0, 8),
+      orderNumber: Number(order.id.slice(0, 8)),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -6053,7 +6053,7 @@ function OwnerWallet({
 
       {/* ── Tab content ──────────────────────────────────────────────────── */}
       {activeTab === "transactions" ? (
-        <TransactionsTab profile={profile} onDeleted={loadSummary} />
+        <TransactionsTab profile={profile} onDeleted={loadSummary} onPrintBill={openBillForOrder} />
       ) : (
         <FinancialsTab
           ownerId={profile.id}
