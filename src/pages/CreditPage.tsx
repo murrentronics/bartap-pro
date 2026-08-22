@@ -391,22 +391,18 @@ function BillModal({ account, ownerName, onClose }: {
   const handleShare = async () => {
     setBusy("share");
     try {
-      const b64 = await buildBillPdf(account, ownerName);
-      if (!b64) { setBusy(null); return; }
-
       if (Capacitor.isNativePlatform()) {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (!b64) { setBusy(null); return; }
         const { Filesystem, Directory } = await import("@capacitor/filesystem");
         const { Share } = await import("@capacitor/share");
-
         const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
         const writeResult = await Filesystem.writeFile({
           path: filename,
           data: base64Data,
           directory: Directory.Cache,
         });
-
         const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
-
         await Share.share({
           title: `Credit Bill — ${account.full_name}`,
           text: shareText,
@@ -414,8 +410,9 @@ function BillModal({ account, ownerName, onClose }: {
           dialogTitle: "Send Bill",
         });
       } else {
-        await downloadPdf(filename, b64);
-        toast.success("Bill saved");
+        const text = `Credit Bill — ${account.full_name}\nBalance Owed: $${Number(account.balance_owed).toFixed(2)}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+        toast.success("Opening WhatsApp share");
       }
     } catch (e: any) {
       if (!String(e?.message ?? "").includes("cancel")) {
@@ -1258,16 +1255,20 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
          {/* ID Number */}
          <div>
            <Label>ID Number</Label>
-           <input
-             type="text"
-             inputMode="numeric"
-             value={idNumber}
-             onChange={(e) => setIdNumber(e.target.value.replace(/[^0-9]/g, ""))}
-             onFocus={() => setActiveField("idNumber")}
-             placeholder="e.g. 00000000"
-             className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-             style={{ background: "#ffffff" }}
-           />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={idNumber}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                setIdNumber(v);
+              }}
+              onFocus={() => setActiveField("idNumber")}
+              placeholder="e.g. 00000000"
+              maxLength={7}
+              className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+              style={{ background: "#ffffff" }}
+            />
            {activeField === "idNumber" && (
              <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
            )}
@@ -1278,16 +1279,20 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
            <Label>Contact Number</Label>
            <div className="flex items-center mt-1">
              <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-             <input
-               type="text"
-               inputMode="tel"
-               value={contact}
-               onChange={(e) => setContact(e.target.value.replace(/[^0-9-]/g, ""))}
-               onFocus={() => setActiveField("contact")}
-               placeholder="XXX-XXXX"
-               className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-               style={{ background: "#ffffff" }}
-             />
+              <input
+                type="text"
+                inputMode="tel"
+                value={contact}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9-]/g, "").slice(0, 8);
+                  setContact(v);
+                }}
+                onFocus={() => setActiveField("contact")}
+                placeholder="XXX-XXXX"
+                maxLength={8}
+                className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+                style={{ background: "#ffffff" }}
+              />
            </div>
            {activeField === "contact" && (
              <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
@@ -1491,9 +1496,13 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                 type="text"
                 inputMode="numeric"
                 value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value.replace(/[^0-9]/g, ""))}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                  setIdNumber(v);
+                }}
                 onFocus={() => setActiveField("idNumber")}
                 placeholder="e.g. 00000000"
+                maxLength={7}
                 className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
                 style={{ background: "#ffffff" }}
               />
@@ -1503,16 +1512,20 @@ function EditCustomerModal({ account, onClose, onSaved }: {
               <Label>Contact Number</Label>
               <div className="flex items-center mt-1">
                 <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-                <input
-                  type="text"
-                  inputMode="tel"
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value.replace(/[^0-9-]/g, ""))}
-                  onFocus={() => setActiveField("contact")}
-                  placeholder="XXX-XXXX"
-                  className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-                  style={{ background: "#ffffff" }}
-                />
+              <input
+                type="text"
+                inputMode="tel"
+                value={contact}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9-]/g, "").slice(0, 8);
+                  setContact(v);
+                }}
+                onFocus={() => setActiveField("contact")}
+                placeholder="XXX-XXXX"
+                maxLength={8}
+                className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+                style={{ background: "#ffffff" }}
+              />
               </div>
               {activeField === "contact" && <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />}
             </div>
