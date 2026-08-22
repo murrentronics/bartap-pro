@@ -280,15 +280,6 @@ export default function RegisterPage() {
     profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""),
   );
 
-  // Managers have no register page — send them to /products
-  useEffect(() => {
-    if (!profile) return;
-    const isManager = profile.role === "manager" || (profile as any)?.job_title === "manager";
-    if (isManager) {
-      nav("/products");
-    }
-  }, [profile]);
-
   // Machines-only accounts have no register page — send them to /machines
   useEffect(() => {
     if ((profile as any)?.is_machines_account) {

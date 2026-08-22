@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-IgbPzm8M.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-Db6rHqEp.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BFY-X5QP.js");
+          const { PushNotifications } = await import("./index-BpXy3rHm.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-Bf5UMYR7.css";
+const appCss = "/assets/styles-DsJiSAjW.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30761,11 +30761,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$3, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$3.displayName;
-const $$splitComponentImporter$3 = () => import("./login-BG1ZVc28.js");
+const $$splitComponentImporter$3 = () => import("./login-DUvQx5OC.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-CXG63UyH.js");
+const $$splitComponentImporter$2 = () => import("./_app-DWTYcpjq.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -30845,7 +30845,7 @@ const createLucideIcon = (iconName, iconNode) => {
   Component.displayName = toPascalCase(iconName);
   return Component;
 };
-const __iconNode$k = [
+const __iconNode$l = [
   ["path", { d: "M10.268 21a2 2 0 0 0 3.464 0", key: "vwvbt9" }],
   [
     "path",
@@ -30855,15 +30855,15 @@ const __iconNode$k = [
     }
   ]
 ];
-const Bell = createLucideIcon("bell", __iconNode$k);
-const __iconNode$j = [
+const Bell = createLucideIcon("bell", __iconNode$l);
+const __iconNode$k = [
   ["path", { d: "M8 2v4", key: "1cmpym" }],
   ["path", { d: "M16 2v4", key: "4m81vk" }],
   ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
   ["path", { d: "M3 10h18", key: "8toen8" }]
 ];
-const Calendar$1 = createLucideIcon("calendar", __iconNode$j);
-const __iconNode$i = [
+const Calendar$1 = createLucideIcon("calendar", __iconNode$k);
+const __iconNode$j = [
   [
     "path",
     {
@@ -30873,14 +30873,14 @@ const __iconNode$i = [
   ],
   ["circle", { cx: "12", cy: "13", r: "3", key: "1vg3eu" }]
 ];
-const Camera = createLucideIcon("camera", __iconNode$i);
-const __iconNode$h = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$h);
-const __iconNode$g = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
-const ChevronLeft = createLucideIcon("chevron-left", __iconNode$g);
-const __iconNode$f = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
-const ChevronRight = createLucideIcon("chevron-right", __iconNode$f);
-const __iconNode$e = [
+const Camera = createLucideIcon("camera", __iconNode$j);
+const __iconNode$i = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$i);
+const __iconNode$h = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$h);
+const __iconNode$g = [["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]];
+const ChevronRight = createLucideIcon("chevron-right", __iconNode$g);
+const __iconNode$f = [
   ["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1", key: "tgr4d6" }],
   [
     "path",
@@ -30894,19 +30894,19 @@ const __iconNode$e = [
   ["path", { d: "M8 11h.01", key: "1dfujw" }],
   ["path", { d: "M8 16h.01", key: "18s6g9" }]
 ];
-const ClipboardList = createLucideIcon("clipboard-list", __iconNode$e);
-const __iconNode$d = [
+const ClipboardList = createLucideIcon("clipboard-list", __iconNode$f);
+const __iconNode$e = [
   ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
   ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Copy = createLucideIcon("copy", __iconNode$d);
-const __iconNode$c = [
+const Copy = createLucideIcon("copy", __iconNode$e);
+const __iconNode$d = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Download = createLucideIcon("download", __iconNode$c);
-const __iconNode$b = [
+const Download = createLucideIcon("download", __iconNode$d);
+const __iconNode$c = [
   [
     "path",
     {
@@ -30918,8 +30918,8 @@ const __iconNode$b = [
   ["path", { d: "M12 18v-6", key: "17g6i2" }],
   ["path", { d: "m9 15 3 3 3-3", key: "1npd3o" }]
 ];
-const FileDown = createLucideIcon("file-down", __iconNode$b);
-const __iconNode$a = [
+const FileDown = createLucideIcon("file-down", __iconNode$c);
+const __iconNode$b = [
   ["line", { x1: "6", x2: "10", y1: "11", y2: "11", key: "1gktln" }],
   ["line", { x1: "8", x2: "8", y1: "9", y2: "13", key: "qnk9ow" }],
   ["line", { x1: "15", x2: "15.01", y1: "12", y2: "12", key: "krot7o" }],
@@ -30932,19 +30932,25 @@ const __iconNode$a = [
     }
   ]
 ];
-const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$a);
-const __iconNode$9 = [
+const Gamepad2 = createLucideIcon("gamepad-2", __iconNode$b);
+const __iconNode$a = [
   ["path", { d: "M15 6a9 9 0 0 0-9 9V3", key: "1cii5b" }],
   ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }],
   ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }]
 ];
-const GitBranch = createLucideIcon("git-branch", __iconNode$9);
-const __iconNode$8 = [
+const GitBranch = createLucideIcon("git-branch", __iconNode$a);
+const __iconNode$9 = [
   ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
   ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
   ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
 ];
-const History = createLucideIcon("history", __iconNode$8);
+const History = createLucideIcon("history", __iconNode$9);
+const __iconNode$8 = [
+  ["rect", { width: "7", height: "18", x: "3", y: "3", rx: "1", key: "2obqm" }],
+  ["rect", { width: "7", height: "7", x: "14", y: "3", rx: "1", key: "6d4xhi" }],
+  ["rect", { width: "7", height: "7", x: "14", y: "14", rx: "1", key: "nxv5o0" }]
+];
+const LayoutPanelLeft = createLucideIcon("layout-panel-left", __iconNode$8);
 const __iconNode$7 = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
 const LoaderCircle = createLucideIcon("loader-circle", __iconNode$7);
 const __iconNode$6 = [
@@ -33039,6 +33045,22 @@ const DialogDescription = reactExports.forwardRef(({ className, ...props }, ref)
   }
 ));
 DialogDescription.displayName = Description.displayName;
+const CATEGORIES = [
+  { value: "beers", label: "Beer", icon: "🍺" },
+  { value: "liquor", label: "Rum", icon: "🍾" },
+  { value: "drinks", label: "Soft Drinks", icon: "🧃" },
+  { value: "cigarettes", label: "Cigs", icon: "🚬" },
+  { value: "snacks", label: "Snacks", icon: "🍟" },
+  { value: "food", label: "Food", icon: "🍽️" },
+  { value: "miscellaneous", label: "Misc", icon: "📦" }
+];
+CATEGORIES.map((c) => c.value);
+function categoryIcon(value) {
+  return CATEGORIES.find((c) => c.value === value)?.icon ?? "🍹";
+}
+function categoryLabel(value) {
+  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
 const Route$5 = createFileRoute("/_app/stock-count")({
   component: StockCountPage
 });
@@ -33052,6 +33074,12 @@ function StockCountPage() {
   const [columnName, setColumnName] = reactExports.useState("");
   const [activeTableIdForColumn, setActiveTableIdForColumn] = reactExports.useState(null);
   const [copying, setCopying] = reactExports.useState(false);
+  const [splitView, setSplitView] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    return () => {
+      setSplitView(false);
+    };
+  }, []);
   const ownerId = profile?.parent_id ?? profile?.id ?? "";
   const copyToStaff = async () => {
     if (!profile?.id || !ownerId) return;
@@ -33232,170 +33260,186 @@ function StockCountPage() {
   if (loading) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-8 w-8 animate-spin text-primary" }) });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-5", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "flex gap-0 overflow-x-auto" : "space-y-5", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border ${splitView ? "w-full min-w-[50vw] shrink-0" : ""}`, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-black leading-tight", children: "Stock Count" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Personal stock count sheets — does not affect system stock" })
       ] }),
-      profile?.role === "owner" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "button",
-        {
-          onClick: copyToStaff,
-          disabled: copying,
-          className: "h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40",
-          style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
-          children: [
-            copying ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "h-3.5 w-3.5" }),
-            copying ? "Copying…" : "Copy To Staff"
-          ]
-        }
-      )
-    ] }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "input",
-        {
-          type: "text",
-          value: newTableName,
-          onChange: (e) => setNewTableName(e.target.value),
-          placeholder: "New table name...",
-          className: "flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: createTable,
-          disabled: !newTableName.trim(),
-          className: "h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40",
-          style: { background: "var(--gradient-hero)" },
-          children: "Create Table"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
-      tables.map((table) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        profile?.role === "owner" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
           {
-            className: "flex items-center justify-between px-4 py-3 border-b border-border/50",
-            style: { background: "var(--gradient-card)" },
+            onClick: copyToStaff,
+            disabled: copying,
+            className: "h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40",
+            style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-4 w-4", style: { color: "var(--primary)" } }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-sm", children: table.name })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
-                  {
-                    onClick: () => addColumn(table.id),
-                    className: "h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95",
-                    children: "+ Add Column"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
-                  {
-                    onClick: () => addRow(table.id),
-                    className: "h-8 px-3 rounded-lg text-[10px] font-black border border-primary/40 text-primary hover:bg-primary/10 transition active:scale-95",
-                    children: "+ Add Row"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
-                  {
-                    onClick: () => deleteTable(table.id),
-                    className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95",
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5" })
-                  }
-                )
-              ] })
+              copying ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "h-3.5 w-3.5" }),
+              copying ? "Copying…" : "Copy To Staff"
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full text-sm", style: { minWidth: "max-content" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "tr",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => setSplitView((v) => !v),
+            className: `h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 ${splitView ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"}`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(LayoutPanelLeft, { className: "h-3.5 w-3.5" }),
+              splitView ? "Close Split" : "Split View"
+            ]
+          }
+        )
+      ] })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "w-full min-w-[50vw] shrink-0" : "", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "text",
+            value: newTableName,
+            onChange: (e) => setNewTableName(e.target.value),
+            placeholder: "New table name...",
+            className: "flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: createTable,
+            disabled: !newTableName.trim(),
+            className: "h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40",
+            style: { background: "var(--gradient-hero)" },
+            children: "Create Table"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
+        tables.map((table) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
             {
-              className: "border-b border-border/40",
-              style: { background: "rgba(255,255,255,0.02)" },
+              className: "flex items-center justify-between px-4 py-3 border-b border-border/50",
+              style: { background: "var(--gradient-card)" },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[200px]", children: "Item name" }),
-                table.columns.map((col, ci) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "th",
-                  {
-                    className: "text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]",
-                    children: col
-                  },
-                  ci
-                )),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]", children: "Total" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "w-[40px] min-w-[40px]" })
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-4 w-4", style: { color: "var(--primary)" } }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-sm", children: table.name })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => addColumn(table.id),
+                      className: "h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95",
+                      children: "+ Add Column"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => addRow(table.id),
+                      className: "h-8 px-3 rounded-lg text-[10px] font-black border border-primary/40 text-primary hover:bg-primary/10 transition active:scale-95",
+                      children: "+ Add Row"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => deleteTable(table.id),
+                      className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5" })
+                    }
+                  )
+                ] })
               ]
             }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
-            table.rows.map((row, ri) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: "border-b border-border/20", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 min-w-[200px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "input",
-                {
-                  type: "text",
-                  value: row[0] ?? "",
-                  onChange: (e) => updateCell(table.id, ri, 0, e.target.value),
-                  onFocus: () => setActiveCell(`${table.id}-${ri}-0`),
-                  onBlur: () => setActiveCell(null),
-                  placeholder: "Item",
-                  className: "w-full h-9 px-2 rounded-lg border border-transparent bg-transparent text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
-                }
-              ) }),
-              table.columns.map((_, ci) => {
-                const val = row[ci + 1] ?? "";
-                return /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[90px] min-w-[90px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full text-sm", style: { minWidth: "max-content" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "tr",
+              {
+                className: "border-b border-border/40",
+                style: { background: "rgba(255,255,255,0.02)" },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[200px]", children: "Item name" }),
+                  table.columns.map((col, ci) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "th",
+                    {
+                      className: "text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]",
+                      children: col
+                    },
+                    ci
+                  )),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]", children: "Total" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "w-[40px] min-w-[40px]" })
+                ]
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+              table.rows.map((row, ri) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: "border-b border-border/20", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 min-w-[200px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "input",
                   {
                     type: "text",
-                    inputMode: "numeric",
-                    pattern: "[0-9]*",
-                    value: val,
-                    onChange: (e) => {
-                      const v = e.target.value.replace(/[^0-9]/g, "");
-                      updateCell(table.id, ri, ci + 1, v);
-                    },
-                    onFocus: () => setActiveCell(`${table.id}-${ri}-${ci + 1}`),
+                    value: row[0] ?? "",
+                    onChange: (e) => updateCell(table.id, ri, 0, e.target.value),
+                    onFocus: () => setActiveCell(`${table.id}-${ri}-0`),
                     onBlur: () => setActiveCell(null),
-                    placeholder: "0",
-                    className: `w-full h-9 px-2 rounded-lg border text-xs font-black text-center focus:outline-none focus:ring-2 focus:ring-primary ${activeCell === `${table.id}-${ri}-${ci + 1}` ? "border-primary bg-background" : "border-transparent bg-transparent"}`
+                    placeholder: "Item",
+                    className: "w-full h-9 px-2 rounded-lg border border-transparent bg-transparent text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
                   }
-                ) }, ci);
-              }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[80px] min-w-[80px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary", children: calcTotal(row) }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 text-center w-[40px] min-w-[40px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
+                ) }),
+                table.columns.map((_, ci) => {
+                  const val = row[ci + 1] ?? "";
+                  return /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[90px] min-w-[90px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "input",
+                    {
+                      type: "text",
+                      inputMode: "numeric",
+                      pattern: "[0-9]*",
+                      value: val,
+                      onChange: (e) => {
+                        const v = e.target.value.replace(/[^0-9]/g, "");
+                        updateCell(table.id, ri, ci + 1, v);
+                      },
+                      onFocus: () => setActiveCell(`${table.id}-${ri}-${ci + 1}`),
+                      onBlur: () => setActiveCell(null),
+                      placeholder: "0",
+                      className: `w-full h-9 px-2 rounded-lg border text-xs font-black text-center focus:outline-none focus:ring-2 focus:ring-primary ${activeCell === `${table.id}-${ri}-${ci + 1}` ? "border-primary bg-background" : "border-transparent bg-transparent"}`
+                    }
+                  ) }, ci);
+                }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[80px] min-w-[80px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary", children: calcTotal(row) }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 text-center w-[40px] min-w-[40px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: () => deleteRow(table.id, ri),
+                    className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-3.5 w-3.5" })
+                  }
+                ) })
+              ] }, ri)),
+              table.rows.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "td",
                 {
-                  onClick: () => deleteRow(table.id, ri),
-                  className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95",
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-3.5 w-3.5" })
+                  colSpan: table.columns.length + 3,
+                  className: "px-4 py-8 text-center text-muted-foreground text-xs",
+                  children: "No rows yet. Tap + Add Row to start counting."
                 }
               ) })
-            ] }, ri)),
-            table.rows.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "td",
-              {
-                colSpan: table.columns.length + 3,
-                className: "px-4 py-8 text-center text-muted-foreground text-xs",
-                children: "No rows yet. Tap + Add Row to start counting."
-              }
-            ) })
-          ] })
-        ] }) })
-      ] }, table.id)),
-      tables.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center text-muted-foreground py-12", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-bold text-sm", children: "No stock count tables yet" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Create a table above to start your personal stock count." })
-      ] })
+            ] })
+          ] }) })
+        ] }, table.id)),
+        tables.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center text-muted-foreground py-12", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-bold text-sm", children: "No stock count tables yet" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Create a table above to start your personal stock count." })
+        ] })
+      ] }),
+      splitView && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full min-w-[50vw] shrink-0 border-l border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SplitRightPanel, { role: profile?.role, ownerId }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showAddColumnModal, onOpenChange: setShowAddColumnModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-sm", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Add Column" }) }),
@@ -33442,6 +33486,136 @@ function StockCountPage() {
     ] }) })
   ] });
 }
+function SplitRightPanel({ role, ownerId }) {
+  const isManager = role === "manager" || role === "manager";
+  const isOwner = role === "owner";
+  const isCashier = role === "cashier";
+  const [products, setProducts] = reactExports.useState([]);
+  const [actuals, setActuals] = reactExports.useState({});
+  const [loading, setLoading] = reactExports.useState(true);
+  const [cat, setCat] = reactExports.useState("beers");
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    supabase.from("products").select("*").order("name", { ascending: true }).then(({ data }) => {
+      if (cancelled) return;
+      setProducts(data ?? []);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    if (!ownerId) return;
+    supabase.from("stock_check_actuals").select("product_id, actual_qty").eq("owner_id", ownerId).then(({ data }) => {
+      if (cancelled) return;
+      const map = {};
+      (data ?? []).forEach((r2) => {
+        map[r2.product_id] = r2.actual_qty;
+      });
+      setActuals(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerId]);
+  const filtered = products.filter((p) => (p.category || "beers") === cat);
+  if (isManager || isOwner) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Stock Check" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
+          products.length,
+          " items"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-y-auto p-3 space-y-3", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : CATEGORIES.map((c) => {
+        const prods = products.filter((p) => (p.category || "beers") === c.value);
+        if (prods.length === 0) return null;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black uppercase tracking-widest mb-1.5", style: { color: "var(--primary)" }, children: [
+            c.icon,
+            " ",
+            c.label
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: prods.map((p) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between rounded-xl border border-border/60 px-3 py-2", style: { background: "var(--gradient-card)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold truncate flex-1", children: p.name }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] text-muted-foreground mr-2", children: [
+              "Qty: ",
+              p.stock_qty ?? 0
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-[10px] font-black text-primary", children: [
+              "Actual: ",
+              actuals[p.id] ?? "—"
+            ] })
+          ] }, p.id)) })
+        ] }, c.value);
+      }) })
+    ] });
+  }
+  if (isCashier) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "h-full flex flex-col", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 py-2 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-black", children: "Bar" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] text-muted-foreground", children: [
+          products.length,
+          " items"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "sticky top-0 z-20 px-3 py-2 bg-background/95 backdrop-blur border-b border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5", children: CATEGORIES.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => setCat(c.value),
+            className: `h-9 shrink-0 rounded-xl font-black transition flex items-center justify-center px-3 ${cat === c.value ? "text-primary-foreground" : "bg-muted text-muted-foreground"}`,
+            style: cat === c.value ? { background: "var(--gradient-hero)" } : {},
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs leading-none whitespace-nowrap", children: [
+              c.icon,
+              " ",
+              c.label
+            ] })
+          },
+          c.value
+        )) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 grid grid-cols-3 gap-2", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-3 flex justify-center py-10", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-6 w-6 animate-spin text-primary" }) }) : filtered.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "col-span-3 text-center text-muted-foreground text-xs py-10", children: "No items in this category." }) : filtered.map((p) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square",
+            style: {
+              background: "var(--gradient-card)",
+              borderColor: "rgba(251,146,60,0.8)"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "aspect-[3/4] relative w-full flex items-center justify-center text-4xl", children: p.image_url ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: p.image_url,
+                  alt: "",
+                  className: "absolute inset-0 w-full h-full object-cover",
+                  onError: (e) => {
+                    const img = e.currentTarget;
+                    img.style.display = "none";
+                  }
+                }
+              ) : categoryIcon(p.category ?? "drinks") }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-2 py-1.5 w-full text-center", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-bold leading-tug truncate", children: p.name }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-[10px] font-black text-primary", children: [
+                  "$",
+                  Number(p.price).toFixed(2)
+                ] })
+              ] })
+            ]
+          },
+          p.id
+        )) })
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center h-full text-muted-foreground text-sm", children: "Split view not available for your role." });
+}
 const ChainCtx = reactExports.createContext(null);
 function useChain() {
   const ctx = reactExports.useContext(ChainCtx);
@@ -33451,28 +33625,12 @@ function useChain() {
 function productImageUrl(url) {
   return url ?? null;
 }
-const CATEGORIES = [
-  { value: "beers", label: "Beer", icon: "🍺" },
-  { value: "liquor", label: "Rum", icon: "🍾" },
-  { value: "drinks", label: "Soft Drinks", icon: "🧃" },
-  { value: "cigarettes", label: "Cigs", icon: "🚬" },
-  { value: "snacks", label: "Snacks", icon: "🍟" },
-  { value: "food", label: "Food", icon: "🍽️" },
-  { value: "miscellaneous", label: "Misc", icon: "📦" }
-];
-CATEGORIES.map((c) => c.value);
-function categoryIcon(value) {
-  return CATEGORIES.find((c) => c.value === value)?.icon ?? "🍹";
-}
-function categoryLabel(value) {
-  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
-}
 async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-Bb2msEaa.js");
-    const { Share } = await import("./index-4tmjj_LY.js");
+    const { Filesystem, Directory } = await import("./index-D0duyGzL.js");
+    const { Share } = await import("./index-C6t-JlWY.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -33988,7 +34146,7 @@ function StockCheckPage() {
     const key = catFilter ?? "all";
     setPdfBusy(key);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const now = /* @__PURE__ */ new Date();
       const dateStr = now.toLocaleDateString("en-GB");
@@ -34439,7 +34597,7 @@ function StockCheckPage() {
     )
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-CONdyZPH.js");
+const $$splitComponentImporter$1 = () => import("./manager-BQL2BKg5.js");
 const Route$3 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -53233,7 +53391,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-B9IwFbOh.js");
+      const { LocalNotifications } = await import("./index-C_-OAA_c.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -53252,7 +53410,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-B9IwFbOh.js");
+    const { LocalNotifications } = await import("./index-C_-OAA_c.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -53287,7 +53445,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-B9IwFbOh.js");
+      const { LocalNotifications } = await import("./index-C_-OAA_c.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -53993,7 +54151,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (logs.length === 0) return;
     setDownloadingMonthKey(monthKey);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const TZ = "America/Port_of_Spain";
       const fmt2 = (n) => n.toFixed(2);
@@ -54430,7 +54588,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -54535,7 +54693,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -56254,7 +56412,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -56702,7 +56860,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-Dgf245qv.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DmOLr0TP.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -58829,7 +58987,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-BNj1g0b8.js");
+const $$splitComponentImporter = () => import("./credit-B62FY_82.js");
 const Route2 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });
