@@ -3033,6 +3033,17 @@ function FinancialsTab({
   const [pendingExpenseDesc, setPendingExpenseDesc] = useState("");
   const [pendingExpenseDate, setPendingExpenseDate] = useState("");
 
+  // ── Edit / Delete non-stock expense ───────────────────────────────────────
+  const [editExpenseId, setEditExpenseId] = useState<string | null>(null);
+  const [editExpenseLines, setEditExpenseLines] = useState<{ description: string; amount: string }[]>([]);
+  const [editExpenseSaving, setEditExpenseSaving] = useState(false);
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [deleteExpenseDeleting, setDeleteExpenseDeleting] = useState(false);
+
+  const lastNonStockExpenseId = expenses.find(
+    (e) => (e.description ?? "").startsWith("Non-Stock Expense")
+  )?.id ?? null;
+
   const barIsOpen = !!barSessionStart && !barClosedAt;
 
   // Sessions from bar_sessions table for the picker
@@ -3164,6 +3175,65 @@ function FinancialsTab({
 
   // Accordion
   const [openMonth, setOpenMonth] = useState<string | null>(null);
+
+  // ── Edit non-stock expense handler ──────────────────────────────────────
+  const startEditExpense = (e: OwnerExpense) => {
+    const raw = (e.description ?? "").replace("Non-Stock Expense\n", "").trim();
+    const parsed = raw
+      .split("\n")
+      .filter((l) => l.trim())
+      .map((l) => {
+        const match = l.match(/^(.+?)\s*=\s*\$?([\d.]+)$/);
+        if (match) return { description: match[1].trim(), amount: match[2] };
+        return { description: l.trim(), amount: String(e.amount) };
+      });
+    setEditExpenseLines(parsed.length > 0 ? parsed : [{ description: "", amount: String(e.amount) }]);
+    setEditExpenseId(e.id);
+  };
+
+  const handleEditExpenseSave = async (e: OwnerExpense) => {
+    const valid = editExpenseLines.filter((l) => l.description.trim() && parseFloat(l.amount) > 0);
+    if (!valid.length) { toast.error("Add at least one item with description and amount"); return; }
+    setEditExpenseSaving(true);
+    const newTotal = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+    const diff = newTotal - Number(e.amount);
+    const description =
+      "Non-Stock Expense\n" +
+      valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n");
+    try {
+      const { error: upErr } = await (sb as any)
+        .from("owner_expenses").update({ amount: newTotal, description }).eq("id", e.id);
+      if (upErr) { toast.error(upErr.message); return; }
+      // Adjust owner wallet balance by the diff
+      if (diff !== 0) {
+        await (sb as any).from("profiles")
+          .update({ wallet_balance: Number(ownerWalletBalance) - diff }).eq("id", ownerId);
+      }
+      toast.success("Expense updated");
+      setEditExpenseId(null);
+      loadData();
+      onDataChange?.();
+    } finally {
+      setEditExpenseSaving(false);
+    }
+  };
+
+  const handleDeleteExpense = async (e: OwnerExpense) => {
+    setDeleteExpenseDeleting(true);
+    try {
+      const { error } = await (sb as any).from("owner_expenses").delete().eq("id", e.id);
+      if (error) { toast.error(error.message); return; }
+      // Refund amount back to owner wallet
+      await (sb as any).from("profiles")
+        .update({ wallet_balance: Number(ownerWalletBalance) + Number(e.amount) }).eq("id", ownerId);
+      toast.success("Expense deleted — wallet refunded");
+      setDeleteExpenseId(null);
+      loadData();
+      onDataChange?.();
+    } finally {
+      setDeleteExpenseDeleting(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
@@ -3738,11 +3808,52 @@ function FinancialsTab({
                     {mExpenses.map((e) => {
                       const raw = e.description ?? "Stock expense";
                       const isReverted = raw.startsWith("Reverted Stock Expense");
+                      const isNonStock = raw.startsWith("Non-Stock Expense\n");
                       const isBulk =
                         raw.startsWith("Bulk Stock Update\n") ||
                         raw.startsWith("Bulk Expense\n") ||
-                        raw.startsWith("Non-Stock Expense\n") ||
+                        isNonStock ||
                         isReverted;
+
+                      const isLastNonStock = isNonStock && e.id === lastNonStockExpenseId;
+                      const isEditing = editExpenseId === e.id;
+                      const isDeleteConfirm = deleteExpenseId === e.id;
+
+                      // ── Inline edit form ──
+                      if (isEditing) {
+                        return (
+                          <div key={e.id} className="px-4 py-3 space-y-2">
+                            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Edit Expense</p>
+                            {editExpenseLines.map((el, i) => (
+                              <div key={i} className="space-y-1">
+                                <input value={el.description} onChange={(ev) => setEditExpenseLines((ls) => ls.map((l, idx) => idx === i ? { ...l, description: ev.target.value } : l))} placeholder="Description" className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                <div className="flex gap-2">
+                                  <input value={el.amount} onChange={(ev) => setEditExpenseLines((ls) => ls.map((l, idx) => idx === i ? { ...l, amount: ev.target.value } : l))} placeholder=".00" type="number" min="0" step="0.01" className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                  {editExpenseLines.length > 1 && <button onClick={() => setEditExpenseLines((ls) => ls.filter((_, idx) => idx !== i))} className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"><X className="h-3.5 w-3.5" /></button>}
+                                </div>
+                              </div>
+                            ))}
+                            <button onClick={() => setEditExpenseLines((ls) => [...ls, { description: "", amount: "" }])} className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]">+ Add Line</button>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <button onClick={() => { setEditExpenseId(null); setEditExpenseLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                              <button onClick={() => handleEditExpenseSave(e)} disabled={editExpenseSaving} className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "var(--gradient-hero)" }}>{editExpenseSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // ── Delete confirm ──
+                      if (isDeleteConfirm) {
+                        return (
+                          <div key={e.id} className="px-4 py-3 space-y-2">
+                            <p className="text-xs font-semibold text-center text-red-400">Delete expense and refund to wallet?</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => setDeleteExpenseId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                              <button onClick={() => handleDeleteExpense(e)} disabled={deleteExpenseDeleting} className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "#dc2626" }}>{deleteExpenseDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}</button>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       if (isBulk) {
                         const lines = raw.split("\n").filter(Boolean);
@@ -3803,12 +3914,20 @@ function FinancialsTab({
                                 })}
                               </div>
                             </div>
-                            <span
-                              className="font-black text-sm shrink-0"
-                              style={{ color: isRefund ? "#86efac" : "#f87171" }}
-                            >
-                              {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
-                            </span>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <span
+                                className="font-black text-sm"
+                                style={{ color: isRefund ? "#86efac" : "#f87171" }}
+                              >
+                                {isRefund ? `+$${fmt(Math.abs(amt))}` : `-$${fmt(amt)}`}
+                              </span>
+                              {isLastNonStock && !isRefund && (
+                                <div className="flex gap-1">
+                                  <button onClick={() => startEditExpense(e)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(255,255,255,0.08)" }} title="Edit expense"><Pencil className="h-3 w-3 text-muted-foreground" /></button>
+                                  <button onClick={() => setDeleteExpenseId(e.id)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(239,68,68,0.12)" }} title="Delete expense"><Trash2 className="h-3 w-3 text-red-400" /></button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       }
@@ -3923,6 +4042,8 @@ function TransactionsTab({
   const [cashierNames, setCashierNames] = useState<Record<string, string>>({});
   // The id of the owner-direct order that qualifies for the delete button
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+  // Confirm id for the delete modal
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleConfirmEdit = (order: Order) => {
     sessionStorage.setItem("edit_order", JSON.stringify(order));

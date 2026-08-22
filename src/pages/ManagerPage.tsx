@@ -3440,65 +3440,61 @@ function SalesTab({
             <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />
           ))}
         </div>
+      ) : orders.length === 0 && walletSales.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground text-sm">No sales yet.</div>
       ) : (
-        <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
+        <div className="space-y-2">
           {orders.map((o) => {
             const canEdit = o.id === orders[0]?.id && barIsOpen;
+            const itemDesc = (o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ");
             return (
-              <div key={o.id} className="px-4 py-3 flex items-start gap-3">
-                <div
-                  className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border"
-                  style={{
-                    background: "rgba(134,239,172,0.10)",
-                    borderColor: "rgba(134,239,172,0.25)",
-                  }}
-                >
-                  <svg className="h-4 w-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
+              <div
+                key={o.id}
+                className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
+              >
+                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">
                     {new Date(o.created_at).toLocaleString("en-GB", {
                       timeZone: "America/Port_of_Spain",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
+                      hour: "2-digit", minute: "2-digit", hour12: true,
+                      day: "numeric", month: "short", year: "numeric",
                     })}
                   </p>
-                  <p className="text-sm font-semibold leading-snug mt-0.5 break-words">
-                    {(o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ")}
+                  <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
+                    ORDER #{(o as any).order_number ?? o.id.slice(0, 8)} · Cash Sale
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 break-words">{itemDesc}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="font-black text-sm text-green-400">${fmt(Number(o.total))}</span>
-                  <div className="flex gap-1">
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
+                  <div className="flex flex-col gap-1.5">
                     <button
                       onClick={() => onPrint(o)}
-                      className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                       title="Print bill"
                     >
-                      <Printer className="h-3 w-3 text-muted-foreground" />
+                      <Printer className="h-3.5 w-3.5 text-blue-300" />
                     </button>
                     {canEdit && (
                       <>
                         <button
                           onClick={() => onEdit(o)}
-                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                          style={{ background: "rgba(255,255,255,0.08)" }}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
                           title="Edit this sale"
                         >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                          <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
                         </button>
                         <button
                           onClick={() => onDeleteConfirm(o.id)}
-                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                          style={{ background: "rgba(239,68,68,0.12)" }}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
                           title="Delete this sale"
                         >
-                          <Trash2 className="h-3 w-3 text-red-400" />
+                          <Trash2 className="h-3.5 w-3.5 text-white" />
                         </button>
                       </>
                     )}
@@ -3507,85 +3503,84 @@ function SalesTab({
               </div>
             );
           })}
-        </div>
-      )}
-      {walletSales.length > 0 && (
-        <div className="space-y-2 mt-4">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            My Wallet Sales
-          </p>
-          <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
-            {walletSales.map((ws) => {
-              const items = (ws.order_items as any[]) || [];
-              const itemDesc = items.map((it: any) => `${it.qty || 1}x ${it.name}`).join(", ") || "Sale";
-              const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
-              return (
-                <div key={ws.id} className="px-4 py-3 flex items-start gap-3">
+
+          {walletSales.length > 0 && (
+            <div className="space-y-2 mt-2">
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">
+                My Wallet Sales
+              </p>
+              {walletSales.map((ws) => {
+                const items = (ws.order_items as any[]) || [];
+                const itemDesc = items.map((it: any) => `${it.qty || 1}× ${it.name}`).join(", ") || "Sale";
+                const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
+                const orderObj = {
+                  id: ws.order_id ?? ws.id,
+                  total: Number(ws.order_total || ws.amount),
+                  paid: Number(ws.order_paid || ws.amount),
+                  change_given: Number(ws.order_change || 0),
+                  items: (ws.order_items as any[]) || [],
+                  created_at: ws.created_at,
+                  payment_method: ws.order_payment_method || "cash",
+                  cashier_id: managerId,
+                  owner_id: ownerId,
+                } as any;
+                return (
                   <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
-                    style={{
-                      background: "rgba(134,239,172,0.10)",
-                      borderColor: "rgba(134,239,172,0.25)",
-                    }}
+                    key={ws.id}
+                    className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                    style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
                   >
-                    <svg className="h-3.5 w-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                  </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(ws.created_at).toLocaleString("en-GB", {
-                      timeZone: "America/Port_of_Spain",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <p className="text-xs font-black text-primary mt-0.5">
-                    ORDER #{ws.order_id?.slice(0, 8)}
-                  </p>
-                  <p className="text-sm font-semibold leading-snug mt-0.5 break-words">{itemDesc}</p>
-                </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
-                    <div className="flex gap-1">
-                      {ws.order_id && (
-                        <button
-                          onClick={() => onPrint({ id: ws.order_id, total: Number(ws.order_total || ws.amount), paid: Number(ws.order_paid || ws.amount), change_given: Number(ws.order_change || 0), items: ws.order_items || [], created_at: ws.created_at, payment_method: ws.order_payment_method || "cash", cashier_id: managerId, owner_id: ownerId } as any)}
-                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                          style={{ background: "rgba(255,255,255,0.08)" }}
-                          title="Print bill"
-                        >
-                          <Printer className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                      )}
-                      {isNewest && (
-                        <>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ws.created_at).toLocaleString("en-GB", {
+                          timeZone: "America/Port_of_Spain",
+                          hour: "2-digit", minute: "2-digit", hour12: true,
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </p>
+                      <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
+                        ORDER #{ws.order_id?.slice(0, 8).toUpperCase()} · Cash Sale
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 break-words">{itemDesc}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
+                      <div className="flex flex-col gap-1.5">
+                        {ws.order_id && (
                           <button
-                            onClick={() => ws.order_id && onEdit({ id: ws.order_id, total: Number(ws.order_total || ws.amount), paid: Number(ws.order_paid || ws.amount), change_given: Number(ws.order_change || 0), items: ws.order_items || [], created_at: ws.created_at, payment_method: ws.order_payment_method || "cash", cashier_id: managerId, owner_id: ownerId } as any)}
-                            className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                            style={{ background: "rgba(255,255,255,0.08)" }}
-                            title="Edit this sale"
+                            onClick={() => onPrint(orderObj)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                            title="Print bill"
                           >
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                            <Printer className="h-3.5 w-3.5 text-blue-300" />
                           </button>
-                          <button
-                            onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
-                            className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                            style={{ background: "rgba(239,68,68,0.12)" }}
-                            title="Delete this sale"
-                          >
-                            <Trash2 className="h-3 w-3 text-red-400" />
-                          </button>
-                        </>
-                      )}
+                        )}
+                        {isNewest && (
+                          <>
+                            <button
+                              onClick={() => ws.order_id && onEdit(orderObj)}
+                              className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                              title="Edit this sale"
+                            >
+                              <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                            </button>
+                            <button
+                              onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
+                              className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                              title="Delete this sale"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-white" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

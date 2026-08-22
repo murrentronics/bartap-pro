@@ -80,16 +80,6 @@ function AppLayout() {
   }, [session, loading, nav]);
 
   useEffect(() => {
-    if (!loading && session && !profile) {
-      // Give profile a moment to load before signing out — avoids false logout on slow connections
-      const t = setTimeout(() => {
-        signOut().then(() => nav({ to: "/login" }));
-      }, 3000);
-      return () => clearTimeout(t);
-    }
-  }, [loading, session, profile]);
-
-  useEffect(() => {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
       nav({ to: "/admin" as "/" });
     }

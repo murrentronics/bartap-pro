@@ -58,15 +58,6 @@ export default function AppLayout() {
   }, [session, loading, nav]);
 
   useEffect(() => {
-    // Don't force sign-out if we're offline — profile may simply be unavailable
-    // from the network. The loadProfile function already preserves the cached
-    // profile on network errors, but this is a belt-and-suspenders guard.
-    if (!loading && session && !profile && isOnline) {
-      signOut().then(() => nav("/login", { replace: true }));
-    }
-  }, [loading, session, profile, isOnline, nav, signOut]);
-
-  useEffect(() => {
     if (!loading && profile?.role === "admin" && !loc.pathname.startsWith("/admin")) {
       nav("/admin", { replace: true });
     }
