@@ -27,6 +27,17 @@ import {
   Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
@@ -268,6 +279,7 @@ function CashierWallet({
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [billData, setBillData] = useState<BillData | null>(null);
   const [printingBill, setPrintingBill] = useState(false);
@@ -1530,18 +1542,37 @@ function CashierWallet({
                         </button>
                       )}
                       {o.id === deletableOrderId && (
-                        <button
-                          onClick={() => deleteLatestCashierOrder(o)}
-                          disabled={deletingOrderId === o.id}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
-                          title="Delete this sale"
-                        >
-                          {deletingOrderId === o.id ? (
-                            <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5 text-white" />
-                          )}
-                        </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              onClick={() => setDeleteConfirmId(o.id)}
+                              className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                              title="Delete this sale"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-white" />
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the order and restore stock. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => {
+                                  if (deleteConfirmId) deleteLatestCashierOrder({ ...o, id: deleteConfirmId });
+                                  setDeleteConfirmId(null);
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>
@@ -4314,18 +4345,37 @@ function TransactionsTab({
                           </button>
                         )}
                         {isLatest && (
-                          <button
-                            onClick={() => deleteLatestOrder(o)}
-                            disabled={deletingOrderId === o.id}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
-                            title="Delete this sale"
-                          >
-                            {deletingOrderId === o.id ? (
-                              <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5 text-white" />
-                            )}
-                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => setDeleteConfirmId(o.id)}
+                                className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                title="Delete this sale"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-white" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the order and restore stock. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
+                                    setDeleteConfirmId(null);
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </div>
@@ -4638,18 +4688,37 @@ function TransactionsTab({
                       </button>
                     )}
                     {isNewest && (
-                      <button
-                        onClick={() => deleteLatestOrder(o)}
-                        disabled={deletingOrderId === o.id}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
-                        title="Delete this sale"
-                      >
-                        {deletingOrderId === o.id ? (
-                          <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5 text-white" />
-                        )}
-                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            onClick={() => setDeleteConfirmId(o.id)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                            title="Delete this sale"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-white" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the order and restore stock. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
+                                setDeleteConfirmId(null);
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>
@@ -4777,7 +4846,7 @@ function OwnerWallet({
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
       customerName: customerName || undefined,
-      serverName: serverName || profile.username || "Staff",
+      serverName: profile.username || "Staff",
     };
     setBillData(bill);
   }

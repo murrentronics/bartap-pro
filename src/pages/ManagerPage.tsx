@@ -665,6 +665,8 @@ function DashboardTab({
   const [hasMachinesEnabled, setHasMachinesEnabled] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string }[]>([]);
+  const [walletSalesLoading, setWalletSalesLoading] = useState(true);
   const [dashTab, setDashTab] = useState<"sales" | "expenses">("sales");
 
   const loadOrders = useCallback(async () => {
@@ -679,9 +681,24 @@ function DashboardTab({
     setOrdersLoading(false);
   }, [ownerId]);
 
+  const loadWalletSales = useCallback(async () => {
+    setWalletSalesLoading(true);
+    try {
+      const { data, error } = await sb.rpc("get_manager_wallet_sales", { _manager_id: profile.id });
+      if (error) throw error;
+      setWalletSales((data ?? []) as { id: string; amount: number; note: string; created_at: string }[]);
+    } catch (e) {
+      console.warn("Failed to load wallet sales:", e);
+      setWalletSales([]);
+    } finally {
+      setWalletSalesLoading(false);
+    }
+  }, [profile.id]);
+
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]);
+    loadWalletSales();
+  }, [loadOrders, loadWalletSales]);
 
   const loadDashboard = useCallback(async () => {
     const { data: ownerRow } = await sb
@@ -1410,7 +1427,7 @@ function DashboardTab({
       </div>
 
       {dashTab === "sales" && (
-        <SalesTab orders={orders} loading={ordersLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} />
+        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} />
       )}
 
       {dashTab === "expenses" && (
@@ -2998,7 +3015,9 @@ export function TimeCardsTab({
 // --- Sales Tab ----------------------------------------------------------------
 function SalesTab({
   orders,
+  walletSales,
   loading,
+  walletSalesLoading,
   barIsOpen,
   onPrint,
   onEdit,
@@ -3007,7 +3026,9 @@ function SalesTab({
   onDeleteOrder,
 }: {
   orders: Order[];
+  walletSales: { id: string; amount: number; note: string; created_at: string }[];
   loading: boolean;
+  walletSalesLoading: boolean;
   barIsOpen: boolean;
   onPrint: (o: Order) => void;
   onEdit: (o: Order) => void;
@@ -3092,6 +3113,34 @@ function SalesTab({
               </div>
             );
           })}
+        </div>
+      )}
+      {walletSales.length > 0 && (
+        <div className="space-y-2 mt-4">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+            My Wallet Sales
+          </p>
+          <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
+            {walletSales.map((ws) => (
+              <div key={ws.id} className="px-4 py-3 flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{ws.note || "Sale"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(ws.created_at).toLocaleString("en-GB", {
+                      timeZone: "America/Port_of_Spain",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -3314,6 +3363,7 @@ function ExpensesTab({
                 .split("\n")
                 .filter((l) => l && l !== "Non-Stock Expense")
                 .map((l) => l.trim());
+              const isStockExpense = !raw.includes("Non-Stock Expense");
               const isEditing = editingId === e.id;
               const cashierMatch = (e.description ?? "").match(/\[Cashier:\s*([^\]]+)\]/);
               const managerMatch = (e.description ?? "").match(/\[Manager:\s*([^\]]+)\]/);
@@ -3459,7 +3509,7 @@ function ExpensesTab({
                         <span className="font-black text-sm text-red-400">
                           
                         </span>
-                        {canEdit && (
+                        {canEdit && !isStockExpense && (
                           <div className="flex gap-1 mt-0.5">
                             <button
                               onClick={() => startEdit(e)}

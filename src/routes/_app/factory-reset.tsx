@@ -84,6 +84,8 @@ export default function FactoryResetPage() {
     // Clear all open bottles and open packs — wipes shots sold and pack quantities
     await (supabase as any).from("opened_bottles").delete().eq("owner_id", ownerId);
     await (supabase as any).from("opened_packs").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("stock_count_tables").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("stock_check_actuals").delete().eq("owner_id", ownerId);
   };
 
   const resetBar = async (ownerId: string) => {

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, Minus, Plus, Loader2, X, CheckCircle2 } from "lucide-react";
+import { Trash2, Minus, Plus, Loader2, X, CheckCircle2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon, categoryKey } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
@@ -4037,6 +4037,12 @@ function CashOverlay({
   const [customers, setCustomers] = useState<CreditAccount[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+  const [newCustName, setNewCustName] = useState("");
+  const [newCustContact, setNewCustContact] = useState("");
+  const [newCustIdType, setNewCustIdType] = useState<"drivers_permit" | "national_id">("national_id");
+  const [newCustIdNumber, setNewCustIdNumber] = useState("");
+  const [creatingCust, setCreatingCust] = useState(false);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -4737,6 +4743,17 @@ function CashOverlay({
                     </button>
                   ))
                 )}
+                <button
+                  onClick={() => setShowCreateCustomer(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-black text-sm transition active:scale-95 mt-2"
+                  style={{
+                    background: "var(--gradient-hero)",
+                    color: "var(--primary-foreground)",
+                  }}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Create New
+                </button>
               </div>
             )}
             {!payMode && (
@@ -4753,6 +4770,123 @@ function CashOverlay({
           </div>
         )}
       </div>
+
+      {/* Create Customer Modal */}
+      {showCreateCustomer && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div
+            className="relative w-full max-w-sm rounded-3xl overflow-hidden border shadow-2xl"
+            style={{ background: "var(--gradient-card)", borderColor: "var(--primary)" }}
+          >
+            <div className="px-5 pt-5 pb-3 shrink-0 space-y-1">
+              <div className="flex justify-between items-center">
+                <h2 className="font-black text-lg" style={{ color: "var(--primary)" }}>New Customer</h2>
+                <button
+                  onClick={() => setShowCreateCustomer(false)}
+                  className="h-8 w-8 rounded-full flex items-center justify-center bg-muted hover:bg-muted/80 transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newCustName.trim() || !ownerId || !profile) return;
+                setCreatingCust(true);
+                const { data: acc, error: createErr } = await supabase
+                  .from("credit_accounts")
+                  .insert({
+                    owner_id: ownerId,
+                    full_name: newCustName.trim(),
+                    contact_number: newCustContact.trim() ? "868-" + newCustContact.trim() : null,
+                    id_number: newCustIdNumber.trim()
+                      ? `${newCustIdType === "drivers_permit" ? "DP" : "NID"}: ${newCustIdNumber.trim()}`
+                      : null,
+                    status: "closed",
+                  })
+                  .select()
+                  .single();
+                setCreatingCust(false);
+                if (createErr || !acc) {
+                  toast.error(createErr?.message ?? "Failed to create account");
+                  return;
+                }
+                toast.success(`Customer ${newCustName.trim()} created`);
+                setCustomers((prev) => [...prev, acc as CreditAccount]);
+                setSelectedCustomer(acc as CreditAccount);
+                setNewCustName("");
+                setNewCustContact("");
+                setNewCustIdNumber("");
+                setNewCustIdType("national_id");
+                setShowCreateCustomer(false);
+              }}
+              className="flex-1 overflow-y-auto px-5 pb-5 space-y-4"
+            >
+              <div>
+                <Label>Full Name *</Label>
+                <input
+                  type="text"
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  placeholder="e.g. John Smith"
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-black mt-1"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label>ID Type</Label>
+                <select
+                  value={newCustIdType}
+                  onChange={(e) => setNewCustIdType(e.target.value as "drivers_permit" | "national_id")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                >
+                  <option value="drivers_permit">Driver's Permit</option>
+                  <option value="national_id">National ID</option>
+                </select>
+              </div>
+              <div>
+                <Label>ID Number</Label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={newCustIdNumber}
+                  onChange={(e) => setNewCustIdNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 7))}
+                  placeholder="e.g. 00000000"
+                  maxLength={7}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-black mt-1"
+                />
+              </div>
+              <div>
+                <Label>Contact Number</Label>
+                <div className="flex items-center mt-1">
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    value={newCustContact}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9-]/g, "").slice(0, 8);
+                      setNewCustContact(digits);
+                    }}
+                    placeholder="XXX-XXXX"
+                    maxLength={8}
+                    className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm font-black"
+                  />
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={creatingCust || !newCustName.trim()}
+                className="w-full h-12 font-black text-base"
+                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
+              >
+                {creatingCust ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating…</> : "Create & Select"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

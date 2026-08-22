@@ -256,7 +256,7 @@ function StockCountPage() {
     if (!deleteRowModal) return;
     const { tableId, rowIdx } = deleteRowModal;
     const colsToDelete = Array.from(selectedCols).sort((a, b) => b - a);
-    
+
     persist(
       tables.map((t) => {
         if (t.id !== tableId) return t;
@@ -271,10 +271,7 @@ function StockCountPage() {
         colsToDelete.forEach((ci) => {
           newColumns.splice(ci, 1);
         });
-        const filteredRows = newRows.filter((row) => {
-          const dataCols = row.slice(1);
-          return dataCols.some((val) => val.trim() !== "");
-        });
+        const filteredRows = newColumns.length === 0 ? [] : newRows;
         return {
           ...t,
           columns: newColumns,
