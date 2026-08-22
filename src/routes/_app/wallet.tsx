@@ -336,10 +336,9 @@ function CashierWallet({
   const openBillForOrder = async (order: Order) => {
     const parts = (order as any).note_parts ?? [];
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
-    const orderNum = Number(order.id.slice(0, 8));
     const bill: BillData = {
       storeName: profile.username || "Bar",
-      orderNumber: orderNum,
+      orderNumber: order.id.slice(0, 8),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -3709,6 +3708,7 @@ function TransactionsTab({
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [cashierRoles, setCashierRoles] = useState<Record<string, string>>({});
+  const [cashierNames, setCashierNames] = useState<Record<string, string>>({});
   // The id of the owner-direct order that qualifies for the delete button
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
 
@@ -3783,18 +3783,21 @@ function TransactionsTab({
         ])
         .order("created_at", { ascending: false })
         .then(({ data }) => setAllTxs((data ?? []) as WalletTx[])),
-      // Fetch cashier roles for badge display
+      // Fetch cashier roles and names for badge display and bill server name
       supabase
         .from("profiles")
-        .select("id, role, job_title")
+        .select("id, role, job_title, username")
         .eq("parent_id", profile.id)
         .in("role", ["cashier", "manager"])
         .then(({ data }) => {
           const roles: Record<string, string> = {};
+          const names: Record<string, string> = {};
           (data ?? []).forEach((p: any) => {
             roles[p.id] = p.role === "manager" ? "manager" : (p.job_title === "manager" ? "manager" : "cashier");
+            if (p.username) names[p.id] = p.username;
           });
           setCashierRoles(roles);
+          setCashierNames(names);
         }),
     ]).finally(() => setLoading(false));
   }, [profile.id]);
@@ -4758,9 +4761,11 @@ function OwnerWallet({
   const [printingBill, setPrintingBill] = useState(false);
 
   async function openBillForOrder(order: Order) {
+    const parts = (order as any).note_parts ?? [];
+    const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
-      orderNumber: Number(order.id.slice(0, 8)),
+      orderNumber: order.id.slice(0, 8),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -4771,8 +4776,8 @@ function OwnerWallet({
       paid: Number(order.paid),
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
-      customerName: undefined,
-      serverName: profile.username || "Staff",
+      customerName: customerName || undefined,
+      serverName: serverName || profile.username || "Staff",
     };
     setBillData(bill);
   }

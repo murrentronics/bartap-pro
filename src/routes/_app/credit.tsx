@@ -302,22 +302,18 @@ function BillActionModal({ account, ownerName, onClose }: {
   const handleShare = async () => {
     setBusy("share");
     try {
-      const b64 = await buildBillPdf(account, ownerName);
-      if (!b64) { setBusy(null); return; }
-
       if (Capacitor.isNativePlatform()) {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (!b64) { setBusy(null); return; }
         const { Filesystem, Directory } = await import("@capacitor/filesystem");
         const { Share } = await import("@capacitor/share");
-
         const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
         const writeResult = await Filesystem.writeFile({
           path: filename,
           data: base64Data,
           directory: Directory.Cache,
         });
-
         const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
-
         await Share.share({
           title: `Credit Bill — ${account.full_name}`,
           text: shareText,
@@ -325,8 +321,9 @@ function BillActionModal({ account, ownerName, onClose }: {
           dialogTitle: "Send Bill",
         });
       } else {
-        await downloadPdf(filename, b64);
-        toast.success("Bill saved");
+        const text = `Credit Bill — ${account.full_name}\nBalance Owed: $${Number(account.balance_owed).toFixed(2)}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+        toast.success("Opening WhatsApp share");
       }
     } catch (e: any) {
       if (!String(e?.message ?? "").includes("cancel")) {

@@ -1284,8 +1284,9 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
                 inputMode="tel"
                 value={contact}
                 onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9-]/g, "").slice(0, 8);
-                  setContact(v);
+                  const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                  const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                  setContact(formatted);
                 }}
                 onFocus={() => setActiveField("contact")}
                 placeholder="XXX-XXXX"
@@ -1517,8 +1518,9 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                 inputMode="tel"
                 value={contact}
                 onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9-]/g, "").slice(0, 8);
-                  setContact(v);
+                  const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                  const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                  setContact(formatted);
                 }}
                 onFocus={() => setActiveField("contact")}
                 placeholder="XXX-XXXX"
