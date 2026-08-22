@@ -704,6 +704,7 @@ function DashboardTab({
       .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(100);
+    console.log(`[ManagerPage] loadOrders: ownerId=${ownerId}, count=${(data ?? []).length}`);
     setOrders((data ?? []) as Order[]);
     setOrdersLoading(false);
   }, [ownerId]);
@@ -712,11 +713,38 @@ function DashboardTab({
     setWalletSalesLoading(true);
     try {
       const { data, error } = await sb.rpc("get_manager_wallet_sales", { _manager_id: profile.id });
+      console.log(`[ManagerPage] loadWalletSales RPC: error=${error}, count=${(data ?? []).length}`);
       if (error) throw error;
       setWalletSales((data ?? []) as any[]);
-    } catch (e) {
-      console.warn("Failed to load wallet sales:", e);
-      setWalletSales([]);
+    } catch (e: any) {
+      console.error("[ManagerPage] RPC failed, falling back to direct query:", e);
+      try {
+        const { data } = await sb
+          .from("wallet_transactions")
+          .select("id, amount, type, note, order_id, created_at")
+          .eq("profile_id", profile.id)
+          .eq("type", "sale")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        console.log(`[ManagerPage] loadWalletSales fallback: count=${(data ?? []).length}`);
+        const rows = (data ?? []) as any[];
+        const mapped = rows.map((r) => ({
+          id: r.id,
+          amount: Number(r.amount),
+          note: r.note,
+          created_at: r.created_at,
+          order_id: r.order_id,
+          order_items: [],
+          order_total: Number(r.amount),
+          order_paid: Number(r.amount),
+          order_change: 0,
+          order_payment_method: "cash",
+        }));
+        setWalletSales(mapped);
+      } catch (fallbackErr) {
+        console.error("[ManagerPage] Fallback query also failed:", fallbackErr);
+        setWalletSales([]);
+      }
     } finally {
       setWalletSalesLoading(false);
     }
@@ -3103,8 +3131,6 @@ function SalesTab({
             <div key={i} className="rounded-xl h-16 bg-muted/30 animate-pulse" />
           ))}
         </div>
-      ) : orders.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground text-sm">No sales yet.</div>
       ) : (
         <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
           {orders.map((o) => {

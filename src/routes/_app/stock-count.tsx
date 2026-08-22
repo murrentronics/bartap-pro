@@ -352,9 +352,9 @@ function StockCountPage() {
                 <span className="hidden sm:inline">Split View</span>
               </button>
             )}
-          </div>
+           </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 mt-4">
         {tables.map((table) => (
           <div key={table.id} className="rounded-2xl border border-border overflow-hidden">
             <div
