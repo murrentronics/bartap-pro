@@ -1,4 +1,6 @@
--- Allow managers to view their own wallet sales transactions with order details
+-- Fix manager wallet sales: drop and recreate with order details
+
+DROP FUNCTION IF EXISTS public.get_manager_wallet_sales(UUID);
 
 CREATE OR REPLACE FUNCTION public.get_manager_wallet_sales(_manager_id UUID)
 RETURNS TABLE (

@@ -618,6 +618,33 @@ function DashboardTab({
   const sb = supabase as any;
   const tag = `[Manager: ${managerName}]`;
 
+  // -- Manager wallet balance ---------------------------------------------------
+  const [managerWallet, setManagerWallet] = useState<number>(0);
+  const loadManagerWallet = useCallback(async () => {
+    const { data } = await sb
+      .from("profiles")
+      .select("wallet_balance")
+      .eq("id", profile.id)
+      .single();
+    setManagerWallet(Math.max(0, Number(data?.wallet_balance ?? 0)));
+  }, [profile.id]);
+  useEffect(() => {
+    loadManagerWallet();
+  }, [loadManagerWallet]);
+  useEffect(() => {
+    const ch = supabase
+      .channel(`mgr-wallet-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wallet_transactions", filter: `profile_id=eq.${profile.id}` },
+        () => loadManagerWallet(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [profile.id, loadManagerWallet]);
+
   // -- Bar float (live) -------------------------------------------------------
   // cashier_float in profiles IS the live remaining balance
   const [floatBalance, setFloatBalance] = useState<number>(0);
@@ -665,7 +692,7 @@ function DashboardTab({
   const [hasMachinesEnabled, setHasMachinesEnabled] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
-  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string }[]>([]);
+  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string }[]>([]);
   const [walletSalesLoading, setWalletSalesLoading] = useState(true);
   const [dashTab, setDashTab] = useState<"sales" | "expenses">("sales");
 
@@ -686,7 +713,7 @@ function DashboardTab({
     try {
       const { data, error } = await sb.rpc("get_manager_wallet_sales", { _manager_id: profile.id });
       if (error) throw error;
-      setWalletSales((data ?? []) as { id: string; amount: number; note: string; created_at: string }[]);
+      setWalletSales((data ?? []) as any[]);
     } catch (e) {
       console.warn("Failed to load wallet sales:", e);
       setWalletSales([]);
@@ -970,8 +997,10 @@ function DashboardTab({
       return;
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
-    if (total > floatBalance) {
-      toast.error(`Insufficient float — balance is $${fmt(floatBalance)}`);
+    const walletCovers = Math.min(managerWallet, total);
+    const floatCovers = total - walletCovers;
+    if (floatCovers > floatBalance) {
+      toast.error(`Insufficient funds — wallet covers $${fmt(walletCovers)}, float needs $${fmt(floatCovers)} but only $${fmt(floatBalance)} remaining`);
       return;
     }
     setSaving(true);
@@ -988,22 +1017,24 @@ function DashboardTab({
         toast.error(expErr.message);
         return;
       }
-      const newFloat = Math.max(0, floatBalance - total);
-      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
-      setFloatBalance(newFloat);
-      const note =
-        valid.length === 1
-          ? `Expense: ${valid[0].description.trim()}`
-          : `Bulk Expense (${valid.length} items)`;
-      await sb
-        .from("wallet_transactions")
-        .insert({ profile_id: profile.id, amount: total, type: "cashier_expense", note });
+      const { error: rpcErr } = await sb.rpc("add_manager_expense", {
+        _manager_id: profile.id,
+        _owner_id: ownerId,
+        _amount: total,
+        _description: description,
+        _expense_date: today,
+      });
+      if (rpcErr) {
+        toast.error(rpcErr.message);
+        return;
+      }
       toast.success("Expense saved");
       setLines([{ description: "", amount: "" }]);
       setShowForm(false);
       setConfirming(false);
       loadExpenses();
       loadFloat();
+      loadManagerWallet();
     } finally {
       setSaving(false);
     }
@@ -1043,11 +1074,6 @@ function DashboardTab({
     setEditSaving(true);
     const newTotal = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
     const diff = newTotal - Number(e.amount);
-    if (diff > 0 && diff > floatBalance) {
-      setEditSaving(false);
-      toast.error(`Insufficient float ? balance is $${fmt(floatBalance)}`);
-      return;
-    }
     const description =
       valid.length === 1
         ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${tag}`
@@ -1063,18 +1089,37 @@ function DashboardTab({
         return;
       }
       if (!updated || updated.length === 0) {
-        toast.error("Could not update expense ? permission denied");
+        toast.error("Could not update expense — permission denied");
         return;
       }
-      if (diff !== 0) {
-        const newFloat = Math.max(0, floatBalance - diff);
-        await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
-        setFloatBalance(newFloat);
+      if (diff > 0) {
+        const { error: rpcErr } = await sb.rpc("add_manager_expense", {
+          _manager_id: profile.id,
+          _owner_id: ownerId,
+          _amount: diff,
+          _description: description,
+          _expense_date: new Date().toISOString().slice(0, 10),
+        });
+        if (rpcErr) {
+          toast.error(rpcErr.message);
+          return;
+        }
+      } else if (diff < 0) {
+        const { error: rpcErr } = await sb.rpc("refund_manager_expense", {
+          _manager_id: profile.id,
+          _owner_id: ownerId,
+          _amount: Math.abs(diff),
+        });
+        if (rpcErr) {
+          toast.error(rpcErr.message);
+          return;
+        }
       }
       toast.success("Expense updated");
       setEditingId(null);
       loadExpenses();
       loadFloat();
+      loadManagerWallet();
     } finally {
       setEditSaving(false);
     }
@@ -1093,16 +1138,23 @@ function DashboardTab({
         return;
       }
       if (!deleted || deleted.length === 0) {
-        toast.error("Could not delete expense ? permission denied");
+        toast.error("Could not delete expense — permission denied");
         return;
       }
-      const newFloat = floatBalance + Number(e.amount);
-      await sb.from("profiles").update({ cashier_float: newFloat }).eq("id", ownerId);
-      setFloatBalance(newFloat);
-      toast.success("Expense deleted and float refunded");
+      const { error: rpcErr } = await sb.rpc("refund_manager_expense", {
+        _manager_id: profile.id,
+        _owner_id: ownerId,
+        _amount: Number(e.amount),
+      });
+      if (rpcErr) {
+        toast.error(rpcErr.message);
+        return;
+      }
+      toast.success("Expense deleted and refunded");
       setDeleteConfirmId(null);
       loadExpenses();
       loadFloat();
+      loadManagerWallet();
     } finally {
       setDeleting(false);
     }
@@ -1138,6 +1190,9 @@ function DashboardTab({
   const handleDeleteOrder = async (order: Order) => {
     setDeletingOrder(true);
     try {
+      const items = (order.items || []).map((it: any) => `${it.qty || 1}x ${it.name} = $${Number(it.price).toFixed(2)}`).join("\n");
+      const description = `Reverted Stock Expense\n${items}\nTotal: $${Number(order.total).toFixed(2)}\n${tag}`;
+      await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: Number(order.total), description, expense_date: trinidadDate() });
       const { data: deleted, error } = await sb.from("orders").delete().eq("id", order.id).select("id");
       if (error || !deleted?.length) {
         toast.error("Could not delete order");
@@ -1178,7 +1233,7 @@ function DashboardTab({
             Wallet Balance
           </p>
           <p className="text-3xl font-black tracking-tight" style={{ color: "rgba(0,0,0,0.85)" }}>
-            ${fmt(Number(profile.wallet_balance))}
+            ${fmt(managerWallet)}
           </p>
         </div>
       </div>
@@ -1427,11 +1482,11 @@ function DashboardTab({
       </div>
 
       {dashTab === "sales" && (
-        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} />
+        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} managerId={profile.id} ownerId={ownerId} />
       )}
 
       {dashTab === "expenses" && (
-        <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
+        <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} managerWallet={managerWallet} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
       )}
 
       {/* Set Bar Float Modal */}
@@ -3024,9 +3079,11 @@ function SalesTab({
   onDeleteConfirm,
   deletingOrder,
   onDeleteOrder,
+  managerId,
+  ownerId,
 }: {
   orders: Order[];
-  walletSales: { id: string; amount: number; note: string; created_at: string }[];
+  walletSales: { id: string; amount: number; note: string; created_at: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string }[];
   loading: boolean;
   walletSalesLoading: boolean;
   barIsOpen: boolean;
@@ -3035,6 +3092,8 @@ function SalesTab({
   onDeleteConfirm: (id: string) => void;
   deletingOrder: boolean;
   onDeleteOrder: (o: Order) => void;
+  managerId: string;
+  ownerId: string;
 }) {
   return (
     <div className="space-y-2">
@@ -3121,25 +3180,73 @@ function SalesTab({
             My Wallet Sales
           </p>
           <div className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40" style={{ background: "var(--gradient-card)" }}>
-            {walletSales.map((ws) => (
-              <div key={ws.id} className="px-4 py-3 flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{ws.note || "Sale"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(ws.created_at).toLocaleString("en-GB", {
-                      timeZone: "America/Port_of_Spain",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
+            {walletSales.map((ws) => {
+              const items = (ws.order_items as any[]) || [];
+              const itemDesc = items.map((it: any) => `${it.qty || 1}x ${it.name}`).join(", ") || "Sale";
+              const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
+              return (
+                <div key={ws.id} className="px-4 py-3 flex items-start gap-3">
+                  <div
+                    className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
+                    style={{
+                      background: "rgba(134,239,172,0.10)",
+                      borderColor: "rgba(134,239,172,0.25)",
+                    }}
+                  >
+                    <svg className="h-3.5 w-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(ws.created_at).toLocaleString("en-GB", {
+                        timeZone: "America/Port_of_Spain",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm font-semibold leading-snug mt-0.5 break-words">{itemDesc}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
+                    <div className="flex gap-1">
+                      {ws.order_id && (
+                        <button
+                          onClick={() => onPrint({ id: ws.order_id, total: Number(ws.order_total || ws.amount), paid: Number(ws.order_paid || ws.amount), change_given: Number(ws.order_change || 0), items: ws.order_items || [], created_at: ws.created_at, payment_method: ws.order_payment_method || "cash", cashier_id: managerId, owner_id: ownerId } as any)}
+                          className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                          style={{ background: "rgba(255,255,255,0.08)" }}
+                          title="Print bill"
+                        >
+                          <svg className="h-3 w-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18 4 18v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M6 14h12v6H6z"/></svg>
+                        </button>
+                      )}
+                      {isNewest && (
+                        <>
+                          <button
+                            onClick={() => ws.order_id && onEdit({ id: ws.order_id, total: Number(ws.order_total || ws.amount), paid: Number(ws.order_paid || ws.amount), change_given: Number(ws.order_change || 0), items: ws.order_items || [], created_at: ws.created_at, payment_method: ws.order_payment_method || "cash", cashier_id: managerId, owner_id: ownerId } as any)}
+                            className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                            style={{ background: "rgba(255,255,255,0.08)" }}
+                            title="Edit this sale"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
+                            className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
+                            style={{ background: "rgba(239,68,68,0.12)" }}
+                            title="Delete this sale"
+                          >
+                            <Trash2 className="h-3 w-3 text-red-400" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -3154,6 +3261,7 @@ function ExpensesTab({
   barIsOpen,
   tag,
   floatBalance,
+  managerWallet,
   sessionTotal,
   lastExpenseId,
   editingId,
@@ -3181,6 +3289,7 @@ function ExpensesTab({
   barIsOpen: boolean;
   tag: string;
   floatBalance: number;
+  managerWallet: number;
   sessionTotal: number;
   lastExpenseId: string | null;
   editingId: string | null;
@@ -3305,7 +3414,7 @@ function ExpensesTab({
                         color: "#f87171",
                       }}
                     >
-                      Deduct  from bar float? (Balance: )
+                      Deduct ${fmt(lineTotal)}? Wallet: ${fmt(managerWallet)} · Float: ${fmt(floatBalance)}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -3507,7 +3616,7 @@ function ExpensesTab({
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span className="font-black text-sm text-red-400">
-                          
+                          -${fmt(Number(e.amount))}
                         </span>
                         {canEdit && !isStockExpense && (
                           <div className="flex gap-1 mt-0.5">

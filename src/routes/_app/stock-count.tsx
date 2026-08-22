@@ -493,7 +493,11 @@ function StockCountPage() {
       {/* -- Right Panel: Split View ----------------------------------- */}
       {splitView && (
         <div className="w-full md:w-1/2 border-l border-border overflow-y-auto">
-          <RightPanel role={profile?.role} ownerId={ownerId} />
+          <RightPanel
+        role={profile?.role}
+        jobTitle={(profile as any)?.job_title}
+        ownerId={ownerId}
+      />
         </div>
       )}
     </div>
@@ -627,11 +631,12 @@ function StockCountPage() {
 // --- Right Panel for Split View -----------------------------------------------
 type RightPanelProps = {
   role?: string;
+  jobTitle?: string;
   ownerId?: string;
 };
 
-function RightPanel({ role, ownerId }: RightPanelProps) {
-  const isManager = role === "manager" || (role as any) === "manager";
+function RightPanel({ role, jobTitle, ownerId }: RightPanelProps) {
+  const isManager = role === "manager" || jobTitle === "manager";
   const isOwner = role === "owner";
   const isCashier = role === "cashier";
 

@@ -714,6 +714,10 @@ function CashierWallet({
       });
     }
 
+    const itemDesc = items.map((i: any) => `${i.qty || 1}x ${i.name} = $${Number(i.price).toFixed(2)}`).join("\n");
+    const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}`;
+    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: Number(order.total), description, expense_date: new Date().toISOString().slice(0, 10) });
+
     // Delete ALL wallet_transactions for this order (cashier 'sale' row + owner 'cashier_sale' row)
     // The DB trigger (migration 20260628000003) also does this server-side once applied.
     await supabase.from("wallet_transactions").delete().eq("order_id", order.id);
@@ -3940,6 +3944,10 @@ function TransactionsTab({
 
     // 3. DB trigger on_order_delete handles deleting ALL wallet_transactions
     //    for this order (owner + cashier rows) and deducting wallet_balance.
+
+    const itemDesc = items.map((i: any) => `${i.qty || 1}x ${i.name} = $${Number(i.price).toFixed(2)}`).join("\n");
+    const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}`;
+    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: Number(order.total), description, expense_date: new Date().toISOString().slice(0, 10) });
 
     // 4. Delete the order itself
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
