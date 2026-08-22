@@ -3935,7 +3935,7 @@ function CashOverlay({
   const buildReceipt = (paidNum: number, changeNum: number, orderId?: string, orderNumber?: number): ReceiptData => ({
     storeName: businessName,
     locationName: "",
-    orderNumber: orderNumber ?? (orderId ? parseInt(orderId.slice(0, 8), 16) : 1),
+    orderNumber: orderNumber ?? (orderId ? orderId.slice(0, 8).toUpperCase() : "—"),
     serverName: profile?.username ?? "Staff",
     items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
     subtotal: total,
@@ -6246,7 +6246,7 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
 
             {/* Order Header */}
             <div className="text-center font-black text-base tracking-wide text-zinc-950 my-1">
-              ORDER #{sale.orderNumber || 1}
+              ORDER #{sale.orderNumber || "—"}
             </div>
 
             <div className="border-t border-dashed border-zinc-400 my-2" />

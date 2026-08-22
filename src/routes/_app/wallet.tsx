@@ -452,6 +452,9 @@ function CashierWallet({
     loadFloatRef.current = loadFloat;
   }, [loadFloat]);
 
+  // Stable ref for expense list realtime refresh
+  const loadCashierExpensesRef = useRef<() => void>(() => {});
+
   // Realtime — watch owner profile for float changes + own expense txs + owner expenses
   useEffect(() => {
     const ch = supabase
@@ -462,7 +465,7 @@ function CashierWallet({
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${ownerId}` },
         () => loadFloatRef.current(),
       )
-      // Cashier logs an expense → reload float
+      // Cashier logs an expense → reload float + expense list
       .on(
         "postgres_changes",
         {
@@ -471,9 +474,12 @@ function CashierWallet({
           table: "wallet_transactions",
           filter: `profile_id=eq.${profile.id}`,
         },
-        () => loadFloatRef.current(),
+        () => {
+          loadFloatRef.current();
+          loadCashierExpensesRef.current();
+        },
       )
-      // Manager adds expense (owner_expenses) → float changes → reload
+      // Manager adds expense (owner_expenses) → float changes + expense list → reload both
       .on(
         "postgres_changes",
         {
@@ -482,7 +488,10 @@ function CashierWallet({
           table: "owner_expenses",
           filter: `owner_id=eq.${ownerId}`,
         },
-        () => loadFloatRef.current(),
+        () => {
+          loadFloatRef.current();
+          loadCashierExpensesRef.current();
+        },
       )
       .subscribe();
     return () => {
@@ -754,6 +763,13 @@ function CashierWallet({
   const [openExpenseMonth, setOpenExpenseMonth] = useState<string | null>(null);
   const [openExpenseSession, setOpenExpenseSession] = useState<string | null>(null);
 
+  // Edit / delete for cashier's own last expense
+  const [cashierExpenseEditId, setCashierExpenseEditId] = useState<string | null>(null);
+  const [cashierExpenseEditLines, setCashierExpenseEditLines] = useState<{ description: string; amount: string }[]>([]);
+  const [cashierExpenseEditSaving, setCashierExpenseEditSaving] = useState(false);
+  const [cashierExpenseDeleteId, setCashierExpenseDeleteId] = useState<string | null>(null);
+  const [cashierExpenseDeleting, setCashierExpenseDeleting] = useState(false);
+
   // Bar sessions for expense grouping + date filter
   const [barSessions, setBarSessions] = useState<
     { id: string; session_start: string; session_end: string | null }[]
@@ -815,9 +831,84 @@ function CashierWallet({
     setLoadingExpenses(false);
   }, [ownerId, profile.id, profile.username, profile.cashier_shift_start]);
 
+  // Keep the realtime ref in sync
+  useEffect(() => {
+    loadCashierExpensesRef.current = loadCashierExpenses;
+  }, [loadCashierExpenses]);
+
   useEffect(() => {
     if (cashierTab === "expenses") loadCashierExpenses();
   }, [cashierTab, loadCashierExpenses]);
+
+  // -- Edit cashier's own last expense ----------------------------------------
+  const startCashierExpenseEdit = (e: OwnerExpense) => {
+    const cashierTag = `[Cashier: ${profile.username ?? profile.id}]`;
+    const raw = (e.description ?? "").replace(cashierTag, "").trim();
+    const parsed = raw
+      .split("\n")
+      .filter((l) => l && l !== "Non-Stock Expense")
+      .map((l) => {
+        const match = l.match(/^(.+?)\s*=\s*\$?([\d.]+)$/);
+        if (match) return { description: match[1].trim(), amount: match[2] };
+        return { description: l.trim(), amount: String(e.amount) };
+      });
+    setCashierExpenseEditLines(parsed.length > 0 ? parsed : [{ description: "", amount: String(e.amount) }]);
+    setCashierExpenseEditId(e.id);
+  };
+
+  const handleCashierExpenseEditSave = async (e: OwnerExpense) => {
+    const valid = cashierExpenseEditLines.filter((l) => l.description.trim() && parseFloat(l.amount) > 0);
+    if (!valid.length) { toast.error("Add at least one item with description and amount"); return; }
+    setCashierExpenseEditSaving(true);
+    const cashierTag = `[Cashier: ${profile.username ?? profile.id}]`;
+    const newTotal = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
+    const description =
+      valid.length === 1
+        ? `Non-Stock Expense\n${valid[0].description.trim()} = $${parseFloat(valid[0].amount).toFixed(2)} ${cashierTag}`
+        : `Non-Stock Expense\n${valid.map((l) => `${l.description.trim()} = $${parseFloat(l.amount).toFixed(2)}`).join("\n")}\n${cashierTag}`;
+    const diff = newTotal - Number(e.amount);
+    try {
+      const { error: upErr } = await sb.from("owner_expenses").update({ amount: newTotal, description }).eq("id", e.id);
+      if (upErr) { toast.error(upErr.message); return; }
+      if (diff !== 0) {
+        const { error: rpcErr } = await sb.rpc("add_cashier_expense", {
+          _cashier_id: profile.id,
+          _owner_id: ownerId,
+          _amount: diff,
+          _description: `Expense adjustment`,
+          _expense_date: new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+        });
+        if (rpcErr) { toast.error(rpcErr.message); return; }
+      }
+      toast.success("Expense updated");
+      setCashierExpenseEditId(null);
+      loadCashierExpenses();
+      loadFloat();
+    } finally {
+      setCashierExpenseEditSaving(false);
+    }
+  };
+
+  const handleCashierExpenseDelete = async (e: OwnerExpense) => {
+    setCashierExpenseDeleting(true);
+    try {
+      const { error: delErr } = await sb.from("owner_expenses").delete().eq("id", e.id);
+      if (delErr) { toast.error(delErr.message); return; }
+      // Refund the amount back (reverse the deduction)
+      const { error: rpcErr } = await sb.rpc("refund_cashier_expense", {
+        _cashier_id: profile.id,
+        _owner_id: ownerId,
+        _amount: Number(e.amount),
+      });
+      if (rpcErr) { toast.error(rpcErr.message); return; }
+      toast.success("Expense deleted — float refunded");
+      setCashierExpenseDeleteId(null);
+      loadCashierExpenses();
+      loadFloat();
+    } finally {
+      setCashierExpenseDeleting(false);
+    }
+  };
 
   const handleSaveCashierExpense = async () => {
     const valid = expenseLines.filter((l) => l.description.trim() && parseFloat(l.amount) > 0);
@@ -1769,9 +1860,52 @@ function CashierWallet({
                       </button>
                       {isOpen && (
                         <div className="border-t border-border divide-y divide-border/50">
-                          {sess.expenses.map((e) => (
-                            <ExpenseRow key={e.id} expense={e} />
-                          ))}
+                          {sess.expenses.map((e) => {
+                            const isLatest = e.id === cashierExpenses[0]?.id;
+                            const isEditing = cashierExpenseEditId === e.id;
+                            const isDeleteConfirm = cashierExpenseDeleteId === e.id;
+                            return (
+                              <div key={e.id}>
+                                {isEditing ? (
+                                  <div className="px-4 py-3 space-y-2">
+                                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Edit Expense</p>
+                                    {cashierExpenseEditLines.map((el, i) => (
+                                      <div key={i} className="space-y-1">
+                                        <input value={el.description} onChange={(ev) => setCashierExpenseEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, description: ev.target.value } : l))} placeholder="Description" className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                        <div className="flex gap-2">
+                                          <input value={el.amount} onChange={(ev) => setCashierExpenseEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, amount: ev.target.value } : l))} placeholder=".00" type="number" min="0" step="0.01" className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                          {cashierExpenseEditLines.length > 1 && <button onClick={() => setCashierExpenseEditLines((ls) => ls.filter((_, idx) => idx !== i))} className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"><X className="h-3.5 w-3.5" /></button>}
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <button onClick={() => setCashierExpenseEditLines((ls) => [...ls, { description: "", amount: "" }])} className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]">+ Add Line</button>
+                                    <div className="grid grid-cols-2 gap-2 pt-1">
+                                      <button onClick={() => { setCashierExpenseEditId(null); setCashierExpenseEditLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                      <button onClick={() => handleCashierExpenseEditSave(e)} disabled={cashierExpenseEditSaving} className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "var(--gradient-hero)" }}>{cashierExpenseEditSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}</button>
+                                    </div>
+                                  </div>
+                                ) : isDeleteConfirm ? (
+                                  <div className="px-4 py-3 space-y-2">
+                                    <p className="text-xs font-semibold text-center text-red-400">Delete expense and refund to float?</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button onClick={() => setCashierExpenseDeleteId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                      <button onClick={() => handleCashierExpenseDelete(e)} disabled={cashierExpenseDeleting} className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "#dc2626" }}>{cashierExpenseDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center">
+                                    <div className="flex-1"><ExpenseRow expense={e} /></div>
+                                    {isLatest && (
+                                      <div className="flex gap-1 pr-3 shrink-0">
+                                        <button onClick={() => startCashierExpenseEdit(e)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(255,255,255,0.08)" }} title="Edit expense"><Pencil className="h-3 w-3 text-muted-foreground" /></button>
+                                        <button onClick={() => setCashierExpenseDeleteId(e.id)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(239,68,68,0.12)" }} title="Delete expense"><Trash2 className="h-3 w-3 text-red-400" /></button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1811,9 +1945,52 @@ function CashierWallet({
                     </button>
                     {isOpen && (
                       <div className="border-t border-border divide-y divide-border/50">
-                        {mExpenses.map((e) => (
-                          <ExpenseRow key={e.id} expense={e} />
-                        ))}
+                        {mExpenses.map((e) => {
+                          const isLatest = e.id === cashierExpenses[0]?.id;
+                          const isEditing = cashierExpenseEditId === e.id;
+                          const isDeleteConfirm = cashierExpenseDeleteId === e.id;
+                          return (
+                            <div key={e.id}>
+                              {isEditing ? (
+                                <div className="px-4 py-3 space-y-2">
+                                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Edit Expense</p>
+                                  {cashierExpenseEditLines.map((el, i) => (
+                                    <div key={i} className="space-y-1">
+                                      <input value={el.description} onChange={(ev) => setCashierExpenseEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, description: ev.target.value } : l))} placeholder="Description" className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                      <div className="flex gap-2">
+                                        <input value={el.amount} onChange={(ev) => setCashierExpenseEditLines((ls) => ls.map((l, idx) => idx === i ? { ...l, amount: ev.target.value } : l))} placeholder=".00" type="number" min="0" step="0.01" className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary" />
+                                        {cashierExpenseEditLines.length > 1 && <button onClick={() => setCashierExpenseEditLines((ls) => ls.filter((_, idx) => idx !== i))} className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"><X className="h-3.5 w-3.5" /></button>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <button onClick={() => setCashierExpenseEditLines((ls) => [...ls, { description: "", amount: "" }])} className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]">+ Add Line</button>
+                                  <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <button onClick={() => { setCashierExpenseEditId(null); setCashierExpenseEditLines([]); }} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                    <button onClick={() => handleCashierExpenseEditSave(e)} disabled={cashierExpenseEditSaving} className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "var(--gradient-hero)" }}>{cashierExpenseEditSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}</button>
+                                  </div>
+                                </div>
+                              ) : isDeleteConfirm ? (
+                                <div className="px-4 py-3 space-y-2">
+                                  <p className="text-xs font-semibold text-center text-red-400">Delete expense and refund to float?</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => setCashierExpenseDeleteId(null)} className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">Cancel</button>
+                                    <button onClick={() => handleCashierExpenseDelete(e)} disabled={cashierExpenseDeleting} className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50" style={{ background: "#dc2626" }}>{cashierExpenseDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <div className="flex-1"><ExpenseRow expense={e} /></div>
+                                  {isLatest && (
+                                    <div className="flex gap-1 pr-3 shrink-0">
+                                      <button onClick={() => startCashierExpenseEdit(e)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(255,255,255,0.08)" }} title="Edit expense"><Pencil className="h-3 w-3 text-muted-foreground" /></button>
+                                      <button onClick={() => setCashierExpenseDeleteId(e.id)} className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90" style={{ background: "rgba(239,68,68,0.12)" }} title="Delete expense"><Trash2 className="h-3 w-3 text-red-400" /></button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
