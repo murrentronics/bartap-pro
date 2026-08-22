@@ -489,6 +489,7 @@ function CreditPage() {
           ownerId={ownerId!}
           onClose={() => setPayAccount(null)}
           onDone={handlePaymentDone}
+          onOpenBill={setBillAccount}
         />
       )}
 
@@ -989,11 +990,13 @@ function PaymentOverlay({
   ownerId,
   onClose,
   onDone,
+  onOpenBill,
 }: {
   account: CreditAccount;
   ownerId: string;
   onClose: () => void;
   onDone: () => void;
+  onOpenBill?: (a: CreditAccount) => void;
 }) {
   const { profile } = useAuth();
   const [amount, setAmount] = useState("");
@@ -1096,16 +1099,11 @@ function PaymentOverlay({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={async () => { setPrinting(true); await printBill(account, ownerName); setPrinting(false); setPrinted(true); setTimeout(() => setPrinted(false), 5000); }}
+              onClick={() => onOpenBill?.(account)}
               disabled={printing}
               className="flex items-center gap-1.5 px-3 h-9 rounded-xl font-bold text-xs transition active:scale-95 disabled:opacity-50"
               style={printed ? { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", color: "var(--primary)", border: "1px solid rgba(251,146,60,0.3)" }}
             >
-              {printing
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : printed
-                ? <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                : <FileDown className="h-3.5 w-3.5" />}
               {printed ? "Done" : "Bill"}
             </button>
             <button

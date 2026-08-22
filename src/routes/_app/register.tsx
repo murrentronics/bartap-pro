@@ -277,7 +277,7 @@ export default function RegisterPage() {
   const nav = useNavigate();
 
   const ownerId = effectiveOwnerId(
-    profile?.role === "owner" ? profile.id : (profile?.parent_id ?? ""),
+    profile?.role === "owner" ? profile.id : (profile?.parent_id ?? profile.id),
   );
 
   // Machines-only accounts have no register page — send them to /machines
@@ -2211,7 +2211,6 @@ export default function RegisterPage() {
             refreshProfile();
             fetchOpenedBottles();
             fetchOpenedPacks();
-            openCashDrawer().catch(() => {});
             if (editOrder || editCreditOrder) nav("/wallet");
           }}
         />
@@ -4805,8 +4804,8 @@ function SaleSuccessBanner({
   );
 }
 
-// ΓöÇΓöÇ Credit Sale Overlay ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-// Step 1: Order review ΓåÆ Step 2: Pick/create credit account ΓåÆ confirm
+// --- Credit Sale Overlay -----------------------------------------------
+// Step 1: Order review -> Step 2: Pick/create credit account -> confirm
 type CreditAccount = {
   id: string;
   full_name: string;
@@ -6168,21 +6167,30 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
         </div>
 
         {/* Actions */}
-        <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
+        <div className="px-6 pb-5 pt-2 flex flex-col gap-2 shrink-0">
           <button
-            onClick={onPrint}
-            disabled={printing}
-            className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
-            style={{ background: "var(--gradient-hero)" }}
+            onClick={async () => { await openCashDrawer().catch(() => {}); }}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2"
+            style={{ background: "rgba(37,211,102,0.12)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
           >
-            {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
+            Open Cash Drawer
           </button>
-          <button
-            onClick={onDone}
-            className="flex-1 h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
-          >
-            Done
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onPrint}
+              disabled={printing}
+              className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
+            </button>
+            <button
+              onClick={onDone}
+              className="flex-1 h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     </div>

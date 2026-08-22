@@ -286,9 +286,9 @@ function StockCountPage() {
   }
 
   return (
-    <div className={splitView ? "fixed inset-0 z-30 bg-background" : ""}>
+    <div className={splitView ? "fixed inset-0 z-30 bg-background pt-14" : ""}>
       {splitView && (
-        <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border bg-background/95 backdrop-blur">
+        <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
           <h1 className="text-lg font-black">Stock Count — Split View</h1>
           <button
             onClick={() => setSplitView(false)}
@@ -301,32 +301,32 @@ function StockCountPage() {
       <div className={splitView ? "flex flex-col md:flex-row h-[calc(100vh-52px)]" : "space-y-5"}>
         {/* Left Panel: Stock Count */}
         <div className={splitView ? "w-full md:w-1/2 overflow-y-auto" : ""}>
-          <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newTableName}
-            onChange={(e) => setNewTableName(e.target.value)}
-            placeholder="New table name..."
-            className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <button
-            onClick={createTable}
-            disabled={!newTableName.trim()}
-            className="h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40"
-            style={{ background: "var(--gradient-hero)" }}
-          >
-            Create Table
-          </button>
-          {(isOwner || isManager) && !splitView && (
+          <div className="flex items-center gap-2 mt-4">
+            <input
+              type="text"
+              value={newTableName}
+              onChange={(e) => setNewTableName(e.target.value)}
+              placeholder="New table name..."
+              className="flex-1 min-w-0 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+            />
             <button
-              onClick={() => setSplitView(true)}
-              className="h-10 px-4 rounded-xl font-black text-sm border border-border bg-muted hover:bg-muted/70 transition active:scale-95 flex items-center gap-2"
+              onClick={createTable}
+              disabled={!newTableName.trim()}
+              className="h-10 px-3 rounded-xl font-black text-xs sm:text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40 shrink-0"
+              style={{ background: "var(--gradient-hero)" }}
             >
-              <LayoutPanelLeft className="h-4 w-4" />
-              Split View
+              Create Table
             </button>
-          )}
-        </div>
+            {!splitView && (
+              <button
+                onClick={() => setSplitView(true)}
+                className="h-10 px-3 rounded-xl font-black text-xs sm:text-sm border border-border bg-muted hover:bg-muted/70 transition active:scale-95 flex items-center gap-2 shrink-0"
+              >
+                <LayoutPanelLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Split View</span>
+              </button>
+            )}
+          </div>
 
       <div className="space-y-6">
         {tables.map((table) => (
