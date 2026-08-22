@@ -20,6 +20,7 @@ import {
   Users,
   CalendarDays,
   Banknote,
+  Printer,
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
@@ -1200,14 +1201,19 @@ function DashboardTab({
     try {
       const { printReceipt } = await import("@/lib/receiptPrinter");
       await printReceipt({
-        id: order.id,
-        items: order.items,
+        storeName: managerName || "Bar",
+        orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
+        date: new Date(order.created_at).toLocaleString("en-US", {
+          month: "numeric", day: "numeric", year: "numeric",
+          hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+        }),
+        items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+        subtotal: Number(order.total),
         total: Number(order.total),
         paid: Number(order.paid),
         change: Number(order.change_given),
-        created_at: order.created_at,
-        payment_method: order.payment_method,
-        cashier_name: order.cashier_id,
+        payMode: order.payment_method === "credit" ? "credit" : "cash",
+        serverName: managerName,
       });
       toast.success("Receipt sent to printer");
     } catch {
@@ -3171,7 +3177,7 @@ function SalesTab({
                       style={{ background: "rgba(255,255,255,0.08)" }}
                       title="Print bill"
                     >
-                      <svg className="h-3 w-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18 4 18v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M6 14h12v6H6z"/></svg>
+                      <Printer className="h-3 w-3 text-muted-foreground" />
                     </button>
                     {canEdit && (
                       <>
@@ -3221,20 +3227,23 @@ function SalesTab({
                   >
                     <svg className="h-3.5 w-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(ws.created_at).toLocaleString("en-GB", {
-                        timeZone: "America/Port_of_Spain",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-                    <p className="text-sm font-semibold leading-snug mt-0.5 break-words">{itemDesc}</p>
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(ws.created_at).toLocaleString("en-GB", {
+                      timeZone: "America/Port_of_Spain",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs font-black text-primary mt-0.5">
+                    ORDER #{ws.order_id?.slice(0, 8)}
+                  </p>
+                  <p className="text-sm font-semibold leading-snug mt-0.5 break-words">{itemDesc}</p>
+                </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
                     <div className="flex gap-1">
@@ -3245,7 +3254,7 @@ function SalesTab({
                           style={{ background: "rgba(255,255,255,0.08)" }}
                           title="Print bill"
                         >
-                          <svg className="h-3 w-3 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18 4 18v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M6 14h12v6H6z"/></svg>
+                          <Printer className="h-3 w-3 text-muted-foreground" />
                         </button>
                       )}
                       {isNewest && (

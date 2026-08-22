@@ -350,7 +350,7 @@ function CashierWallet({
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
     const bill: BillData = {
       storeName: profile.username || "Bar",
-      orderNumber: order.id.slice(0, 8),
+      orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -1467,7 +1467,7 @@ function CashierWallet({
                         className="text-sm font-black mt-0.5"
                         style={{ color: "var(--primary)" }}
                       >
-                        Cash: Sale
+                        ORDER #{(o as any).order_number ?? o.id.slice(0, 8)} · Cash: Sale
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
                         {(o.items || []).map((i, idx) => (
@@ -4283,7 +4283,7 @@ function TransactionsTab({
                           className="text-sm font-black mt-0.5"
                           style={{ color: "var(--primary)" }}
                         >
-                          Cash: Sale
+                          ORDER #{(o as any).order_number ?? o.id.slice(0, 8)} · Cash: Sale
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words whitespace-normal">
                           {(o.items || []).map((i: any, idx: number) => (
@@ -4618,7 +4618,7 @@ function TransactionsTab({
                     })}
                   </div>
                   <div className="text-xs font-black text-primary mt-0.5">
-                    ORDER #{o.id.slice(0, 8)}
+                    ORDER #{(o as any).order_number ?? o.id.slice(0, 8)}
                   </div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
                     {(o as any).cashier_id === (o as any).owner_id ? "Owner: Sale" : (o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
@@ -4842,7 +4842,7 @@ function OwnerWallet({
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
-      orderNumber: order.id.slice(0, 8),
+      orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
