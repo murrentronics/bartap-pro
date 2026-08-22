@@ -410,15 +410,16 @@ function ManagerExpenses({
                 const isExpense = tx.type === "cashier_expense";
                 const isTransferIn = tx.type === "transfer_in";
                 const isTransferOut = tx.type === "transfer_out";
+                const isSale = tx.type === "sale";
                 return (
                   <div key={tx.id} className="rounded-xl p-4 border border-border flex items-center gap-3"
                     style={{ background: "var(--gradient-card)" }}>
                     <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border"
                       style={{
-                        background: isExpense ? "rgba(239,68,68,0.10)" : isTransferIn ? "rgba(134,239,172,0.10)" : "rgba(255,255,255,0.06)",
-                        borderColor: isExpense ? "rgba(239,68,68,0.25)" : isTransferIn ? "rgba(134,239,172,0.25)" : "var(--border)",
+                        background: isExpense ? "rgba(239,68,68,0.10)" : isTransferIn ? "rgba(134,239,172,0.10)" : isSale ? "rgba(251,146,60,0.10)" : "rgba(255,255,255,0.06)",
+                        borderColor: isExpense ? "rgba(239,68,68,0.25)" : isTransferIn ? "rgba(134,239,172,0.25)" : isSale ? "rgba(251,146,60,0.25)" : "var(--border)",
                       }}>
-                      {isExpense ? <TrendingDown className="h-4 w-4 text-red-400" /> : isTransferIn ? <Wallet className="h-4 w-4 text-green-400" /> : <Wallet className="h-4 w-4 text-muted-foreground" />}
+                      {isExpense ? <TrendingDown className="h-4 w-4 text-red-400" /> : isTransferIn ? <Wallet className="h-4 w-4 text-green-400" /> : isSale ? <Receipt className="h-4 w-4 text-orange-400" /> : <Wallet className="h-4 w-4 text-muted-foreground" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-muted-foreground">
@@ -428,12 +429,12 @@ function ManagerExpenses({
                         })}
                       </div>
                       <p className="text-sm font-semibold mt-0.5 truncate">
-                        {tx.note || tx.type}
+                        {isSale ? "Manager Sale" : tx.note || tx.type}
                       </p>
                     </div>
                     <span className="font-black text-sm shrink-0"
-                      style={{ color: isTransferIn ? "#86efac" : isExpense ? "#fca5a5" : "var(--muted-foreground)" }}>
-                      {isTransferIn ? "+" : isExpense ? "-" : ""}${fmt(Math.abs(Number(tx.amount)))}
+                      style={{ color: isTransferIn ? "#86efac" : isExpense ? "#fca5a5" : isSale ? "#fb923c" : "var(--muted-foreground)" }}>
+                      {isTransferIn ? "+" : isExpense ? "-" : isSale ? "+" : ""}${fmt(Math.abs(Number(tx.amount)))}
                     </span>
                   </div>
                 );
@@ -779,8 +780,8 @@ function ManagerExpenses({
               </div>
             );
           })
-        )}
-      </div>
+          )}
+        </div>
         </>
       )}
     </div>

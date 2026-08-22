@@ -3362,18 +3362,18 @@ export default function CashiersPage() {
   };
 
   const onClear = async (c: Cashier) => {
-    const { error } = await supabase.rpc("transfer_cashier_to_owner", { _cashier_id: c.id });
+    const isMgr = (c as any).role === "manager" || (c as any).job_title === "manager";
+    const rpc = isMgr ? "transfer_manager_to_owner" : "transfer_cashier_to_owner";
+    const { error } = await supabase.rpc(rpc, { _cashier_id: c.id });
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    // Clear cashier session records for new shift
+    // Clear session records for new shift
     await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
     await supabase.from("orders").delete().eq("cashier_id", c.id);
 
-    // Mark the start of a new shift for this cashier — old records stay in DB for owner,
-    // but the cashier's view will only show records from this point forward.
     await (supabase as any)
       .from("profiles")
       .update({ cashier_shift_start: new Date().toISOString() })
@@ -4098,30 +4098,26 @@ export default function CashiersPage() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                    {/* Action buttons — custom workers: none; managers: password only; cashiers: all */}
+                    {/* Action buttons — custom workers: none; managers + cashiers: statement, clear, password */}
                     {!isCustom && (
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        {!isManager && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 min-w-[90px] h-12 text-sm font-black"
-                            onClick={() => setStatementCashier(c)}
-                          >
-                            <FileText className="h-5 w-5 mr-1.5" /> Statement
-                          </Button>
-                        )}
-                        {!isManager && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="flex-1 min-w-[90px] h-12 text-sm font-black"
-                            onClick={() => onClear(c)}
-                            disabled={Number(c.wallet_balance) === 0}
-                          >
-                            <Eraser className="h-5 w-5 mr-1.5" /> Clear
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 min-w-[90px] h-12 text-sm font-black"
+                          onClick={() => setStatementCashier(c)}
+                        >
+                          <FileText className="h-5 w-5 mr-1.5" /> Statement
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="flex-1 min-w-[90px] h-12 text-sm font-black"
+                          onClick={() => onClear(c)}
+                          disabled={Number(c.wallet_balance) === 0}
+                        >
+                          <Eraser className="h-5 w-5 mr-1.5" /> Clear
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

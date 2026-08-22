@@ -1,4 +1,4 @@
-import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-BEtx3_4v.js";
+import { r as reactExports, f as functionalUpdate$1, a as arraysEqual, c as createLRUCache, i as isPromise, b as isRedirect, d as isNotFound, e as invariant$1, g as createControlledPromise, h as rootRouteId, j as isServer$1, k as compileDecodeCharMap, t as trimPath, l as rewriteBasepath, m as composeRewrites, p as processRouteTree, n as processRouteMasks, o as resolvePath$1, q as cleanPath, s as trimPathRight, u as parseHref, v as executeRewriteInput, w as isDangerousProtocol, x as redirect, y as findSingleMatch, z as deepEqual$1, D as DEFAULT_PROTOCOL_ALLOWLIST, A as buildRouteBranch, B as interpolatePath, C as nullReplaceEqualDeep, E as replaceEqualDeep$1, F as last, G as decodePath, H as findFlatMatch, I as findRouteMatch, J as hasKeys, K as executeRewriteOutput, L as encodePathLikeUrl, M as trimPathLeft, N as joinPaths$1, O as useRouter, P as dummyMatchContext, Q as matchContext, R as getDefaultExportFromCjs, S as requireReactDom, T as exactPathTest, U as removeTrailingSlash, V as React2, W as jsxRuntimeExports, X as isModuleNotFoundError, Y as useHydrated, Z as escapeHtml, _ as isInlinableStylesheet, $ as getAssetCrossOrigin, a0 as resolveManifestAssetLink, a1 as Outlet, a2 as React, a3 as requireReact } from "./server-Dbw5lG0Z.js";
 var reactUse = reactExports.use;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
@@ -26864,7 +26864,7 @@ function AuthProvider({ children }) {
     signOut: async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          const { PushNotifications } = await import("./index-BUio2VOC.js");
+          const { PushNotifications } = await import("./index-frovtlky.js");
           await PushNotifications.removeAllListeners();
         } catch {
         }
@@ -27130,7 +27130,7 @@ function SplashScreen({ onDone }) {
     }
   );
 }
-const appCss = "/assets/styles-D-T2gcFc.css";
+const appCss = "/assets/styles-CuzChzBE.css";
 function NotFound$1() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-screen items-center justify-center px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-6xl font-black text-primary", children: "404" }),
@@ -30761,11 +30761,11 @@ const labelVariants = cva(
 );
 const Label = reactExports.forwardRef(({ className, ...props }, ref) => /* @__PURE__ */ jsxRuntimeExports.jsx(Root$3, { ref, className: cn(labelVariants(), className), ...props }));
 Label.displayName = Root$3.displayName;
-const $$splitComponentImporter$3 = () => import("./login-DoCy-KMO.js");
+const $$splitComponentImporter$3 = () => import("./login-Cj-vLsg2.js");
 const Route$7 = createFileRoute("/login")({
   component: lazyRouteComponent($$splitComponentImporter$3, "component")
 });
-const $$splitComponentImporter$2 = () => import("./_app-C7gLXt3I.js");
+const $$splitComponentImporter$2 = () => import("./_app-BJxSvodw.js");
 const Route$6 = createFileRoute("/_app")({
   component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
@@ -33260,11 +33260,11 @@ function StockCountPage() {
   if (loading) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-center py-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-8 w-8 animate-spin text-primary" }) });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "flex gap-0 overflow-x-auto" : "space-y-5", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border ${splitView ? "w-full min-w-[50vw] shrink-0" : ""}`, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "flex flex-col" : "space-y-5", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border`, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-black leading-tight", children: "Stock Count" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Personal stock count sheets — does not affect system stock" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Personal stock count sheets ? does not affect system stock" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
         profile?.role === "owner" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -33276,7 +33276,7 @@ function StockCountPage() {
             style: { background: "var(--gradient-hero)", color: "var(--primary-foreground)" },
             children: [
               copying ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "h-3.5 w-3.5 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "h-3.5 w-3.5" }),
-              copying ? "Copying…" : "Copy To Staff"
+              copying ? "Copying?" : "Copy To Staff"
             ]
           }
         ),
@@ -33293,153 +33293,155 @@ function StockCountPage() {
         )
       ] })
     ] }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "w-full min-w-[50vw] shrink-0" : "", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            type: "text",
-            value: newTableName,
-            onChange: (e) => setNewTableName(e.target.value),
-            placeholder: "New table name...",
-            className: "flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: createTable,
-            disabled: !newTableName.trim(),
-            className: "h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40",
-            style: { background: "var(--gradient-hero)" },
-            children: "Create Table"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
-        tables.map((table) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "flex flex-1" : "", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: splitView ? "w-1/2 min-w-0" : "", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
             {
-              className: "flex items-center justify-between px-4 py-3 border-b border-border/50",
-              style: { background: "var(--gradient-card)" },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-4 w-4", style: { color: "var(--primary)" } }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-sm", children: table.name })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "button",
-                    {
-                      onClick: () => addColumn(table.id),
-                      className: "h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95",
-                      children: "+ Add Column"
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "button",
-                    {
-                      onClick: () => addRow(table.id),
-                      className: "h-8 px-3 rounded-lg text-[10px] font-black border border-primary/40 text-primary hover:bg-primary/10 transition active:scale-95",
-                      children: "+ Add Row"
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "button",
-                    {
-                      onClick: () => deleteTable(table.id),
-                      className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95",
-                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5" })
-                    }
-                  )
-                ] })
-              ]
+              type: "text",
+              value: newTableName,
+              onChange: (e) => setNewTableName(e.target.value),
+              placeholder: "New table name...",
+              className: "flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full text-sm", style: { minWidth: "max-content" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "tr",
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: createTable,
+              disabled: !newTableName.trim(),
+              className: "h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40",
+              style: { background: "var(--gradient-hero)" },
+              children: "Create Table"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
+          tables.map((table) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-border overflow-hidden", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
               {
-                className: "border-b border-border/40",
-                style: { background: "rgba(255,255,255,0.02)" },
+                className: "flex items-center justify-between px-4 py-3 border-b border-border/50",
+                style: { background: "var(--gradient-card)" },
                 children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[200px]", children: "Item name" }),
-                  table.columns.map((col, ci) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "th",
-                    {
-                      className: "text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]",
-                      children: col
-                    },
-                    ci
-                  )),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]", children: "Total" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "w-[40px] min-w-[40px]" })
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-4 w-4", style: { color: "var(--primary)" } }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-black text-sm", children: table.name })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: () => addColumn(table.id),
+                        className: "h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95",
+                        children: "+ Add Column"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: () => addRow(table.id),
+                        className: "h-8 px-3 rounded-lg text-[10px] font-black border border-primary/40 text-primary hover:bg-primary/10 transition active:scale-95",
+                        children: "+ Add Row"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: () => deleteTable(table.id),
+                        className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95",
+                        children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-3.5 w-3.5" })
+                      }
+                    )
+                  ] })
                 ]
               }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
-              table.rows.map((row, ri) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: "border-b border-border/20", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 min-w-[200px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "input",
-                  {
-                    type: "text",
-                    value: row[0] ?? "",
-                    onChange: (e) => updateCell(table.id, ri, 0, e.target.value),
-                    onFocus: () => setActiveCell(`${table.id}-${ri}-0`),
-                    onBlur: () => setActiveCell(null),
-                    placeholder: "Item",
-                    className: "w-full h-9 px-2 rounded-lg border border-transparent bg-transparent text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
-                  }
-                ) }),
-                table.columns.map((_, ci) => {
-                  const val = row[ci + 1] ?? "";
-                  return /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[90px] min-w-[90px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "w-full text-sm", style: { minWidth: "max-content" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "tr",
+                {
+                  className: "border-b border-border/40",
+                  style: { background: "rgba(255,255,255,0.02)" },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[200px]", children: "Item name" }),
+                    table.columns.map((col, ci) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "th",
+                      {
+                        className: "text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]",
+                        children: col
+                      },
+                      ci
+                    )),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]", children: "Total" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "w-[40px] min-w-[40px]" })
+                  ]
+                }
+              ) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+                table.rows.map((row, ri) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: "border-b border-border/20", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 min-w-[200px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "input",
                     {
                       type: "text",
-                      inputMode: "numeric",
-                      pattern: "[0-9]*",
-                      value: val,
-                      onChange: (e) => {
-                        const v = e.target.value.replace(/[^0-9]/g, "");
-                        updateCell(table.id, ri, ci + 1, v);
-                      },
-                      onFocus: () => setActiveCell(`${table.id}-${ri}-${ci + 1}`),
+                      value: row[0] ?? "",
+                      onChange: (e) => updateCell(table.id, ri, 0, e.target.value),
+                      onFocus: () => setActiveCell(`${table.id}-${ri}-0`),
                       onBlur: () => setActiveCell(null),
-                      placeholder: "0",
-                      className: `w-full h-9 px-2 rounded-lg border text-xs font-black text-center focus:outline-none focus:ring-2 focus:ring-primary ${activeCell === `${table.id}-${ri}-${ci + 1}` ? "border-primary bg-background" : "border-transparent bg-transparent"}`
+                      placeholder: "Item",
+                      className: "w-full h-9 px-2 rounded-lg border border-transparent bg-transparent text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background"
                     }
-                  ) }, ci);
-                }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[80px] min-w-[80px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary", children: calcTotal(row) }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 text-center w-[40px] min-w-[40px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "button",
+                  ) }),
+                  table.columns.map((_, ci) => {
+                    const val = row[ci + 1] ?? "";
+                    return /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[90px] min-w-[90px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "text",
+                        inputMode: "numeric",
+                        pattern: "[0-9]*",
+                        value: val,
+                        onChange: (e) => {
+                          const v = e.target.value.replace(/[^0-9]/g, "");
+                          updateCell(table.id, ri, ci + 1, v);
+                        },
+                        onFocus: () => setActiveCell(`${table.id}-${ri}-${ci + 1}`),
+                        onBlur: () => setActiveCell(null),
+                        placeholder: "0",
+                        className: `w-full h-9 px-2 rounded-lg border text-xs font-black text-center focus:outline-none focus:ring-2 focus:ring-primary ${activeCell === `${table.id}-${ri}-${ci + 1}` ? "border-primary bg-background" : "border-transparent bg-transparent"}`
+                      }
+                    ) }, ci);
+                  }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 w-[80px] min-w-[80px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-9 px-2 flex items-center justify-center rounded-lg bg-muted/20 text-xs font-black text-primary", children: calcTotal(row) }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-2 py-1 text-center w-[40px] min-w-[40px]", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => deleteRow(table.id, ri),
+                      className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-3.5 w-3.5" })
+                    }
+                  ) })
+                ] }, ri)),
+                table.rows.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "td",
                   {
-                    onClick: () => deleteRow(table.id, ri),
-                    className: "h-8 w-8 rounded-lg flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition active:scale-95",
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-3.5 w-3.5" })
+                    colSpan: table.columns.length + 3,
+                    className: "px-4 py-8 text-center text-muted-foreground text-xs",
+                    children: "No rows yet. Tap + Add Row to start counting."
                   }
                 ) })
-              ] }, ri)),
-              table.rows.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "td",
-                {
-                  colSpan: table.columns.length + 3,
-                  className: "px-4 py-8 text-center text-muted-foreground text-xs",
-                  children: "No rows yet. Tap + Add Row to start counting."
-                }
-              ) })
-            ] })
-          ] }) })
-        ] }, table.id)),
-        tables.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center text-muted-foreground py-12", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-bold text-sm", children: "No stock count tables yet" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Create a table above to start your personal stock count." })
+              ] })
+            ] }) })
+          ] }, table.id)),
+          tables.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center text-muted-foreground py-12", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { className: "h-10 w-10 mx-auto mb-3 opacity-30" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-bold text-sm", children: "No stock count tables yet" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs mt-1", children: "Create a table above to start your personal stock count." })
+          ] })
         ] })
       ] }),
-      splitView && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full min-w-[50vw] shrink-0 border-l border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(RightPanel, { role: profile?.role, ownerId }) })
+      splitView && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-1/2 min-w-0 border-l border-border", children: /* @__PURE__ */ jsxRuntimeExports.jsx(RightPanel, { role: profile?.role, ownerId }) })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open: showAddColumnModal, onOpenChange: setShowAddColumnModal, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "sm:max-w-sm", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(DialogHeader, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: "Add Column" }) }),
@@ -33665,8 +33667,8 @@ async function downloadPdf(filename, pdfBase64) {
   if (Capacitor.isNativePlatform()) {
     const base64 = pdfBase64.replace(/^data:[^;]+;base64,/, "");
     if (!base64 || base64.length < 10) throw new Error("PDF generation produced empty output");
-    const { Filesystem, Directory } = await import("./index-DLD2oUe7.js");
-    const { Share } = await import("./index-qTd8-cmN.js");
+    const { Filesystem, Directory } = await import("./index-TBO75kSk.js");
+    const { Share } = await import("./index-D04Hrpw_.js");
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64,
@@ -34182,7 +34184,7 @@ function StockCheckPage() {
     const key = catFilter ?? "all";
     setPdfBusy(key);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const now = /* @__PURE__ */ new Date();
       const dateStr = now.toLocaleDateString("en-GB");
@@ -34633,7 +34635,7 @@ function StockCheckPage() {
     )
   ] });
 }
-const $$splitComponentImporter$1 = () => import("./manager-GMWo7hhz.js");
+const $$splitComponentImporter$1 = () => import("./manager-CXHUvlag.js");
 const Route$3 = createFileRoute("/_app/manager")({
   component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
@@ -53427,7 +53429,7 @@ async function syncAlertSettingsToServer(barId, settings) {
 async function requestNotificationPermission() {
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
+      const { LocalNotifications } = await import("./index-Dhh2hgo2.js");
       const { display } = await LocalNotifications.requestPermissions();
       return display === "granted";
     } catch {
@@ -53446,7 +53448,7 @@ async function registerPayoutAlertTapHandler(navigate) {
   if (!Capacitor.isNativePlatform()) return () => {
   };
   try {
-    const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
+    const { LocalNotifications } = await import("./index-Dhh2hgo2.js");
     const handle = await LocalNotifications.addListener(
       "localNotificationActionPerformed",
       (action) => {
@@ -53481,7 +53483,7 @@ async function checkAndFirePayoutAlert(amount, machineName, settings, navigate, 
   }));
   if (Capacitor.isNativePlatform()) {
     try {
-      const { LocalNotifications } = await import("./index-CgNLT3Bs.js");
+      const { LocalNotifications } = await import("./index-Dhh2hgo2.js");
       const { display } = await LocalNotifications.checkPermissions();
       if (display !== "granted") {
         const { display: granted } = await LocalNotifications.requestPermissions();
@@ -54187,7 +54189,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     if (logs.length === 0) return;
     setDownloadingMonthKey(monthKey);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const TZ = "America/Port_of_Spain";
       const fmt2 = (n) => n.toFixed(2);
@@ -54624,7 +54626,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -54729,7 +54731,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   };
   const handleDownloadMonthPdf = async (monthKey, monthEntries) => {
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -56448,7 +56450,7 @@ function AllHistoryTab({ entries, machines }) {
     return new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   };
   const buildPdf = async (rows, title, subtitle) => {
-    const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+    const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
       hour: "2-digit",
@@ -56896,7 +56898,7 @@ function SummaryTab({ entries, machines, ownerId }) {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("./jspdf.es.min-BKHcTSbe.js").then((n) => n.j);
+      const { jsPDF } = await import("./jspdf.es.min-DixkMFhn.js").then((n) => n.j);
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const generated = (/* @__PURE__ */ new Date()).toLocaleString("en-GB", {
         hour: "2-digit",
@@ -59023,7 +59025,7 @@ function FactoryResetPage() {
     ) })
   ] });
 }
-const $$splitComponentImporter = () => import("./credit-BwIBw_21.js");
+const $$splitComponentImporter = () => import("./credit-CHDo3piF.js");
 const Route2 = createFileRoute("/_app/credit")({
   component: lazyRouteComponent($$splitComponentImporter, "component")
 });

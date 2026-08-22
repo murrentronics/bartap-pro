@@ -38,6 +38,7 @@ type Employee = {
   username: string;
   role: string;
   job_title?: string | null;
+  wallet_balance?: number;
 };
 
 type TimeCard = {
@@ -270,7 +271,7 @@ function ManagerMain({
       .from("profiles")
       .select("id")
       .eq("parent_id", ownerId)
-      .eq("role", "cashier");
+      .in("role", ["cashier", "manager"]);
     if (cashiers?.length) {
       const ids = cashiers.map((c: { id: string }) => c.id);
       await sb.from("profiles").update({ wallet_balance: 0 }).in("id", ids);
@@ -300,7 +301,7 @@ function ManagerMain({
     setBarToggleBusy(false);
     setBarSessionStart(now);
     setBarClosedAt(null);
-    toast.success("🟢 Bar opened");
+    toast.success("?? Bar opened");
   };
 
   const handleCloseBar = async () => {
@@ -329,7 +330,7 @@ function ManagerMain({
       return;
     }
     setBarClosedAt(now);
-    toast.success("🔴 Bar closed");
+    toast.success("?? Bar closed");
   };
 
   const [tab, setTab] = useState<"dashboard" | "timecards">("dashboard");
@@ -373,7 +374,7 @@ function ManagerMain({
             {barToggleBusy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <span className="text-[11px]">{barIsOpen ? "🟢" : "🔴"}</span>
+              <span className="text-[11px]">{barIsOpen ? "??" : "??"}</span>
             )}
             {barIsOpen ? "Open" : "Closed"}
           </button>
@@ -432,7 +433,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid #f87171" }}
               >
-                <span className="text-2xl">🔴</span>
+                <span className="text-2xl">??</span>
               </div>
               <h2 className="font-black text-xl">Close Bar?</h2>
               <p className="text-sm text-muted-foreground mt-2">
@@ -478,7 +479,7 @@ function ManagerMain({
                 className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-3"
                 style={{ background: "rgba(134,239,172,0.12)", border: "1.5px solid #86efac" }}
               >
-                <span className="text-2xl">🟢</span>
+                <span className="text-2xl">??</span>
               </div>
               <h2 className="font-black text-xl">Open Bar</h2>
               <p className="text-sm text-muted-foreground mt-1">Set the opening float</p>
@@ -530,7 +531,7 @@ function ManagerMain({
                   </div>
                 </div>
               )}
-              {/* Inline numpad � integers only, no decimal */}
+              {/* Inline numpad ? integers only, no decimal */}
               {activeOpenBarField !== null && (
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                   {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "?"].map((k, i) =>
@@ -829,7 +830,7 @@ function DashboardTab({
       await sb.from("profiles").update({ cashier_float: newTotal }).eq("id", ownerId);
       setFloatBalance(newTotal);
       setBarFloatSet(newTotal);
-      toast.success(`Float topped up by $${val.toFixed(2)} � total $${newTotal.toFixed(2)}`);
+      toast.success(`Float topped up by $${val.toFixed(2)} ? total $${newTotal.toFixed(2)}`);
     } else {
       // New session: close current sub-session, open new one, reset float anchor
       const { data: openBarSession } = await sb
@@ -860,7 +861,7 @@ function DashboardTab({
         .eq("id", ownerId);
       setFloatBalance(val);
       setBarFloatSet(val);
-      toast.success(`New session started � float set to $${val.toFixed(2)}`);
+      toast.success(`New session started ? float set to $${val.toFixed(2)}`);
     }
     setSetFloatBusy(false);
     setShowSetBarFloat(false);
@@ -946,7 +947,7 @@ function DashboardTab({
     }
     const total = valid.reduce((s, l) => s + parseFloat(l.amount), 0);
     if (total > floatBalance) {
-      toast.error(`Insufficient float � balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float ? balance is $${fmt(floatBalance)}`);
       return;
     }
     setSaving(true);
@@ -1020,7 +1021,7 @@ function DashboardTab({
     const diff = newTotal - Number(e.amount);
     if (diff > 0 && diff > floatBalance) {
       setEditSaving(false);
-      toast.error(`Insufficient float � balance is $${fmt(floatBalance)}`);
+      toast.error(`Insufficient float ? balance is $${fmt(floatBalance)}`);
       return;
     }
     const description =
@@ -1038,7 +1039,7 @@ function DashboardTab({
         return;
       }
       if (!updated || updated.length === 0) {
-        toast.error("Could not update expense � permission denied");
+        toast.error("Could not update expense ? permission denied");
         return;
       }
       if (diff !== 0) {
@@ -1068,7 +1069,7 @@ function DashboardTab({
         return;
       }
       if (!deleted || deleted.length === 0) {
-        toast.error("Could not delete expense � permission denied");
+        toast.error("Could not delete expense ? permission denied");
         return;
       }
       const newFloat = floatBalance + Number(e.amount);
@@ -1087,7 +1088,7 @@ function DashboardTab({
 
   const handleEditOrder = (order: Order) => {
     sessionStorage.setItem("edit_order", JSON.stringify(order));
-    toast.success("Order loaded for editing � switch to register");
+    toast.success("Order loaded for editing ? switch to register");
     navigate("/");
   };
 
@@ -1137,7 +1138,7 @@ function DashboardTab({
         >
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
           <span className="text-sm font-semibold text-red-400">
-            Bar is closed � expenses cannot be added, edited, or deleted.
+            Bar is closed ? expenses cannot be added, edited, or deleted.
           </span>
         </div>
       )}
@@ -1307,7 +1308,7 @@ function DashboardTab({
                 Cash Sales
               </div>
               <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                {barIsOpen ? `$${fmt(sessionBarSales)}` : "�"}
+                {barIsOpen ? `$${fmt(sessionBarSales)}` : "?"}
               </div>
             </div>
             <div
@@ -1321,7 +1322,7 @@ function DashboardTab({
                 Bar Expenses
               </div>
               <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                {barIsOpen ? `$${fmt(sessionExpenses)}` : "�"}
+                {barIsOpen ? `$${fmt(sessionExpenses)}` : "?"}
               </div>
             </div>
           </div>
@@ -1349,7 +1350,7 @@ function DashboardTab({
                   Cash in Machine
                 </div>
                 <div className="font-black text-sm" style={{ color: "#86efac" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "�"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachineIn)}` : "?"}
                 </div>
               </div>
               <div
@@ -1366,7 +1367,7 @@ function DashboardTab({
                   Machines Payout
                 </div>
                 <div className="font-black text-sm" style={{ color: "#fca5a5" }}>
-                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "�"}
+                  {machineFloatAnchor ? `$${fmt(sessionMachinePayout)}` : "?"}
                 </div>
               </div>
             </div>
@@ -1430,7 +1431,7 @@ function DashboardTab({
             >
               {barFloatSet > 0 ? "Update Bar Float" : "Set Bar Float"}
             </p>
-            {/* Same / New session selector � only when a float is already set */}
+            {/* Same / New session selector ? only when a float is already set */}
             {barFloatSet > 0 && (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -1456,8 +1457,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float � used amount unchanged"
-                    : "Starts fresh � used amount resets to $0"}
+                    ? "Adds to current float ? used amount unchanged"
+                    : "Starts fresh ? used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1522,7 +1523,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving�" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving?" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -1607,216 +1608,11 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving�" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving?" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
       )}
-
-      {/* Expense History */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Session Expenses
-          </p>
-          {expenses.length > 0 && (
-            <span className="text-xs font-black text-red-400">${fmt(sessionTotal)}</span>
-          )}
-        </div>
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-xl h-14 bg-muted/30 animate-pulse" />
-            ))}
-          </div>
-        ) : expenses.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground text-sm">
-            No expenses this session.
-          </div>
-        ) : (
-          <div
-            className="rounded-2xl border border-border overflow-hidden divide-y divide-border/40"
-            style={{ background: "var(--gradient-card)" }}
-          >
-            {expenses.map((e) => {
-              const canEdit = e.id === lastExpenseId && barIsOpen;
-              const raw = (e.description ?? "").replace(tag, "").trim();
-              const descLines = raw
-                .split("\n")
-                .filter((l) => l && l !== "Non-Stock Expense")
-                .map((l) => l.trim());
-              const isEditing = editingId === e.id;
-              const cashierMatch = (e.description ?? "").match(/\[Cashier:\s*([^\]]+)\]/);
-              const managerMatch = (e.description ?? "").match(/\[Manager:\s*([^\]]+)\]/);
-              const who = cashierMatch ? cashierMatch[1] : managerMatch ? managerMatch[1] : null;
-              return (
-                <div key={e.id} className="px-4 py-3 space-y-2">
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                        Edit Expense
-                      </p>
-                      {editLines.map((el, i) => (
-                        <div key={i} className="space-y-1">
-                          <input
-                            value={el.description}
-                            onChange={(ev) =>
-                              setEditLines((ls) =>
-                                ls.map((l, idx) =>
-                                  idx === i ? { ...l, description: ev.target.value } : l,
-                                ),
-                              )
-                            }
-                            placeholder="Description"
-                            className="w-full h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <div className="flex gap-2">
-                            <input
-                              value={el.amount}
-                              onChange={(ev) =>
-                                setEditLines((ls) =>
-                                  ls.map((l, idx) =>
-                                    idx === i ? { ...l, amount: ev.target.value } : l,
-                                  ),
-                                )
-                              }
-                              placeholder="$0.00"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                            />
-                            {editLines.length > 1 && (
-                              <button
-                                onClick={() =>
-                                  setEditLines((ls) => ls.filter((_, idx) => idx !== i))
-                                }
-                                className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() =>
-                          setEditLines((ls) => [...ls, { description: "", amount: "" }])
-                        }
-                        className="w-full h-8 rounded-xl border border-dashed border-border text-xs font-black text-muted-foreground transition active:scale-[0.98]"
-                      >
-                        + Add Line
-                      </button>
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          onClick={() => {
-                            setEditingId(null);
-                            setEditLines([]);
-                          }}
-                          className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleEditSave(e)}
-                          disabled={editSaving}
-                          className="h-9 rounded-xl font-black text-xs text-primary-foreground flex items-center justify-center transition active:scale-95 disabled:opacity-50"
-                          style={{ background: "var(--gradient-hero)" }}
-                        >
-                          {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : deleteConfirmId === e.id ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-center text-red-400">
-                        Delete ${fmt(Number(e.amount))} expense and refund to float?
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => setDeleteConfirmId(null)}
-                          className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleDelete(e)}
-                          disabled={deleting}
-                          className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
-                          style={{ background: "#dc2626" }}
-                        >
-                          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 border"
-                        style={{
-                          background: "rgba(239,68,68,0.10)",
-                          borderColor: "rgba(239,68,68,0.25)",
-                        }}
-                      >
-                        <TrendingDown className="h-3.5 w-3.5 text-red-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {who && (
-                          <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-0.5">
-                            {who}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(e.created_at).toLocaleString("en-GB", {
-                            timeZone: "America/Port_of_Spain",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                        {descLines.map((l, i) => (
-                          <p
-                            key={i}
-                            className="text-sm font-semibold leading-snug mt-0.5 break-words"
-                          >
-                            {l}
-                          </p>
-                        ))}
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="font-black text-sm text-red-400">
-                          ${fmt(Number(e.amount))}
-                        </span>
-                        {canEdit && (
-                          <div className="flex gap-1 mt-0.5">
-                            <button
-                              onClick={() => startEdit(e)}
-                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                              style={{ background: "rgba(255,255,255,0.08)" }}
-                            >
-                              <Pencil className="h-3 w-3 text-muted-foreground" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirmId(e.id)}
-                              className="h-7 w-7 rounded-lg flex items-center justify-center transition active:scale-90"
-                              style={{ background: "rgba(239,68,68,0.12)" }}
-                            >
-                              <Trash2 className="h-3 w-3 text-red-400" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       {/* -- Set Bar Float Modal -- */}
       {showSetBarFloat && (
@@ -1864,8 +1660,8 @@ function DashboardTab({
                 </div>
                 <p className="text-center text-[11px]" style={{ color: "oklch(0.55 0.10 65)" }}>
                   {barFloatMode === "same"
-                    ? "Adds to current float � used amount unchanged"
-                    : "Starts fresh � used amount resets to $0"}
+                    ? "Adds to current float ? used amount unchanged"
+                    : "Starts fresh ? used amount resets to $0"}
                 </p>
               </>
             )}
@@ -1928,7 +1724,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving�" : barFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving?" : barFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -2013,7 +1809,7 @@ function DashboardTab({
               className="w-full py-4 rounded-2xl text-base font-black active:scale-95 transition disabled:opacity-50"
               style={{ background: "oklch(0.60 0.18 65)", color: "#000" }}
             >
-              {setFloatBusy ? "Saving�" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
+              {setFloatBusy ? "Saving?" : machineFloatSet > 0 ? "Update Float" : "Set Float"}
             </button>
           </div>
         </div>
@@ -2237,12 +2033,12 @@ export function TimeCardsTab({
     setEmpLoading(true);
     const { data: staff } = await sb
       .from("profiles")
-      .select("id, username, role, job_title")
+      .select("id, username, role, job_title, wallet_balance")
       .eq("parent_id", ownerId)
       .in("role", ["cashier", "manager", "custom"])
       .order("username", { ascending: true });
     const staffList = (staff ?? []) as Employee[];
-    const self: Employee = { id: profile.id, username: managerName, role: "manager" };
+    const self: Employee = { id: profile.id, username: managerName, role: "manager", wallet_balance: 0 };
     const hasSelf = staffList.some((e) => e.id === profile.id);
     setEmployees(hasSelf ? staffList : [self, ...staffList]);
     setEmpLoading(false);
@@ -2333,6 +2129,7 @@ export function TimeCardsTab({
     toast.success(`${openCard.employee_name} clocked out`);
     loadTimeCards();
   };
+
   function roleLabel(emp: Employee) {
     if (emp.role === "manager") return "Manager";
     if (emp.role === "custom" && emp.job_title) return emp.job_title;
@@ -2383,7 +2180,7 @@ export function TimeCardsTab({
       start.setDate(ref.getDate() - dow);
       const end = new Date(ref);
       end.setDate(ref.getDate() + (6 - dow));
-      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} � ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ? ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     }
     if (tsPeriod === "month")
       return ref.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -2478,12 +2275,20 @@ export function TimeCardsTab({
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-sm truncate">{emp.username}</p>
                       <p className="text-xs text-muted-foreground">{roleLabel(emp)}</p>
+                      {emp.role === "manager" && (
+                        <p className="text-xs text-muted-foreground">
+                          Balance:{" "}
+                          <span className="text-primary font-black">
+                            ${Number(emp.wallet_balance ?? 0).toFixed(2)}
+                          </span>
+                        </p>
+                      )}
                       {isSel && empOpen && (
                         <p
                           className="text-[10px] mt-0.5"
                           style={{ color: "rgba(134,239,172,0.8)" }}
                         >
-                          Since {fmtTime(empOpen.clocked_in_at)} �{" "}
+                          Since {fmtTime(empOpen.clocked_in_at)} �{" "}
                           {fmtDuration(empOpen.clocked_in_at, null)} on shift
                         </p>
                       )}
@@ -2598,7 +2403,7 @@ export function TimeCardsTab({
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-sm truncate">{tc.employee_name}</p>
                       <p className="text-xs mt-0.5" style={{ color: "rgba(134,239,172,0.8)" }}>
-                        Since {fmtTime(tc.clocked_in_at)} � {fmtDuration(tc.clocked_in_at, null)} on
+                        Since {fmtTime(tc.clocked_in_at)} � {fmtDuration(tc.clocked_in_at, null)} on
                         shift
                       </p>
                     </div>
@@ -2803,7 +2608,7 @@ export function TimeCardsTab({
             </div>
           )}
 
-          {/* Week / Month / Year / Day period pickers � only shown when a date is selected */}
+          {/* Week / Month / Year / Day period pickers ? only shown when a date is selected */}
           {tsSelectedDate && (
             <div className="flex gap-1.5">
               {(["day", "week", "month", "year"] as const).map((p) => (
@@ -2868,7 +2673,7 @@ export function TimeCardsTab({
             </div>
           )}
 
-          {/* Records � Month accordion ? Day rows ? Employee entries */}
+          {/* Records ? Month accordion ? Day rows ? Employee entries */}
           {tcLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -2931,7 +2736,7 @@ export function TimeCardsTab({
                         <p className="font-black text-sm">{mLabel}</p>
                         <p className="text-xs text-muted-foreground">
                           {mDays.length} day{mDays.length !== 1 ? "s" : ""}
-                          {mActive && <span className="text-green-400 ml-1">� active</span>}
+                          {mActive && <span className="text-green-400 ml-1">? active</span>}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2984,7 +2789,7 @@ export function TimeCardsTab({
                                     {cards.length} record{cards.length !== 1 ? "s" : ""}
                                     {dActive > 0 && (
                                       <span className="text-green-400 ml-1">
-                                        � {dActive} active
+                                        ? {dActive} active
                                       </span>
                                     )}
                                   </p>
@@ -3031,12 +2836,12 @@ export function TimeCardsTab({
                                                 {fmtTime(tc.clocked_out_at)}
                                               </span>
                                               <span className="text-muted-foreground ml-1">
-                                                � {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
+                                                � {fmtDuration(tc.clocked_in_at, tc.clocked_out_at)}
                                               </span>
                                             </>
                                           ) : (
                                             <span className="text-green-400 font-semibold">
-                                              � Still on shift
+                                              ?? Still on shift
                                             </span>
                                           )}
                                         </div>
@@ -3073,7 +2878,7 @@ export function TimeCardsTab({
   );
 }
 
-// ─── Sales Tab ────────────────────────────────────────────────────────────────
+// --- Sales Tab ----------------------------------------------------------------
 function SalesTab({
   orders,
   loading,
@@ -3131,7 +2936,7 @@ function SalesTab({
                     })}
                   </p>
                   <p className="text-sm font-semibold leading-snug mt-0.5 break-words">
-                    {(o.items || []).map((it: any) => `${it.qty}� ${it.name}`).join(", ")}
+                    {(o.items || []).map((it: any) => `${it.qty}? ${it.name}`).join(", ")}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
@@ -3176,7 +2981,7 @@ function SalesTab({
   );
 }
 
-// ─── Expenses Tab ─────────────────────────────────────────────────────────────
+// --- Expenses Tab -------------------------------------------------------------
 function ExpensesTab({
   expenses,
   loading,
@@ -3256,7 +3061,7 @@ function ExpensesTab({
                   }
             }
           >
-            {showForm ? "✕ Cancel" : "+ Add Expense"}
+            {showForm ? "? Cancel" : "+ Add Expense"}
           </button>
           {showForm && (
             <div

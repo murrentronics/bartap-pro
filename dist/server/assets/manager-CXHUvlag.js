@@ -1,6 +1,6 @@
-import { W as jsxRuntimeExports, r as reactExports } from "./server-BEtx3_4v.js";
-import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, R as Receipt, T as TriangleAlert, X, o as LoaderCircle, v as Pencil, w as Trash2, t as toast } from "./router-D9NLOrC4.js";
-import { T as TrendingDown, W as Wallet } from "./wallet-NQreKYHg.js";
+import { W as jsxRuntimeExports, r as reactExports } from "./server-Dbw5lG0Z.js";
+import { m as createLucideIcon, i as useAuth, n as useChain, r as useTranslation, s as supabase, R as Receipt, T as TriangleAlert, X, o as LoaderCircle, v as Pencil, w as Trash2, t as toast } from "./router-BolBtekg.js";
+import { T as TrendingDown, W as Wallet } from "./wallet-B0O_3mpF.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -380,13 +380,14 @@ ${tag}`;
           const isExpense = tx.type === "cashier_expense";
           const isTransferIn = tx.type === "transfer_in";
           tx.type === "transfer_out";
+          const isSale = tx.type === "sale";
           return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-xl p-4 border border-border flex items-center gap-3", style: {
             background: "var(--gradient-card)"
           }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-9 w-9 rounded-full flex items-center justify-center shrink-0 border", style: {
-              background: isExpense ? "rgba(239,68,68,0.10)" : isTransferIn ? "rgba(134,239,172,0.10)" : "rgba(255,255,255,0.06)",
-              borderColor: isExpense ? "rgba(239,68,68,0.25)" : isTransferIn ? "rgba(134,239,172,0.25)" : "var(--border)"
-            }, children: isExpense ? /* @__PURE__ */ jsxRuntimeExports.jsx(TrendingDown, { className: "h-4 w-4 text-red-400" }) : isTransferIn ? /* @__PURE__ */ jsxRuntimeExports.jsx(Wallet, { className: "h-4 w-4 text-green-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Wallet, { className: "h-4 w-4 text-muted-foreground" }) }),
+              background: isExpense ? "rgba(239,68,68,0.10)" : isTransferIn ? "rgba(134,239,172,0.10)" : isSale ? "rgba(251,146,60,0.10)" : "rgba(255,255,255,0.06)",
+              borderColor: isExpense ? "rgba(239,68,68,0.25)" : isTransferIn ? "rgba(134,239,172,0.25)" : isSale ? "rgba(251,146,60,0.25)" : "var(--border)"
+            }, children: isExpense ? /* @__PURE__ */ jsxRuntimeExports.jsx(TrendingDown, { className: "h-4 w-4 text-red-400" }) : isTransferIn ? /* @__PURE__ */ jsxRuntimeExports.jsx(Wallet, { className: "h-4 w-4 text-green-400" }) : isSale ? /* @__PURE__ */ jsxRuntimeExports.jsx(Receipt, { className: "h-4 w-4 text-orange-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Wallet, { className: "h-4 w-4 text-muted-foreground" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs text-muted-foreground", children: new Date(tx.created_at).toLocaleString("en-GB", {
                 hour: "2-digit",
@@ -396,12 +397,12 @@ ${tag}`;
                 month: "short",
                 year: "numeric"
               }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold mt-0.5 truncate", children: tx.note || tx.type })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold mt-0.5 truncate", children: isSale ? "Manager Sale" : tx.note || tx.type })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-black text-sm shrink-0", style: {
-              color: isTransferIn ? "#86efac" : isExpense ? "#fca5a5" : "var(--muted-foreground)"
+              color: isTransferIn ? "#86efac" : isExpense ? "#fca5a5" : isSale ? "#fb923c" : "var(--muted-foreground)"
             }, children: [
-              isTransferIn ? "+" : isExpense ? "-" : "",
+              isTransferIn ? "+" : isExpense ? "-" : isSale ? "+" : "",
               "$",
               fmt(Math.abs(Number(tx.amount)))
             ] })

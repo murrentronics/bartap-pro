@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2, Printer,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type CreditAccount = {
@@ -322,9 +323,70 @@ function BillModal({ account, ownerName, onClose }: {
   ownerName: string;
   onClose: () => void;
 }) {
-  const [busy, setBusy] = useState<"share" | null>(null);
+  const [busy, setBusy] = useState<"share" | "print" | null>(null);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
+
+  const buildReceiptData = async (): Promise<ReceiptData | null> => {
+    const { data: txs } = await supabase
+      .from("credit_transactions")
+      .select("type, amount, items")
+      .eq("credit_account_id", account.id)
+      .order("created_at", { ascending: true });
+    if (!txs) return null;
+
+    const items: { name: string; qty: number; price: number }[] = [];
+    let totalCharges = 0;
+    let totalPayments = 0;
+
+    for (const tx of txs) {
+      if (tx.type === "charge") {
+        const txItems = (tx as any).items as any[] | null;
+        if (txItems && txItems.length > 0) {
+          for (const it of txItems) {
+            items.push({ name: it.name ?? "Item", qty: it.qty ?? 1, price: Number(it.price) || 0 });
+          }
+        } else {
+          items.push({ name: tx.note || "Charge", qty: 1, price: Number(tx.amount) });
+        }
+        totalCharges += Number(tx.amount);
+      } else if (tx.type === "payment") {
+        totalPayments += Number(tx.amount);
+      }
+    }
+
+    return {
+      storeName: ownerName,
+      customerName: account.full_name,
+      items,
+      subtotal: totalCharges,
+      total: totalCharges,
+      paid: totalPayments,
+      change: 0,
+      payMode: "credit",
+      date: new Date().toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+    };
+  };
+
+  const handlePrint = async () => {
+    setBusy("print");
+    try {
+      const data = await buildReceiptData();
+      if (!data) { setBusy(null); return; }
+      const result = await printReceipt(data);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Receipt sent to printer");
+      }
+    } catch (e: any) {
+      toast.error("Print failed: " + (e?.message ?? "unknown"));
+    }
+    setBusy(null);
+  };
 
   const handleShare = async () => {
     setBusy("share");
@@ -379,6 +441,15 @@ function BillModal({ account, ownerName, onClose }: {
           </button>
         </div>
         <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
+          <button
+            onClick={handlePrint}
+            disabled={!!busy}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-border"
+            style={{ background: "rgba(255,255,255,0.08)", color: "var(--foreground)" }}
+          >
+            {busy === "print" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            Print Bill
+          </button>
           <button
             onClick={handleShare}
             disabled={!!busy}

@@ -46,30 +46,64 @@ CREATE OR REPLACE FUNCTION public.handle_order_insert()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _order_num INTEGER;
+  _is_manager BOOLEAN;
 BEGIN
   -- Only set order_number if not already provided (e.g. from frontend RPC)
   IF NEW.order_number IS NULL THEN
     _order_num := public.get_next_order_number(NEW.owner_id);
-    NEW.order_number := _order_num;
+    UPDATE public.orders SET order_number = _order_num WHERE id = NEW.id;
+  ELSE
+    _order_num := NEW.order_number;
   END IF;
 
-  -- Update cashier wallet balance
+  -- Check if cashier is a manager
+  SELECT (role = 'manager' OR job_title = 'manager') INTO _is_manager
+    FROM public.profiles WHERE id = NEW.cashier_id;
+
+  -- Update cashier/manager wallet balance
   UPDATE public.profiles SET wallet_balance = wallet_balance + NEW.total WHERE id = NEW.cashier_id;
 
-  -- Record cashier sale
+  -- Record cashier/manager sale
   INSERT INTO public.wallet_transactions(profile_id, amount, type, note, order_id)
-    VALUES (NEW.cashier_id, NEW.total, 'sale', 'Order #' || NEW.order_number, NEW.id);
+    VALUES (NEW.cashier_id, NEW.total, 'sale', 'Order #' || _order_num, NEW.id);
 
-  -- Record owner copy
-  INSERT INTO public.wallet_transactions(profile_id, amount, type, note, order_id)
-    VALUES (NEW.owner_id, NEW.total, 'cashier_sale', 'Order #' || NEW.order_number, NEW.id);
+  -- Only record owner copy for cashiers, not managers
+  -- Manager sales show directly in owner wallet via the orders table
+  IF NOT _is_manager THEN
+    INSERT INTO public.wallet_transactions(profile_id, amount, type, note, order_id)
+      VALUES (NEW.owner_id, NEW.total, 'cashier_sale', 'Order #' || _order_num, NEW.id);
+  END IF;
 
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS on_order_insert ON public.orders;
-CREATE TRIGGER on_order_insert BEFORE INSERT ON public.orders
+CREATE TRIGGER on_order_insert AFTER INSERT ON public.orders
   FOR EACH ROW EXECUTE FUNCTION public.handle_order_insert();
 
+-- 5. Transfer manager wallet to owner (used by Clear / Delete actions)
+CREATE OR REPLACE FUNCTION public.transfer_manager_to_owner(_manager_id UUID)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _bal NUMERIC;
+  _parent UUID;
+  _caller UUID := auth.uid();
+BEGIN
+  SELECT wallet_balance, parent_id INTO _bal, _parent FROM public.profiles WHERE id = _manager_id;
+  IF _parent IS NULL OR _parent <> _caller THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+  IF _bal > 0 THEN
+    UPDATE public.profiles SET wallet_balance = 0 WHERE id = _manager_id;
+    UPDATE public.profiles SET wallet_balance = wallet_balance + _bal WHERE id = _parent;
+    INSERT INTO public.wallet_transactions(profile_id, amount, type, note)
+      VALUES (_manager_id, -_bal, 'transfer_out', 'Cleared to owner');
+    INSERT INTO public.wallet_transactions(profile_id, amount, type, note)
+      VALUES (_parent, _bal, 'transfer_in', 'Cleared from manager');
+  END IF;
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION public.get_next_order_number(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transfer_manager_to_owner(UUID) TO authenticated;

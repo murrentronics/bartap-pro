@@ -1884,12 +1884,11 @@ function OwnerStatement({
     // Collect all owner IDs to fetch orders from: own profile + all chain bars
     const allOwnerIds = [profile.id, ...(chainBarIds ?? [])];
     Promise.all([
-      // Direct sales by this owner (as cashier) across all their bars
+      // All orders for this owner (owner's own sales + manager/cashier sales on owner's bars)
       supabase
         .from("orders")
         .select("*")
         .in("owner_id", allOwnerIds)
-        .eq("cashier_id", profile.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => setOrders((data ?? []) as unknown as Order[])),
       supabase
@@ -1899,6 +1898,7 @@ function OwnerStatement({
         .in("type", [
           "transfer_in",
           "cashier_sale",
+          "manager_sale",
           "bottle_finished",
           "pack_finished",
           "credit_payment",
@@ -3705,6 +3705,7 @@ function TransactionsTab({
   const [loading, setLoading] = useState(true);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [cashierRoles, setCashierRoles] = useState<Record<string, string>>({});
   // The id of the owner-direct order that qualifies for the delete button
   const [deletableOrderId, setDeletableOrderId] = useState<string | null>(null);
 
@@ -3779,6 +3780,19 @@ function TransactionsTab({
         ])
         .order("created_at", { ascending: false })
         .then(({ data }) => setAllTxs((data ?? []) as WalletTx[])),
+      // Fetch cashier roles for badge display
+      supabase
+        .from("profiles")
+        .select("id, role, job_title")
+        .eq("parent_id", profile.id)
+        .in("role", ["cashier", "manager"])
+        .then(({ data }) => {
+          const roles: Record<string, string> = {};
+          (data ?? []).forEach((p: any) => {
+            roles[p.id] = p.role === "manager" ? "manager" : (p.job_title === "manager" ? "manager" : "cashier");
+          });
+          setCashierRoles(roles);
+        }),
     ]).finally(() => setLoading(false));
   }, [profile.id]);
 
@@ -3834,9 +3848,9 @@ function TransactionsTab({
     ),
   ].sort((a, b) => b.ts - a.ts);
 
-  // Show orders where: cashier_id = profile.id (regular owner/cashier)
-  // OR owner_id = profile.id and no cashier_sale tx exists for same order_id
-  // (chain master acting as bar — cashier_id = master, but bar wallet should show it)
+  // Show orders where: cashier_id = profile.id (owner acted as cashier)
+  // OR owner_id = profile.id (manager/cashier sale on owner's bar)
+  // Exclude orders that already have a cashier_sale tx (avoid double-count for owner-as-cashier)
   const cashierSaleTxOrderIds = new Set(
     allTxs
       .filter((tx: any) => tx.type === "cashier_sale" && tx.order_id)
@@ -3846,7 +3860,7 @@ function TransactionsTab({
     if (rec.kind === "order") {
       const o = rec.data as any;
       if (o.cashier_id === profile.id) return true;
-      // Show if owner_id matches and no cashier_sale tx covers it (avoid double-count)
+      // Show manager/cashier sales on owner's bar if not already represented by cashier_sale
       if (o.owner_id === profile.id && !cashierSaleTxOrderIds.has(o.id)) return true;
       return false;
     }
@@ -4516,8 +4530,8 @@ function TransactionsTab({
               );
             }
             const o = rec.data as Order;
-            // Cashier orders are already shown via cashier_sale wallet_transaction — skip them here
-            if ((o as any).cashier_id !== profile.id) return null;
+            // Show owner-as-cashier sales and manager/cashier sales on owner's bar
+            if ((o as any).cashier_id !== profile.id && (o as any).owner_id !== profile.id) return null;
             const isNewest = o.id === newestOrderId;
             return (
               <div
@@ -4540,7 +4554,7 @@ function TransactionsTab({
                     })}
                   </div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    Cash: Sale
+                    {(o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {(o.items || []).map((i, idx) => (

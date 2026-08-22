@@ -286,14 +286,14 @@ function StockCountPage() {
   }
 
   return (
-    <div className={splitView ? "flex gap-0 overflow-x-auto" : "space-y-5"}>
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className={`sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border ${splitView ? "w-full min-w-[50vw] shrink-0" : ""}`}>
+    <div className={splitView ? "flex flex-col" : "space-y-5"}>
+      {/* -- Header ----------------------------------------------------- */}
+      <div className={`sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border`}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black leading-tight">Stock Count</h1>
             <p className="text-xs text-muted-foreground">
-              Personal stock count sheets — does not affect system stock
+              Personal stock count sheets ? does not affect system stock
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ function StockCountPage() {
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
                 {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-                {copying ? "Copying…" : "Copy To Staff"}
+                {copying ? "Copying?" : "Copy To Staff"}
               </button>
             )}
             <button
@@ -323,25 +323,27 @@ function StockCountPage() {
         </div>
       </div>
 
-      {/* ── Left Panel: Stock Count ─────────────────────────────────── */}
-      <div className={splitView ? "w-full min-w-[50vw] shrink-0" : ""}>
-        <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={newTableName}
-          onChange={(e) => setNewTableName(e.target.value)}
-          placeholder="New table name..."
-          className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-        <button
-          onClick={createTable}
-          disabled={!newTableName.trim()}
-          className="h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40"
-          style={{ background: "var(--gradient-hero)" }}
-        >
-          Create Table
-        </button>
-      </div>
+      {/* -- Body ------------------------------------------------------- */}
+      <div className={splitView ? "flex flex-1" : ""}>
+        {/* Left Panel: Stock Count */}
+        <div className={splitView ? "w-1/2 min-w-0" : ""}>
+          <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newTableName}
+            onChange={(e) => setNewTableName(e.target.value)}
+            placeholder="New table name..."
+            className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            onClick={createTable}
+            disabled={!newTableName.trim()}
+            className="h-10 px-4 rounded-xl font-black text-sm text-primary-foreground transition active:scale-95 disabled:opacity-40"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            Create Table
+          </button>
+        </div>
 
       <div className="space-y-6">
         {tables.map((table) => (
@@ -474,13 +476,14 @@ function StockCountPage() {
             <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="font-bold text-sm">No stock count tables yet</p>
             <p className="text-xs mt-1">Create a table above to start your personal stock count.</p>
-          </div>
-        )}
       </div>
+      )}
+      </div>
+    </div>
 
-      {/* ── Right Panel: Split View ─────────────────────────────────── */}
+      {/* -- Right Panel: Split View ----------------------------------- */}
       {splitView && (
-        <div className="w-full min-w-[50vw] shrink-0 border-l border-border">
+        <div className="w-1/2 min-w-0 border-l border-border">
           <RightPanel role={profile?.role} ownerId={ownerId} />
         </div>
       )}
@@ -533,7 +536,7 @@ function StockCountPage() {
   );
 }
 
-// ─── Right Panel for Split View ───────────────────────────────────────────────
+// --- Right Panel for Split View -----------------------------------------------
 type RightPanelProps = {
   role?: string;
   ownerId?: string;
@@ -557,7 +560,7 @@ function RightPanel({ role, ownerId }: RightPanelProps) {
   );
 }
 
-// ─── Stock Check Panel (Manager / Owner) ──────────────────────────────────────
+// --- Stock Check Panel (Manager / Owner) --------------------------------------
 function StockCheckPanel({ ownerId }: { ownerId?: string }) {
   const [products, setProducts] = useState<any[]>([]);
   const [actuals, setActuals] = useState<Record<string, number>>({});
@@ -648,7 +651,7 @@ function StockCheckPanel({ ownerId }: { ownerId?: string }) {
   );
 }
 
-// ─── Register Panel (Cashier) ─────────────────────────────────────────────────
+// --- Register Panel (Cashier) -------------------------------------------------
 function RegisterPanel() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -110,6 +110,26 @@ function RevertStockModal({
     setInputVal(next);
   };
 
+  const handleKeyRef = useRef(handleKey);
+  handleKeyRef.current = handleKey;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        handleKeyRef.current(e.key);
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        handleKeyRef.current("⌫");
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const handleConfirm = async () => {
     if (!isValid) return;
     setBusy(true);
