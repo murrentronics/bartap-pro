@@ -878,15 +878,15 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                         </span>
                         {/* Per-record PDF button */}
                         <button
-                          onClick={() => handleSingleRecordPdf(tx, a)}
+                          onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
                           disabled={txGenerating === tx.id}
                           className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
                           style={{ color: "var(--primary)" }}
-                          title="Download receipt"
+                          title="Print bill"
                         >
                           {txGenerating === tx.id
                             ? <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                            : <FileDown className="h-3.5 w-3.5" />
+                            : <Printer className="h-3.5 w-3.5" />
                           }
                         </button>
                         {canDelete && (
@@ -1108,15 +1108,15 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
                         </span>
                         {/* Per-record PDF button */}
                         <button
-                          onClick={() => handleSingleRecordPdf(tx, a)}
+                          onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
                           disabled={txGenerating === tx.id}
                           className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
                           style={{ color: "var(--primary)" }}
-                          title="Download receipt"
+                          title="Print bill"
                         >
                           {txGenerating === tx.id
                             ? <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                            : <FileDown className="h-3.5 w-3.5" />
+                            : <Printer className="h-3.5 w-3.5" />
                           }
                         </button>
                       </div>
