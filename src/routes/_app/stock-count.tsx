@@ -317,6 +317,15 @@ function StockCountPage() {
           >
             Create Table
           </button>
+          {(isOwner || isManager) && !splitView && (
+            <button
+              onClick={() => setSplitView(true)}
+              className="h-10 px-4 rounded-xl font-black text-sm border border-border bg-muted hover:bg-muted/70 transition active:scale-95 flex items-center gap-2"
+            >
+              <LayoutPanelLeft className="h-4 w-4" />
+              Split View
+            </button>
+          )}
         </div>
 
       <div className="space-y-6">
