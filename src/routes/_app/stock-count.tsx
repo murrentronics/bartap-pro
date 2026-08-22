@@ -286,47 +286,21 @@ function StockCountPage() {
   }
 
   return (
-    <div className={splitView ? "flex flex-col" : "space-y-5"}>
-      {/* -- Header ----------------------------------------------------- */}
-      <div className={`sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black leading-tight">Stock Count</h1>
-            <p className="text-xs text-muted-foreground">
-              Personal stock count sheets ? does not affect system stock
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {profile?.role === "owner" && (
-              <button
-                onClick={copyToStaff}
-                disabled={copying}
-                className="h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 disabled:opacity-40"
-                style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
-              >
-                {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-                {copying ? "Copying?" : "Copy To Staff"}
-              </button>
-            )}
-            <button
-              onClick={() => setSplitView((v) => !v)}
-              className={`h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 transition active:scale-95 ${
-                splitView
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground hover:bg-muted/70"
-              }`}
-            >
-              <LayoutPanelLeft className="h-3.5 w-3.5" />
-              {splitView ? "Close Split" : "Split View"}
-            </button>
-          </div>
+    <div className={splitView ? "fixed inset-0 z-30 bg-background" : ""}>
+      {splitView && (
+        <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border bg-background/95 backdrop-blur">
+          <h1 className="text-lg font-black">Stock Count — Split View</h1>
+          <button
+            onClick={() => setSplitView(false)}
+            className="h-8 px-3 rounded-lg text-xs font-black border border-border bg-muted hover:bg-muted/70 transition"
+          >
+            Close Split
+          </button>
         </div>
-      </div>
-
-      {/* -- Body ------------------------------------------------------- */}
-      <div className={splitView ? "flex flex-1" : ""}>
+      )}
+      <div className={splitView ? "flex overflow-x-auto snap-x snap-mandatory h-[calc(100vh-52px)]" : "space-y-5"}>
         {/* Left Panel: Stock Count */}
-        <div className={splitView ? "w-1/2 min-w-0" : ""}>
+        <div className={splitView ? "w-[100vw] shrink-0 snap-start overflow-y-auto" : ""}>
           <div className="flex items-center gap-2">
           <input
             type="text"
@@ -479,11 +453,11 @@ function StockCountPage() {
       </div>
       )}
       </div>
-    </div>
+      </div>
 
       {/* -- Right Panel: Split View ----------------------------------- */}
       {splitView && (
-        <div className="w-1/2 min-w-0 border-l border-border">
+        <div className="w-[100vw] shrink-0 snap-start border-l border-border">
           <RightPanel role={profile?.role} ownerId={ownerId} />
         </div>
       )}

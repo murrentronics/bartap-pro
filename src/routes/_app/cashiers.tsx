@@ -532,7 +532,7 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
     const mins = parseInt(setClockOutTime.split(":")[1] || "0", 10);
     if (setClockOutPeriod === "AM" && hours === 12) hours = 0;
     if (setClockOutPeriod === "PM" && hours < 12) hours += 12;
-    const localIso = `${setClockOutDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+    const localIso = `${setClockOutDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00-04:00`;
     const { error } = await sb
       .from("time_cards")
       .update({ clocked_out_at: localIso })
@@ -565,7 +565,7 @@ function HoursTab({ ownerId, barIsOpen }: { ownerId: string; barIsOpen: boolean 
     const mins = parseInt(tsEditTime.split(":")[1] || "0", 10);
     if (tsEditPeriod === "AM" && hours === 12) hours = 0;
     if (tsEditPeriod === "PM" && hours < 12) hours += 12;
-    const localIso = `${tsEditDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+    const localIso = `${tsEditDate}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00-04:00`;
     const { error } = await sb
       .from("time_cards")
       .update({ clocked_out_at: localIso })
@@ -1701,9 +1701,10 @@ function SalaryHistory({
     );
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col" style={{ background: "var(--background)" }}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-5 pb-3 border-b border-border">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
+      <div className="w-full max-w-md rounded-3xl border border-border shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" style={{ background: "var(--background)" }}>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 pt-5 pb-3 border-b border-border">
         <button
           type="button"
           onClick={onClose}
@@ -1807,6 +1808,7 @@ function SalaryHistory({
             );
           })
         )}
+      </div>
       </div>
     </div>
   );
