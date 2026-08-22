@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, Camera, CheckCircle2,
-  DollarSign, ClipboardList, FileDown, Loader2, Trash2, Pencil,
+  DollarSign, ClipboardList, FileDown, Loader2, Trash2, Pencil, Share2,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { Capacitor } from "@capacitor/core";
 
 export const Route = createFileRoute("/_app/credit")({
   component: CreditPage,
@@ -37,7 +38,7 @@ type CreditAccount = {
 };
 
 // ── Print Bill ─────────────────────────────────────────────────────────────────
-async function printBill(account: CreditAccount, ownerName: string) {
+async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<string | null> {
   const { data: txs, error } = await supabase
     .from("credit_transactions")
     .select("id, type, amount, note, items, created_at")
@@ -254,8 +255,125 @@ async function printBill(account: CreditAccount, ownerName: string) {
   addFootersToAllPages(doc);
 
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
-  await downloadPdf(`credit-bill-${safeName}.pdf`, doc.output("datauristring"));
-  toast.success("Bill saved");
+  return doc.output("datauristring");
+}
+
+// ── Bill Action Modal ─────────────────────────────────────────────────────────
+function BillActionModal({ account, ownerName, onClose }: {
+  account: CreditAccount;
+  ownerName: string;
+  onClose: () => void;
+}) {
+  const [busy, setBusy] = useState<"print" | "share" | null>(null);
+  const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+  const filename = `credit-bill-${safeName}.pdf`;
+
+  const handlePrint = async () => {
+    setBusy("print");
+    try {
+      const b64 = await buildBillPdf(account, ownerName);
+      if (!b64) { setBusy(null); return; }
+      const { printReceipt } = await import("@/lib/receiptPrinter");
+      const result = await printReceipt({
+        storeName: ownerName,
+        customerName: account.full_name,
+        items: [],
+        subtotal: Number(account.balance_owed),
+        total: Number(account.balance_owed),
+        paid: 0,
+        change: 0,
+        payMode: "credit",
+        date: new Date().toLocaleString("en-US", {
+          month: "numeric", day: "numeric", year: "numeric",
+          hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+        }),
+      });
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Receipt sent to printer");
+      }
+    } catch (e: any) {
+      toast.error("Print failed: " + (e?.message ?? "unknown"));
+    }
+    setBusy(null);
+  };
+
+  const handleShare = async () => {
+    setBusy("share");
+    try {
+      const b64 = await buildBillPdf(account, ownerName);
+      if (!b64) { setBusy(null); return; }
+
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+
+        const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
+        const writeResult = await Filesystem.writeFile({
+          path: filename,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        const shareText = `Hi ${account.full_name}, please find your credit bill attached.`;
+
+        await Share.share({
+          title: `Credit Bill — ${account.full_name}`,
+          text: shareText,
+          url: writeResult.uri,
+          dialogTitle: "Send Bill",
+        });
+      } else {
+        await downloadPdf(filename, b64);
+        toast.success("Bill saved");
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) {
+        toast.error("Share failed: " + (e?.message ?? "unknown"));
+      }
+    }
+    setBusy(null);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}>
+      <div
+        className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden"
+        style={{ background: "var(--gradient-card)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+          <h3 className="font-black text-base">Bill — {account.full_name}</h3>
+          <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted transition">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
+          <button
+            onClick={handlePrint}
+            disabled={!!busy}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-border"
+            style={{ background: "rgba(255,255,255,0.08)", color: "var(--foreground)" }}
+          >
+            {busy === "print" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            Print Bill
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={!!busy}
+            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-green-500/40"
+            style={{ background: "rgba(37,211,102,0.12)", color: "#25D366" }}
+          >
+            {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+            Share via WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -273,6 +391,7 @@ function CreditPage() {
   const [opened, setOpened] = useState<CreditAccount[]>([]);
   const [closed, setClosed] = useState<CreditAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
 
   // Payment card state
   const [payAccount, setPayAccount] = useState<CreditAccount | null>(null);
@@ -348,9 +467,13 @@ function CreditPage() {
           accounts={opened}
           loading={loading}
           ownerName={ownerName}
-          onSelect={setPayAccount}
+          onSelect={(a) => {}}
           onEdit={setEditAccount}
+          onOpenBill={setBillAccount}
         />
+      )}
+      {tab === "cleared" && (
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={setBillAccount} />
       )}
       {tab === "cleared" && (
         <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} />
@@ -381,19 +504,25 @@ function CreditPage() {
           }}
         />
       )}
+
+      {/* Bill action modal */}
+      {billAccount && (
+        <BillActionModal account={billAccount} ownerName={ownerName} onClose={() => setBillAccount(null)} />
+      )}
     </div>
   );
 }
 
 // ── Opened Tab ─────────────────────────────────────────────────────────────────
 function OpenedTab({
-  accounts, loading, ownerName, onSelect, onEdit,
+  accounts, loading, ownerName, onSelect, onEdit, onOpenBill,
 }: {
   accounts: CreditAccount[];
   loading: boolean;
   ownerName: string;
   onSelect: (a: CreditAccount) => void;
   onEdit: (a: CreditAccount) => void;
+  onOpenBill?: (a: CreditAccount) => void;
 }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
@@ -433,7 +562,7 @@ function OpenedTab({
             </button>
             <div className="flex items-center gap-2">
               <button
-                onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
+                onClick={() => onOpenBill?.(a)}
                 disabled={printing === a.id}
                 className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
                 style={printed === a.id ? { background: "#16a34a", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
@@ -462,7 +591,7 @@ function OpenedTab({
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string }) {
+function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string; onOpenBill?: (a: CreditAccount) => void }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
   // Track which accounts have cash purchase records (charge txs with "[CASH]" note)
@@ -528,7 +657,7 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId }: { accounts
             <div className="flex items-center gap-2">
               {hasCashPurchase && (
                 <button
-                  onClick={async () => { setPrinting(a.id); await printBill(a, ownerName); setPrinting(null); setPrinted(a.id); setTimeout(() => setPrinted(null), 5000); }}
+                  onClick={() => onOpenBill?.(a)}
                   disabled={printing === a.id}
                   className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
                   style={printed === a.id ? { background: "#16a34a", border: "1px solid #16a34a" } : { background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.35)" }}
