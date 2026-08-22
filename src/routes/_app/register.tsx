@@ -3935,7 +3935,7 @@ function CashOverlay({
   const buildReceipt = (paidNum: number, changeNum: number, orderNumber?: number): ReceiptData => ({
     storeName: businessName,
     locationName: "",
-    orderNumber: orderNumber ?? editOrder ? editOrder.id.slice(0, 8) : Date.now().toString().slice(-6),
+    orderNumber: orderNumber ?? 0,
     serverName: profile?.username ?? "Staff",
     items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
     subtotal: total,

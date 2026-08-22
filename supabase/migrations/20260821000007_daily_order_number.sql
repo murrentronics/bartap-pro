@@ -67,9 +67,9 @@ BEGIN
   INSERT INTO public.wallet_transactions(profile_id, amount, type, note, order_id)
     VALUES (NEW.cashier_id, NEW.total, 'sale', 'Order #' || _order_num, NEW.id);
 
-  -- Only record owner copy for cashiers, not managers
-  -- Manager sales show directly in owner wallet via the orders table
-  IF NOT _is_manager THEN
+  -- Only record owner copy for cashiers who are NOT the owner themselves
+  -- (owner-as-cashier sales already have the 'sale' tx above, and the order shows directly)
+  IF NOT _is_manager AND NEW.cashier_id <> NEW.owner_id THEN
     INSERT INTO public.wallet_transactions(profile_id, amount, type, note, order_id)
       VALUES (NEW.owner_id, NEW.total, 'cashier_sale', 'Order #' || _order_num, NEW.id);
   END IF;

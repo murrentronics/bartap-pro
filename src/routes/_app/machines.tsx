@@ -2458,7 +2458,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
       amount: val, note: null,
 
 
-      entry_date: now.toISOString().slice(0, 10),
+      entry_date: new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
 
 
       created_at: now.toISOString(),
@@ -6507,31 +6507,34 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     return floatSessions;
   })();
 
-  // Entry range for the selected filter period
-  const getEntryRange = (): { startIso: string; endIso: string } | null => {
+  // Entry range for the selected filter period — uses entry_date (YYYY-MM-DD in Trinidad time)
+  const getEntryRange = (): { start: string; end: string } | null => {
     if (summaryFilter === "all") return null;
     if (summaryFilter === "day") {
-      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
-      const e = new Date(pickerDate + "T23:59:59-04:00").toISOString();
-      return { startIso: s, endIso: e };
+      return { start: pickerDate, end: pickerDate };
     }
     if (summaryFilter === "week") {
-      const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
-      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
-      const e = new Date(we.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
-      return { startIso: s, endIso: e };
+      const d = new Date(pickerDate + "T00:00:00-04:00");
+      const start = new Date(d); start.setDate(d.getDate() - d.getDay());
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      return {
+        start: start.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+        end: end.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+      };
     }
     if (summaryFilter === "month") {
       const first = new Date(pickerYear, pickerMonth, 1);
-      const last  = new Date(pickerYear, pickerMonth + 1, 0);
-      const s = new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString();
-      const e = new Date(last.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
-      return { startIso: s, endIso: e };
+      const last = new Date(pickerYear, pickerMonth + 1, 0);
+      return {
+        start: first.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+        end: last.toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
+      };
     }
     if (summaryFilter === "year") {
-      const s = new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString();
-      const e = new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString();
-      return { startIso: s, endIso: e };
+      return {
+        start: `${pickerYear}-01-01`,
+        end: `${pickerYear}-12-31`,
+      };
     }
     return null;
   };
@@ -6547,7 +6550,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   }
 
   const filteredEntries = entryRange
-    ? sorted.filter(e => e.created_at >= entryRange.startIso && e.created_at <= entryRange.endIso)
+    ? sorted.filter(e => e.entry_date >= entryRange.start && e.entry_date <= entryRange.end)
     : sorted;
 
   const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
@@ -7470,7 +7473,7 @@ export default function MachinesPage() {
       note: expenseNote.trim() || null,
 
 
-      entry_date: now.toISOString().slice(0, 10),
+      entry_date: new Date().toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" }),
 
 
       created_at: now.toISOString(),

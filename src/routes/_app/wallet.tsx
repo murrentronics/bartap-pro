@@ -4553,8 +4553,13 @@ function TransactionsTab({
                       year: "numeric",
                     })}
                   </div>
+                  {o.order_number != null && (
+                    <div className="text-xs font-black text-primary mt-0.5">
+                      ORDER #{o.order_number}
+                    </div>
+                  )}
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    {(o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
+                    {(o as any).cashier_id === (o as any).owner_id ? "Owner: Sale" : (o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {(o.items || []).map((i, idx) => (
@@ -4611,29 +4616,38 @@ function TransactionsTab({
                   <span className="font-black text-lg text-green-400">
                     +${fmt(Number(o.total))}
                   </span>
-                  {canEdit && (
+                  <div className="flex flex-col gap-1.5">
                     <button
-                      onClick={() => setEditingOrder(o)}
-                      className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                      title="Edit this sale"
+                      onClick={() => openBillForOrder(o)}
+                      className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                      title="Print bill"
                     >
-                      <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                      <Printer className="h-3.5 w-3.5 text-blue-300" />
                     </button>
-                  )}
-                  {isNewest && (
-                    <button
-                      onClick={() => deleteLatestOrder(o)}
-                      disabled={deletingOrderId === o.id}
-                      className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
-                      title="Delete this sale"
-                    >
-                      {deletingOrderId === o.id ? (
-                        <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5 text-white" />
-                      )}
-                    </button>
-                  )}
+                    {canEdit && (
+                      <button
+                        onClick={() => setEditingOrder(o)}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                        title="Edit this sale"
+                      >
+                        <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                      </button>
+                    )}
+                    {isNewest && (
+                      <button
+                        onClick={() => deleteLatestOrder(o)}
+                        disabled={deletingOrderId === o.id}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
+                        title="Delete this sale"
+                      >
+                        {deletingOrderId === o.id ? (
+                          <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5 text-white" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
