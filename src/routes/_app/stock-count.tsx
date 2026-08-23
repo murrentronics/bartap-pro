@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -41,6 +41,14 @@ function StockCountPage() {
   const [deleteRowModal, setDeleteRowModal] = useState<{ tableId: string; rowIdx: number } | null>(null);
   const [selectedCols, setSelectedCols] = useState<Set<number>>(new Set());
 
+  // ── Copy-to-staff modal state ──────────────────────────────────────────────
+  type StaffMember = { id: string; username: string; role: string };
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyStep, setCopyStep] = useState<"select" | "confirm">("select");
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
   useEffect(() => {
     return () => {
       setSplitView(false);
@@ -49,78 +57,58 @@ function StockCountPage() {
 
   const ownerId = profile?.parent_id ?? profile?.id ?? "";
 
-  const copyToStaff = async () => {
-    if (!profile?.id || !ownerId) return;
+  // Open copy modal — load staff list
+  const openCopyModal = async () => {
+    if (!ownerId) return;
+    setLoadingStaff(true);
+    setSelectedStaff(new Set());
+    setCopyStep("select");
+    setShowCopyModal(true);
+    const { data } = await (supabase as any)
+      .from("profiles")
+      .select("id, username, role, job_title")
+      .eq("parent_id", ownerId)
+      .in("role", ["cashier", "manager"]);
+    setStaffList(
+      (data ?? []).map((s: any) => ({
+        id: s.id,
+        username: s.username ?? s.id,
+        role: s.role === "manager" || s.job_title === "manager" ? "manager" : "cashier",
+      }))
+    );
+    setLoadingStaff(false);
+  };
+
+  // Perform the copy — wipe existing tables for selected staff and replace with owner's
+  const performCopy = async () => {
+    if (!profile?.id || selectedStaff.size === 0) return;
     setCopying(true);
     try {
-      // Get owner's tables
-      const { data: ownerTables, error: ownerError } = await (supabase as any)
-        .from("stock_count_tables")
-        .select("*")
-        .eq("profile_id", profile.id);
-
-      if (ownerError) throw ownerError;
-      if (!ownerTables || ownerTables.length === 0) {
-        toast.error("You have no stock count tables to copy");
-        setCopying(false);
-        return;
-      }
-
-      // Get all cashiers/managers under this owner
-      const { data: staff, error: staffError } = await (supabase as any)
-        .from("profiles")
-        .select("id")
-        .eq("parent_id", ownerId)
-        .in("role", ["cashier", "manager"]);
-
-      if (staffError) throw staffError;
-      if (!staff || staff.length === 0) {
-        toast.error("No cashiers or managers found to copy to");
-        setCopying(false);
-        return;
-      }
-
-      // Get staff who already have tables
-      const staffIds = staff.map((s: any) => s.id);
-      const { data: existingTables, error: existingError } = await (supabase as any)
-        .from("stock_count_tables")
-        .select("profile_id")
-        .in("profile_id", staffIds);
-
-      if (existingError) throw existingError;
-      const staffWithTables = new Set((existingTables ?? []).map((t: any) => t.profile_id));
-
-      // Filter to only staff without tables
-      const staffWithoutTables = staff.filter((s: any) => !staffWithTables.has(s.id));
-      if (staffWithoutTables.length === 0) {
-        toast.success("All staff already have stock count tables");
-        setCopying(false);
-        return;
-      }
-
-      // Copy tables to each staff member without tables
-      const copies = [];
-      for (const staffMember of staffWithoutTables) {
-        for (const table of ownerTables) {
+      const ids = Array.from(selectedStaff);
+      // Delete existing tables for each selected staff member
+      await (supabase as any).from("stock_count_tables").delete().in("profile_id", ids);
+      // Insert owner's tables for each selected staff member
+      const copies: any[] = [];
+      for (const staffId of ids) {
+        for (const t of tables) {
           copies.push({
             id: crypto.randomUUID(),
-            profile_id: staffMember.id,
+            profile_id: staffId,
             owner_id: ownerId,
-            name: table.name,
-            columns: table.columns,
-            rows: table.rows,
+            name: t.name,
+            columns: t.columns,
+            rows: t.rows,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
         }
       }
-
-      const { error: insertError } = await (supabase as any)
-        .from("stock_count_tables")
-        .insert(copies);
-
-      if (insertError) throw insertError;
-      toast.success(`Copied ${ownerTables.length} table(s) to ${staffWithoutTables.length} staff member(s)`);
+      if (copies.length > 0) {
+        const { error } = await (supabase as any).from("stock_count_tables").insert(copies);
+        if (error) throw error;
+      }
+      toast.success(`Copied ${tables.length} table(s) to ${ids.length} staff member(s)`);
+      setShowCopyModal(false);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to copy tables");
     } finally {
@@ -363,6 +351,15 @@ function StockCountPage() {
             >
               Create Table
             </button>
+            {!splitView && profile?.role === "owner" && tables.length > 0 && (
+              <button
+                onClick={openCopyModal}
+                className="h-10 w-10 rounded-xl flex items-center justify-center border border-border bg-muted hover:bg-muted/70 transition active:scale-95 shrink-0"
+                title="Copy tables to staff"
+              >
+                <Share2 className="h-4 w-4" style={{ color: "var(--primary)" }} />
+              </button>
+            )}
             {!splitView && (
               <button
                 onClick={() => setSplitView(true)}
@@ -521,6 +518,109 @@ function StockCountPage() {
         </div>
       )}
     </div>
+
+      {/* ── Copy-to-Staff Modal ──────────────────────────────────────────── */}
+      {showCopyModal && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => { if (!copying) setShowCopyModal(false); }}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+            style={{ background: "var(--gradient-card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {copyStep === "select" ? (
+              <>
+                <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-black">Copy Tables to Staff</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Select staff to receive a copy of your {tables.length} table(s).
+                      Their existing tables will be replaced.
+                    </p>
+                  </div>
+                  <button onClick={() => setShowCopyModal(false)} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted ml-3 shrink-0">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="px-5 pb-2 max-h-64 overflow-y-auto space-y-2">
+                  {loadingStaff ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                  ) : staffList.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No cashiers or managers found.</p>
+                  ) : (
+                    staffList.map((s) => (
+                      <label key={s.id} className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-muted/30 transition">
+                        <input
+                          type="checkbox"
+                          checked={selectedStaff.has(s.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedStaff);
+                            if (e.target.checked) next.add(s.id); else next.delete(s.id);
+                            setSelectedStaff(next);
+                          }}
+                          className="h-4 w-4 rounded border-border text-primary"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black truncate">{s.username}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{s.role}</p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+                <div className="px-5 pb-5 pt-2 grid grid-cols-2 gap-3">
+                  <button onClick={() => setShowCopyModal(false)} className="h-11 rounded-2xl font-black text-sm border border-border transition active:scale-95">Cancel</button>
+                  <button
+                    onClick={() => setCopyStep("confirm")}
+                    disabled={selectedStaff.size === 0}
+                    className="h-11 rounded-2xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-40"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Copy to Staff ({selectedStaff.size})
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-5 pt-5 pb-3">
+                  <h2 className="text-base font-black">Confirm Copy</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This will <span className="text-red-400 font-black">replace all existing tables</span> for the selected staff and create a fresh copy of your {tables.length} table(s).
+                  </p>
+                </div>
+                <div className="px-5 pb-3 space-y-1.5">
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Tables to copy</p>
+                  {tables.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2 text-sm">
+                      <ClipboardList className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--primary)" }} />
+                      <span className="font-semibold">{t.name}</span>
+                      <span className="text-xs text-muted-foreground">({t.columns.length} cols · {t.rows.length} rows)</span>
+                    </div>
+                  ))}
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mt-3">Recipients</p>
+                  {staffList.filter((s) => selectedStaff.has(s.id)).map((s) => (
+                    <div key={s.id} className="text-sm font-semibold">{s.username} <span className="text-xs text-muted-foreground capitalize">({s.role})</span></div>
+                  ))}
+                </div>
+                <div className="px-5 pb-5 pt-2 grid grid-cols-2 gap-3">
+                  <button onClick={() => setCopyStep("select")} className="h-11 rounded-2xl font-black text-sm border border-border transition active:scale-95">← Back</button>
+                  <button
+                    onClick={performCopy}
+                    disabled={copying}
+                    className="h-11 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    {copying ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Share2 className="h-4 w-4" /> Confirm Copy</>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add Column Modal */}
       <Dialog open={showAddColumnModal} onOpenChange={setShowAddColumnModal}>
