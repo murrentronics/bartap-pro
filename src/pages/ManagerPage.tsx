@@ -65,6 +65,7 @@ type Order = {
   created_at: string;
   payment_method?: string | null;
   cashier_id?: string | null;
+  order_number?: number | null;
 };
 
 // --- Helpers ------------------------------------------------------------------
@@ -693,7 +694,7 @@ function DashboardTab({
   const [hasMachinesEnabled, setHasMachinesEnabled] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
-  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string }[]>([]);
+  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null }[]>([]);
   const [walletSalesLoading, setWalletSalesLoading] = useState(true);
   const [dashTab, setDashTab] = useState<"sales" | "expenses">("sales");
 
@@ -701,7 +702,7 @@ function DashboardTab({
     setOrdersLoading(true);
     const { data } = await sb
       .from("orders")
-      .select("id, total, paid, change_given, items, created_at, payment_method, cashier_id")
+      .select("id, total, paid, change_given, items, created_at, payment_method, cashier_id, order_number")
       .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -730,7 +731,7 @@ function DashboardTab({
       if (orderIds.length > 0) {
         const { data: ordData } = await sb
           .from("orders")
-          .select("id, items, total, paid, change_given, payment_method")
+          .select("id, items, total, paid, change_given, payment_method, order_number")
           .in("id", orderIds);
         (ordData ?? []).forEach((o: any) => { ordersMap[o.id] = o; });
       }
@@ -748,6 +749,7 @@ function DashboardTab({
           order_paid: ord ? Number(ord.paid) : Number(r.amount),
           order_change: ord ? Number(ord.change_given) : 0,
           order_payment_method: ord?.payment_method ?? "cash",
+          order_number: ord?.order_number ?? null,
         };
       });
       setWalletSales(mapped);
@@ -1081,10 +1083,78 @@ function DashboardTab({
   const [deleteOrderConfirmId, setDeleteOrderConfirmId] = useState<string | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
 
-  // -- Bill modal (receipt preview + print/share) ----------------------------
-  const [billModalOrder, setBillModalOrder] = useState<Order | null>(null);
+  // -- Bill modal (same white-receipt style as owner wallet) ------------------
+  type BillData = {
+    storeName: string; orderNumber: string | number; date: string;
+    items: { name: string; qty: number; price: number }[];
+    subtotal: number; total: number; paid: number; change: number;
+    payMode: string; serverName?: string;
+  };
+  const [billData, setBillData] = useState<BillData | null>(null);
+  const [printingBill, setPrintingBill] = useState(false);
+  const [ownerName, setOwnerName] = useState<string>("");
+  useEffect(() => {
+    sb.from("profiles").select("username").eq("id", ownerId).single()
+      .then(({ data }: any) => { if (data?.username) setOwnerName(data.username); });
+  }, [ownerId]);
 
-  // -- Edit order modal ------------------------------------------------------
+  const openBillForOrder = (order: Order) => {
+    setBillData({
+      storeName: ownerName || managerName || "Bar",
+      orderNumber: (order as any).order_number ?? order.id.slice(0, 8).toUpperCase(),
+      date: new Date(order.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(order.total),
+      total: Number(order.total),
+      paid: Number(order.paid),
+      change: Number(order.change_given),
+      payMode: order.payment_method === "credit" ? "credit" : "cash",
+      serverName: managerName,
+    });
+  };
+
+  const handlePrintBill = async () => {
+    if (!billData) return;
+    setPrintingBill(true);
+    try {
+      const { printReceipt } = await import("@/lib/receiptPrinter");
+      await printReceipt(billData);
+      toast.success("Receipt sent to printer");
+    } catch { toast.error("Print failed"); }
+    finally { setPrintingBill(false); }
+  };
+
+  const handlePdfShare = async () => {
+    if (!billData) return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      let y = 20;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.text(billData.storeName || "Bar", LM, y);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text(billData.date, LM, y + 6);
+      doc.text("ORDER #" + billData.orderNumber, LM, y + 12);
+      let cy = y + 20;
+      billData.items.forEach((it) => {
+        doc.text(`${it.qty}x ${it.name}   $${(it.qty * it.price).toFixed(2)}`, LM, cy); cy += 6;
+      });
+      cy += 4; doc.setFont("helvetica", "bold");
+      doc.text(`Total: $${billData.total.toFixed(2)}`, LM, cy); cy += 6;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Paid: $${billData.paid.toFixed(2)}`, LM, cy); cy += 6;
+      doc.text(`Change: $${billData.change.toFixed(2)}`, LM, cy);
+      const filename = `receipt-${billData.orderNumber}.pdf`;
+      const dataUri = doc.output("datauristring");
+      await downloadPdf(filename, dataUri);
+      toast.success("Receipt PDF downloaded");
+      const text = `Receipt: ${billData.storeName}\nORDER #${billData.orderNumber}\nDate: ${billData.date}\nTotal: $${billData.total.toFixed(2)}\nPaid: $${billData.paid.toFixed(2)}\nChange: $${billData.change.toFixed(2)}`;
+      window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    } catch { toast.error("Failed to generate PDF"); }
+  };
   type EditableItem = { id?: string; name: string; qty: number; price: number };
   const [editModalOrder, setEditModalOrder] = useState<Order | null>(null);
   const [editModalItems, setEditModalItems] = useState<EditableItem[]>([]);
@@ -1200,51 +1270,6 @@ function DashboardTab({
   };
 
   const sessionTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
-
-  // Open the bill modal (receipt preview)
-  const handlePrintBill = (order: Order) => {
-    setBillModalOrder(order);
-  };
-
-  // Actually send to printer from inside the bill modal
-  const handleDoPrint = async (order: Order) => {
-    try {
-      const { printReceipt } = await import("@/lib/receiptPrinter");
-      await printReceipt({
-        storeName: managerName || "Bar",
-        orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
-        date: new Date(order.created_at).toLocaleString("en-US", {
-          month: "numeric", day: "numeric", year: "numeric",
-          hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
-        }),
-        items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
-        subtotal: Number(order.total),
-        total: Number(order.total),
-        paid: Number(order.paid),
-        change: Number(order.change_given),
-        payMode: order.payment_method === "credit" ? "credit" : "cash",
-        serverName: managerName,
-      });
-      toast.success("Receipt sent to printer");
-    } catch {
-      toast.error("Print failed");
-    }
-  };
-
-  // Share receipt via WhatsApp
-  const handleShareWhatsApp = (order: Order) => {
-    const dateStr = new Date(order.created_at).toLocaleString("en-US", {
-      month: "numeric", day: "numeric", year: "numeric",
-      hour: "numeric", minute: "2-digit", hour12: true,
-    });
-    const itemLines = (order.items || [])
-      .map((i) => `  ${i.qty}x ${i.name} = $${(i.qty * Number(i.price)).toFixed(2)}`)
-      .join("\n");
-    const orderNum = (order as any).order_number ?? order.id.slice(0, 8);
-    const msg = `*${managerName || "Bar"} — Receipt*\nORDER #${orderNum}\n${dateStr}\n\n${itemLines}\n\n*Total: $${fmt(Number(order.total))}*\nPaid: $${fmt(Number(order.paid))}  Change: $${fmt(Number(order.change_given))}\nPayment: ${order.payment_method === "credit" ? "Credit" : "Cash"}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank");
-  };
 
   // Open the edit order modal
   const handleEditOrder = (order: Order) => {
@@ -1591,81 +1616,78 @@ function DashboardTab({
       </div>
 
       {dashTab === "sales" && (
-        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={handlePrintBill} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} managerId={profile.id} ownerId={ownerId} />
+        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={openBillForOrder} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} managerId={profile.id} ownerId={ownerId} />
       )}
 
       {dashTab === "expenses" && (
-        <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} managerWallet={managerWallet} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
+        <ExpensesTab expenses={expenses} loading={loading} barIsOpen={barIsOpen} tag={tag} floatBalance={floatBalance} managerWallet={managerWallet} sessionTotal={sessionTotal} lastExpenseId={lastExpenseId} editingId={editingId} setEditingId={setEditingId} editLines={editLines} setEditLines={setEditLines} editSaving={editSaving} handleEditSave={handleEditSave} deleteConfirmId={deleteConfirmId} setDeleteConfirmId={setDeleteConfirmId} deleting={deleting} handleDelete={handleDelete} startEdit={startEdit} showForm={showForm} setShowForm={setShowForm} confirming={confirming} setConfirming={setConfirming} lineTotal={lineTotal} handleSave={handleSave} saving={saving} lines={lines} setLines={setLines} />
       )}
 
-      {/* ── Bill modal (receipt preview) ────────────────────────────────── */}
-      {billModalOrder && (
-        <div
-          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => setBillModalOrder(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <span className="text-base font-black">Receipt</span>
-              <button
-                onClick={() => setBillModalOrder(null)}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      {/* ── Bill modal (white receipt — matches owner wallet) ────────────── */}
+      {billData && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
+            style={{ background: "var(--gradient-card)" }}>
+            <div className="px-5 pt-5 pb-2 shrink-0 space-y-1">
+              <div className="flex justify-between items-center">
+                <h2 className="font-black text-lg">Bill</h2>
+                <button onClick={() => setBillData(null)} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            {/* Receipt preview */}
-            <div className="mx-5 mb-4 rounded-2xl border border-border bg-muted/30 p-4 space-y-2 text-sm font-mono">
-              <p className="text-center font-black text-base">{managerName || "Bar"}</p>
-              <p className="text-center text-xs text-muted-foreground">
-                {new Date(billModalOrder.created_at).toLocaleString("en-US", {
-                  month: "numeric", day: "numeric", year: "numeric",
-                  hour: "numeric", minute: "2-digit", hour12: true,
-                })}
-              </p>
-              <p className="text-center font-black text-lg">
-                ORDER #{(billModalOrder as any).order_number ?? billModalOrder.id.slice(0, 8).toUpperCase()}
-              </p>
-              <div className="border-t border-dashed border-border my-1" />
-              {(billModalOrder.items || []).map((it, i) => (
-                <div key={i} className="flex justify-between text-xs">
-                  <span>{it.qty}× {it.name}</span>
-                  <span>${(it.qty * Number(it.price)).toFixed(2)}</span>
+            {/* Receipt Paper */}
+            <div className="px-5 py-2 overflow-y-auto flex-1">
+              <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
+                <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
+                  {billData.storeName || "Bar"}
                 </div>
-              ))}
-              <div className="border-t border-dashed border-border my-1" />
-              <div className="flex justify-between font-black">
-                <span>Total</span>
-                <span>${fmt(Number(billModalOrder.total))}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{billModalOrder.payment_method === "credit" ? "Credit" : "Cash"}</span>
-                <span>${fmt(Number(billModalOrder.paid))}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Change</span>
-                <span>${fmt(Number(billModalOrder.change_given))}</span>
+                <div className="text-center text-[10px] text-zinc-600">{billData.date}</div>
+                {billData.serverName && (
+                  <div className="text-center text-[10px] text-zinc-600">Served by {billData.serverName}</div>
+                )}
+                <div className="text-center font-black text-zinc-950 text-sm mt-1">
+                  ORDER #{billData.orderNumber}
+                </div>
+                <div className="border-t border-dashed border-zinc-400 my-2" />
+                <div className="space-y-1 my-2">
+                  {billData.items.map((it, idx) => (
+                    <div key={idx} className="flex justify-between items-start">
+                      <span className="font-semibold text-zinc-900 pr-2 break-all">{it.qty}x {it.name}</span>
+                      <span className="font-bold text-zinc-950 whitespace-nowrap">${(it.qty * it.price).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-dashed border-zinc-400 my-2" />
+                <div className="space-y-1">
+                  <div className="flex justify-between text-zinc-700">
+                    <span>Total</span><span>${billData.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-700">
+                    <span>{billData.payMode === "credit" ? "Credit" : "Cash Tendered"}</span>
+                    <span>${billData.paid.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-zinc-900">
+                    <span>Change</span><span>${billData.change.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="px-5 pb-6 grid grid-cols-2 gap-3">
+            {/* Actions */}
+            <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
               <button
-                onClick={() => handleDoPrint(billModalOrder)}
-                className="h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border border-border transition active:scale-95"
-                style={{ background: "var(--gradient-card)" }}
+                onClick={handlePrintBill}
+                disabled={printingBill}
+                className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+                style={{ background: "var(--gradient-hero)" }}
               >
-                <Printer className="h-4 w-4" /> Print
+                {printingBill ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
               </button>
               <button
-                onClick={() => handleShareWhatsApp(billModalOrder)}
-                className="h-11 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 transition active:scale-95"
-                style={{ background: "#25D366" }}
+                onClick={handlePdfShare}
+                className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
               >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                WhatsApp
+                PDF / WhatsApp
               </button>
             </div>
           </div>
@@ -3420,7 +3442,7 @@ function SalesTab({
   ownerId,
 }: {
   orders: Order[];
-  walletSales: { id: string; amount: number; note: string; created_at: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string }[];
+  walletSales: { id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null }[];
   loading: boolean;
   walletSalesLoading: boolean;
   barIsOpen: boolean;
@@ -3472,29 +3494,29 @@ function SalesTab({
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-row gap-2">
                     <button
                       onClick={() => onPrint(o)}
-                      className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                      className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                       title="Print bill"
                     >
-                      <Printer className="h-3.5 w-3.5 text-blue-300" />
+                      <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                     </button>
                     {canEdit && (
                       <>
                         <button
                           onClick={() => onEdit(o)}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
                           title="Edit this sale"
                         >
-                          <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                          <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                         </button>
                         <button
                           onClick={() => onDeleteConfirm(o.id)}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
                           title="Delete this sale"
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-white" />
+                          <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                         </button>
                       </>
                     )}
@@ -3523,6 +3545,7 @@ function SalesTab({
                   payment_method: ws.order_payment_method || "cash",
                   cashier_id: managerId,
                   owner_id: ownerId,
+                  order_number: (ws as any).order_number ?? null,
                 } as any;
                 return (
                   <div
@@ -3540,37 +3563,37 @@ function SalesTab({
                         })}
                       </p>
                       <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                        ORDER #{ws.order_id?.slice(0, 8).toUpperCase()} · Cash Sale
+                        ORDER #{ws.order_number ?? ws.order_id?.slice(0, 8).toUpperCase()} · Cash Sale
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 break-words">{itemDesc}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-row gap-2">
                         {ws.order_id && (
                           <button
                             onClick={() => onPrint(orderObj)}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                             title="Print bill"
                           >
-                            <Printer className="h-3.5 w-3.5 text-blue-300" />
+                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                           </button>
                         )}
                         {isNewest && (
                           <>
                             <button
                               onClick={() => ws.order_id && onEdit(orderObj)}
-                              className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
                               title="Edit this sale"
                             >
-                              <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
                             <button
                               onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
-                              className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
                               title="Delete this sale"
                             >
-                              <Trash2 className="h-3.5 w-3.5 text-white" />
+                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                             </button>
                           </>
                         )}
@@ -3598,6 +3621,7 @@ function ExpensesTab({
   sessionTotal,
   lastExpenseId,
   editingId,
+  setEditingId,
   editLines,
   setEditLines,
   editSaving,
@@ -3626,6 +3650,7 @@ function ExpensesTab({
   sessionTotal: number;
   lastExpenseId: string | null;
   editingId: string | null;
+  setEditingId: React.Dispatch<React.SetStateAction<string | null>>;
   editLines: { description: string; amount: string }[];
   setEditLines: React.Dispatch<React.SetStateAction<{ description: string; amount: string }[]>>;
   editSaving: boolean;

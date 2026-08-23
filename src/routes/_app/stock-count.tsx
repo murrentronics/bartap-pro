@@ -283,6 +283,19 @@ function StockCountPage() {
     setSelectedCols(new Set());
   };
 
+  const deleteEntireRow = () => {
+    if (!deleteRowModal) return;
+    const { tableId, rowIdx } = deleteRowModal;
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        return { ...t, rows: t.rows.filter((_, i) => i !== rowIdx) };
+      }),
+    );
+    setDeleteRowModal(null);
+    setSelectedCols(new Set());
+  };
+
   const calcTotal = (row: string[]) => {
     const sum = row.slice(1).reduce((acc, val) => {
       const n = parseFloat(val);
@@ -315,7 +328,10 @@ function StockCountPage() {
     <div className={splitView ? "fixed inset-0 z-30 bg-background pt-14" : ""}>
       {splitView && (
         <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
-          <h1 className="text-lg font-black">Stock Count — Split View</h1>
+          <div>
+            <h1 className="text-lg font-black">Stock Count — Split View</h1>
+            <p className="text-[10px] text-muted-foreground md:hidden">← Swipe to switch panels →</p>
+          </div>
           <button
             onClick={() => setSplitView(false)}
             className="h-8 px-3 rounded-lg text-xs font-black border border-border bg-muted hover:bg-muted/70 transition"
@@ -324,9 +340,13 @@ function StockCountPage() {
           </button>
         </div>
       )}
-      <div className={splitView ? "flex flex-col md:flex-row h-[calc(100vh-52px)]" : "space-y-5"}>
+      <div className={splitView
+        ? "flex flex-row h-[calc(100vh-52px)] overflow-x-auto snap-x snap-mandatory md:overflow-x-visible"
+        : "space-y-5"}>
         {/* Left Panel: Stock Count */}
-        <div className={splitView ? "w-full md:w-1/2 overflow-y-auto" : ""}>
+        <div className={splitView
+          ? "w-[100vw] md:w-1/2 shrink-0 snap-start overflow-y-auto px-2 md:px-0"
+          : ""}>
           <div className="flex items-center gap-2 mt-4">
             <input
               type="text"
@@ -492,12 +512,12 @@ function StockCountPage() {
 
       {/* -- Right Panel: Split View ----------------------------------- */}
       {splitView && (
-        <div className="w-full md:w-1/2 border-l border-border overflow-y-auto">
+        <div className="w-[100vw] md:w-1/2 shrink-0 snap-start border-l border-border overflow-y-auto px-2 md:px-0">
           <RightPanel
-        role={profile?.role}
-        jobTitle={(profile as any)?.job_title}
-        ownerId={ownerId}
-      />
+            role={profile?.role}
+            jobTitle={(profile as any)?.job_title}
+            ownerId={ownerId}
+          />
         </div>
       )}
     </div>
@@ -617,6 +637,22 @@ function StockCountPage() {
                     className="flex-1 h-11 font-black text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Confirm Delete
+                  </Button>
+                </div>
+
+                {/* ── Delete entire row section ── */}
+                <div className="border-t border-border/50 pt-3 space-y-2">
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                    Or remove this row entirely
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {row[0] ? `"${row[0]}"` : "This row"} — all column values will be deleted. This cannot be undone.
+                  </p>
+                  <Button
+                    onClick={deleteEntireRow}
+                    className="w-full h-11 font-black text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete Entire Row
                   </Button>
                 </div>
               </div>

@@ -59,6 +59,7 @@ type Order = {
   created_at: string;
   payment_method?: string | null;
   cashier_id?: string | null;
+  owner_id?: string | null;
   order_number?: number | null;
 };
 
@@ -4641,26 +4642,27 @@ function TransactionsTab({
                         <span className="font-black text-sm text-green-400">
                           +${fmt(Number(o.total))}
                         </span>
-                        {canEdit && (
-                          <button
-                            onClick={() => setEditingOrder(o as Order)}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                            title="Edit this sale"
-                          >
-                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
-                          </button>
-                        )}
-                        {isLatest && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button
-                                onClick={() => setDeleteConfirmId(o.id)}
-                                className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
-                                title="Delete this sale"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-white" />
-                              </button>
-                            </AlertDialogTrigger>
+                        <div className="flex flex-row gap-2">
+                          {canEdit && (
+                            <button
+                              onClick={() => setEditingOrder(o as Order)}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                              title="Edit this sale"
+                            >
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                            </button>
+                          )}
+                          {isLatest && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  onClick={() => setDeleteConfirmId(o.id)}
+                                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                  title="Delete this sale"
+                                >
+                                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                </button>
+                              </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
@@ -4685,6 +4687,7 @@ function TransactionsTab({
                         )}
                       </div>
                     </div>
+                  </div>
                   );
                 }
                 return (
@@ -4919,7 +4922,11 @@ function TransactionsTab({
                     ORDER #{(o as any).order_number ?? o.id.slice(0, 8)}
                   </div>
                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    {(o as any).cashier_id === (o as any).owner_id ? "Owner: Sale" : (o as any).cashier_id === profile.id ? "Cash: Sale" : cashierRoles[(o as any).cashier_id] === "manager" ? "Manager: Sale" : "Cashier: Sale"}
+                    {(o as any).cashier_id === (o as any).owner_id
+                      ? "Cash: Sale"
+                      : cashierRoles[(o as any).cashier_id] === "manager"
+                        ? `Manager: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`
+                        : `Cashier: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {(o.items || []).map((i, idx) => (
@@ -4976,21 +4983,21 @@ function TransactionsTab({
                   <span className="font-black text-lg text-green-400">
                     +${fmt(Number(o.total))}
                   </span>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-row gap-2">
                     <button
                       onClick={() => onPrintBill?.(o)}
-                      className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                      className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                       title="Print bill"
                     >
-                      <Printer className="h-3.5 w-3.5 text-blue-300" />
+                      <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                     </button>
                     {canEdit && (
                       <button
                         onClick={() => setEditingOrder(o)}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
                         title="Edit this sale"
                       >
-                        <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                        <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                       </button>
                     )}
                     {isNewest && (
@@ -4998,10 +5005,10 @@ function TransactionsTab({
                         <AlertDialogTrigger asChild>
                           <button
                             onClick={() => setDeleteConfirmId(o.id)}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
                             title="Delete this sale"
                           >
-                            <Trash2 className="h-3.5 w-3.5 text-white" />
+                            <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                           </button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -5138,6 +5145,15 @@ function OwnerWallet({
   async function openBillForOrder(order: Order) {
     const parts = (order as any).note_parts ?? [];
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
+    // Determine who served: owner → use owner name, manager/cashier → look up name
+    const cashierId = (order as any).cashier_id;
+    const isOwnerSale = cashierId === profile.id;
+    const cashierName = isOwnerSale
+      ? (profile.username || "Staff")
+      : ((await (async () => {
+          const { data } = await sb.from("profiles").select("username").eq("id", cashierId).maybeSingle();
+          return data?.username ?? "Staff";
+        })()));
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
       orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
@@ -5152,7 +5168,7 @@ function OwnerWallet({
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
       customerName: customerName || undefined,
-      serverName: profile.username || "Staff",
+      serverName: cashierName,
     };
     setBillData(bill);
   }
@@ -5180,7 +5196,7 @@ function OwnerWallet({
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
-      orderNumber: ct.id.slice(0, 8),
+      orderNumber: `C-${ct.id.slice(0, 8).toUpperCase()}`,
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,

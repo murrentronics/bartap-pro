@@ -1020,6 +1020,7 @@ function PaymentOverlay({
   const [printed, setPrinted] = useState(false);
   const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number; price?: number; cost_price?: number }[] | null; created_at: string; cashier_id: string | null }[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const ownerName = profile?.username ?? "Bar";
   const amountNum = parseFloat(amount) || 0;
   const owed = Number(account.balance_owed);
@@ -1080,6 +1081,25 @@ function PaymentOverlay({
     toast.success("Charge removed — stock restored");
     await loadCharges();
     onDone();
+  };
+
+  // Update existing charge — same record, no new row
+  const saveEditCharge = async (chargeId: string) => {
+    if (!profile || editChargeItems.length === 0) return;
+    const valid = editChargeItems.filter((i) => i.name.trim() && i.qty > 0 && i.price >= 0);
+    if (!valid.length) { toast.error("At least one item required"); return; }
+    setEditChargeSaving(true);
+    const newTotal = valid.reduce((s, i) => s + i.qty * i.price, 0);
+    const { error } = await supabase
+      .from("credit_transactions")
+      .update({ items: valid, amount: newTotal })
+      .eq("id", chargeId);
+    setEditChargeSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Charge updated");
+    setEditingChargeId(null);
+    setEditChargeItems([]);
+    loadCharges();
   };
 
   const submit = async () => {
@@ -1146,7 +1166,7 @@ function PaymentOverlay({
               <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">Charges</p>
               {charges.map((c) => {
                 const itemsArr = Array.isArray(c.items) ? c.items : [];
-                const isNewest = c.id === charges[0].id;
+                const isDeleteConfirm = deleteConfirmId === c.id;
                 // Per-charge totals for cost/profit (only if cost_price stored)
                 const hasCostData = itemsArr.some((i: any) => (i.cost_price ?? 0) > 0);
                 const chargeCost   = itemsArr.reduce((s: number, i: any) => s + (i.cost_price ?? 0) * (i.qty ?? 1), 0);
@@ -1154,38 +1174,68 @@ function PaymentOverlay({
                 return (
                   <div key={c.id} className="rounded-xl border border-border overflow-hidden"
                     style={{ background: "oklch(0.20 0.04 45 / 0.30)" }}>
-                    {/* Charge header row */}
-                    <div className="flex items-start gap-2 px-3 pt-2.5 pb-1.5">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-sm font-black" style={{ color: "var(--primary)" }}>+${Number(c.amount).toFixed(2)}</span>
-                          {hasCostData && (
-                            <>
-                              <span className="text-xs text-muted-foreground">cost ${chargeCost.toFixed(2)}</span>
-                              <span className="text-xs font-bold" style={{ color: chargeProfit >= 0 ? "#86efac" : "#f87171" }}>
-                                profit ${chargeProfit.toFixed(2)}
-                              </span>
-                            </>
-                          )}
+
+                    {isDeleteConfirm ? (
+                      /* ── Delete confirm ── */
+                      <div className="px-3 py-3 space-y-2">
+                        <p className="text-xs font-semibold text-center text-red-400">Delete this charge and restore stock/wallet?</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button onClick={() => setDeleteConfirmId(null)}
+                            className="h-9 rounded-xl font-black text-xs border border-border transition active:scale-95">
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => { setDeleteConfirmId(null); deleteCharge(c.id); }}
+                            disabled={!!deletingId}
+                            className="h-9 rounded-xl font-black text-xs text-white flex items-center justify-center transition active:scale-95 disabled:opacity-50"
+                            style={{ background: "#dc2626" }}
+                          >{deletingId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}</button>
                         </div>
                       </div>
-                      {isNewest && (
-                        <button
-                          onClick={() => deleteCharge(c.id)}
-                          disabled={!!deletingId}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0 disabled:opacity-50 mt-0.5"
-                        >
-                          {deletingId === c.id
-                            ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                            : <Trash2 className="h-3.5 w-3.5 text-white" />}
-                        </button>
-                      )}
-                    </div>
-                    {/* Per-item rows */}
-                    {itemsArr.length > 0 && (
+                    ) : (
+                      /* ── Normal view ── */
+                      <div className="flex items-start gap-2 px-3 pt-2.5 pb-1.5">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-sm font-black" style={{ color: "var(--primary)" }}>+${Number(c.amount).toFixed(2)}</span>
+                            {hasCostData && (
+                              <>
+                                <span className="text-xs text-muted-foreground">cost ${chargeCost.toFixed(2)}</span>
+                                <span className="text-xs font-bold" style={{ color: chargeProfit >= 0 ? "#86efac" : "#f87171" }}>
+                                  profit ${chargeProfit.toFixed(2)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Bill + Delete inline */}
+                        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                          <button
+                            onClick={() => onOpenBill?.(account)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                            title="Print bill"
+                          >
+                            <FileDown className="h-3.5 w-3.5 text-blue-300" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(c.id)}
+                            disabled={!!deletingId}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition disabled:opacity-50"
+                            title="Delete charge"
+                          >
+                            {deletingId === c.id
+                              ? <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5 text-white" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Per-item rows — only shown in normal view */}
+                    {!isDeleteConfirm && itemsArr.length > 0 && (
                       <div className="border-t border-border/40 px-3 pb-2 pt-1.5 space-y-1">
                         {/* Header labels */}
                         <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] font-black text-muted-foreground uppercase tracking-wide mb-1">
