@@ -831,7 +831,7 @@ function RegisterPanel() {
         </div>
 
         {/* Product grid */}
-        <div className="p-3 grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+        <div className="p-3 pb-24 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-4 gap-2">
           {loading ? (
             <div className="col-span-full flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -841,17 +841,20 @@ function RegisterPanel() {
               No items in this category.
             </div>
           ) : (
-            filtered.map((p) => (
+            filtered.map((p) => {
+              const inStock = (p.stock_qty ?? 0) > 0;
+              return (
               <div
                 key={p.id}
                 className="relative rounded-2xl overflow-hidden border flex flex-col items-center justify-center aspect-square"
                 style={{
                   background: "var(--gradient-card)",
-                  borderColor: "rgba(251,146,60,0.8)",
+                  borderColor: inStock ? "rgba(251,146,60,0.8)" : "rgba(255,255,255,0.08)",
+                  opacity: inStock ? 1 : 0.35,
                 }}
               >
                 {/* Qty badge top-left */}
-                {(p.stock_qty ?? 0) > 0 && (
+                {inStock && (
                   <div className="absolute top-1.5 left-1.5 h-6 min-w-[1.5rem] px-1.5 rounded-full flex items-center justify-center bg-black/70 shadow z-10">
                     <span className="text-[10px] font-black text-white leading-none">
                       {p.stock_qty}
@@ -882,7 +885,8 @@ function RegisterPanel() {
                   <p className="text-[10px] font-black text-primary">${Number(p.price).toFixed(2)}</p>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
