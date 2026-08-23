@@ -3373,9 +3373,10 @@ export default function CashiersPage() {
       return;
     }
 
-    // Clear session records for new shift
+    // Clear wallet transaction history for clean new shift
     await supabase.from("wallet_transactions").delete().eq("profile_id", c.id);
-    await supabase.from("orders").delete().eq("cashier_id", c.id);
+    // Note: orders are NOT deleted — deleting orders triggers a wallet deduction trigger
+    // that would make the balance go negative. Sales history is preserved.
 
     await (supabase as any)
       .from("profiles")

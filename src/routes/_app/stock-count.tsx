@@ -374,7 +374,7 @@ function StockCountPage() {
             )}
            </div>
 
-      <div className="space-y-6 mt-4">
+      <div className="space-y-6 mt-4 pb-24">
         {tables.map((table) => (
           <div key={table.id} className="rounded-2xl border border-border overflow-hidden">
             <div
@@ -744,7 +744,7 @@ function StockCheckPanel({ ownerId }: { ownerId?: string }) {
         <h2 className="text-sm font-black">Stock Check</h2>
         <p className="text-[10px] text-muted-foreground">{products.length} items</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 pb-24 space-y-3">
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />

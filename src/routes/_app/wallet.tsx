@@ -4286,7 +4286,7 @@ function TransactionsTab({
   const newestOrderId = deletableOrderId;
 
   return (
-    <div className="space-y-3 pt-2">
+    <div className="space-y-3 pt-2 pb-24">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{total} total records</span>
       </div>
@@ -5916,7 +5916,7 @@ function OwnerWallet({
   const hasFinancials = financialSummary !== null && financialSummary.monthlyExpenses > 0;
 
   return (
-    <div className="space-y-5 pt-3">
+    <div className="space-y-5 pt-3 pb-24">
       {/* ── Hero 1: Today’s stats ──────────────────────────────────────────────────────────── */}
       {/* ── Hero 3: Float ─────────────────────────────────────── */}
       <section
