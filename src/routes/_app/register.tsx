@@ -277,7 +277,7 @@ export default function RegisterPage() {
   const nav = useNavigate();
 
   const ownerId = effectiveOwnerId(
-    profile?.role === "owner" ? profile.id : (profile?.parent_id ?? profile.id),
+    profile?.role === "owner" ? profile.id : (profile?.parent_id ?? profile?.id ?? ""),
   );
 
   // Machines-only accounts have no register page — send them to /machines
@@ -3892,6 +3892,7 @@ function CashOverlay({
   activeBar?: { bar_name: string } | null;
   editOrder?: {
     id: string;
+    order_number?: number | null;
     items: { id?: string; name: string; qty: number; price: number }[];
     total: number;
     paid: number;
@@ -4281,14 +4282,14 @@ function CashOverlay({
 
       setBusy(false);
       toast.success("Sale updated");
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, editOrder.id, editOrder.order_number));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, editOrder.id, editOrder.order_number ?? undefined));
       return;
     }
 
     const { data: newOrder, error } = await supabase
       .from("orders")
       .insert(orderPayload)
-      .select("order_number")
+      .select("id, order_number")
       .single();
     if (error) {
       setBusy(false);
@@ -4318,7 +4319,7 @@ function CashOverlay({
     }
 
     setBusy(false);
-    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number));
+    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number ?? undefined));
   };
 
   return (
@@ -5156,7 +5157,7 @@ function CashCustomerOverlay({
     await (supabase as any).from("credit_transactions").insert(creditTxPayload);
 
     setBusy(false);
-    onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number));
+    onSuccess(paidNum, changeNum);
   };
 
   const createAndPay = async (e: React.FormEvent) => {
@@ -5300,11 +5301,10 @@ function CashCustomerOverlay({
                 <button
                   type="button"
                   onClick={() => toggleNew("name")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+                  style={{ background: "#ffffff", color: newName ? "#000000" : "#9ca3af" }}
                 >
-                  <span
-                    className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}
-                  >
+                  <span className="text-sm font-semibold">
                     {newName || "e.g. John Smith"}
                   </span>
                 </button>
@@ -5322,7 +5322,8 @@ function CashCustomerOverlay({
                   id="cash-new-idtype"
                   value={newIdType}
                   onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+                  style={{ background: "#ffffff", color: "#000000" }}
                 >
                   <option value="drivers_permit">Driver's Permit</option>
                   <option value="national_id">National ID</option>
@@ -5333,13 +5334,10 @@ function CashCustomerOverlay({
                 <button
                   type="button"
                   onClick={() => toggleNew("idNumber")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
+                  style={{ background: "#ffffff", color: newIdNumber ? "#000000" : "#9ca3af" }}
                 >
-                  <span
-                    className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {newIdNumber || "e.g. 00000000"}
-                  </span>
+                  {newIdNumber || "e.g. 000-0000"}
                 </button>
                 {newActiveField === "idNumber" && (
                   <CreditNumPad
@@ -5352,22 +5350,24 @@ function CashCustomerOverlay({
               </div>
               <div>
                 <Label>Contact Number</Label>
-                <div className="flex items-center mt-1">
+                <div className="flex items-center gap-0 mt-1">
                   <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
                     868
                   </span>
                   <button
                     type="button"
                     onClick={() => toggleNew("contact")}
-                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
+                    className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm text-left font-semibold"
+                    style={{ background: "#ffffff", color: newContact ? "#000000" : "#9ca3af" }}
                   >
-                    <span
-                      className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}
-                    >
-                      {newContact || "XXX-XXXX"}
-                    </span>
+                    {newContact || "XXX-XXXX"}
                   </button>
                 </div>
+                {newContact.replace("-", "").length > 0 && newContact.replace("-", "").length < 7 && (
+                  <p className="text-xs font-semibold text-amber-400 mt-1">
+                    {7 - newContact.replace("-", "").length} more digit{7 - newContact.replace("-", "").length !== 1 ? "s" : ""} needed
+                  </p>
+                )}
                 {newActiveField === "contact" && (
                   <CreditContactPad
                     value={newContact}
@@ -5378,7 +5378,7 @@ function CashCustomerOverlay({
               </div>
               <Button
                 type="submit"
-                disabled={busy || !newName.trim()}
+                disabled={busy || !newName.trim() || (newContact.replace("-", "").length > 0 && newContact.replace("-", "").length < 7)}
                 className="w-full h-12 font-black text-base"
                 style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
               >
@@ -5884,11 +5884,10 @@ function CreditSaleOverlay({
                 <button
                   type="button"
                   onClick={() => toggleNew("name")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+                  style={{ background: "#ffffff", color: newName ? "#000000" : "#9ca3af" }}
                 >
-                  <span
-                    className={`text-sm font-black ${newName ? "text-foreground" : "text-muted-foreground"}`}
-                  >
+                  <span className="text-sm font-semibold">
                     {newName || "e.g. John Smith"}
                   </span>
                 </button>
@@ -5908,7 +5907,8 @@ function CreditSaleOverlay({
                   id="credit-new-idtype"
                   value={newIdType}
                   onChange={(e) => setNewIdType(e.target.value as "drivers_permit" | "national_id")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-sm font-semibold mt-1"
+                  style={{ background: "#ffffff", color: "#000000" }}
                 >
                   <option value="drivers_permit">Driver's Permit</option>
                   <option value="national_id">National ID</option>
@@ -5921,13 +5921,10 @@ function CreditSaleOverlay({
                 <button
                   type="button"
                   onClick={() => toggleNew("idNumber")}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-left mt-1"
+                  className="w-full h-10 rounded-md border border-input px-3 text-sm text-left mt-1 font-semibold"
+                  style={{ background: "#ffffff", color: newIdNumber ? "#000000" : "#9ca3af" }}
                 >
-                  <span
-                    className={`text-sm font-black ${newIdNumber ? "text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {newIdNumber || "e.g. 00000000"}
-                  </span>
+                  {newIdNumber || "e.g. 000-0000"}
                 </button>
                 {newActiveField === "idNumber" && (
                   <CreditNumPad
@@ -5942,22 +5939,24 @@ function CreditSaleOverlay({
               {/* Contact Number */}
               <div>
                 <Label>Contact Number</Label>
-                <div className="flex items-center mt-1">
+                <div className="flex items-center gap-0 mt-1">
                   <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">
                     868
                   </span>
                   <button
                     type="button"
                     onClick={() => toggleNew("contact")}
-                    className="flex-1 h-10 rounded-r-md border border-input bg-background px-3 text-left"
+                    className="flex-1 h-10 rounded-r-md border border-input px-3 text-sm text-left font-semibold"
+                    style={{ background: "#ffffff", color: newContact ? "#000000" : "#9ca3af" }}
                   >
-                    <span
-                      className={`text-sm font-black ${newContact ? "text-foreground" : "text-muted-foreground"}`}
-                    >
-                      {newContact || "XXX-XXXX"}
-                    </span>
+                    {newContact || "XXX-XXXX"}
                   </button>
                 </div>
+                {newContact.replace("-", "").length > 0 && newContact.replace("-", "").length < 7 && (
+                  <p className="text-xs font-semibold text-amber-400 mt-1">
+                    {7 - newContact.replace("-", "").length} more digit{7 - newContact.replace("-", "").length !== 1 ? "s" : ""} needed
+                  </p>
+                )}
                 {newActiveField === "contact" && (
                   <CreditContactPad
                     value={newContact}
@@ -6030,18 +6029,21 @@ function CreditNumPad({
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleKeyRef.current(e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleKeyRef.current("⌫");
       } else if (e.key === "Enter") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleKeyRef.current("done");
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [value, onChange, onDone, maxLen]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   return (
     <div className="mt-2">
@@ -6103,18 +6105,23 @@ function CreditContactPad({
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleRef.current(e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleRef.current("⌫");
       } else if (e.key === "Enter") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleRef.current("done");
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [value, onChange, onDone]);
+    // Capture phase so this fires before the register's own keydown handlers
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   return (
     <div className="mt-2">
       {!complete && (
@@ -6128,9 +6135,7 @@ function CreditContactPad({
             <button
               key="done"
               type="button"
-              onClick={() => {
-                if (complete) onDone();
-              }}
+              onClick={() => { if (complete) onDone(); }}
               className={`h-12 rounded-xl font-black text-sm transition text-primary-foreground ${complete ? "active:scale-95" : "opacity-30 cursor-not-allowed"}`}
               style={{ background: "var(--gradient-hero)" }}
             >
@@ -6167,6 +6172,37 @@ function CreditAlphaKeyboard({
   onChange: (v: string) => void;
   onDone: () => void;
 }) {
+  const onChangeRef = useRef(onChange);
+  const onDoneRef = useRef(onDone);
+  const valueRef = useRef(value);
+  onChangeRef.current = onChange;
+  onDoneRef.current = onDone;
+  valueRef.current = value;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onDoneRef.current();
+      } else if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onChangeRef.current(valueRef.current.slice(0, -1));
+      } else if (e.key === " ") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onChangeRef.current(valueRef.current + " ");
+      } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onChangeRef.current(valueRef.current + e.key.toUpperCase());
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   return (
     <div className="mt-2 space-y-1.5">
       {CREDIT_ALPHA_ROWS.map((row, ri) => (
