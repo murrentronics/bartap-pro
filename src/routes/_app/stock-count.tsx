@@ -153,7 +153,7 @@ function StockCountPage() {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "stock_count_tables",
           filter: `profile_id=eq.${profile.id}`,

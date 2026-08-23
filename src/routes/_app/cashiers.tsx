@@ -3228,6 +3228,7 @@ export default function CashiersPage() {
       .select("*")
       .eq("profile_id", profile.id);
     if (!ownerTables || ownerTables.length === 0) return;
+    await (supabase as any).from("stock_count_tables").delete().eq("profile_id", targetProfileId);
     const copies = ownerTables.map((t: any) => ({
       id: crypto.randomUUID(),
       profile_id: targetProfileId,
