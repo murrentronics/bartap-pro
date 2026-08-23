@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2, Printer,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2, Printer, Keyboard,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
@@ -780,26 +780,26 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
               {/* ── Inline payment input ── */}
               <div className="py-3 border-b border-border/40 mb-2">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Record Payment</p>
-                <div className="flex gap-2">
-                  {/* Tappable amount display — opens numpad */}
-                 <div className="flex items-center flex-[2] h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left">
-                   <span className="text-base font-bold text-muted-foreground">$</span>
-                   <input
-                     type="text"
-                     inputMode="decimal"
-                     value={payAmount}
-                     onChange={(e) => {
-                       const val = e.target.value;
-                       if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                         setPayAmount(val);
-                       }
-                     }}
-                     onFocus={() => setPadOpen(true)}
-                     placeholder="0.00"
-                     className="flex-1 bg-transparent outline-none text-xl font-black"
-                   />
-                   <span className="text-[10px] text-muted-foreground">max ${Number(a.balance_owed).toFixed(2)}</span>
-                 </div>
+                 <div className="flex gap-2">
+                   {/* Tappable amount display — opens numpad */}
+                  <div className="flex items-center flex-1 min-w-0 h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left">
+                    <span className="text-base font-bold text-muted-foreground">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={payAmount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setPayAmount(val);
+                        }
+                      }}
+                      onFocus={() => setPadOpen(true)}
+                      placeholder="0.00"
+                      className="flex-1 bg-transparent outline-none text-xl font-black min-w-0"
+                    />
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">max ${Number(a.balance_owed).toFixed(2)}</span>
+                  </div>
                   <Button
                     className="h-14 px-6 font-black text-base shrink-0 rounded-xl"
                     disabled={paying || !payAmount}
@@ -1252,53 +1252,53 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
            </select>
          </div>
 
-         {/* ID Number */}
-         <div>
-           <Label>ID Number</Label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={idNumber}
-              onChange={(e) => {
-                const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
-                setIdNumber(v);
-              }}
-              onFocus={() => setActiveField("idNumber")}
-              placeholder="e.g. 00000000"
-              maxLength={7}
-              className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-              style={{ background: "#ffffff" }}
-            />
-           {activeField === "idNumber" && (
-             <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
-           )}
-         </div>
+          {/* ID Number */}
+          <div>
+            <Label>ID Number</Label>
+             <input
+               type="text"
+               inputMode="numeric"
+               value={idNumber}
+               onChange={(e) => {
+                 const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                 setIdNumber(v);
+               }}
+               onFocus={() => setActiveField("idNumber")}
+               placeholder="e.g. 00000000"
+               maxLength={7}
+               className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+               style={{ background: "#ffffff" }}
+             />
+            {activeField === "idNumber" && (
+              <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />
+            )}
+          </div>
 
-         {/* Contact Number */}
-         <div>
-           <Label>Contact Number</Label>
-           <div className="flex items-center mt-1">
-             <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-              <input
-                type="text"
-                inputMode="tel"
-                value={contact}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
-                  const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                  setContact(formatted);
-                }}
-                onFocus={() => setActiveField("contact")}
-                placeholder="XXX-XXXX"
-                maxLength={8}
-                className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-                style={{ background: "#ffffff" }}
-              />
-           </div>
-           {activeField === "contact" && (
-             <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
-           )}
-         </div>
+          {/* Contact Number */}
+          <div>
+            <Label>Contact Number</Label>
+            <div className="flex items-center mt-1">
+              <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+               <input
+                 type="text"
+                 inputMode="tel"
+                 value={contact}
+                 onChange={(e) => {
+                   const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                   const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                   setContact(formatted);
+                 }}
+                 onFocus={() => setActiveField("contact")}
+                 placeholder="XXX-XXXX"
+                 maxLength={8}
+                 className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+                 style={{ background: "#ffffff" }}
+               />
+            </div>
+            {activeField === "contact" && (
+              <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />
+            )}
+          </div>
 
          <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)} className="w-full h-12 font-black text-base"
            style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
@@ -1491,46 +1491,46 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                 <option value="national_id">National ID</option>
               </select>
             </div>
-            <div>
-              <Label>ID Number</Label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={idNumber}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
-                  setIdNumber(v);
-                }}
-                onFocus={() => setActiveField("idNumber")}
-                placeholder="e.g. 00000000"
-                maxLength={7}
-                className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
-                style={{ background: "#ffffff" }}
-              />
-              {activeField === "idNumber" && <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />}
-            </div>
-            <div>
-              <Label>Contact Number</Label>
-              <div className="flex items-center mt-1">
-                <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
-              <input
-                type="text"
-                inputMode="tel"
-                value={contact}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
-                  const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
-                  setContact(formatted);
-                }}
-                onFocus={() => setActiveField("contact")}
-                placeholder="XXX-XXXX"
-                maxLength={8}
-                className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
-                style={{ background: "#ffffff" }}
-              />
+             <div>
+                <Label>ID Number</Label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={idNumber}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                    setIdNumber(v);
+                  }}
+                  onFocus={() => setActiveField("idNumber")}
+                  placeholder="e.g. 00000000"
+                  maxLength={7}
+                  className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
+                  style={{ background: "#ffffff" }}
+                />
+                {activeField === "idNumber" && <NumPad value={idNumber} onChange={setIdNumber} maxLen={20} onDone={() => setActiveField(null)} />}
               </div>
-              {activeField === "contact" && <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />}
-            </div>
+              <div>
+                <Label>Contact Number</Label>
+                <div className="flex items-center mt-1">
+                  <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    value={contact}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
+                      const formatted = digits.length > 3 ? digits.slice(0, 3) + "-" + digits.slice(3) : digits;
+                      setContact(formatted);
+                    }}
+                    onFocus={() => setActiveField("contact")}
+                    placeholder="XXX-XXXX"
+                    maxLength={8}
+                    className="flex-1 h-10 rounded-r-md border border-input px-3 text-left"
+                    style={{ background: "#ffffff" }}
+                  />
+                </div>
+                {activeField === "contact" && <ContactNumPad value={contact} onChange={setContact} onDone={() => setActiveField(null)} />}
+              </div>
             <Button type="submit" disabled={busy || !name.trim() || (contact.replace("-","").length > 0 && contact.replace("-","").length < 7)}
               className="w-full h-12 font-black text-base"
               style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}>
