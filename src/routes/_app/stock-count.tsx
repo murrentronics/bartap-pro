@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -116,20 +116,17 @@ function StockCountPage() {
     }
   };
 
-  useEffect(() => {
+  const loadTables = async () => {
     if (!profile?.id) return;
     let cancelled = false;
     setLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .from("stock_count_tables")
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: true })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then(({ data }: { data: any[] | null }) => {
         if (cancelled) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const loaded = (data ?? []).map((row: any) => ({
           id: row.id,
           name: row.name,
@@ -141,6 +138,33 @@ function StockCountPage() {
       });
     return () => {
       cancelled = true;
+    };
+  };
+
+  useEffect(() => {
+    const cleanup = loadTables();
+    return cleanup;
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const channel = supabase
+      .channel(`stock-count-${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stock_count_tables",
+          filter: `profile_id=eq.${profile.id}`,
+        },
+        () => {
+          loadTables();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
     };
   }, [profile?.id]);
 
@@ -502,8 +526,15 @@ function StockCountPage() {
             <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="font-bold text-sm">No stock count tables yet</p>
             <p className="text-xs mt-1">Create a table above to start your personal stock count.</p>
-      </div>
-      )}
+            <button
+              onClick={loadTables}
+              className="mt-4 h-9 px-4 rounded-lg text-xs font-black border border-border hover:bg-muted/50 transition active:scale-95 inline-flex items-center gap-2"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          </div>
+        )}
       </div>
       </div>
 
