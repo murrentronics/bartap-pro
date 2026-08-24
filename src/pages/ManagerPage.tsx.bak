@@ -610,7 +610,7 @@ function DashboardTab({
   barStateLoading,
   barSessionStart,
 }: {
-  profile: { id: string; username?: string | null; wallet_balance: number; role: string };
+  profile: { id: string; username?: string | null; wallet_balance: number };
   ownerId: string;
   managerName: string;
   barIsOpen: boolean;
@@ -694,7 +694,7 @@ function DashboardTab({
   const [hasMachinesEnabled, setHasMachinesEnabled] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
-  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null; cashier_id?: string | null }[]>([]);
+  const [walletSales, setWalletSales] = useState<{ id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null }[]>([]);
   const [walletSalesLoading, setWalletSalesLoading] = useState(true);
   const [dashTab, setDashTab] = useState<"sales" | "expenses">("sales");
 
@@ -3443,7 +3443,7 @@ function SalesTab({
   isOwner,
 }: {
   orders: Order[];
-  walletSales: { id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null; cashier_id?: string | null }[];
+  walletSales: { id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null }[];
   loading: boolean;
   walletSalesLoading: boolean;
   barIsOpen: boolean;
@@ -3471,8 +3471,6 @@ function SalesTab({
           {orders.map((o) => {
             const canEdit = o.id === orders[0]?.id && barIsOpen;
             const itemDesc = (o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ");
-            const cashierId = (o as any).cashier_id as string | undefined;
-            const isStaffSale = isOwner && cashierId && cashierId !== ownerId;
             return (
               <div
                 key={o.id}
@@ -3493,15 +3491,15 @@ function SalesTab({
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
                     {itemDesc}
-                    {isStaffSale && <> · Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))} · Total ${fmt(Number(o.total))}</>}
+                    {isOwner && <> · Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))} · Total ${fmt(Number(o.total))}</>}
                   </p>
-                  {!isStaffSale && (
+                  {!isOwner && (
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
                     </p>
                   )}
                 </div>
-                {!isStaffSale && (
+                {!isOwner && (
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="font-black text-sm text-green-400">+${fmt(Number(o.total))}</span>
                     <div className="flex flex-row gap-2">
@@ -3546,7 +3544,6 @@ function SalesTab({
                 const items = (ws.order_items as any[]) || [];
                 const itemDesc = items.map((it: any) => `${it.qty || 1}× ${it.name}`).join(", ") || "Sale";
                 const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
-                const isStaffWalletSale = isOwner && ws.cashier_id && ws.cashier_id !== ownerId;
                 const orderObj = {
                   id: ws.order_id ?? ws.id,
                   total: Number(ws.order_total || ws.amount),
@@ -3579,10 +3576,10 @@ function SalesTab({
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         {itemDesc}
-                        {isStaffWalletSale && <> · ${fmt(Number(ws.amount))}</>}
+                        {isOwner && <> · ${fmt(Number(ws.amount))}</>}
                       </p>
                     </div>
-                    {!isStaffWalletSale && (
+                    {!isOwner && (
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
                         <div className="flex flex-row gap-2">
