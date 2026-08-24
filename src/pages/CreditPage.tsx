@@ -330,7 +330,7 @@ function BillModal({ account, ownerName, onClose }: {
   const buildReceiptData = async (): Promise<ReceiptData | null> => {
     const { data: txs } = await supabase
       .from("credit_transactions")
-      .select("type, amount, items")
+      .select("type, amount, items, note")
       .eq("credit_account_id", account.id)
       .order("created_at", { ascending: true });
     if (!txs) return null;

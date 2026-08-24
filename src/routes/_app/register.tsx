@@ -711,16 +711,16 @@ export default function RegisterPage() {
   useEffect(() => {
     if (editOrder && editOrderApplied.current && cart.length === 0 && !cashOpen) {
       setEditOrder(null);
-      nav("/wallet");
+      nav(profile?.role === "manager" ? "/manager" : "/wallet");
     }
-  }, [cart.length, editOrder, cashOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cart.length, editOrder, cashOpen, nav, profile?.role]);
 
   useEffect(() => {
     if (editCreditOrder && editCreditOrderApplied.current && cart.length === 0 && !creditOpen) {
       setEditCreditOrder(null);
-      nav("/wallet");
+      nav(profile?.role === "manager" ? "/manager" : "/wallet");
     }
-  }, [cart.length, editCreditOrder, creditOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cart.length, editCreditOrder, creditOpen, nav, profile?.role]);
 
   // Persist cart to localStorage whenever it changes
   useEffect(() => {
@@ -2212,7 +2212,7 @@ export default function RegisterPage() {
             refreshProfile();
             fetchOpenedBottles();
             fetchOpenedPacks();
-            if (editOrder || editCreditOrder) nav("/wallet");
+            if (editOrder || editCreditOrder) nav(profile?.role === "manager" ? "/manager" : "/wallet");
           }}
         />
       )}
@@ -4274,10 +4274,53 @@ function CashOverlay({
 
       // Update wallet_transactions amount for this order if total changed
       if (discountedTotal !== editOrder.total) {
+        const delta = discountedTotal - editOrder.total;
+
         await (supabase as any)
           .from("wallet_transactions")
           .update({ amount: discountedTotal })
           .eq("order_id", editOrder.id);
+
+        const sellerId = (editOrder as any).cashier_id || profile.id;
+
+        if (delta > 0) {
+          const { data: sellerData } = await (supabase as any)
+            .from("profiles")
+            .select("wallet_balance")
+            .eq("id", sellerId)
+            .single();
+          await (supabase as any)
+            .from("profiles")
+            .update({ wallet_balance: Number(sellerData?.wallet_balance ?? 0) + delta })
+            .eq("id", sellerId);
+        } else if (delta < 0) {
+          const absDelta = Math.abs(delta);
+          const { data: sellerData } = await (supabase as any)
+            .from("profiles")
+            .select("wallet_balance")
+            .eq("id", sellerId)
+            .single();
+          const sellerBalance = Number(sellerData?.wallet_balance ?? 0);
+          const sellerDeduction = Math.min(absDelta, sellerBalance);
+          const ownerDeduction = absDelta - sellerDeduction;
+          if (sellerDeduction > 0) {
+            await (supabase as any)
+              .from("profiles")
+              .update({ wallet_balance: sellerBalance - sellerDeduction })
+              .eq("id", sellerId);
+          }
+          if (ownerDeduction > 0) {
+            const { data: ownerData } = await (supabase as any)
+              .from("profiles")
+              .select("wallet_balance")
+              .eq("id", ownerId)
+              .single();
+            await (supabase as any)
+              .from("profiles")
+              .update({ wallet_balance: Number(ownerData?.wallet_balance ?? 0) - ownerDeduction })
+              .eq("id", ownerId);
+          }
+        }
       }
 
       setBusy(false);

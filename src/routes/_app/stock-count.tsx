@@ -514,7 +514,7 @@ function StockCountPage() {
             <p className="font-bold text-sm">No stock count tables yet</p>
             <p className="text-xs mt-1">Create a table above to start your personal stock count.</p>
             <button
-              onClick={loadTables}
+              onClick={() => loadTables()}
               className="mt-4 h-9 px-4 rounded-lg text-xs font-black border border-border hover:bg-muted/50 transition active:scale-95 inline-flex items-center gap-2"
             >
               <RefreshCw className="h-3.5 w-3.5" />

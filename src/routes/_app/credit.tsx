@@ -45,7 +45,7 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
     .eq("credit_account_id", account.id)
     .order("created_at", { ascending: true });
 
-  if (error) { toast.error("Failed to load transactions"); return; }
+  if (error) { toast.error("Failed to load transactions"); return null; }
 
   // Fetch product cost map as fallback for items that don't have cost_price stored
   const { data: products } = await (supabase as any)
@@ -1081,25 +1081,6 @@ function PaymentOverlay({
     toast.success("Charge removed — stock restored");
     await loadCharges();
     onDone();
-  };
-
-  // Update existing charge — same record, no new row
-  const saveEditCharge = async (chargeId: string) => {
-    if (!profile || editChargeItems.length === 0) return;
-    const valid = editChargeItems.filter((i) => i.name.trim() && i.qty > 0 && i.price >= 0);
-    if (!valid.length) { toast.error("At least one item required"); return; }
-    setEditChargeSaving(true);
-    const newTotal = valid.reduce((s, i) => s + i.qty * i.price, 0);
-    const { error } = await supabase
-      .from("credit_transactions")
-      .update({ items: valid, amount: newTotal })
-      .eq("id", chargeId);
-    setEditChargeSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Charge updated");
-    setEditingChargeId(null);
-    setEditChargeItems([]);
-    loadCharges();
   };
 
   const submit = async () => {

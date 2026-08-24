@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { isPrinterPaired, pairPrinter } from "@/lib/receiptPrinter";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -747,7 +748,7 @@ function DashboardTab({
       if (orderIds.length > 0) {
         const { data: ordData } = await sb
           .from("orders")
-          .select("id, items, total, paid, change_given, order_number")
+          .select("id, items, total, paid, change_given, order_number, cashier_id")
           .in("id", orderIds);
         (ordData ?? []).forEach((o: any) => { ordersMap[o.id] = o; });
       }
@@ -766,6 +767,7 @@ function DashboardTab({
           order_change: ord ? Number(ord.change_given) : 0,
           order_payment_method: ord?.payment_method ?? "cash",
           order_number: ord?.order_number ?? null,
+          cashier_id: ord?.cashier_id ?? null,
         };
       });
       setWalletSales(mapped);
@@ -857,6 +859,37 @@ function DashboardTab({
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+  useEffect(() => {
+    if (!barSessionStart || !hasMachinesEnabled) return;
+    const reload = async () => {
+      const { data: floatSess } = await sb
+        .from("machine_float_sessions")
+        .select("amount, set_at")
+        .eq("owner_id", ownerId)
+        .order("set_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const mfAmt = Number(floatSess?.amount ?? 0);
+      const mfAnchor: string | null = floatSess?.set_at ?? null;
+      setMachineFloatSet(mfAmt);
+      setMachineFloatAnchor(mfAnchor);
+      if (mfAnchor) {
+        const { data: entries } = await sb
+          .from("machine_entries")
+          .select("type, amount")
+          .eq("owner_id", ownerId)
+          .gte("created_at", mfAnchor);
+        const rows = (entries ?? []) as { type: string; amount: number }[];
+        const mOut = rows
+          .filter((e) => e.type === "payout" || e.type === "expense")
+          .reduce((s, e) => s + Number(e.amount), 0);
+        setMachineFloatBal(Math.max(0, mfAmt - mOut));
+      } else {
+        setMachineFloatBal(0);
+      }
+    };
+    reload();
+  }, [barSessionStart, ownerId, hasMachinesEnabled]);
   useEffect(() => {
     const ch = supabase
       .channel(`mgr-dash-${ownerId}`)
@@ -1108,6 +1141,8 @@ function DashboardTab({
   };
   const [billData, setBillData] = useState<BillData | null>(null);
   const [printingBill, setPrintingBill] = useState(false);
+  const [printerPaired, setPrinterPaired] = useState<boolean | null>(null);
+  const [pairing, setPairing] = useState(false);
   const [ownerName, setOwnerName] = useState<string>("");
   useEffect(() => {
     sb.from("profiles").select("username").eq("id", ownerId).single()
@@ -1132,19 +1167,25 @@ function DashboardTab({
     });
   };
 
+  useEffect(() => {
+    if (billData) {
+      isPrinterPaired().then(setPrinterPaired);
+    }
+  }, [billData]);
+
   const handlePrintBill = async () => {
     if (!billData) return;
     setPrintingBill(true);
     try {
-      const { printReceipt, pairPrinter } = await import("@/lib/receiptPrinter");
-      const result = await printReceipt(billData);
-      if (result.needsPairing) {
-        setPrintingBill(false);
+      if (printerPaired === false) {
+        setPairing(true);
         const paired = await pairPrinter();
+        setPairing(false);
         if (!paired) return;
-        setPrintingBill(true);
-        await printReceipt(billData);
+        setPrinterPaired(true);
       }
+      const { printReceipt } = await import("@/lib/receiptPrinter");
+      await printReceipt(billData);
       toast.success("Receipt sent to printer");
     } catch { toast.error("Print failed"); }
     finally { setPrintingBill(false); }
@@ -1319,7 +1360,27 @@ function DashboardTab({
       const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}\n${tag}`;
       await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: Number(order.total), description, expense_date: trinidadDate() });
       // Reverse wallet transactions for this order
+      const sellerId = (order as any).cashier_id || profile.id;
+      const orderTotal = Number(order.total);
       await sb.from("wallet_transactions").delete().eq("order_id", order.id);
+      const { data: sellerData } = await sb
+        .from("profiles")
+        .select("wallet_balance")
+        .eq("id", sellerId)
+        .single();
+      const { data: ownerData } = await sb
+        .from("profiles")
+        .select("wallet_balance")
+        .eq("id", ownerId)
+        .single();
+      await sb
+        .from("profiles")
+        .update({ wallet_balance: Math.max(0, Number(sellerData?.wallet_balance ?? 0) - orderTotal) })
+        .eq("id", sellerId);
+      await sb
+        .from("profiles")
+        .update({ wallet_balance: Math.max(0, Number(ownerData?.wallet_balance ?? 0) - orderTotal) })
+        .eq("id", ownerId);
       const { data: deleted, error } = await sb.from("orders").delete().eq("id", order.id).select("id");
       if (error || !deleted?.length) {
         toast.error("Could not delete order");
@@ -1668,21 +1729,33 @@ function DashboardTab({
               </div>
             </div>
             {/* Actions */}
-            <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
-              <button
-                onClick={handlePrintBill}
-                disabled={printingBill}
-                className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
-                style={{ background: "var(--gradient-hero)" }}
-              >
-                {printingBill ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
-              </button>
-              <button
-                onClick={handlePdfShare}
-                className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
-              >
-                PDF / WhatsApp
-              </button>
+            <div className="px-6 pb-5 pt-2 flex flex-col gap-2 shrink-0">
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrintBill}
+                  disabled={printingBill || pairing}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+                  style={{ background: "var(--gradient-hero)" }}
+                >
+                  {printingBill || pairing
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : printerPaired === false ? "🔌 Connect Printer" : "Print"}
+                </button>
+                <button
+                  onClick={handlePdfShare}
+                  className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+                >
+                  PDF / WhatsApp
+                </button>
+              </div>
+              {printerPaired && (
+                <button
+                  onClick={() => { setPrinterPaired(false); localStorage.removeItem("bartap-receipt-vid"); localStorage.removeItem("bartap-receipt-pid"); }}
+                  className="text-[11px] text-muted-foreground underline text-center active:opacity-70"
+                >
+                  Change printer
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -3376,7 +3449,8 @@ function SalesTab({
       ) : (
         <div className="space-y-2">
           {orders.map((o) => {
-            const canEdit = o.id === orders[0]?.id && barIsOpen;
+            const canEdit = barIsOpen;
+            const canDelete = barIsOpen && o.id === orders[0]?.id;
             const itemDesc = (o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ");
             const cashierId = (o as any).cashier_id as string | undefined;
             const isStaffSale = isOwner && cashierId && cashierId !== ownerId;
@@ -3431,13 +3505,15 @@ function SalesTab({
                           >
                             <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                           </button>
-                          <button
-                            onClick={() => onDeleteConfirm(o.id)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
-                            title="Delete this sale"
-                          >
-                            <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => onDeleteConfirm(o.id)}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                              title="Delete this sale"
+                            >
+                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -3455,7 +3531,6 @@ function SalesTab({
               {walletSales.map((ws) => {
                 const items = (ws.order_items as any[]) || [];
                 const itemDesc = items.map((it: any) => `${it.qty || 1}× ${it.name}`).join(", ") || "Sale";
-                const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
                 const isStaffWalletSale = isOwner && ws.cashier_id && ws.cashier_id !== ownerId;
                 const payMethod = (ws.order_payment_method ?? "cash").toLowerCase();
                 const payLabel = payMethod === "credit" ? "Credit Sale" : "Cash Sale";
@@ -3500,28 +3575,35 @@ function SalesTab({
                           : `Paid $${fmt(Number(ws.order_paid || ws.amount))} · Change $${fmt(Number(ws.order_change || 0))}`}
                       </p>
                     </div>
-                    {!isStaffWalletSale && (
-                      <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {isStaffWalletSale && (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                          Staff
+                        </span>
+                      )}
+                      {!isStaffWalletSale && (
                         <span className="font-black text-sm text-green-400">+${fmt(Number(ws.order_total || ws.amount))}</span>
-                        <div className="flex flex-row gap-2">
-                          {ws.order_id && (
+                      )}
+                      <div className="flex flex-row gap-2">
+                        {ws.order_id && (
+                          <button
+                            onClick={() => onPrint(orderObj)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                            title="Print bill"
+                          >
+                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                          </button>
+                        )}
+                        {barIsOpen && (
+                          <>
                             <button
-                              onClick={() => onPrint(orderObj)}
-                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
-                              title="Print bill"
+                              onClick={() => ws.order_id && onEdit(orderObj)}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                              title="Edit this sale"
                             >
-                              <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
-                          )}
-                          {isNewest && (
-                            <>
-                              <button
-                                onClick={() => ws.order_id && onEdit(orderObj)}
-                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                                title="Edit this sale"
-                              >
-                                <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                              </button>
+                            {ws.id === walletSales[0]?.id && (
                               <button
                                 onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
                                 className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
@@ -3529,11 +3611,11 @@ function SalesTab({
                               >
                                 <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                               </button>
-                            </>
-                          )}
-                        </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
