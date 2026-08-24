@@ -80,33 +80,23 @@ function StockCountPage() {
   };
 
   // Perform the copy — wipe existing tables for selected staff and replace with owner's
+  // Uses a SECURITY DEFINER RPC to bypass RLS (works for direct owners AND chain masters)
   const performCopy = async () => {
     if (!profile?.id || selectedStaff.size === 0) return;
     setCopying(true);
     try {
       const ids = Array.from(selectedStaff);
-      // Delete existing tables for each selected staff member
-      await (supabase as any).from("stock_count_tables").delete().in("profile_id", ids);
-      // Insert owner's tables for each selected staff member
-      const copies: any[] = [];
-      for (const staffId of ids) {
-        for (const t of tables) {
-          copies.push({
-            id: crypto.randomUUID(),
-            profile_id: staffId,
-            owner_id: ownerId,
-            name: t.name,
-            columns: t.columns,
-            rows: t.rows,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-      if (copies.length > 0) {
-        const { error } = await (supabase as any).from("stock_count_tables").insert(copies);
-        if (error) throw error;
-      }
+      const tablesPayload = tables.map((t) => ({
+        name: t.name,
+        columns: t.columns,
+        rows: t.rows,
+      }));
+      const { error } = await (supabase as any).rpc("copy_stock_count_tables_to_staff", {
+        p_owner_id: ownerId,
+        p_staff_ids: ids,
+        p_tables: tablesPayload,
+      });
+      if (error) throw error;
       toast.success(`Copied ${tables.length} table(s) to ${ids.length} staff member(s)`);
       setShowCopyModal(false);
     } catch (err: unknown) {
