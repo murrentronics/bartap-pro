@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronDown, CheckCircle2,
-  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2, Printer, Keyboard,
+  ClipboardList, Trash2, FileDown, Loader2, Pencil, Share2, Printer,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
