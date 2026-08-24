@@ -6252,6 +6252,105 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
   onDone: () => void;
   printing: boolean;
 }) {
+  // Track whether printer/drawer ports are already paired in this browser
+  const [printerPaired, setPrinterPaired] = useState<boolean | null>(null);
+  const [drawerPaired, setDrawerPaired] = useState<boolean | null>(null);
+  const [pairingPrinter, setPairingPrinter] = useState(false);
+  const [pairingDrawer, setPairingDrawer] = useState(false);
+  const [openingDrawer, setOpeningDrawer] = useState(false);
+
+  // Check on mount which devices are already granted
+  useEffect(() => {
+    const serial = (navigator as any).serial as {
+      getPorts: () => Promise<any[]>;
+      requestPort: (opts?: any) => Promise<any>;
+    } | undefined;
+    if (!serial?.getPorts) {
+      // Web Serial not supported — mark both as "no serial" (will use browser print)
+      setPrinterPaired(false);
+      setDrawerPaired(false);
+      return;
+    }
+    serial.getPorts().then((ports) => {
+      const printerVid = parseInt(localStorage.getItem("bartap-receipt-vid") ?? "", 10);
+      const drawerVid = parseInt(localStorage.getItem("bartap-drawer-vid") ?? "", 10);
+      // If VIDs are stored and a matching port exists → paired
+      const hasPrinter = ports.some((p) => !printerVid || p.getInfo().usbVendorId === printerVid);
+      const hasDrawer = ports.some((p) => !drawerVid || p.getInfo().usbVendorId === drawerVid);
+      setPrinterPaired(ports.length > 0 && hasPrinter);
+      setDrawerPaired(ports.length > 0 && hasDrawer);
+    }).catch(() => {
+      setPrinterPaired(false);
+      setDrawerPaired(false);
+    });
+  }, []);
+
+  const handlePairPrinter = async () => {
+    const serial = (navigator as any).serial;
+    if (!serial?.requestPort) return;
+    setPairingPrinter(true);
+    try {
+      const port = await serial.requestPort();
+      const info = port.getInfo();
+      if (info.usbVendorId) localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
+      if (info.usbProductId) localStorage.setItem("bartap-receipt-pid", String(info.usbProductId));
+      setPrinterPaired(true);
+      toast.success("Printer connected");
+    } catch (e: any) {
+      if (!e?.message?.includes("cancelled") && !e?.message?.includes("No port")) {
+        toast.error("Could not connect printer");
+      }
+    } finally {
+      setPairingPrinter(false);
+    }
+  };
+
+  const handlePairDrawer = async () => {
+    const serial = (navigator as any).serial;
+    if (!serial?.requestPort) return;
+    setPairingDrawer(true);
+    try {
+      const port = await serial.requestPort();
+      const info = port.getInfo();
+      if (info.usbVendorId) localStorage.setItem("bartap-drawer-vid", String(info.usbVendorId));
+      if (info.usbProductId) localStorage.setItem("bartap-drawer-pid", String(info.usbProductId));
+      setDrawerPaired(true);
+      toast.success("Cash drawer connected");
+    } catch (e: any) {
+      if (!e?.message?.includes("cancelled") && !e?.message?.includes("No port")) {
+        toast.error("Could not connect drawer");
+      }
+    } finally {
+      setPairingDrawer(false);
+    }
+  };
+
+  const handleOpenDrawer = async () => {
+    setOpeningDrawer(true);
+    try {
+      const result = await openCashDrawer();
+      if (!result.opened) {
+        // Port gone / device disconnected — force re-pair
+        setDrawerPaired(false);
+        toast.error("Drawer not responding — reconnect device");
+      }
+    } catch {
+      setDrawerPaired(false);
+    } finally {
+      setOpeningDrawer(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    // If Web Serial is available but printer isn't paired yet, pair first
+    const serial = (navigator as any).serial;
+    if (serial?.requestPort && !printerPaired) {
+      await handlePairPrinter();
+      return;
+    }
+    onPrint();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
@@ -6339,21 +6438,40 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
 
         {/* Actions */}
         <div className="px-6 pb-5 pt-2 flex flex-col gap-2 shrink-0">
-          <button
-            onClick={async () => { await openCashDrawer().catch(() => {}); }}
-            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2"
-            style={{ background: "rgba(37,211,102,0.12)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
-          >
-            Open Cash Drawer
-          </button>
-          <div className="flex gap-2">
+          {/* Cash Drawer */}
+          {drawerPaired ? (
             <button
-              onClick={onPrint}
-              disabled={printing}
+              onClick={handleOpenDrawer}
+              disabled={openingDrawer}
+              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2 disabled:opacity-50"
+              style={{ background: "rgba(37,211,102,0.12)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
+            >
+              {openingDrawer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Cash Drawer"}
+            </button>
+          ) : drawerPaired === false ? (
+            <button
+              onClick={handlePairDrawer}
+              disabled={pairingDrawer}
+              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2 disabled:opacity-50"
+              style={{ background: "rgba(37,211,102,0.06)", color: "#86efac", borderColor: "rgba(37,211,102,0.25)" }}
+            >
+              {pairingDrawer ? <Loader2 className="h-4 w-4 animate-spin" /> : "🔌 Connect Cash Drawer"}
+            </button>
+          ) : null}
+
+          <div className="flex gap-2">
+            {/* Print button — shows "Connect Printer" if not yet paired */}
+            <button
+              onClick={handlePrint}
+              disabled={printing || pairingPrinter}
               className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
               style={{ background: "var(--gradient-hero)" }}
             >
-              {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
+              {printing || pairingPrinter
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : printerPaired === false
+                  ? "🔌 Connect Printer"
+                  : "Print"}
             </button>
             <button
               onClick={onDone}
@@ -6362,6 +6480,28 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
               Done
             </button>
           </div>
+
+          {/* Re-pair link — shown once devices are connected so user can change them */}
+          {(printerPaired || drawerPaired) && (
+            <div className="flex gap-3 justify-center pt-1">
+              {printerPaired && (
+                <button
+                  onClick={() => { setPrinterPaired(false); localStorage.removeItem("bartap-receipt-vid"); localStorage.removeItem("bartap-receipt-pid"); }}
+                  className="text-[11px] text-muted-foreground underline active:opacity-70"
+                >
+                  Change printer
+                </button>
+              )}
+              {drawerPaired && (
+                <button
+                  onClick={() => { setDrawerPaired(false); localStorage.removeItem("bartap-drawer-vid"); localStorage.removeItem("bartap-drawer-pid"); }}
+                  className="text-[11px] text-muted-foreground underline active:opacity-70"
+                >
+                  Change drawer
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

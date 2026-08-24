@@ -703,7 +703,7 @@ function DashboardTab({
     const isOwner = profile.role === "owner";
     let query = sb
       .from("orders")
-      .select("id, total, paid, change_given, items, created_at, payment_method, cashier_id, order_number")
+      .select("id, total, paid, change_given, items, created_at, cashier_id, order_number")
       .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -745,7 +745,7 @@ function DashboardTab({
       if (orderIds.length > 0) {
         const { data: ordData } = await sb
           .from("orders")
-          .select("id, items, total, paid, change_given, payment_method, order_number")
+          .select("id, items, total, paid, change_given, order_number")
           .in("id", orderIds);
         (ordData ?? []).forEach((o: any) => { ordersMap[o.id] = o; });
       }
