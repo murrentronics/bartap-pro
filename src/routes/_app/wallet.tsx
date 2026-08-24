@@ -361,7 +361,7 @@ function CashierWallet({
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
     const bill: BillData = {
       storeName: ownerName || profile.username || "Bar",
-      orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
+      orderNumber: order.payment_method === "credit" ? "CREDIT" : String((order as any).order_number ?? order.id.slice(0, 8)),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -401,7 +401,7 @@ function CashierWallet({
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     const bill: BillData = {
       storeName: ownerName || profile.username || "Bar",
-      orderNumber: ct.id.slice(0, 8),
+      orderNumber: "CREDIT",
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -1627,58 +1627,60 @@ function CashierWallet({
                       <span className="font-black text-sm text-green-400">
                         +${fmt(Number(o.total))}
                       </span>
-                      <button
-                        onClick={() => openBillForOrder(o)}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
-                        title="Print bill"
-                      >
-                        <Receipt className="h-3.5 w-3.5 text-blue-300" />
-                      </button>
-                      {(profile.role === "owner" ||
-                        profile.role === "manager" ||
-                        (profile as any).job_title === "manager" ||
-                        profile.role === "cashier") && (
+                      <div className="flex flex-row gap-2">
                         <button
-                          onClick={() => setEditingOrder(o)}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                          title="Edit this sale"
+                          onClick={() => openBillForOrder(o)}
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                          title="Print bill"
                         >
-                          <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                          <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                         </button>
-                      )}
-                      {o.id === deletableOrderId && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button
-                              onClick={() => setDeleteConfirmId(o.id)}
-                              className="h-8 w-8 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
-                              title="Delete this sale"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-white" />
-                            </button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove the order and restore stock. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => {
-                                  if (deleteConfirmId) deleteLatestCashierOrder({ ...o, id: deleteConfirmId });
-                                  setDeleteConfirmId(null);
-                                }}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        {(profile.role === "owner" ||
+                          profile.role === "manager" ||
+                          (profile as any).job_title === "manager" ||
+                          profile.role === "cashier") && (
+                          <button
+                            onClick={() => setEditingOrder(o)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                            title="Edit this sale"
+                          >
+                            <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
+                        {o.id === deletableOrderId && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => setDeleteConfirmId(o.id)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                title="Delete this sale"
                               >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the order and restore stock. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (deleteConfirmId) deleteLatestCashierOrder({ ...o, id: deleteConfirmId });
+                                    setDeleteConfirmId(null);
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -2166,7 +2168,7 @@ function OwnerStatement({
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     setBillData({
       storeName: profile.username || "Bar",
-      orderNumber: `C-${ct.id.slice(0, 8).toUpperCase()}`,
+      orderNumber: "CREDIT",
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -4340,6 +4342,10 @@ function TransactionsTab({
   );
   const pageRecordCount = flatRecords.length;
 
+  const latestPaymentId = flatRecords.find(
+    (r) => r.kind === "tx" && r.data.type === "credit_payment"
+  )?.data.id ?? null;
+
   const deleteLatestOrder = async (order: Order) => {
     setDeletingOrderId(order.id);
 
@@ -4393,6 +4399,38 @@ function TransactionsTab({
       );
 
     setTimeout(() => refreshProfile(), 800);
+    fetchData();
+    onDeleted?.();
+  };
+
+  const deletePayment = async (tx: WalletTx) => {
+    setDeletingOrderId(tx.id);
+    const ownerId = profile.id;
+
+    const { error } = await supabase
+      .from("credit_transactions")
+      .delete()
+      .eq("id", tx.id);
+    if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
+
+    if (ownerId) {
+      const t = new Date(tx.created_at);
+      await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+        p_owner_id:   ownerId,
+        p_cashier_id: profile.id,
+        p_from_time:  new Date(t.getTime() - 5000).toISOString(),
+        p_to_time:    new Date(t.getTime() + 5000).toISOString(),
+      });
+    }
+
+    const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
+      p_credit_account_id: (tx as any).credit_account_id,
+      p_amount: -tx.amount,
+    });
+    if (balErr) { toast.error("Transaction deleted but balance update failed"); setDeletingOrderId(null); return; }
+
+    setDeletingOrderId(null);
+    toast.success("Payment removed — balance restored");
     fetchData();
     onDeleted?.();
   };
@@ -4605,69 +4643,159 @@ function TransactionsTab({
                       )}
                     </div>
                     {/* Credit payment: +$X if owner collected, Staff/Manager badge if staff collected */}
-                    {/* Credit charge: edit pencil + optional Staff badge */}
+                    {/* Credit charge: print + edit inline, Staff badge top-right */}
                     {!isPayment ? (
-                      <div className="flex flex-col items-end gap-2 shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         {cashierPart && (
                           <StaffBadge
                             label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
                           />
                         )}
-                        {canEdit && (
+                        <div className="flex flex-row gap-2">
                           <button
-                            onClick={async () => {
-                              const ctid = tx.credit_tx_id;
-                              if (!ctid) {
-                                toast.error("No credit record linked to this charge");
-                                return;
-                              }
-                              const { data: ct } = await sb
-                                .from("credit_transactions")
-                                .select("id, credit_account_id, amount, items, created_at")
-                                .eq("id", ctid)
-                                .maybeSingle();
-                              if (!ct) {
-                                toast.error("Could not load credit sale for editing");
-                                return;
-                              }
-                              const { data: acct } = await sb
-                                .from("credit_accounts")
-                                .select("full_name")
-                                .eq("id", ct.credit_account_id)
-                                .maybeSingle();
-                              sessionStorage.setItem(
-                                "edit_credit_order",
-                                JSON.stringify({
-                                  credit_tx_id: ct.id,
-                                  credit_account_id: ct.credit_account_id,
-                                  customer_name: acct?.full_name ?? "Customer",
-                                  items: (ct.items ?? []) as {
-                                    id: string;
-                                    name: string;
-                                    qty: number;
-                                    price: number;
-                                  }[],
-                                  amount: ct.amount,
-                                  created_at: ct.created_at,
-                                }),
-                              );
-                              nav("/register");
-                            }}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                            title="Edit this credit sale"
+                            onClick={() => onPrintBillCredit?.(tx)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
+                            title="Print receipt"
                           >
-                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                           </button>
-                        )}
+                          {canEdit && (
+                            <button
+                              onClick={async () => {
+                                const ctid = tx.credit_tx_id;
+                                if (!ctid) {
+                                  toast.error("No credit record linked to this charge");
+                                  return;
+                                }
+                                const { data: ct } = await sb
+                                  .from("credit_transactions")
+                                  .select("id, credit_account_id, amount, items, created_at")
+                                  .eq("id", ctid)
+                                  .maybeSingle();
+                                if (!ct) {
+                                  toast.error("Could not load credit sale for editing");
+                                  return;
+                                }
+                                const { data: acct } = await sb
+                                  .from("credit_accounts")
+                                  .select("full_name")
+                                  .eq("id", ct.credit_account_id)
+                                  .maybeSingle();
+                                sessionStorage.setItem(
+                                  "edit_credit_order",
+                                  JSON.stringify({
+                                    credit_tx_id: ct.id,
+                                    credit_account_id: ct.credit_account_id,
+                                    customer_name: acct?.full_name ?? "Customer",
+                                    items: (ct.items ?? []) as {
+                                      id: string;
+                                      name: string;
+                                      qty: number;
+                                      price: number;
+                                    }[],
+                                    amount: ct.amount,
+                                    created_at: ct.created_at,
+                                  }),
+                                );
+                                nav("/register");
+                              }}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition shrink-0"
+                              title="Edit this credit sale"
+                            >
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : isReadOnly && cashierPart ? (
                       <StaffBadge
                         label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
                       />
                     ) : !isReadOnly ? (
-                      <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
-                        +${fmt(Number(tx.amount))}
-                      </span>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
+                          +${fmt(Number(tx.amount))}
+                        </span>
+                        {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
+                          <div className="flex flex-row gap-2">
+                            <button
+                              onClick={async () => {
+                                const ctid = tx.credit_tx_id;
+                                if (!ctid) {
+                                  toast.error("No credit record linked to this payment");
+                                  return;
+                                }
+                                const { data: ct } = await sb
+                                  .from("credit_transactions")
+                                  .select("id, credit_account_id, amount, items, created_at")
+                                  .eq("id", ctid)
+                                  .maybeSingle();
+                                if (!ct) {
+                                  toast.error("Could not load credit payment for editing");
+                                  return;
+                                }
+                                const { data: acct } = await sb
+                                  .from("credit_accounts")
+                                  .select("full_name")
+                                  .eq("id", ct.credit_account_id)
+                                  .maybeSingle();
+                                sessionStorage.setItem(
+                                  "edit_credit_order",
+                                  JSON.stringify({
+                                    credit_tx_id: ct.id,
+                                    credit_account_id: ct.credit_account_id,
+                                    customer_name: acct?.full_name ?? "Customer",
+                                    items: (ct.items ?? []) as {
+                                      id: string;
+                                      name: string;
+                                      qty: number;
+                                      price: number;
+                                    }[],
+                                    amount: ct.amount,
+                                    created_at: ct.created_at,
+                                  }),
+                                );
+                                nav("/register");
+                              }}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition shrink-0"
+                              title="Edit payment"
+                            >
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  onClick={() => setDeleteConfirmId(tx.id)}
+                                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0"
+                                  title="Delete payment"
+                                >
+                                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will remove the payment and restore ${fmt(Number(tx.amount))} to the customer's balance. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      if (deleteConfirmId) deletePayment(tx);
+                                      setDeleteConfirmId(null);
+                                    }}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </div>
                     ) : null}
                     {!isPayment && (
                       <button
@@ -5357,7 +5485,7 @@ function OwnerWallet({
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
-      orderNumber: `C-${ct.id.slice(0, 8).toUpperCase()}`,
+      orderNumber: "CREDIT",
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,

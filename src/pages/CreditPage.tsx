@@ -13,7 +13,7 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
-import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
+import { printReceipt, pairPrinter, isPrinterPaired, type ReceiptData } from "@/lib/receiptPrinter";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type CreditAccount = {
@@ -324,8 +324,14 @@ function BillModal({ account, ownerName, onClose }: {
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState<"share" | "print" | null>(null);
+  const [printerPaired, setPrinterPaired] = useState<boolean | null>(null);
+  const [pairing, setPairing] = useState(false);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
+
+  useEffect(() => {
+    isPrinterPaired().then(setPrinterPaired);
+  }, []);
 
   const buildReceiptData = async (): Promise<ReceiptData | null> => {
     const { data: txs } = await supabase
@@ -374,6 +380,13 @@ function BillModal({ account, ownerName, onClose }: {
   const handlePrint = async () => {
     setBusy("print");
     try {
+      if (printerPaired === false) {
+        setPairing(true);
+        const paired = await pairPrinter();
+        setPairing(false);
+        if (!paired) { setBusy(null); return; }
+        setPrinterPaired(true);
+      }
       const data = await buildReceiptData();
       if (!data) { setBusy(null); return; }
       const result = await printReceipt(data);
@@ -437,25 +450,35 @@ function BillModal({ account, ownerName, onClose }: {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
-          <button
-            onClick={handlePrint}
-            disabled={!!busy}
-            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-border"
-            style={{ background: "rgba(255,255,255,0.08)", color: "var(--foreground)" }}
-          >
-            {busy === "print" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-            Print Bill
-          </button>
-          <button
-            onClick={handleShare}
-            disabled={!!busy}
-            className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-green-500/40"
-            style={{ background: "rgba(37,211,102,0.12)", color: "#25D366" }}
-          >
-            {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-            Share via WhatsApp
-          </button>
+        <div className="px-5 pb-5 pt-3 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrint}
+              disabled={busy === "print" || pairing}
+              className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {busy === "print" || pairing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : printerPaired === false ? "🔌 Connect Printer" : "Print"}
+            </button>
+            <button
+              onClick={handleShare}
+              disabled={busy === "share"}
+              className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+            >
+              {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+              PDF / WhatsApp
+            </button>
+          </div>
+          {printerPaired && (
+            <button
+              onClick={() => { setPrinterPaired(false); localStorage.removeItem("bartap-receipt-vid"); localStorage.removeItem("bartap-receipt-pid"); }}
+              className="text-[11px] text-muted-foreground underline text-center active:opacity-70"
+            >
+              Change printer
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -587,6 +610,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
   const [confirmDeleteTx, setConfirmDeleteTx] = useState<CreditTx | null>(null);
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
   const [txGenerating, setTxGenerating] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
@@ -623,6 +647,27 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     if (amt > Number(account.balance_owed)) { toast.error(`Cannot exceed balance owed ($${Number(account.balance_owed).toFixed(2)})`); return; }
     if (!profile) return;
     setPaying(true);
+    if (editingPaymentId) {
+      const oldTx = txs.find((t) => t.id === editingPaymentId);
+      if (oldTx) {
+        await supabase.from("credit_transactions").delete().eq("id", oldTx.id);
+        const ownerId = profile?.role === "owner" ? profile.id : (profile as any)?.parent_id;
+        if (ownerId && profile?.id) {
+          const t = new Date(oldTx.created_at);
+          await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+            p_owner_id:   ownerId,
+            p_cashier_id: profile.id,
+            p_from_time:  new Date(t.getTime() - 5000).toISOString(),
+            p_to_time:    new Date(t.getTime() + 5000).toISOString(),
+          });
+        }
+        await supabase.rpc("reduce_credit_balance", {
+          p_credit_account_id: oldTx.credit_account_id,
+          p_amount: -oldTx.amount,
+        });
+      }
+      setEditingPaymentId(null);
+    }
     const { error } = await supabase.rpc("record_credit_payment", {
       p_credit_account_id: account.id,
       p_cashier_id: profile.id,
@@ -630,8 +675,9 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     });
     setPaying(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(amt >= Number(account.balance_owed) ? `${account.full_name}'s tab fully settled!` : `Payment of $${amt.toFixed(2)} recorded`);
+    toast.success(editingPaymentId ? "Payment updated" : (amt >= Number(account.balance_owed) ? `${account.full_name}'s tab fully settled!` : `Payment of $${amt.toFixed(2)} recorded`));
     setPayAmount("");
+    setEditingPaymentId(null);
     loadTxs(account.id);
     onRefresh();
   };
@@ -701,6 +747,38 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
     } else {
       loadTxs(tx.credit_account_id);
     }
+    onRefresh();
+  };
+
+  const deletePayment = async (tx: CreditTx) => {
+    setDeletingId(tx.id);
+    const ownerId = profile?.role === "owner" ? profile.id : (profile as any)?.parent_id;
+
+    const { error } = await supabase
+      .from("credit_transactions")
+      .delete()
+      .eq("id", tx.id);
+    if (error) { toast.error(error.message); setDeletingId(null); return; }
+
+    if (ownerId && profile?.id) {
+      const t = new Date(tx.created_at);
+      await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+        p_owner_id:   ownerId,
+        p_cashier_id: profile.id,
+        p_from_time:  new Date(t.getTime() - 5000).toISOString(),
+        p_to_time:    new Date(t.getTime() + 5000).toISOString(),
+      });
+    }
+
+    const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
+      p_credit_account_id: tx.credit_account_id,
+      p_amount: -tx.amount,
+    });
+    if (balErr) { toast.error("Transaction deleted but balance update failed"); setDeletingId(null); return; }
+
+    setDeletingId(null);
+    toast.success("Payment removed — balance restored");
+    loadTxs(tx.credit_account_id);
     onRefresh();
   };
 
@@ -779,7 +857,9 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
 
               {/* ── Inline payment input ── */}
               <div className="py-3 border-b border-border/40 mb-2">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Record Payment</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                  {editingPaymentId ? "Update Payment" : "Record Payment"}
+                </p>
                  <div className="flex gap-2">
                    {/* Tappable amount display — opens numpad */}
                   <div className="flex items-center flex-1 min-w-0 h-14 rounded-xl border border-input bg-background px-3 gap-1 text-left">
@@ -806,7 +886,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                     onClick={() => { setPadOpen(false); submitPayment(a); }}
                     style={{ background: "var(--gradient-hero)", color: "var(--primary-foreground)" }}
                   >
-                    {paying ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : "Pay"}
+                    {paying ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : (editingPaymentId ? "Update" : "Pay")}
                   </Button>
                 </div>
 
@@ -859,8 +939,10 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                   const date = dt.toLocaleDateString("en-GB");
                   const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                   const isCharge = tx.type === "charge";
-                  // Deletable only if it's a charge AND it's newer than the last payment
-                  const canDelete = isCharge && (lastPaymentIdx === -1 || idx < lastPaymentIdx);
+                  const isPayment = tx.type === "payment";
+                  // Charges deletable if newer than last payment; payments only if it's the latest one
+                  const canDelete = (!isCharge && !isPayment) ? false : (isPayment ? idx === lastPaymentIdx : (lastPaymentIdx === -1 || idx < lastPaymentIdx));
+                  const canEdit = isPayment && expanded === a.id;
                   return (
                     <div
                       key={tx.id}
@@ -889,6 +971,20 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                             : <Printer className="h-3.5 w-3.5" />
                           }
                         </button>
+                        {canEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingPaymentId(tx.id);
+                              setPayAmount(String(tx.amount));
+                            }}
+                            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition"
+                            style={{ color: "var(--primary)" }}
+                            title="Edit payment"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         {canDelete && (
                           <button
                             onClick={() => setConfirmDeleteTx(tx)}
@@ -901,7 +997,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                             }
                           </button>
                         )}
-                        {!canDelete && <div className="h-7 w-7" />}
+                        {!canDelete && !canEdit && <div className="h-7 w-7" />}
                       </div>
                     </div>
                   );
@@ -923,8 +1019,8 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
               </div>
               <h3 className="font-black text-base">Delete Record?</h3>
               <p className="text-xs text-muted-foreground mt-1 leading-snug">
-                {confirmDeleteTx.note ?? "This charge"}<br />
-                <span className="font-bold text-red-400">${Number(confirmDeleteTx.amount).toFixed(2)}</span> will be removed from the balance.
+                {confirmDeleteTx.note ?? (confirmDeleteTx.type === "payment" ? "This payment" : "This charge")}<br />
+                <span className="font-bold text-red-400">${Number(confirmDeleteTx.amount).toFixed(2)}</span> {confirmDeleteTx.type === "payment" ? "will be added back to the balance" : "will be removed from the balance"}.
               </p>
             </div>
             <div className="px-6 pb-6 pt-4 flex gap-3">
@@ -934,7 +1030,12 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
               <Button
                 className="flex-1 h-11 font-black bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={deletingId === confirmDeleteTx.id}
-                onClick={() => { const tx = confirmDeleteTx; setConfirmDeleteTx(null); deleteCharge(tx); }}
+                onClick={() => {
+                  const tx = confirmDeleteTx;
+                  setConfirmDeleteTx(null);
+                  if (tx.type === "payment") deletePayment(tx);
+                  else deleteCharge(tx);
+                }}
               >
                 {deletingId === confirmDeleteTx.id
                   ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
