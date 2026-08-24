@@ -711,8 +711,9 @@ function DashboardTab({
     if (!isOwner) {
       query = query.eq("cashier_id", profile.id);
     }
-    const { data } = await query;
-    console.log(`[ManagerPage] loadOrders: ownerId=${ownerId}, count=${(data ?? []).length}`);
+    const { data, error } = await query;
+    if (error) console.error("[ManagerPage] loadOrders error:", error);
+    console.log(`[ManagerPage] loadOrders: ownerId=${ownerId}, cashierId=${profile.id}, isOwner=${isOwner}, count=${(data ?? []).length}`);
     setOrders((data ?? []) as Order[]);
     setOrdersLoading(false);
   }, [ownerId, profile.id, profile.role]);

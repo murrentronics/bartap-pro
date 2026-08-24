@@ -5181,14 +5181,19 @@ function TransactionsTab({
                       </div>
                     </>
                   ) : (
-                    // Staff / manager sale — read-only, just the print button
-                    <button
-                      onClick={() => onPrintBill?.(o)}
-                      className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
-                      title="Print bill"
-                    >
-                      <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                    </button>
+                    // Staff / manager sale — read-only: staff badge + print button
+                    <>
+                      <StaffBadge
+                        label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                      />
+                      <button
+                        onClick={() => onPrintBill?.(o)}
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                        title="Print bill"
+                      >
+                        <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
