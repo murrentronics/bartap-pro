@@ -4134,10 +4134,12 @@ function TransactionsTab({
   profile,
   onDeleted,
   onPrintBill,
+  onPrintBillCredit,
 }: {
   profile: { id: string };
   onDeleted?: () => void;
   onPrintBill?: (order: Order) => void;
+  onPrintBillCredit?: (tx: WalletTx) => void;
 }) {
   const { refreshProfile } = useAuth();
   const { profile: authProfile } = useAuth();
@@ -4509,9 +4511,6 @@ function TransactionsTab({
                 );
                 const discAmt = discMatch ? Number(discMatch[1]) : 0;
                 const discOrig = discMatch?.[2] ? Number(discMatch[2]) : null;
-                function openBillForCreditTx(tx: WalletTx): void {
-                  throw new Error("Function not implemented.");
-                }
 
                 return (
                   <div
@@ -4663,11 +4662,11 @@ function TransactionsTab({
                     ) : null}
                     {!isPayment && (
                       <button
-                        onClick={() => openBillForCreditTx(tx)}
-                        className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
+                        onClick={() => onPrintBillCredit?.(tx)}
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
                         title="Print receipt"
                       >
-                        <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                        <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                       </button>
                     )}
                   </div>
@@ -6575,7 +6574,7 @@ function OwnerWallet({
 
       {/* ── Tab content ──────────────────────────────────────────────────── */}
       {activeTab === "transactions" ? (
-        <TransactionsTab profile={profile} onDeleted={loadSummary} onPrintBill={openBillForOrder} />
+        <TransactionsTab profile={profile} onDeleted={loadSummary} onPrintBill={openBillForOrder} onPrintBillCredit={openBillForCreditTx} />
       ) : (
         <FinancialsTab
           ownerId={profile.id}

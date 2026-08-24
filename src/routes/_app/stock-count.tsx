@@ -116,9 +116,8 @@ function StockCountPage() {
     }
   };
 
-  const loadTables = async () => {
+  const loadTables = async (signal?: { cancelled: boolean }) => {
     if (!profile?.id) return;
-    let cancelled = false;
     setLoading(true);
     (supabase as any)
       .from("stock_count_tables")
@@ -126,7 +125,7 @@ function StockCountPage() {
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: true })
       .then(({ data }: { data: any[] | null }) => {
-        if (cancelled) return;
+        if (signal?.cancelled) return;
         const loaded = (data ?? []).map((row: any) => ({
           id: row.id,
           name: row.name,
@@ -136,15 +135,13 @@ function StockCountPage() {
         setTables(loaded);
         setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   };
 
   useEffect(() => {
-    const cleanup = loadTables();
-    return cleanup;
-  }, [profile?.id]);
+    const signal = { cancelled: false };
+    loadTables(signal);
+    return () => { signal.cancelled = true; };
+  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!profile?.id) return;
