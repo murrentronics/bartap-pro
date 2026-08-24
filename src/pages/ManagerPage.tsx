@@ -3489,7 +3489,7 @@ function SalesTab({
                     })}
                   </p>
                   <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    ORDER #{(o as any).order_number ?? o.id.slice(0, 8)} · Cash Sale
+                    ORDER #{isStaffSale ? (o as any).order_number || "N/A" : (o as any).order_number ?? "N/A"} · Cash Sale
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
                     {itemDesc}
@@ -3575,7 +3575,7 @@ function SalesTab({
                         })}
                       </p>
                       <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                        ORDER #{ws.order_number ?? ws.order_id?.slice(0, 8).toUpperCase()} · Cash Sale
+                        ORDER #{isStaffWalletSale ? ws.order_number || "N/A" : ws.order_number ?? "N/A"} · Cash Sale
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         {itemDesc}
