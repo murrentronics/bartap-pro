@@ -5670,11 +5670,11 @@ function OwnerWallet({
         .select("total")
         .eq("owner_id", profile.id)
         .eq("cashier_id", profile.id),
-      supabase
-        .from("orders")
-        .select("total")
-        .eq("owner_id", profile.id)
-        .neq("cashier_id", profile.id),
+      // cashierOrdersRes: only cashier orders that flow to owner wallet (not manager sales)
+      // We use transfer_in txs instead — those represent actual money cleared to the owner
+      // from cashiers. Manager sales stay in manager wallet until manually cleared.
+      // So cashierOrdersIncome = 0 here; transfers_in already captures cleared cashier sales.
+      Promise.resolve({ data: [] as { total: number }[] }),
       supabase
         .from("wallet_transactions")
         .select("amount")
