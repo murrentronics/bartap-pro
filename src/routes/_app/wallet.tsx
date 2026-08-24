@@ -41,7 +41,7 @@ import {
 import { toast } from "sonner";
 import { downloadPdf } from "@/lib/download";
 import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
-import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
+import { printReceipt, pairPrinter, isPrinterPaired, type ReceiptData } from "@/lib/receiptPrinter";
 
 // ─── Typed supabase helpers for new tables ────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -6690,6 +6690,25 @@ function BillModal({ bill, onClose, onPrint, onPdfShare, printing }: {
   onPdfShare: () => void;
   printing: boolean;
 }) {
+  const [printerPaired, setPrinterPaired] = useState<boolean | null>(null);
+  const [pairing, setPairing] = useState(false);
+
+  useEffect(() => {
+    isPrinterPaired().then(setPrinterPaired);
+  }, []);
+
+  const handlePrint = async () => {
+    if (printerPaired === false) {
+      // Trigger pairing first
+      setPairing(true);
+      const paired = await pairPrinter();
+      setPairing(false);
+      if (!paired) return;
+      setPrinterPaired(true);
+    }
+    onPrint();
+  };
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
@@ -6755,21 +6774,33 @@ function BillModal({ bill, onClose, onPrint, onPdfShare, printing }: {
         </div>
 
         {/* Actions */}
-        <div className="px-6 pb-5 pt-2 flex gap-2 shrink-0">
-          <button
-            onClick={onPrint}
-            disabled={printing}
-            className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
-            style={{ background: "var(--gradient-hero)" }}
-          >
-            {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print"}
-          </button>
-          <button
-            onClick={onPdfShare}
-            className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
-          >
-            PDF / WhatsApp
-          </button>
+        <div className="px-6 pb-5 pt-2 flex flex-col gap-2 shrink-0">
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrint}
+              disabled={printing || pairing}
+              className="flex-1 h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              {printing || pairing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : printerPaired === false ? "🔌 Connect Printer" : "Print"}
+            </button>
+            <button
+              onClick={onPdfShare}
+              className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+            >
+              PDF / WhatsApp
+            </button>
+          </div>
+          {printerPaired && (
+            <button
+              onClick={() => { setPrinterPaired(false); localStorage.removeItem("bartap-receipt-vid"); localStorage.removeItem("bartap-receipt-pid"); }}
+              className="text-[11px] text-muted-foreground underline text-center active:opacity-70"
+            >
+              Change printer
+            </button>
+          )}
         </div>
       </div>
     </div>

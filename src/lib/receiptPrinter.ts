@@ -160,7 +160,7 @@ function readStorage(key: string): string | null {
 
 export async function printReceipt(
   data: ReceiptData,
-): Promise<{ opened: boolean; method: string; error?: string }> {
+): Promise<{ opened: boolean; method: string; needsPairing?: boolean; error?: string }> {
   const dateStr =
     data.date ||
     new Date().toLocaleString("en-US", {
@@ -184,10 +184,24 @@ export async function printReceipt(
 
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
   if (serial?.requestPort) {
+    // Check if any port is already granted — if not, signal caller to show pairing UI
+    try {
+      const granted = await serial.getPorts();
+      const hasPort = granted.length > 0;
+      if (!hasPort) {
+        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+      }
+    } catch {
+      // If getPorts fails, proceed and let requestPort handle it
+    }
     try {
       return await printViaWebSerial(payload, vid, pid);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      // User cancelled the picker — not an error
+      if (message.includes("cancelled") || message.includes("No port")) {
+        return { opened: false, method: "none", needsPairing: true, error: message };
+      }
       return { opened: false, method: "none", error: message };
     }
   }
@@ -468,4 +482,41 @@ function printViaBrowserWindow(
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Pair the printer by prompting the user to select a USB serial device.
+ * Stores the VID so subsequent printReceipt() calls skip the picker.
+ * Returns true if a port was successfully selected.
+ */
+export async function pairPrinter(): Promise<boolean> {
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (!serial?.requestPort) return false;
+  try {
+    const port = await serial.requestPort();
+    const info = port.getInfo();
+    if (info.usbVendorId != null) {
+      localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
+    }
+    if (info.usbProductId != null) {
+      localStorage.setItem("bartap-receipt-pid", String(info.usbProductId));
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true if a printer port is already granted in this browser session.
+ */
+export async function isPrinterPaired(): Promise<boolean> {
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (!serial?.getPorts) return false;
+  try {
+    const ports = await serial.getPorts();
+    return ports.length > 0;
+  } catch {
+    return false;
+  }
 }

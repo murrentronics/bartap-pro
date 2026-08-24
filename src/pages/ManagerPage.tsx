@@ -1134,8 +1134,15 @@ function DashboardTab({
     if (!billData) return;
     setPrintingBill(true);
     try {
-      const { printReceipt } = await import("@/lib/receiptPrinter");
-      await printReceipt(billData);
+      const { printReceipt, pairPrinter } = await import("@/lib/receiptPrinter");
+      const result = await printReceipt(billData);
+      if (result.needsPairing) {
+        setPrintingBill(false);
+        const paired = await pairPrinter();
+        if (!paired) return;
+        setPrintingBill(true);
+        await printReceipt(billData);
+      }
       toast.success("Receipt sent to printer");
     } catch { toast.error("Print failed"); }
     finally { setPrintingBill(false); }
