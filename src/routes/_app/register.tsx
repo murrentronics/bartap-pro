@@ -3933,18 +3933,18 @@ function CashOverlay({
 
   const businessName = ownerProfile?.username ?? activeBar?.bar_name ?? "Bar";
 
-  const buildReceipt = (paidNum: number, changeNum: number, orderId?: string, orderNumber?: number): ReceiptData => ({
+  const buildReceipt = (paidNum: number, changeNum: number, orderId?: string, orderNumber?: number, isCreditSale?: boolean): ReceiptData => ({
     storeName: businessName,
     locationName: "",
-    orderNumber: orderNumber ?? (orderId ? orderId.slice(0, 8).toUpperCase() : "—"),
+    orderNumber: isCreditSale ? "CREDIT" : (orderNumber ?? (orderId ? orderId.slice(0, 8).toUpperCase() : "—")),
     serverName: profile?.username ?? "Staff",
     items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
     subtotal: total,
     total,
     paid: paidNum,
     change: changeNum,
-    payMode: "cash",
-    customerName: undefined,
+    payMode: isCreditSale ? "credit" : "cash",
+    customerName: selectedCustomer?.full_name ?? undefined,
     date: new Date().toLocaleString("en-US", {
       month: "numeric",
       day: "numeric",
@@ -4154,7 +4154,7 @@ function CashOverlay({
         await doStockAndShots(groupId);
       setBusy(false);
       toast.success(`💾 Saved offline — will sync when reconnected`);
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, undefined, undefined, true));
       return;
       }
       // If editing an existing credit charge: delete the old one first
@@ -4182,7 +4182,7 @@ function CashOverlay({
           ? `Credit sale updated for ${selectedCustomer.full_name}`
           : `Charged $${discountedTotal.toFixed(2)} to ${selectedCustomer.full_name}`,
       );
-      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum));
+      onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, undefined, undefined, true));
       return;
     }
 

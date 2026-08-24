@@ -53,6 +53,14 @@ export default function AppLayout() {
   const menuRef = useRef<HTMLDivElement>(null);
   const yt = useYouTube();
 
+  // Close the menu first, then navigate on the next animation frame so the
+  // menu overlay fully unmounts before the new page renders — prevents the
+  // brief brown/dark flash when switching between pages.
+  const closeAndNav = (to: string) => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => nav(to));
+  };
+
   useEffect(() => {
     if (!loading && !session) nav("/login", { replace: true });
   }, [session, loading, nav]);
@@ -570,10 +578,7 @@ export default function AppLayout() {
                   return (
                     <button
                       key={it.to}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        nav(it.to);
-                      }}
+                      onClick={() => closeAndNav(it.to)}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
@@ -601,10 +606,7 @@ export default function AppLayout() {
                   );
                 })}
                 <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    nav("/language");
-                  }}
+                  onClick={() => closeAndNav("/language")}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                   style={{
                     background:
@@ -715,10 +717,7 @@ export default function AppLayout() {
             {isPending ? (
               <div className="p-4 space-y-3">
                 <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    nav("/billing");
-                  }}
+                  onClick={() => closeAndNav("/billing")}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 w-full active:scale-95 transition-transform select-none"
                   style={{
                     background: "var(--gradient-card)",
@@ -768,10 +767,7 @@ export default function AppLayout() {
                     return (
                       <button
                         key={it.to}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          nav(it.to);
-                        }}
+                        onClick={() => closeAndNav(it.to)}
                         className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                         style={{
                           background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
@@ -802,10 +798,7 @@ export default function AppLayout() {
                   })}
                   {!isAdmin && !isMachinesOnlyUser && (
                     <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        nav("/language");
-                      }}
+                      onClick={() => closeAndNav("/language")}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background:
@@ -843,10 +836,7 @@ export default function AppLayout() {
                   )}
                   {hasMultipleBars && (
                     <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        nav("/switch-bar");
-                      }}
+                      onClick={() => closeAndNav("/switch-bar")}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background:
@@ -886,10 +876,7 @@ export default function AppLayout() {
                   )}
                   {isOwner && (
                     <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        nav("/factory-reset");
-                      }}
+                      onClick={() => closeAndNav("/factory-reset")}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background:
@@ -918,10 +905,7 @@ export default function AppLayout() {
                   )}
                   {(isOwner || isManager) && (
                     <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        nav("/privacy");
-                      }}
+                      onClick={() => closeAndNav("/privacy")}
                       className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
                       style={{
                         background:

@@ -714,12 +714,12 @@ function DashboardTab({
   const loadWalletSales = useCallback(async () => {
     setWalletSalesLoading(true);
     try {
-      // Step 1: fetch wallet_transactions of type 'sale' for this manager
+      // Step 1: fetch wallet_transactions of type 'cashier_sale' for this manager
       const { data: txData, error: txErr } = await sb
         .from("wallet_transactions")
         .select("id, amount, type, note, order_id, created_at")
         .eq("profile_id", profile.id)
-        .eq("type", "sale")
+        .eq("type", "cashier_sale")
         .order("created_at", { ascending: false })
         .limit(100);
       if (txErr) throw txErr;
@@ -1101,7 +1101,7 @@ function DashboardTab({
   const openBillForOrder = (order: Order) => {
     setBillData({
       storeName: ownerName || managerName || "Bar",
-      orderNumber: (order as any).order_number ?? order.id.slice(0, 8).toUpperCase(),
+      orderNumber: (order as any).order_number ?? order.id.slice(0, 8),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
         hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
@@ -1647,7 +1647,7 @@ function DashboardTab({
                   <div className="text-center text-[10px] text-zinc-600">Served by {billData.serverName}</div>
                 )}
                 <div className="text-center font-black text-zinc-950 text-sm mt-1">
-                  ORDER #{billData.orderNumber}
+                  {billData.orderNumber != null && billData.orderNumber !== "" ? `ORDER #${billData.orderNumber}` : "CREDIT SALE"}
                 </div>
                 <div className="border-t border-dashed border-zinc-400 my-2" />
                 <div className="space-y-1 my-2">
@@ -1717,7 +1717,7 @@ function DashboardTab({
             <p className="px-5 pb-2 text-xs text-muted-foreground">
               {new Date(editModalOrder.created_at).toLocaleString("en-GB", {
                 hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short",
-              })} · ORDER #{(editModalOrder as any).order_number ?? editModalOrder.id.slice(0, 8).toUpperCase()}
+              })} · ORDER #{(editModalOrder as any).order_number ?? editModalOrder.id.slice(0, 8)}
             </p>
             <div className="px-5 pb-2 max-h-60 overflow-y-auto space-y-2">
               {editModalItems.map((item, i) => (
@@ -3473,13 +3473,17 @@ function SalesTab({
             const itemDesc = (o.items || []).map((it: any) => `${it.qty}× ${it.name}`).join(", ");
             const cashierId = (o as any).cashier_id as string | undefined;
             const isStaffSale = isOwner && cashierId && cashierId !== ownerId;
+            const payMethod = (o.payment_method ?? "cash").toLowerCase();
+            const payLabel = payMethod === "credit" ? "Credit Sale" : "Cash Sale";
             return (
               <div
                 key={o.id}
                 className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
                 style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
               >
-                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
+                  {payMethod === "credit" ? "🧾" : "💵"}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">
                     {new Date(o.created_at).toLocaleString("en-GB", {
@@ -3489,17 +3493,16 @@ function SalesTab({
                     })}
                   </p>
                   <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    ORDER #{isStaffSale ? (o as any).order_number || "N/A" : (o as any).order_number ?? "N/A"} · Cash Sale
+                    ORDER #{(o as any).order_number ?? o.id.slice(0, 8)} · {payLabel}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
                     {itemDesc}
-                    {isStaffSale && <> · Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))} · Total ${fmt(Number(o.total))}</>}
                   </p>
-                  {!isStaffSale && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {payMethod === "credit"
+                      ? `Charged $${fmt(Number(o.total))}`
+                      : `Paid $${fmt(Number(o.paid))} · Change $${fmt(Number(o.change_given))}`}
+                  </p>
                 </div>
                 {!isStaffSale && (
                   <div className="flex flex-col items-end gap-2 shrink-0">
@@ -3547,6 +3550,8 @@ function SalesTab({
                 const itemDesc = items.map((it: any) => `${it.qty || 1}× ${it.name}`).join(", ") || "Sale";
                 const isNewest = ws.id === walletSales[0]?.id && barIsOpen;
                 const isStaffWalletSale = isOwner && ws.cashier_id && ws.cashier_id !== ownerId;
+                const payMethod = (ws.order_payment_method ?? "cash").toLowerCase();
+                const payLabel = payMethod === "credit" ? "Credit Sale" : "Cash Sale";
                 const orderObj = {
                   id: ws.order_id ?? ws.id,
                   total: Number(ws.order_total || ws.amount),
@@ -3565,7 +3570,9 @@ function SalesTab({
                     className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
                     style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
                   >
-                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">💵</div>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
+                      {payMethod === "credit" ? "🧾" : "💵"}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">
                         {new Date(ws.created_at).toLocaleString("en-GB", {
@@ -3575,16 +3582,20 @@ function SalesTab({
                         })}
                       </p>
                       <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                        ORDER #{isStaffWalletSale ? ws.order_number || "N/A" : ws.order_number ?? "N/A"} · Cash Sale
+                        ORDER #{ws.order_number ?? (ws.order_id ? ws.order_id.slice(0, 8) : ws.id.slice(0, 8))} · {payLabel}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         {itemDesc}
-                        {isStaffWalletSale && <> · ${fmt(Number(ws.amount))}</>}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {payMethod === "credit"
+                          ? `Charged $${fmt(Number(ws.order_total || ws.amount))}`
+                          : `Paid $${fmt(Number(ws.order_paid || ws.amount))} · Change $${fmt(Number(ws.order_change || 0))}`}
                       </p>
                     </div>
                     {!isStaffWalletSale && (
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span className="font-black text-sm text-green-400">+${fmt(Number(ws.amount))}</span>
+                        <span className="font-black text-sm text-green-400">+${fmt(Number(ws.order_total || ws.amount))}</span>
                         <div className="flex flex-row gap-2">
                           {ws.order_id && (
                             <button

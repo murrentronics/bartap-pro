@@ -2085,12 +2085,92 @@ function OwnerStatement({
   chainBarIds?: string[];
 }) {
   const { t } = useTranslation();
+  const sb = supabase as any;
   const [orders, setOrders] = useState<Order[]>([]);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [downloadedMonth, setDownloadedMonth] = useState<string | null>(null);
+  const [billData, setBillData] = useState<BillData | null>(null);
+  const [printingBill, setPrintingBill] = useState(false);
+
+  const handlePrintBill = async () => {
+    if (!billData) return;
+    setPrintingBill(true);
+    try {
+      const { printReceipt } = await import("@/lib/receiptPrinter");
+      await printReceipt(billData as any);
+      toast.success("Receipt sent to printer");
+    } catch { toast.error("Print failed"); }
+    finally { setPrintingBill(false); }
+  };
+
+  const handlePdfShare = async () => {
+    if (!billData) return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      let y = 20;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.text(billData.storeName || "Bar", LM, y);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+      doc.text(billData.date, LM, y + 6);
+      doc.text("ORDER #" + billData.orderNumber, LM, y + 12);
+      let cy = y + 20;
+      (billData.items || []).forEach((it: any) => {
+        doc.text(`${it.qty}x ${it.name}   $${(it.qty * it.price).toFixed(2)}`, LM, cy); cy += 6;
+      });
+      cy += 4; doc.setFont("helvetica", "bold");
+      doc.text(`Total: $${billData.total.toFixed(2)}`, LM, cy);
+      const dataUri = doc.output("datauristring");
+      await downloadPdf(`receipt-${billData.orderNumber}.pdf`, dataUri);
+      toast.success("Receipt PDF downloaded");
+    } catch { toast.error("Failed to generate PDF"); }
+  };
+
+  const openBillForOrder = (order: Order) => {
+    setBillData({
+      storeName: profile.username || "Bar",
+      orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
+      date: new Date(order.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: (order.items || []).map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(order.total),
+      total: Number(order.total),
+      paid: Number(order.paid),
+      change: Number(order.change_given),
+      payMode: order.payment_method === "credit" ? "credit" : "cash",
+    });
+  };
+
+  const openBillForCreditTx = async (tx: WalletTx) => {
+    const ctid = tx.credit_tx_id;
+    if (!ctid) { toast.error("No credit record linked"); return; }
+    const { data: ct } = await sb.from("credit_transactions")
+      .select("id, credit_account_id, amount, items, created_at").eq("id", ctid).maybeSingle();
+    if (!ct) { toast.error("Could not load credit sale"); return; }
+    const { data: acct } = await sb.from("credit_accounts")
+      .select("full_name").eq("id", ct.credit_account_id).maybeSingle();
+    const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
+    setBillData({
+      storeName: profile.username || "Bar",
+      orderNumber: `C-${ct.id.slice(0, 8).toUpperCase()}`,
+      date: new Date(ct.created_at).toLocaleString("en-US", {
+        month: "numeric", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+      }),
+      items: items.map((i) => ({ name: i.name, qty: i.qty, price: Number(i.price) })),
+      subtotal: Number(ct.amount),
+      total: Number(ct.amount),
+      paid: Number(ct.amount),
+      change: 0,
+      payMode: "credit",
+      customerName: acct?.full_name || undefined,
+    });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -2556,6 +2636,21 @@ function OwnerStatement({
                                       })}
                                     </div>
                                   </div>
+                                  {tx.order_id && (
+                                    <button
+                                      onClick={async () => {
+                                        const { data: ord } = await sb.from("orders")
+                                          .select("id, items, total, paid, change_given, payment_method, order_number, created_at")
+                                          .eq("id", tx.order_id)
+                                          .maybeSingle();
+                                        if (ord) openBillForOrder(ord as any);
+                                      }}
+                                      className="h-7 w-7 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
+                                      title="Print bill"
+                                    >
+                                      <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                                    </button>
+                                  )}
                                 </div>
                               );
                             }
@@ -2718,6 +2813,15 @@ function OwnerStatement({
                                         with cashier
                                       </span>
                                     ) : null)}
+                                  {!isPayment && (
+                                    <button
+                                      onClick={() => openBillForCreditTx(tx)}
+                                      className="h-7 w-7 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
+                                      title="Print receipt"
+                                    >
+                                      <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                                    </button>
+                                  )}
                                 </div>
                               );
                             }
@@ -2812,6 +2916,15 @@ function OwnerStatement({
           )}
         </div>
       </div>
+      {billData && (
+        <BillModal
+          bill={billData}
+          onClose={() => setBillData(null)}
+          onPrint={handlePrintBill}
+          onPdfShare={handlePdfShare}
+          printing={printingBill}
+        />
+      )}
     </div>
   );
 }
@@ -4396,6 +4509,10 @@ function TransactionsTab({
                 );
                 const discAmt = discMatch ? Number(discMatch[1]) : 0;
                 const discOrig = discMatch?.[2] ? Number(discMatch[2]) : null;
+                function openBillForCreditTx(tx: WalletTx): void {
+                  throw new Error("Function not implemented.");
+                }
+
                 return (
                   <div
                     key={tx.id}
@@ -4544,6 +4661,15 @@ function TransactionsTab({
                         +${fmt(Number(tx.amount))}
                       </span>
                     ) : null}
+                    {!isPayment && (
+                      <button
+                        onClick={() => openBillForCreditTx(tx)}
+                        className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
+                        title="Print receipt"
+                      >
+                        <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                      </button>
+                    )}
                   </div>
                 );
               }
