@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useChain } from "@/lib/ChainContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -619,6 +620,7 @@ function DashboardTab({
 }) {
   const sb = supabase as any;
   const tag = `[Manager: ${managerName}]`;
+  const nav = useNavigate();
 
   // -- Manager wallet balance ---------------------------------------------------
   const [managerWallet, setManagerWallet] = useState<number>(0);
@@ -1176,11 +1178,6 @@ function DashboardTab({
       window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
     } catch { toast.error("Failed to generate PDF"); }
   };
-  type EditableItem = { id?: string; name: string; qty: number; price: number };
-  const [editModalOrder, setEditModalOrder] = useState<Order | null>(null);
-  const [editModalItems, setEditModalItems] = useState<EditableItem[]>([]);
-  const [editModalSaving, setEditModalSaving] = useState(false);
-
   const startEdit = (e: Expense) => {
     const raw = (e.description ?? "").replace(tag, "").trim();
     const parsed = raw
@@ -1292,34 +1289,10 @@ function DashboardTab({
 
   const sessionTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
-  // Open the edit order modal
+  // Open edit order — navigate to register with the order pre-loaded
   const handleEditOrder = (order: Order) => {
-    setEditModalOrder(order);
-    setEditModalItems(
-      (order.items || []).map((i) => ({ id: (i as any).id, name: i.name, qty: i.qty, price: Number(i.price) }))
-    );
-  };
-
-  // Save the edited order (UPDATE — same record, no new row)
-  const handleSaveEditOrder = async () => {
-    if (!editModalOrder) return;
-    const valid = editModalItems.filter((i) => i.name.trim() && i.qty > 0 && i.price >= 0);
-    if (!valid.length) { toast.error("At least one item is required"); return; }
-    setEditModalSaving(true);
-    try {
-      const newTotal = valid.reduce((s, i) => s + i.qty * i.price, 0);
-      const { error } = await sb
-        .from("orders")
-        .update({ items: valid, total: newTotal })
-        .eq("id", editModalOrder.id);
-      if (error) { toast.error(error.message); return; }
-      toast.success("Order updated");
-      setEditModalOrder(null);
-      loadOrders();
-      loadDashboard();
-    } finally {
-      setEditModalSaving(false);
-    }
+    sessionStorage.setItem("edit_order", JSON.stringify(order));
+    nav("/register");
   };
 
   const handleDeleteOrder = async (order: Order) => {
@@ -1709,93 +1682,6 @@ function DashboardTab({
                 className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
               >
                 PDF / WhatsApp
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit order modal ────────────────────────────────────────────── */}
-      {editModalOrder && (
-        <div
-          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => { setEditModalOrder(null); setEditModalItems([]); }}
-        >
-          <div
-            className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl overflow-hidden"
-            style={{ background: "var(--gradient-card)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <span className="text-base font-black">Edit Order</span>
-              <button
-                onClick={() => { setEditModalOrder(null); setEditModalItems([]); }}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="px-5 pb-2 text-xs text-muted-foreground">
-              {new Date(editModalOrder.created_at).toLocaleString("en-GB", {
-                hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short",
-              })} · ORDER #{(editModalOrder as any).order_number ?? editModalOrder.id.slice(0, 8)}
-            </p>
-            <div className="px-5 pb-2 max-h-60 overflow-y-auto space-y-2">
-              {editModalItems.map((item, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={item.name}
-                    onChange={(e) => setEditModalItems((ls) => ls.map((l, idx) => idx === i ? { ...l, name: e.target.value } : l))}
-                    className="flex-1 h-9 rounded-xl border border-border bg-muted px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Item name"
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.qty}
-                    onChange={(e) => setEditModalItems((ls) => ls.map((l, idx) => idx === i ? { ...l, qty: Math.max(1, parseInt(e.target.value) || 1) } : l))}
-                    className="w-14 h-9 rounded-xl border border-border bg-muted px-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-center"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.price}
-                    onChange={(e) => setEditModalItems((ls) => ls.map((l, idx) => idx === i ? { ...l, price: parseFloat(e.target.value) || 0 } : l))}
-                    className="w-20 h-9 rounded-xl border border-border bg-muted px-2 text-sm font-bold outline-none focus:ring-1 focus:ring-primary text-right"
-                    placeholder="0.00"
-                  />
-                  {editModalItems.length > 1 && (
-                    <button
-                      onClick={() => setEditModalItems((ls) => ls.filter((_, idx) => idx !== i))}
-                      className="h-9 w-9 rounded-xl flex items-center justify-center bg-destructive/15 text-destructive active:scale-90 transition"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="px-5 pb-2">
-              <p className="text-xs font-black text-right">
-                New Total: <span className="text-green-400">${fmt(editModalItems.reduce((s, i) => s + i.qty * i.price, 0))}</span>
-              </p>
-            </div>
-            <div className="px-5 pb-6 grid grid-cols-2 gap-3">
-              <button
-                onClick={() => { setEditModalOrder(null); setEditModalItems([]); }}
-                className="h-11 rounded-2xl font-black text-sm border border-border transition active:scale-95"
-                style={{ background: "var(--gradient-card)" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEditOrder}
-                disabled={editModalSaving}
-                className="h-11 rounded-2xl font-black text-sm text-primary-foreground flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
-                style={{ background: "var(--gradient-hero)" }}
-              >
-                {editModalSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Pencil className="h-4 w-4" /> Save</>}
               </button>
             </div>
           </div>
