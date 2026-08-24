@@ -501,13 +501,13 @@ export default function RegisterPage() {
       return;
     }
 
-    // Clear all cashier wallet records for new bar session
+    // Clear all cashier AND manager wallet records for new bar session
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: cashiers } = await (supabase as any)
       .from("profiles")
       .select("id")
       .eq("parent_id", ownerId)
-      .eq("role", "cashier");
+      .in("role", ["cashier", "manager"]);
     if (cashiers?.length) {
       const ids = cashiers.map((c: { id: string }) => c.id);
       await (supabase as any).from("profiles").update({ wallet_balance: 0 }).in("id", ids);
