@@ -284,7 +284,17 @@ function CashierWallet({
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [billData, setBillData] = useState<BillData | null>(null);
   const [printingBill, setPrintingBill] = useState(false);
+  const [ownerName, setOwnerName] = useState<string>("");
   const nav = useNavigate();
+
+  const ownerId = profile.parent_id ?? profile.id;
+
+  // Load owner's username once as the store name for receipts
+  useEffect(() => {
+    if (!ownerId || ownerId === profile.id) return;
+    sb.from("profiles").select("username").eq("id", ownerId).single()
+      .then(({ data }: any) => { if (data?.username) setOwnerName(data.username); });
+  }, [ownerId]);
 
   const handleConfirmEdit = (order: Order) => {
     sessionStorage.setItem("edit_order", JSON.stringify(order));
@@ -350,7 +360,7 @@ function CashierWallet({
     const parts = (order as any).note_parts ?? [];
     const customerName = parts.find((p: string) => p.startsWith("Customer:"))?.replace("Customer: ", "");
     const bill: BillData = {
-      storeName: profile.username || "Bar",
+      storeName: ownerName || profile.username || "Bar",
       orderNumber: String((order as any).order_number ?? order.id.slice(0, 8)),
       date: new Date(order.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
@@ -390,7 +400,7 @@ function CashierWallet({
       .maybeSingle();
     const items = (ct.items ?? []) as { name: string; qty: number; price: number }[];
     const bill: BillData = {
-      storeName: profile.username || "Bar",
+      storeName: ownerName || profile.username || "Bar",
       orderNumber: ct.id.slice(0, 8),
       date: new Date(ct.created_at).toLocaleString("en-US", {
         month: "numeric", day: "numeric", year: "numeric",
@@ -412,8 +422,6 @@ function CashierWallet({
   const [floatRemaining, setFloatRemaining] = useState<number | null>(null);
   const [floatSet, setFloatSet] = useState<number | null>(null);
   const [floatSetAt, setFloatSetAt] = useState<string | null>(null);
-
-  const ownerId = profile.parent_id ?? profile.id;
 
   // Load original float (from latest sub-session) + live remaining (cashier_float)
   const loadFloat = useCallback(async () => {
@@ -1628,7 +1636,8 @@ function CashierWallet({
                       </button>
                       {(profile.role === "owner" ||
                         profile.role === "manager" ||
-                        (profile as any).job_title === "manager") && (
+                        (profile as any).job_title === "manager" ||
+                        profile.role === "cashier") && (
                         <button
                           onClick={() => setEditingOrder(o)}
                           className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
@@ -5023,11 +5032,20 @@ function TransactionsTab({
             // Show owner-as-cashier sales and manager/cashier sales on owner's bar
             if ((o as any).cashier_id !== profile.id && (o as any).owner_id !== profile.id) return null;
             const isNewest = o.id === newestOrderId;
+            // Is this the owner's own direct sale, or a staff/manager sale (read-only)?
+            const isOwnerSale = (o as any).cashier_id === profile.id;
             return (
               <div
                 key={o.id}
-                className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
-                style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
+                className="rounded-xl p-4 border flex items-start gap-3"
+                style={{
+                  background: isOwnerSale
+                    ? "oklch(0.20 0.05 145 / 0.20)"
+                    : "oklch(0.20 0.04 240 / 0.20)",
+                  borderColor: isOwnerSale
+                    ? "rgba(34,197,94,0.2)"
+                    : "rgba(99,102,241,0.2)",
+                }}
               >
                 <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
                   💵
@@ -5105,10 +5123,65 @@ function TransactionsTab({
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
-                  <span className="font-black text-lg text-green-400">
-                    +${fmt(Number(o.total))}
-                  </span>
-                  <div className="flex flex-row gap-2">
+                  {isOwnerSale ? (
+                    <>
+                      <span className="font-black text-lg text-green-400">
+                        +${fmt(Number(o.total))}
+                      </span>
+                      <div className="flex flex-row gap-2">
+                        <button
+                          onClick={() => onPrintBill?.(o)}
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                          title="Print bill"
+                        >
+                          <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => setEditingOrder(o)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                            title="Edit this sale"
+                          >
+                            <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
+                        {isNewest && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => setDeleteConfirmId(o.id)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                title="Delete this sale"
+                              >
+                                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the order and restore stock. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
+                                    setDeleteConfirmId(null);
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    // Staff / manager sale — read-only, just the print button
                     <button
                       onClick={() => onPrintBill?.(o)}
                       className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
@@ -5116,49 +5189,7 @@ function TransactionsTab({
                     >
                       <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                     </button>
-                    {canEdit && (
-                      <button
-                        onClick={() => setEditingOrder(o)}
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                        title="Edit this sale"
-                      >
-                        <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                      </button>
-                    )}
-                    {isNewest && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button
-                            onClick={() => setDeleteConfirmId(o.id)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
-                            title="Delete this sale"
-                          >
-                            <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove the order and restore stock. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => {
-                                if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
-                                setDeleteConfirmId(null);
-                              }}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             );

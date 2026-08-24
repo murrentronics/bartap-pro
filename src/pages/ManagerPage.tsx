@@ -700,21 +700,34 @@ function DashboardTab({
 
   const loadOrders = useCallback(async () => {
     setOrdersLoading(true);
-    const { data } = await sb
+    const isOwner = profile.role === "owner";
+    let query = sb
       .from("orders")
       .select("id, total, paid, change_given, items, created_at, payment_method, cashier_id, order_number")
       .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(100);
+    // Managers only see their own orders — owners see all
+    if (!isOwner) {
+      query = query.eq("cashier_id", profile.id);
+    }
+    const { data } = await query;
     console.log(`[ManagerPage] loadOrders: ownerId=${ownerId}, count=${(data ?? []).length}`);
     setOrders((data ?? []) as Order[]);
     setOrdersLoading(false);
-  }, [ownerId]);
+  }, [ownerId, profile.id, profile.role]);
 
   const loadWalletSales = useCallback(async () => {
     setWalletSalesLoading(true);
     try {
-      // Step 1: fetch wallet_transactions of type 'cashier_sale' for this manager
+      // Step 1: only fetch wallet sales for owners (cashier_sale type)
+      // Managers see their orders directly from loadOrders filtered by cashier_id
+      const isOwner = profile.role === "owner";
+      if (!isOwner) {
+        setWalletSales([]);
+        setWalletSalesLoading(false);
+        return;
+      }
       const { data: txData, error: txErr } = await sb
         .from("wallet_transactions")
         .select("id, amount, type, note, order_id, created_at")
