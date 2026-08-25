@@ -5081,164 +5081,136 @@ function TransactionsTab({
                 </div>
               );
             }
-            const o = rec.data as Order;
-            // Show owner-as-cashier sales and manager/cashier sales on owner's bar
-            if ((o as any).cashier_id !== profile.id && (o as any).owner_id !== profile.id) return null;
-            const isNewest = o.id === newestOrderId;
-            // Is this the owner's own direct sale, or a staff/manager sale (read-only)?
-            const isOwnerSale = (o as any).cashier_id === profile.id;
-            return (
-              <div
-                key={o.id}
-                className="rounded-xl p-4 border flex items-start gap-3"
-                style={{
-                  background: isOwnerSale
-                    ? "oklch(0.20 0.05 145 / 0.20)"
-                    : "oklch(0.20 0.04 240 / 0.20)",
-                  borderColor: isOwnerSale
-                    ? "rgba(34,197,94,0.2)"
-                    : "rgba(99,102,241,0.2)",
-                }}
-              >
-                <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
-                  💵
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(o.created_at).toLocaleString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                  <div className="text-xs font-black text-primary mt-0.5">
-                    ORDER #{(o as any).order_number ?? o.id.slice(0, 8)}
-                  </div>
-                  <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                    {(o as any).cashier_id === (o as any).owner_id
-                      ? "Cash: Sale"
-                      : cashierRoles[(o as any).cashier_id] === "manager"
-                        ? `Manager: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`
-                        : `Cashier: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {(o.items || []).map((i, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
-                        <span>
-                          {i.qty}× {i.name}
-                        </span>
-                        {i.discount && Number(i.discount) > 0 ? (
-                          <>
-                            {i.original_price != null && (
-                              <span className="text-[9px] text-muted-foreground line-through">
-                                ${fmt(Number(i.original_price))}
-                              </span>
-                            )}
-                            <span
-                              className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
-                              style={{
-                                background: "rgba(251,191,36,0.2)",
-                                color: "#fbbf24",
-                                border: "1px solid rgba(251,191,36,0.4)",
-                              }}
-                            >
-                              -{fmt(Number(i.discount))} off
-                            </span>
-                          </>
-                        ) : null}
-                      </span>
-                    ))}
-                  </div>
-                  {o.discount_amount != null && Number(o.discount_amount) > 0 && (
-                    <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                      {o.original_total != null && (
-                        <span className="text-[9px] text-muted-foreground line-through">
-                          ${fmt(Number(o.original_total))}
-                        </span>
-                      )}
-                      <span
-                        className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black leading-tight"
-                        style={{
-                          background: "rgba(251,191,36,0.2)",
-                          color: "#fbbf24",
-                          border: "1px solid rgba(251,191,36,0.4)",
-                        }}
-                      >
-                        -{fmt(Number(o.discount_amount))} off
-                      </span>
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  {isOwnerSale ? (
-                    <>
-                      <span className="font-black text-lg text-green-400">
-                        +${fmt(Number(o.total))}
-                      </span>
-                      <div className="flex flex-row gap-2">
-                        <button
-                          onClick={() => onPrintBill?.(o)}
-                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
-                          title="Print bill"
-                        >
-                          <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                        </button>
-                        <button
-                          onClick={() => setEditingOrder(o)}
-                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                          title="Edit this sale"
-                        >
-                          <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                        </button>
-                        {isNewest && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button
-                                onClick={() => setDeleteConfirmId(o.id)}
-                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
-                                title="Delete this sale"
-                              >
-                                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will remove the order and restore stock. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => {
-                                    if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
-                                    setDeleteConfirmId(null);
-                                  }}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <StaffBadge
-                      label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
-                    />
-                  )}
-                </div>
-              </div>
-            );
+             const o = rec.data as Order;
+             // Show owner-as-cashier sales and manager/cashier sales on owner's bar
+             if ((o as any).cashier_id !== profile.id && (o as any).owner_id !== profile.id) return null;
+             const isNewest = o.id === newestOrderId;
+             return (
+               <div
+                 key={o.id}
+                 className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                 style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
+               >
+                 <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
+                   💵
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <div className="text-xs text-muted-foreground">
+                     {new Date(o.created_at).toLocaleString("en-GB", {
+                       hour: "2-digit",
+                       minute: "2-digit",
+                       hour12: true,
+                       day: "numeric",
+                       month: "short",
+                       year: "numeric",
+                     })}
+                   </div>
+                   <div className="text-xs font-black text-primary mt-0.5">
+                     ORDER #{(o as any).order_number ?? o.id.slice(0, 8)}
+                   </div>
+                   <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
+                     {(o as any).cashier_id === (o as any).owner_id
+                       ? "Cash: Sale"
+                       : cashierRoles[(o as any).cashier_id] === "manager"
+                         ? `Manager: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`
+                         : `Cashier: ${cashierNames[(o as any).cashier_id] ?? "Sale"}`}
+                   </div>
+                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                     {(o.items || []).map((i, idx) => (
+                       <span key={idx} className="inline-flex items-center gap-1 mr-1.5 flex-wrap">
+                         <span>
+                           {i.qty}× {i.name}
+                         </span>
+                         {i.discount && Number(i.discount) > 0 ? (
+                           <>
+                             {i.original_price != null && (
+                               <span className="text-[9px] text-muted-foreground line-through">
+                                 ${fmt(Number(i.original_price))}
+                               </span>
+                             )}
+                             <span
+                               className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-black leading-tight"
+                               style={{
+                                 background: "rgba(251,191,36,0.2)",
+                                 color: "#fbbf24",
+                                 border: "1px solid rgba(251,191,36,0.4)",
+                               }}
+                             >
+                               -{fmt(Number(i.discount))} off
+                             </span>
+                           </>
+                         ) : null}
+                       </span>
+                     ))}
+                   </div>
+                   <div className="text-xs text-muted-foreground mt-0.5">
+                     Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))} · Total ${fmt(Number(o.total))}
+                   </div>
+                 </div>
+                 <div className="flex flex-col items-end gap-2 shrink-0">
+                   {isOwnerSale ? (
+                     <>
+                       <span className="font-black text-lg text-green-400">
+                         +${fmt(Number(o.total))}
+                       </span>
+                       <div className="flex flex-row gap-2">
+                         <button
+                           onClick={() => onPrintBill?.(o)}
+                           className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                           title="Print bill"
+                         >
+                           <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                         </button>
+                         <button
+                           onClick={() => setEditingOrder(o)}
+                           className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                           title="Edit this sale"
+                         >
+                           <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                         </button>
+                         {isNewest && (
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <button
+                                 onClick={() => setDeleteConfirmId(o.id)}
+                                 className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                 title="Delete this sale"
+                               >
+                                 <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                               </button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                   This will remove the order and restore stock. This action cannot be undone.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                 <AlertDialogAction
+                                   onClick={() => {
+                                     if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
+                                     setDeleteConfirmId(null);
+                                   }}
+                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                 >
+                                   Delete
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                         )}
+                       </div>
+                     </>
+                   ) : (
+                     <StaffBadge
+                       label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                     />
+                   )}
+                 </div>
+               </div>
+             );
           })}
         </div>
       )}
