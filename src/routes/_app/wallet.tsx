@@ -5147,8 +5147,8 @@ function TransactionsTab({
                      Paid ${fmt(Number(o.paid))} · Change ${fmt(Number(o.change_given))} · Total ${fmt(Number(o.total))}
                    </div>
                  </div>
-                 <div className="flex flex-col items-end gap-2 shrink-0">
-                   {isOwnerSale ? (
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    {(o as any).cashier_id === profile.id ? (
                      <>
                        <span className="font-black text-lg text-green-400">
                          +${fmt(Number(o.total))}
