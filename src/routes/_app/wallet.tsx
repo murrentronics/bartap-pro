@@ -373,7 +373,7 @@ function CashierWallet({
       change: Number(order.change_given),
       payMode: order.payment_method === "credit" ? "credit" : "cash",
       customerName: customerName || undefined,
-      serverName: profile.username || "Staff",
+      serverName: profile.username || "Cashier",
     };
     setBillData(bill);
   };
@@ -413,7 +413,7 @@ function CashierWallet({
       change: 0,
       payMode: "credit",
       customerName: acct?.full_name || undefined,
-      serverName: profile.username || "Staff",
+      serverName: profile.username || "Cashier",
     };
     setBillData(bill);
   };
@@ -4673,7 +4673,7 @@ function TransactionsTab({
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           {cashierPart ? (
                             <StaffBadge
-                              label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
+                              label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Cashier"}
                             />
                           ) : canEdit ? (
                             <button
@@ -4724,7 +4724,7 @@ function TransactionsTab({
                         </div>
                       ) : isReadOnly && cashierPart ? (
                         <StaffBadge
-                          label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
+                          label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Cashier"}
                         />
                       ) : !isReadOnly ? (
                         <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
@@ -5204,8 +5204,8 @@ function TransactionsTab({
                        </div>
                      </>
                    ) : (
-                     <StaffBadge
-                       label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                    <StaffBadge
+                      label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Cashier"}
                      />
                    )}
                  </div>
@@ -5326,7 +5326,7 @@ function OwnerWallet({
       ? (profile.username || "Staff")
       : ((await (async () => {
           const { data } = await sb.from("profiles").select("username").eq("id", cashierId).maybeSingle();
-          return data?.username ?? "Staff";
+          return data?.username ?? "Cashier";
         })()));
     const bill: BillData = {
       storeName: activeBar?.bar_name || profile.username || "Bar",
@@ -5382,7 +5382,7 @@ function OwnerWallet({
       change: 0,
       payMode: "credit",
       customerName: acct?.full_name || undefined,
-      serverName: profile.username || "Staff",
+      serverName: profile.username || "Cashier",
     };
     setBillData(bill);
   }

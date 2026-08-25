@@ -3125,7 +3125,7 @@ export function TimeCardsTab({
             >
               <Users className="h-3.5 w-3.5" />
               <span className="max-w-[72px] truncate">
-                {tsStaffEmp ? tsStaffEmp.username : "Staff"}
+                {tsStaffEmp ? tsStaffEmp.username : "Cashier"}
               </span>
             </button>
             <button
