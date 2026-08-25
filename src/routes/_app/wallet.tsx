@@ -1401,43 +1401,10 @@ function CashierWallet({
                           )}
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          {Number(tx.amount) > 0 && (
+                          {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
                             <div className="font-black text-lg shrink-0 text-green-400 mt-1">
                               +${fmt(Number(tx.amount))}
                             </div>
-                          )}
-                          {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <button
-                                  onClick={() => setDeleteConfirmId(tx.id)}
-                                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0"
-                                  title="Delete payment"
-                                >
-                                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                                </button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will remove the payment and restore ${fmt(Number(tx.amount))} to the customer's balance. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => {
-                                      if (deleteConfirmId) deletePayment(tx);
-                                      setDeleteConfirmId(null);
-                                    }}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
                           )}
                         </div>
                       </div>
@@ -4447,30 +4414,30 @@ function TransactionsTab({
 
   const deletePayment = async (tx: WalletTx) => {
     setDeletingOrderId(tx.id);
-    const ownerId = profile.id;
-
-    const { error } = await supabase
+    const t = new Date(tx.created_at);
+    const { data: ct, error: ctErr } = await supabase
       .from("credit_transactions")
-      .delete()
-      .eq("id", tx.id);
-    if (error) { toast.error(error.message); setDeletingOrderId(null); return; }
-
-    if (ownerId) {
-      const t = new Date(tx.created_at);
-      await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
-        p_owner_id:   ownerId,
-        p_cashier_id: profile.id,
-        p_from_time:  new Date(t.getTime() - 5000).toISOString(),
-        p_to_time:    new Date(t.getTime() + 5000).toISOString(),
-      });
+      .select("id, cashier_id")
+      .eq("type", "payment")
+      .eq("amount", tx.amount)
+      .or(`owner_id.eq.${profile.id},cashier_id.eq.${profile.id}`)
+      .gte("created_at", new Date(t.getTime() - 60000).toISOString())
+      .lte("created_at", new Date(t.getTime() + 60000).toISOString())
+      .maybeSingle();
+    if (ctErr || !ct) {
+      toast.error("Could not locate credit payment to delete");
+      setDeletingOrderId(null);
+      return;
     }
-
-    const { error: balErr } = await supabase.rpc("reduce_credit_balance", {
-      p_credit_account_id: (tx as any).credit_account_id,
-      p_amount: -tx.amount,
+    const { error } = await supabase.rpc("delete_credit_payment", {
+      p_credit_tx_id: ct.id,
+      p_cashier_id: ct.cashier_id,
     });
-    if (balErr) { toast.error("Transaction deleted but balance update failed"); setDeletingOrderId(null); return; }
-
+    if (error) {
+      toast.error(error.message);
+      setDeletingOrderId(null);
+      return;
+    }
     setDeletingOrderId(null);
     toast.success("Payment removed — balance restored");
     fetchData();
@@ -5347,9 +5314,14 @@ function TransactionsTab({
                       </div>
                     </>
                   ) : (
-                    <span className="font-black text-lg" style={{ color: "#86efac" }}>
-                      +${fmt(Number(o.total))}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <StaffBadge
+                        label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                      />
+                      <span className="font-black text-lg" style={{ color: "#86efac" }}>
+                        +${fmt(Number(o.total))}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

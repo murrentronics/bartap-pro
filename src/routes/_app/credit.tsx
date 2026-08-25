@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   UserPlus, X, ChevronRight, Camera, CheckCircle2,
-  DollarSign, ClipboardList, FileDown, Loader2, Trash2, Pencil, Share2,
+  DollarSign, ClipboardList, FileDown, Loader2, Trash2, Pencil, Share2, Undo2,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -470,10 +470,7 @@ function CreditPage() {
         />
       )}
       {tab === "cleared" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={setBillAccount} />
-      )}
-      {tab === "cleared" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} />
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={setBillAccount} onReopen={(a) => { fetchAccounts(); setTab("credit"); }} cashierId={profile.id} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -589,11 +586,12 @@ function OpenedTab({
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string; onOpenBill?: (a: CreditAccount) => void }) {
+function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill, onReopen, cashierId }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string; onOpenBill?: (a: CreditAccount) => void; onReopen?: (a: CreditAccount) => void; cashierId?: string }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
-  // Track which accounts have cash purchase records (charge txs with "[CASH]" note)
   const [cashAccounts, setCashAccounts] = useState<Set<string>>(new Set());
+  const [lastPayments, setLastPayments] = useState<Record<string, { id: string; amount: number }>>({});
+  const [reopenLoading, setReopenLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ownerId || accounts.length === 0) return;
@@ -611,6 +609,45 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill }
         setCashAccounts(ids);
       });
   }, [ownerId, accounts]);
+
+  useEffect(() => {
+    if (!ownerId || accounts.length === 0) return;
+    const accountIds = accounts.map((a) => a.id);
+    supabase
+      .from("credit_transactions")
+      .select("id, credit_account_id, amount, created_at")
+      .eq("owner_id", ownerId)
+      .eq("type", "payment")
+      .in("credit_account_id", accountIds)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const map: Record<string, { id: string; amount: number }> = {};
+        for (const tx of data ?? []) {
+          if (!map[tx.credit_account_id]) {
+            map[tx.credit_account_id] = { id: tx.id, amount: Number(tx.amount) };
+          }
+        }
+        setLastPayments(map);
+      });
+  }, [ownerId, accounts]);
+
+  const handleReopen = async (a: CreditAccount) => {
+    const payment = lastPayments[a.id];
+    if (!payment) return;
+    setReopenLoading(a.id);
+    const { error } = await supabase.rpc("delete_credit_payment", {
+      p_credit_tx_id: payment.id,
+      p_cashier_id: cashierId,
+    });
+    if (error) {
+      toast.error(error.message);
+      setReopenLoading(null);
+      return;
+    }
+    toast.success("Payment removed — account reopened");
+    setReopenLoading(null);
+    onReopen?.(a);
+  };
 
   if (loading) return <Spinner />;
   if (accounts.length === 0)
@@ -666,6 +703,19 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill }
                     : printed === a.id
                     ? <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     : <FileDown className="h-4 w-4" style={{ color: "var(--primary)" }} />}
+                </button>
+              )}
+              {lastPayments[a.id] && (
+                <button
+                  onClick={() => handleReopen(a)}
+                  disabled={reopenLoading === a.id}
+                  className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
+                  style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)" }}
+                  title="Undo last payment — reopen account"
+                >
+                  {reopenLoading === a.id
+                    ? <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    : <Undo2 className="h-4 w-4 text-red-400" />}
                 </button>
               )}
               <button
