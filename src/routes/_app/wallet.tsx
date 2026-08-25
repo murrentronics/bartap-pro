@@ -2231,6 +2231,16 @@ function OwnerStatement({
     ]).finally(() => setLoading(false));
   }, [profile.id, chainBarIds?.join(",")]);
 
+  // Build a map of order_id → cashier label from cashier_sale wallet txs
+  // (those txs are deduped out of allRecords but still carry the cashier name in their note)
+  const cashierSaleMap = new Map<string, string>();
+  txs.forEach((tx) => {
+    if (tx.type === "cashier_sale" && tx.order_id) {
+      const label = (tx.note ?? "").split(" | ")[0] ?? "";
+      if (label) cashierSaleMap.set(tx.order_id, label);
+    }
+  });
+
   const orderIds = new Set(orders.map((o) => o.id));
 
   const allRecords: OwnerFlatRecord[] = [
@@ -2665,21 +2675,7 @@ function OwnerStatement({
                                       })}
                                     </div>
                                   </div>
-                                  {tx.order_id && (
-                                    <button
-                                      onClick={async () => {
-                                        const { data: ord } = await sb.from("orders")
-                                          .select("id, items, total, paid, change_given, payment_method, order_number, created_at")
-                                          .eq("id", tx.order_id)
-                                          .maybeSingle();
-                                        if (ord) openBillForOrder(ord as any);
-                                      }}
-                                      className="h-7 w-7 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
-                                      title="Print bill"
-                                    >
-                                      <Receipt className="h-3.5 w-3.5 text-blue-300" />
-                                    </button>
-                                  )}
+
                                 </div>
                               );
                             }
@@ -2842,25 +2838,19 @@ function OwnerStatement({
                                         with cashier
                                       </span>
                                     ) : null)}
-                                  {!isPayment && (
-                                    <button
-                                      onClick={() => openBillForCreditTx(tx)}
-                                      className="h-7 w-7 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
-                                      title="Print receipt"
-                                    >
-                                      <Receipt className="h-3.5 w-3.5 text-blue-300" />
-                                    </button>
-                                  )}
+                                  {!isPayment && null}
                                 </div>
                               );
                             }
                             return null;
                           }
                           const o = rec.data as Order;
+                          const cashierLabel = cashierSaleMap.get(o.id) ?? null;
+                          const orderNum = (o as any).order_number ?? null;
                           return (
                             <div key={o.id} className="px-4 py-3 md:px-6 md:py-4">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                   <Receipt className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary shrink-0" />
                                   <span className="text-xs md:text-sm text-muted-foreground">
                                     {new Date(o.created_at).toLocaleString("en-GB", {
@@ -2872,11 +2862,32 @@ function OwnerStatement({
                                       year: "numeric",
                                     })}
                                   </span>
+                                  {orderNum != null && (
+                                    <span
+                                      className="text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0"
+                                      style={{ background: "rgba(var(--primary-rgb,234,88,12),0.15)", color: "var(--primary)" }}
+                                    >
+                                      #{orderNum}
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="font-black text-primary text-sm md:text-base ml-2">
+                                <span className="font-black text-primary text-sm md:text-base ml-2 shrink-0">
                                   ${fmt(Number(o.total))}
                                 </span>
                               </div>
+                              {cashierLabel && (
+                                <div className="mt-0.5 flex items-center gap-1">
+                                  <span
+                                    className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+                                    style={{ background: "rgba(59,130,246,0.15)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.3)" }}
+                                  >
+                                    {cashierLabel.toLowerCase().startsWith("manager") ? "👔 Manager" : "🧾 Cashier"}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {cashierLabel.replace(/^(cashier sale by|cashier:|manager sale by|manager:)\s*/i, "")}
+                                  </span>
+                                </div>
+                              )}
                               <div className="mt-1 text-xs md:text-sm text-muted-foreground break-words whitespace-normal">
                                 {(o.items || [])
                                   .slice()
