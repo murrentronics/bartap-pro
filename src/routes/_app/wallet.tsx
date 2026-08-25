@@ -4438,6 +4438,13 @@ function TransactionsTab({
       setDeletingOrderId(null);
       return;
     }
+    await (supabase as any)
+      .from("wallet_transactions")
+      .delete()
+      .eq("profile_id", profile.id)
+      .eq("type", "credit_payment")
+      .gte("created_at", new Date(t.getTime() - 300000).toISOString())
+      .lte("created_at", new Date(t.getTime() + 300000).toISOString());
     setDeletingOrderId(null);
     toast.success("Payment removed — balance restored");
     fetchData();
@@ -4653,22 +4660,13 @@ function TransactionsTab({
                     </div>
                     {/* Credit payment: +$X if owner collected, Staff/Manager badge if staff collected */}
                     {/* Credit charge: print + edit inline, Staff badge top-right */}
-                    {!isPayment ? (
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {cashierPart && (
-                          <StaffBadge
-                            label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
-                          />
-                        )}
-                        <div className="flex flex-row gap-2">
-                          <button
-                            onClick={() => onPrintBillCredit?.(tx)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
-                            title="Print receipt"
-                          >
-                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                          </button>
-                          {canEdit && (
+                      {!isPayment ? (
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {cashierPart ? (
+                            <StaffBadge
+                              label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
+                            />
+                          ) : canEdit ? (
                             <button
                               onClick={async () => {
                                 const ctid = tx.credit_tx_id;
@@ -4713,106 +4711,17 @@ function TransactionsTab({
                             >
                               <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
-                          )}
+                          ) : null}
                         </div>
-                      </div>
-                    ) : isReadOnly && cashierPart ? (
-                      <StaffBadge
-                        label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
-                      />
-                    ) : !isReadOnly ? (
-                      <div className="flex flex-col items-end gap-1 shrink-0">
+                      ) : isReadOnly && cashierPart ? (
+                        <StaffBadge
+                          label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
+                        />
+                      ) : !isReadOnly ? (
                         <span className="font-black text-lg shrink-0" style={{ color: "#86efac" }}>
                           +${fmt(Number(tx.amount))}
                         </span>
-                        {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
-                          <div className="flex flex-row gap-2">
-                            <button
-                              onClick={() => onPrintBillCredit?.(tx)}
-                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
-                              title="Print receipt"
-                            >
-                              <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                const ctid = tx.credit_tx_id;
-                                if (!ctid) {
-                                  toast.error("No credit record linked to this payment");
-                                  return;
-                                }
-                                const { data: ct } = await sb
-                                  .from("credit_transactions")
-                                  .select("id, credit_account_id, amount, items, created_at")
-                                  .eq("id", ctid)
-                                  .maybeSingle();
-                                if (!ct) {
-                                  toast.error("Could not load credit payment for editing");
-                                  return;
-                                }
-                                const { data: acct } = await sb
-                                  .from("credit_accounts")
-                                  .select("full_name")
-                                  .eq("id", ct.credit_account_id)
-                                  .maybeSingle();
-                                sessionStorage.setItem(
-                                  "edit_credit_order",
-                                  JSON.stringify({
-                                    credit_tx_id: ct.id,
-                                    credit_account_id: ct.credit_account_id,
-                                    customer_name: acct?.full_name ?? "Customer",
-                                    items: (ct.items ?? []) as {
-                                      id: string;
-                                      name: string;
-                                      qty: number;
-                                      price: number;
-                                    }[],
-                                    amount: ct.amount,
-                                    created_at: ct.created_at,
-                                  }),
-                                );
-                                nav("/register");
-                              }}
-                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition shrink-0"
-                              title="Edit payment"
-                            >
-                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                            </button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <button
-                                  onClick={() => setDeleteConfirmId(tx.id)}
-                                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition shrink-0"
-                                  title="Delete payment"
-                                >
-                                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                                </button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will remove the payment and restore ${fmt(Number(tx.amount))} to the customer's balance. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => {
-                                      if (deleteConfirmId) deletePayment(tx);
-                                      setDeleteConfirmId(null);
-                                    }}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
+                      ) : null}
                   </div>
                 );
               }
@@ -5314,14 +5223,9 @@ function TransactionsTab({
                       </div>
                     </>
                   ) : (
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <StaffBadge
-                        label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
-                      />
-                      <span className="font-black text-lg" style={{ color: "#86efac" }}>
-                        +${fmt(Number(o.total))}
-                      </span>
-                    </div>
+                    <StaffBadge
+                      label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                    />
                   )}
                 </div>
               </div>
