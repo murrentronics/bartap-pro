@@ -239,7 +239,7 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
                       <div key={i} className="px-2 py-2 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
                         <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
                         <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
-                          {s.sign && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                          {s.value !== 0 ? `${s.sign ? (s.value > 0 ? "+" : "-") : ""}$${fmt(Math.abs(s.value))}` : "—"}
                         </p>
                       </div>
                     ))}
@@ -427,8 +427,11 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
   useEffect(() => {
     let cancelled = false;
     setData(d => ({ ...d, loading: true }));
-    const from = `${fromDate}T00:00:00.000Z`;
-    const to   = `${toDate}T23:59:59.999Z`;
+    // Convert local Port of Spain dates to correct UTC boundaries.
+    // TT is UTC-4, so local midnight = 04:00Z, local 23:59:59.999 = next day 03:59:59.999Z
+    const from = `${fromDate}T04:00:00.000Z`;
+    const toNext = new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1);
+    const to = toNext.toISOString();
 
     Promise.all([
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
@@ -504,7 +507,7 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
                   <div key={i} className="px-3 py-2.5 text-center" style={i < arr.length - 1 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}>
                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{s.label}</p>
                     <p className="font-black text-xs" style={{ color: s.value !== 0 ? s.color : "var(--muted-foreground)" }}>
-                      {s.sign && s.value > 0 ? "+" : ""}{s.value !== 0 ? `$${fmt(Math.abs(s.value))}` : "—"}
+                      {s.value !== 0 ? `${s.sign ? (s.value > 0 ? "+" : "-") : ""}$${fmt(Math.abs(s.value))}` : "—"}
                     </p>
                   </div>
                 ))}
@@ -719,8 +722,8 @@ export default function SummaryPage() {
     if (res.length === 0) {
       return [{
         id: `day-${fromDate}`,
-        opened_at: `${fromDate}T00:00:00.000Z`,
-        closed_at: `${toDate}T23:59:59.999Z`,
+        opened_at: `${fromDate}T04:00:00.000Z`,
+        closed_at: new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1).toISOString(),
       }];
     }
     return res;

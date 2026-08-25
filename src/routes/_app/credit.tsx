@@ -299,6 +299,8 @@ function BillActionModal({ account, ownerName, onClose, chargeId, charges: propC
     ? charges.filter((c) => c.id === chargeId)
     : charges;
 
+  const totalOwed = displayCharges.reduce((s, c) => s + c.amount, 0);
+
   const handlePrint = async () => {
     setBusy("print");
     try {
@@ -562,7 +564,7 @@ function CreditPage() {
         />
       )}
       {tab === "cleared" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={openBill} onReopen={(a) => { fetchAccounts(); setTab("credit"); }} cashierId={profile.id} />
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={openBill} onReopen={(a) => { fetchAccounts(); setTab("credit"); }} cashierId={profile?.id ?? ""} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -727,7 +729,7 @@ function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill, 
     const payment = lastPayments[a.id];
     if (!payment) return;
     setReopenLoading(a.id);
-    const { error } = await supabase.rpc("delete_credit_payment", {
+    const { error } = await (supabase as any).rpc("delete_credit_payment", {
       p_credit_tx_id: payment.id,
       p_cashier_id: cashierId,
     });

@@ -127,13 +127,21 @@ export default function AppLayout() {
   }, [loc.pathname, yt]);
 
   // Auto-play next history track when current video ends (YT player state 0 = ended)
+  // Also sync ytPaused state: 1 = playing, 2 = paused
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       try {
         const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
         // YouTube IFrame API fires: { event: "infoDelivery", info: { playerState: 0 } }
-        if (data?.event === "infoDelivery" && data?.info?.playerState === 0) {
-          yt.playNextFromHistory();
+        if (data?.event === "infoDelivery" && typeof data?.info?.playerState === "number") {
+          const state = data.info.playerState;
+          if (state === 0) {
+            yt.playNextFromHistory();
+          } else if (state === 1) {
+            yt.setYtPaused(false);
+          } else if (state === 2) {
+            yt.setYtPaused(true);
+          }
         }
       } catch {
         /* ignore non-JSON messages */

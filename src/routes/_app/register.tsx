@@ -269,6 +269,17 @@ const ProductGrid = React.memo(function ProductGrid({
   );
 });
 
+// Shared type — used by RegisterPage state and CashCustomerOverlay props
+type EditOrder = {
+  id: string;
+  order_number?: number;
+  items: { id?: string; name: string; qty: number; price: number }[];
+  total: number;
+  paid: number;
+  change_given: number;
+  created_at: string;
+};
+
 export default function RegisterPage() {
   const { profile, refreshProfile } = useAuth();
   const { effectiveOwnerId, activeBar } = useChain();
@@ -629,15 +640,6 @@ export default function RegisterPage() {
   // ── Edit-order mode ──────────────────────────────────────────────────────
   // Set when the user taps the pencil on a wallet record and confirms the edit.
   // sessionStorage key "edit_order" holds the full Order JSON written by wallet.tsx.
-  type EditOrder = {
-    id: string;
-    order_number?: number;
-    items: { id?: string; name: string; qty: number; price: number }[];
-    total: number;
-    paid: number;
-    change_given: number;
-    created_at: string;
-  };
   const [editOrder, setEditOrder] = useState<EditOrder | null>(() => {
     try {
       const raw = sessionStorage.getItem("edit_order");
@@ -5007,6 +5009,8 @@ function CashCustomerOverlay({
   onClose,
   onSuccess,
   ownerId,
+  editOrder,
+  setEditOrder,
 }: {
   total: number;
   cart: CartItem[];
@@ -5017,6 +5021,8 @@ function CashCustomerOverlay({
   onClose: () => void;
   onSuccess: (paid: number, change: number) => void;
   ownerId: string;
+  editOrder: EditOrder | null;
+  setEditOrder: (v: EditOrder | null) => void;
 }) {
   const { profile } = useAuth();
   const { isOnline } = useNetworkStatus();

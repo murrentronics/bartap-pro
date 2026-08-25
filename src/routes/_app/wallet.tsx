@@ -4438,7 +4438,7 @@ function TransactionsTab({
       setDeletingOrderId(null);
       return;
     }
-    const { error } = await supabase.rpc("delete_credit_payment", {
+    const { error } = await (supabase as any).rpc("delete_credit_payment", {
       p_credit_tx_id: ct.id,
       p_cashier_id: ct.cashier_id,
     });
@@ -4507,24 +4507,25 @@ function TransactionsTab({
                 const parts = (tx.note ?? "").split(" | ");
                 const cashierLabel = parts[0] ?? "Cashier";
                 const totalStr = parts[1] ?? "";
-                // Clean up garbled × characters from old stored records
                 const rawItems = parts.slice(2).join(", ") ?? "";
                 const itemsStr = rawItems.replace(/├ù/g, "x").replace(/\u00d7/g, "x");
-                // Parse paid/change from totalStr e.g. "Total: $X · Paid: $Y · Change: $Z"
-                const paidMatch = totalStr.match(/Paid:\s*\$([\d.]+)/);
+                const paidMatch   = totalStr.match(/Paid:\s*\$([\d.]+)/);
                 const changeMatch = totalStr.match(/Change:\s*\$([\d.]+)/);
-                const totalMatch = totalStr.match(/Total:\s*\$([\d.]+)/);
-                const paidStr = paidMatch ? `Paid $${fmt(parseFloat(paidMatch[1]))}` : "";
+                const totalMatch  = totalStr.match(/Total:\s*\$([\d.]+)/);
+                const paidStr   = paidMatch   ? `Paid $${fmt(parseFloat(paidMatch[1]))}` : "";
                 const changeStr = changeMatch ? `Change $${fmt(parseFloat(changeMatch[1]))}` : "";
-                const saleTotal = totalMatch ? `+$${fmt(parseFloat(totalMatch[1]))}` : "";
+                const totalAmt  = totalMatch  ? fmt(parseFloat(totalMatch[1])) : "";
+                const linkedOrder = tx.order_id ? allOrders.find((o: any) => o.id === tx.order_id) : null;
+                const orderNum = linkedOrder ? (linkedOrder as any).order_number : null;
+                const isManager = cashierLabel.toLowerCase().startsWith("manager");
                 return (
                   <div
                     key={tx.id}
-                    className="rounded-xl p-4 border border-blue-500/20 flex items-start gap-3"
-                    style={{ background: "oklch(0.20 0.04 240 / 0.30)" }}
+                    className="rounded-xl p-4 border border-green-500/20 flex items-start gap-3"
+                    style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
                   >
-                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-blue-500/15 border-blue-500/25 text-base">
-                      🧾
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
+                      💵
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-muted-foreground">
@@ -4537,22 +4538,26 @@ function TransactionsTab({
                           year: "numeric",
                         })}
                       </div>
-                      <div className="text-sm font-black text-blue-300 mt-0.5">{cashierLabel}</div>
-                      {saleTotal && (
-                        <div className="text-sm font-black text-green-400 mt-0.5">{saleTotal}</div>
+                      {orderNum && (
+                        <div className="text-xs font-black text-primary mt-0.5">
+                          ORDER #{orderNum}
+                        </div>
                       )}
+                      <div className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
+                        {cashierLabel}
+                      </div>
                       {itemsStr && (
                         <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                           {itemsStr}
                         </div>
                       )}
-                      {(paidStr || changeStr) && (
+                      {(paidStr || changeStr || totalAmt) && (
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {[paidStr, changeStr].filter(Boolean).join(" · ")}
+                          {[paidStr, changeStr, totalAmt ? `Total $${totalAmt}` : ""].filter(Boolean).join(" · ")}
                         </div>
                       )}
                     </div>
-                    <StaffBadge />
+                    <StaffBadge label={isManager ? "Manager" : "Cashier"} />
                   </div>
                 );
               }
@@ -6177,13 +6182,6 @@ function OwnerWallet({
             >
               <WalletIcon className="h-4 w-4" /> {t("period_session", "Session")}
             </div>
-            <button
-              onClick={() => setShowStatement(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
-              style={{ background: "oklch(0.18 0.02 60)", color: "oklch(0.78 0.17 65)" }}
-            >
-              <FileText className="h-3.5 w-3.5" /> {t("statement", "Statement")}
-            </button>
           </div>
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">
@@ -6436,10 +6434,21 @@ function OwnerWallet({
         <div className="absolute -left-8 -bottom-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
         <div className="relative">
           <div
-            className="flex items-center gap-2 text-sm font-medium mb-3"
-            style={{ color: "rgba(0,0,0,0.75)" }}
+            className="flex items-center justify-between gap-2 mb-3"
           >
-            <WalletIcon className="h-4 w-4" /> {t("period_all_time", "All Time")}
+            <div
+              className="flex items-center gap-2 text-sm font-medium"
+              style={{ color: "rgba(0,0,0,0.75)" }}
+            >
+              <WalletIcon className="h-4 w-4" /> {t("period_all_time", "All Time")}
+            </div>
+            <button
+              onClick={() => setShowStatement(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:scale-95 transition text-xs font-black"
+              style={{ background: "oklch(0.18 0.02 60)", color: "oklch(0.78 0.17 65)" }}
+            >
+              <FileText className="h-3.5 w-3.5" /> {t("statement", "Statement")}
+            </button>
           </div>
           {loadingSummary ? (
             <div className="grid grid-cols-2 gap-2">

@@ -26,7 +26,7 @@ import { useYouTube } from "@/lib/YouTubeContext";
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music2, Youtube, FolderOpen, ListMusic,
-  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo, HelpCircle, Lightbulb, Trash2,
+  Loader2, X, Repeat, Repeat1, Shuffle, Search, ListVideo, HelpCircle, Lightbulb, Trash2, Square,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -469,40 +469,80 @@ export default function MusicPage() {
       {onYouTubeTab ? (
         /* YouTube mini now-playing strip */
         <div
-          className="px-4 py-3 mt-2 cursor-pointer active:opacity-80 transition"
+          className="mt-2"
           style={{
             background: "linear-gradient(180deg, #1a0808 0%, #0d0a0a 100%)",
             borderBottom: "1px solid rgba(239,68,68,0.2)",
           }}
-          onClick={() => yt.nowPlayingTitle && setShowYTFullscreen(true)}
         >
           {yt.nowPlayingTitle ? (
-            <div className="flex items-center gap-3">
-              {/* Animated bars */}
-              <div className="flex items-end gap-px h-6 shrink-0">
-                {[0,1,2,3,4].map(b => (
-                  <div key={b} className="w-1 rounded-full bg-red-400"
-                    style={{
-                      height: "100%",
-                      animation: `musicBar ${0.35+b*0.1}s ease-in-out infinite alternate`,
-                      animationDelay: `${b*0.07}s`,
-                    }} />
-                ))}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
-                <p className="text-red-400/60 text-[10px] mt-0.5">YouTube playing in background</p>
-              </div>
-              {/* Visual cue — not a separate tap target anymore */}
-              <div
-                className="h-8 px-3 rounded-lg text-xs font-bold text-white shrink-0 flex items-center pointer-events-none"
-                style={{ background: "rgba(239,68,68,0.6)" }}
+            <div className="flex items-center gap-0">
+
+              {/* LEFT — Play / Pause button */}
+              <button
+                className="h-full px-4 py-3 flex items-center justify-center shrink-0 active:opacity-60 transition"
+                style={{ background: "rgba(239,68,68,0.15)" }}
+                onClick={() => {
+                  const iframe = document.getElementById("yt-iframe") as HTMLIFrameElement | null;
+                  if (!iframe?.contentWindow) return;
+                  if (yt.ytPaused) {
+                    iframe.contentWindow.postMessage(
+                      JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*"
+                    );
+                    yt.setYtPaused(false);
+                  } else {
+                    iframe.contentWindow.postMessage(
+                      JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*"
+                    );
+                    yt.setYtPaused(true);
+                  }
+                }}
               >
-                ▶ Resume
+                {yt.ytPaused
+                  ? <Play className="h-5 w-5 text-red-400" fill="currentColor" />
+                  : <Pause className="h-5 w-5 text-red-400" fill="currentColor" />
+                }
+              </button>
+
+              {/* MIDDLE — song info tap zone → opens player */}
+              <div
+                className="flex-1 min-w-0 flex items-center gap-3 px-3 py-3 cursor-pointer active:opacity-80 transition"
+                onClick={() => setShowYTFullscreen(true)}
+              >
+                {/* Animated bars */}
+                <div className="flex items-end gap-px h-6 shrink-0">
+                  {[0,1,2,3,4].map(b => (
+                    <div key={b} className="w-1 rounded-full bg-red-400"
+                      style={{
+                        height: "100%",
+                        animation: yt.ytPaused
+                          ? "none"
+                          : `musicBar ${0.35+b*0.1}s ease-in-out infinite alternate`,
+                        animationDelay: `${b*0.07}s`,
+                        opacity: yt.ytPaused ? 0.3 : 1,
+                      }} />
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
+                  <p className="text-red-400/60 text-[10px] mt-0.5">
+                    {yt.ytPaused ? "Paused — tap to open player" : "YouTube playing in background"}
+                  </p>
+                </div>
               </div>
+
+              {/* RIGHT — Stop / clear button */}
+              <button
+                className="h-full px-4 py-3 flex items-center justify-center shrink-0 active:opacity-60 transition"
+                style={{ background: "rgba(239,68,68,0.15)" }}
+                onClick={() => yt.setVideoId(null)}
+              >
+                <Square className="h-4 w-4 text-red-400" fill="currentColor" />
+              </button>
+
             </div>
           ) : (
-            <div className="flex items-center justify-center py-2 gap-2 text-white/30">
+            <div className="flex items-center justify-center py-3 gap-2 text-white/30">
               <Youtube className="h-4 w-4" />
               <span className="text-xs">No video playing</span>
             </div>

@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Loader2, X, Check, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useTranslation } from "@/lib/i18n";
+import { Capacitor } from "@capacitor/core";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Product = { id: string; name: string; price: number; image_url: string | null; category?: string };
@@ -164,6 +165,19 @@ function SpecialForm({
     setter(current === "0" ? k : current + k);
   };
 
+  // Desktop keyboard support for the inline numpad
+  useEffect(() => {
+    if (!activeNumpad) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") { e.preventDefault(); handleNumpad(activeNumpad, e.key); }
+      else if (e.key === ".") { e.preventDefault(); handleNumpad(activeNumpad, "."); }
+      else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); handleNumpad(activeNumpad, "⌫"); }
+      else if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); setActiveNumpad(null); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeNumpad, reqQty, price]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleDay = (d: number) =>
     setRunDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
 
@@ -231,11 +245,13 @@ function SpecialForm({
                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("how_many_items", "How Many Items")}</label>
                  <input
                    type="text"
-                   inputMode="numeric"
+                   inputMode={Capacitor.isNativePlatform() ? "none" : "numeric"}
+                   readOnly={Capacitor.isNativePlatform()}
                    pattern="[0-9]*"
                    value={reqQty}
                    onChange={(e) => setReqQty(e.target.value.replace(/[^0-9]/g, ""))}
                    onFocus={() => setActiveNumpad("qty")}
+                   onClick={() => setActiveNumpad("qty")}
                    placeholder="0"
                    className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-base font-black outline-none focus:ring-1 focus:ring-primary"
                  />
@@ -244,7 +260,8 @@ function SpecialForm({
                  <label className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1 block">{t("special_price_lbl", "Special Price $")}</label>
                  <input
                    type="text"
-                   inputMode="decimal"
+                   inputMode={Capacitor.isNativePlatform() ? "none" : "decimal"}
+                   readOnly={Capacitor.isNativePlatform()}
                    value={price}
                    onChange={(e) => {
                      const val = e.target.value;
@@ -253,6 +270,7 @@ function SpecialForm({
                      }
                    }}
                    onFocus={() => setActiveNumpad("price")}
+                   onClick={() => setActiveNumpad("price")}
                    placeholder="0.00"
                    className="w-full h-10 rounded-xl border border-border bg-muted/40 px-3 text-base font-black outline-none focus:ring-1 focus:ring-primary"
                  />

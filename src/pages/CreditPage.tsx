@@ -467,8 +467,7 @@ function BillModal({ account, ownerName, onClose }: {
               disabled={busy === "share"}
               className="flex-1 h-12 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
             >
-              {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-              PDF / WhatsApp
+              {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : "PDF / WhatsApp"}
             </button>
           </div>
           {printerPaired && (
@@ -611,10 +610,48 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
   const [txGenerating, setTxGenerating] = useState<string | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [billingId, setBillingId] = useState<string | null>(null);
+
+  const handleBillShare = async (account: CreditAccount) => {
+    setBillingId(account.id);
+    try {
+      const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+      const filename = `credit-bill-${safeName}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (!b64) { setBillingId(null); return; }
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+        const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
+        const writeResult = await Filesystem.writeFile({ path: filename, data: base64Data, directory: Directory.Cache });
+        await Share.share({ title: `Credit Bill — ${account.full_name}`, text: `Hi ${account.full_name}, please find your credit bill attached.`, url: writeResult.uri, dialogTitle: "Send Bill" });
+      } else {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (b64) { await downloadPdf(filename, b64); toast.success("Bill downloaded"); }
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) toast.error("Failed: " + (e?.message ?? "unknown"));
+    }
+    setBillingId(null);
+  };
   // Inline payment
   const [payAmount, setPayAmount]   = useState("");
   const [padOpen, setPadOpen]       = useState(false);
   const [paying, setPaying]         = useState(false);
+
+  // Desktop keyboard support for the inline payment numpad
+  useEffect(() => {
+    if (!padOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") { e.preventDefault(); setPayAmount(v => { const dotIdx = v.indexOf("."); if (dotIdx !== -1 && v.length - dotIdx > 2) return v; return v === "0" ? e.key : v + e.key; }); }
+      else if (e.key === ".") { e.preventDefault(); setPayAmount(v => v.includes(".") ? v : v + "."); }
+      else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); setPayAmount(v => v.slice(0, -1)); }
+      else if (e.key === "Enter") { e.preventDefault(); setPadOpen(false); }
+      else if (e.key === "Escape") { e.preventDefault(); setPadOpen(false); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [padOpen]);
 
   const loadTxs = async (accountId: string) => {
     setTxLoading(true);
@@ -826,11 +863,14 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                 {/* Bill + Edit stacked, same size as amount box */}
                 <div className="flex flex-col gap-1.5">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                    onClick={(e) => { e.stopPropagation(); handleBillShare(a); }}
+                    disabled={billingId === a.id}
                     className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition shrink-0"
                     style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
                   >
-                    <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                    {billingId === a.id
+                      ? <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--primary)" }} />
+                      : <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />}
                     <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
                   </button>
                   <button
@@ -866,7 +906,8 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                     <span className="text-base font-bold text-muted-foreground">$</span>
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode={Capacitor.isNativePlatform() ? "none" : "decimal"}
+                      readOnly={Capacitor.isNativePlatform()}
                       value={payAmount}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -875,6 +916,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                         }
                       }}
                       onFocus={() => setPadOpen(true)}
+                      onClick={() => setPadOpen(true)}
                       placeholder="0.00"
                       className="flex-1 bg-transparent outline-none text-xl font-black min-w-0"
                     />
@@ -960,7 +1002,7 @@ function OpenedTab({ accounts, loading, onRefresh, onEdit }: {
                         </span>
                         {/* Per-record PDF button */}
                         <button
-                          onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                          onClick={(e) => { e.stopPropagation(); handleSingleRecordPdf(tx, a); }}
                           disabled={txGenerating === tx.id}
                           className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
                           style={{ color: "var(--primary)" }}
@@ -1065,6 +1107,30 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
   const [deleting, setDeleting]   = useState(false);
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
   const [txGenerating, setTxGenerating] = useState<string | null>(null);
+  const [billingId, setBillingId] = useState<string | null>(null);
+
+  const handleBillShare = async (account: CreditAccount) => {
+    setBillingId(account.id);
+    try {
+      const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
+      const filename = `credit-bill-${safeName}.pdf`;
+      if (Capacitor.isNativePlatform()) {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (!b64) { setBillingId(null); return; }
+        const { Filesystem, Directory } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+        const base64Data = b64.replace(/^data:[^;]+;base64,/, "");
+        const writeResult = await Filesystem.writeFile({ path: filename, data: base64Data, directory: Directory.Cache });
+        await Share.share({ title: `Credit Bill — ${account.full_name}`, text: `Hi ${account.full_name}, please find your credit bill attached.`, url: writeResult.uri, dialogTitle: "Send Bill" });
+      } else {
+        const b64 = await buildBillPdf(account, ownerName);
+        if (b64) { await downloadPdf(filename, b64); toast.success("Bill downloaded"); }
+      }
+    } catch (e: any) {
+      if (!String(e?.message ?? "").includes("cancel")) toast.error("Failed: " + (e?.message ?? "unknown"));
+    }
+    setBillingId(null);
+  };
 
   const toggleExpand = async (accountId: string) => {
     if (expanded === accountId) { setExpanded(null); setTxs([]); return; }
@@ -1144,11 +1210,14 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
                 {/* Bill button — only when account has records */}
                 {(a.tx_count ?? 0) > 0 && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                    onClick={(e) => { e.stopPropagation(); handleBillShare(a); }}
+                    disabled={billingId === a.id}
                     className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition"
                     style={{ background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.3)" }}
                   >
-                    <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                    {billingId === a.id
+                      ? <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--primary)" }} />
+                      : <FileDown className="h-5 w-5" style={{ color: "var(--primary)" }} />}
                     <span className="text-xs font-black" style={{ color: "var(--primary)" }}>Bill</span>
                   </button>
                 )}
@@ -1209,7 +1278,7 @@ function ClosedTab({ accounts, loading, onRefresh, onEdit }: { accounts: CreditA
                         </span>
                         {/* Per-record PDF button */}
                         <button
-                          onClick={(e) => { e.stopPropagation(); setBillAccount(a); }}
+                          onClick={(e) => { e.stopPropagation(); handleSingleRecordPdf(tx, a); }}
                           disabled={txGenerating === tx.id}
                           className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-primary/10 transition disabled:opacity-40"
                           style={{ color: "var(--primary)" }}

@@ -26,6 +26,7 @@ type YTCtxType = {
   videoId: string | null; isPlaylist: boolean;
   setVideoId: (id: string | null, playlist?: boolean) => void;
   ytFullscreen: boolean; setYtFullscreen: (v: boolean) => void;
+  ytPaused: boolean; setYtPaused: (v: boolean) => void;
   query: string; setQuery: (q: string) => void;
   results: YTResult[]; searching: boolean; searchError: string | null;
   search: (q: string) => Promise<void>;
@@ -48,6 +49,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const [videoId, setVideoIdRaw] = useState<string | null>(null);
   const [isPlaylist, setIsPlaylist] = useState(false);
   const [ytFullscreen, setYtFullscreen] = useState(false);
+  const [ytPaused, setYtPaused] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<YTResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -103,7 +105,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   const setVideoId = useCallback((id: string | null, playlist = false) => {
     setVideoIdRaw(id);
     setIsPlaylist(playlist);
-    if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); setCurrentItem(null); }
+    if (!id) { setNowPlayingTitle(""); setYtFullscreen(false); setCurrentItem(null); setYtPaused(false); }
   }, []);
 
   const clearResults = useCallback(() => {
@@ -213,6 +215,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
     <YTCtx.Provider value={{
       videoId, isPlaylist, setVideoId,
       ytFullscreen, setYtFullscreen,
+      ytPaused, setYtPaused,
       query, setQuery,
       results, searching, searchError, search,
       searchesRemaining, searchResetTime,
