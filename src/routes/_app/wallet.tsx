@@ -1072,6 +1072,10 @@ function CashierWallet({
     .sort((a, b) => b.ts - a.ts)
     .slice(0, ORDERS_PAGE_SIZE);
 
+  const latestPaymentId = flatRecords.find(
+    (r) => r.kind === "tx" && r.data.type === "credit_payment",
+  )?.data.id ?? null;
+
   return (
     <div className="space-y-5">
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
@@ -1396,11 +1400,68 @@ function CashierWallet({
                             </div>
                           )}
                         </div>
-                        {Number(tx.amount) > 0 && (
-                          <div className="font-black text-lg shrink-0 text-green-400 mt-1">
-                            +${fmt(Number(tx.amount))}
-                          </div>
-                        )}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {Number(tx.amount) > 0 && (
+                            <div className="font-black text-lg shrink-0 text-green-400 mt-1">
+                              +${fmt(Number(tx.amount))}
+                            </div>
+                          )}
+                          {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
+                            <div className="flex flex-row gap-2">
+                              <button
+                                onClick={() => openBillForCreditTx(tx)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
+                                title="Print receipt"
+                              >
+                                <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const ctid = tx.credit_tx_id;
+                                  if (!ctid) {
+                                    toast.error("No credit record linked to this payment");
+                                    return;
+                                  }
+                                  const { data: ct } = await sb
+                                    .from("credit_transactions")
+                                    .select("id, credit_account_id, amount, items, created_at")
+                                    .eq("id", ctid)
+                                    .maybeSingle();
+                                  if (!ct) {
+                                    toast.error("Could not load credit payment for editing");
+                                    return;
+                                  }
+                                  const { data: acct } = await sb
+                                    .from("credit_accounts")
+                                    .select("full_name")
+                                    .eq("id", ct.credit_account_id)
+                                    .maybeSingle();
+                                  sessionStorage.setItem(
+                                    "edit_credit_order",
+                                    JSON.stringify({
+                                      credit_tx_id: ct.id,
+                                      credit_account_id: ct.credit_account_id,
+                                      customer_name: acct?.full_name ?? "Customer",
+                                      items: (ct.items ?? []) as {
+                                        id: string;
+                                        name: string;
+                                        qty: number;
+                                        price: number;
+                                      }[],
+                                      amount: ct.amount,
+                                      created_at: ct.created_at,
+                                    }),
+                                  );
+                                  nav("/register");
+                                }}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition shrink-0"
+                                title="Edit payment"
+                              >
+                                <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   }
@@ -1484,7 +1545,8 @@ function CashierWallet({
                         </div>
                         {(profile.role === "owner" ||
                           profile.role === "manager" ||
-                          (profile as any).job_title === "manager") && (
+                          (profile as any).job_title === "manager" ||
+                          profile.role === "cashier") && (
                           <button
                             onClick={async () => {
                               const ctid = tx.credit_tx_id;
@@ -4651,15 +4713,8 @@ function TransactionsTab({
                             label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
                           />
                         )}
-                        <div className="flex flex-row gap-2">
-                          <button
-                            onClick={() => onPrintBillCredit?.(tx)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
-                            title="Print receipt"
-                          >
-                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                          </button>
-                          {canEdit && (
+                        {canEdit && (
+                          <div className="flex flex-row gap-2">
                             <button
                               onClick={async () => {
                                 const ctid = tx.credit_tx_id;
@@ -4704,8 +4759,8 @@ function TransactionsTab({
                             >
                               <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     ) : isReadOnly && cashierPart ? (
                       <StaffBadge
@@ -5264,15 +5319,13 @@ function TransactionsTab({
                         >
                           <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                         </button>
-                        {canEdit && (
-                          <button
-                            onClick={() => setEditingOrder(o)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                            title="Edit this sale"
-                          >
-                            <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setEditingOrder(o)}
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                          title="Edit this sale"
+                        >
+                          <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                        </button>
                         {isNewest && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -5309,18 +5362,64 @@ function TransactionsTab({
                       </div>
                     </>
                   ) : (
-                    // Staff / manager sale — read-only: staff badge + print button
                     <>
-                      <StaffBadge
-                        label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
-                      />
-                      <button
-                        onClick={() => onPrintBill?.(o)}
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
-                        title="Print bill"
-                      >
-                        <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                      </button>
+                      <span className="font-black text-lg" style={{ color: "#86efac" }}>
+                        +${fmt(Number(o.total))}
+                      </span>
+                      <div className="flex flex-row gap-2">
+                        <StaffBadge
+                          label={cashierRoles[(o as any).cashier_id] === "manager" ? "Manager" : "Staff"}
+                        />
+                        <button
+                          onClick={() => onPrintBill?.(o)}
+                          className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
+                          title="Print bill"
+                        >
+                          <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => setEditingOrder(o)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                            title="Edit this sale"
+                          >
+                            <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                          </button>
+                        )}
+                        {isNewest && canEdit && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => setDeleteConfirmId(o.id)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
+                                title="Delete this sale"
+                              >
+                                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the order and restore stock. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (deleteConfirmId) deleteLatestOrder({ ...o, id: deleteConfirmId });
+                                    setDeleteConfirmId(null);
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
