@@ -5167,13 +5167,89 @@ function CashCustomerOverlay({
     };
 
     if (!isOnline) {
-      // Queue all operations — they will replay in order when network returns
-      await enqueue("orders_insert", orderPayload, groupId);
-      await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
-      await recordShotPack(groupId);
-      await enqueue("credit_transactions_insert", creditTxPayload, groupId);
+      if (editOrder) {
+        await (supabase as any).rpc("delete_credit_charge_wallet_rows", {
+          p_owner_id: ownerId,
+          p_cashier_id: profile.id,
+          from_time: new Date(new Date(editOrder.created_at).getTime() - 5000).toISOString(),
+          to_time: new Date(new Date(editOrder.created_at).getTime() + 5000).toISOString(),
+        });
+        await (supabase as any).from("orders").delete().eq("id", editOrder.id);
+        await enqueue("orders_insert", orderPayload, groupId);
+        await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
+        await enqueue("credit_transactions_insert", creditTxPayload, groupId);
+      } else {
+        await enqueue("orders_insert", orderPayload, groupId);
+        await enqueue("rpc_decrement_stock_item", { p_items: stockItems }, groupId);
+        await enqueue("credit_transactions_insert", creditTxPayload, groupId);
+      }
       setBusy(false);
       toast.success(`💾 Saved offline — will sync when reconnected`);
+      onSuccess(paidNum, changeNum);
+      return;
+    }
+
+    if (editOrder) {
+      const { error: updateErr } = await (supabase as any)
+        .from("orders")
+        .update({
+          items: orderPayload.items,
+          total,
+          paid: paidNum,
+          change_given: changeNum,
+          ...(orderDiscount > 0
+            ? { discount_amount: orderDiscount, original_total: total + orderDiscount }
+            : { discount_amount: null, original_total: null }),
+        })
+        .eq("id", editOrder.id);
+      if (updateErr) {
+        setBusy(false);
+        toast.error(updateErr.message);
+        return;
+      }
+
+      const oldStockItems = editOrder.items
+        .filter((i) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-"))
+        .map((i) => ({ id: i.id!, qty: i.qty }));
+      const newStockItems = cart
+        .filter((c) => !c.id.startsWith("shot-") && !c.id.startsWith("pack-"))
+        .map((c) => ({ id: c.id, qty: c.qty }));
+      await (supabase as any).rpc("adjust_stock_for_edit", {
+        p_restore: oldStockItems,
+        p_deduct: newStockItems,
+      });
+
+      const delta = total - editOrder.total;
+      if (delta !== 0) {
+        await (supabase as any)
+          .from("wallet_transactions")
+          .update({ amount: total })
+          .eq("order_id", editOrder.id);
+
+        const sellerId = (editOrder as any).cashier_id || profile.id;
+        const { data: sellerData } = await (supabase as any)
+          .from("profiles")
+          .select("wallet_balance")
+          .eq("id", sellerId)
+          .single();
+        await (supabase as any)
+          .from("profiles")
+          .update({ wallet_balance: Number(sellerData?.wallet_balance ?? 0) + delta })
+          .eq("id", sellerId);
+      }
+
+      const t = new Date(editOrder.created_at);
+      await (supabase as any)
+        .from("credit_transactions")
+        .delete()
+        .eq("credit_account_id", account.id)
+        .eq("cashier_id", profile.id)
+        .gte("created_at", new Date(t.getTime() - 5000).toISOString())
+        .lte("created_at", new Date(t.getTime() + 5000).toISOString());
+      await (supabase as any).from("credit_transactions").insert(creditTxPayload);
+
+      setBusy(false);
+      toast.success("Sale updated");
       onSuccess(paidNum, changeNum);
       return;
     }
