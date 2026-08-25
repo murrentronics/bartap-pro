@@ -1543,62 +1543,64 @@ function CashierWallet({
                             </div>
                           )}
                         </div>
-                        {(profile.role === "owner" ||
-                          profile.role === "manager" ||
-                          (profile as any).job_title === "manager" ||
-                          profile.role === "cashier") && (
+                        <div className="flex flex-row gap-2">
                           <button
-                            onClick={async () => {
-                              const ctid = tx.credit_tx_id;
-                              if (!ctid) {
-                                toast.error("No credit record linked to this charge");
-                                return;
-                              }
-                              const { data: ct } = await sb
-                                .from("credit_transactions")
-                                .select("id, credit_account_id, amount, items, created_at")
-                                .eq("id", ctid)
-                                .maybeSingle();
-                              if (!ct) {
-                                toast.error("Could not load credit sale for editing");
-                                return;
-                              }
-                              const { data: acct } = await sb
-                                .from("credit_accounts")
-                                .select("full_name")
-                                .eq("id", ct.credit_account_id)
-                                .maybeSingle();
-                              sessionStorage.setItem(
-                                "edit_credit_order",
-                                JSON.stringify({
-                                  credit_tx_id: ct.id,
-                                  credit_account_id: ct.credit_account_id,
-                                  customer_name: acct?.full_name ?? "Customer",
-                                  items: (ct.items ?? []) as {
-                                    id: string;
-                                    name: string;
-                                    qty: number;
-                                    price: number;
-                                  }[],
-                                  amount: ct.amount,
-                                  created_at: ct.created_at,
-                                }),
-                              );
-                              nav("/register");
-                            }}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition mt-1 shrink-0 self-end"
-                            title="Edit this credit sale"
+                            onClick={() => openBillForCreditTx(tx)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                            title="Print bill"
                           >
-                            <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                            <Receipt className="h-3.5 w-3.5 text-blue-300" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => openBillForCreditTx(tx)}
-                          className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition mt-1 shrink-0 self-end"
-                          title="Print bill"
-                        >
-                          <Receipt className="h-3.5 w-3.5 text-blue-300" />
-                        </button>
+                          {(profile.role === "owner" ||
+                            profile.role === "manager" ||
+                            (profile as any).job_title === "manager" ||
+                            profile.role === "cashier") && (
+                            <button
+                              onClick={async () => {
+                                const ctid = tx.credit_tx_id;
+                                if (!ctid) {
+                                  toast.error("No credit record linked to this charge");
+                                  return;
+                                }
+                                const { data: ct } = await sb
+                                  .from("credit_transactions")
+                                  .select("id, credit_account_id, amount, items, created_at")
+                                  .eq("id", ctid)
+                                  .maybeSingle();
+                                if (!ct) {
+                                  toast.error("Could not load credit sale for editing");
+                                  return;
+                                }
+                                const { data: acct } = await sb
+                                  .from("credit_accounts")
+                                  .select("full_name")
+                                  .eq("id", ct.credit_account_id)
+                                  .maybeSingle();
+                                sessionStorage.setItem(
+                                  "edit_credit_order",
+                                  JSON.stringify({
+                                    credit_tx_id: ct.id,
+                                    credit_account_id: ct.credit_account_id,
+                                    customer_name: acct?.full_name ?? "Customer",
+                                    items: (ct.items ?? []) as {
+                                      id: string;
+                                      name: string;
+                                      qty: number;
+                                      price: number;
+                                    }[],
+                                    amount: ct.amount,
+                                    created_at: ct.created_at,
+                                  }),
+                                );
+                                nav("/register");
+                              }}
+                              className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                              title="Edit this credit sale"
+                            >
+                              <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   }
@@ -4713,8 +4715,15 @@ function TransactionsTab({
                             label={(tx.note ?? "").includes("[Manager:") ? "Manager" : "Staff"}
                           />
                         )}
-                        {canEdit && (
-                          <div className="flex flex-row gap-2">
+                        <div className="flex flex-row gap-2">
+                          <button
+                            onClick={() => onPrintBillCredit?.(tx)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
+                            title="Print receipt"
+                          >
+                            <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                          </button>
+                          {canEdit && (
                             <button
                               onClick={async () => {
                                 const ctid = tx.credit_tx_id;
@@ -4759,8 +4768,8 @@ function TransactionsTab({
                             >
                               <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     ) : isReadOnly && cashierPart ? (
                       <StaffBadge
@@ -4773,6 +4782,13 @@ function TransactionsTab({
                         </span>
                         {tx.id === latestPaymentId && Number(tx.amount) > 0 && (
                           <div className="flex flex-row gap-2">
+                            <button
+                              onClick={() => onPrintBillCredit?.(tx)}
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
+                              title="Print receipt"
+                            >
+                              <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
+                            </button>
                             <button
                               onClick={async () => {
                                 const ctid = tx.credit_tx_id;
@@ -4852,15 +4868,6 @@ function TransactionsTab({
                         )}
                       </div>
                     ) : null}
-                    {!isPayment && (
-                      <button
-                        onClick={() => onPrintBillCredit?.(tx)}
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0 self-center"
-                        title="Print receipt"
-                      >
-                        <Printer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
-                      </button>
-                    )}
                   </div>
                 );
               }
