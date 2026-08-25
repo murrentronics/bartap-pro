@@ -259,10 +259,12 @@ async function buildBillPdf(account: CreditAccount, ownerName: string): Promise<
 }
 
 // ── Bill Action Modal ─────────────────────────────────────────────────────────
-function BillActionModal({ account, ownerName, onClose }: {
+function BillActionModal({ account, ownerName, onClose, chargeId, charges: propCharges }: {
   account: CreditAccount;
   ownerName: string;
   onClose: () => void;
+  chargeId?: string;
+  charges?: { id: string; amount: number; items: { id: string; name: string; qty: number; price?: number }[] | null; created_at: string }[];
 }) {
   const [busy, setBusy] = useState<"print" | "share" | null>(null);
   const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number; price?: number }[] | null; created_at: string }[]>([]);
@@ -270,6 +272,10 @@ function BillActionModal({ account, ownerName, onClose }: {
   const filename = `credit-bill-${safeName}.pdf`;
 
   useEffect(() => {
+    if (propCharges) {
+      setCharges(propCharges);
+      return;
+    }
     let cancelled = false;
     supabase
       .from("credit_transactions")
@@ -287,7 +293,11 @@ function BillActionModal({ account, ownerName, onClose }: {
         })));
       });
     return () => { cancelled = true; };
-  }, [account.id]);
+  }, [account.id, propCharges]);
+
+  const displayCharges = chargeId
+    ? charges.filter((c) => c.id === chargeId)
+    : charges;
 
   const handlePrint = async () => {
     setBusy("print");
@@ -389,16 +399,16 @@ function BillActionModal({ account, ownerName, onClose }: {
             <div className="border-t border-dashed border-zinc-400 my-2" />
 
             <div className="text-center font-black text-base tracking-wide text-zinc-950 my-1">
-              CREDIT BILL
+              {chargeId ? "ORDER RECEIPT" : "CREDIT BILL"}
             </div>
 
             <div className="border-t border-dashed border-zinc-400 my-2" />
 
-            {charges.length === 0 ? (
+            {displayCharges.length === 0 ? (
               <div className="text-center text-zinc-500 py-2">No charges recorded</div>
             ) : (
               <div className="space-y-1 my-2">
-                {charges.map((c) => (
+                {displayCharges.map((c) => (
                   <div key={c.id} className="flex justify-between items-start">
                     <span className="font-semibold text-zinc-900 pr-2 break-all">
                       {c.items && c.items.length > 0
@@ -417,8 +427,8 @@ function BillActionModal({ account, ownerName, onClose }: {
 
             <div className="space-y-1">
               <div className="flex justify-between">
-                <span className="font-bold text-zinc-700">Balance Owed</span>
-                <span className="font-black text-zinc-950">${Number(account.balance_owed).toFixed(2)}</span>
+                <span className="font-bold text-zinc-700">{chargeId ? "Charge Total" : "Balance Owed"}</span>
+                <span className="font-black text-zinc-950">${chargeId ? totalOwed.toFixed(2) : Number(account.balance_owed).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -440,7 +450,7 @@ function BillActionModal({ account, ownerName, onClose }: {
             className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 border border-green-500/40"
             style={{ background: "rgba(37,211,102,0.12)", color: "#25D366" }}
           >
-            {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+            {busy === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Share via WhatsApp
           </button>
         </div>
@@ -465,6 +475,12 @@ function CreditPage() {
   const [closed, setClosed] = useState<CreditAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [billAccount, setBillAccount] = useState<CreditAccount | null>(null);
+  const [billChargeId, setBillChargeId] = useState<string | null>(null);
+
+  const openBill = (account: CreditAccount, chargeId?: string) => {
+    setBillAccount(account);
+    setBillChargeId(chargeId ?? null);
+  };
 
   // Payment card state
   const [payAccount, setPayAccount] = useState<CreditAccount | null>(null);
@@ -542,11 +558,11 @@ function CreditPage() {
           ownerName={ownerName}
           onSelect={(a) => {}}
           onEdit={setEditAccount}
-          onOpenBill={setBillAccount}
+          onOpenBill={openBill}
         />
       )}
       {tab === "cleared" && (
-        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={setBillAccount} onReopen={(a) => { fetchAccounts(); setTab("credit"); }} cashierId={profile.id} />
+        <ClosedTab accounts={closed} loading={loading} ownerName={ownerName} onEdit={setEditAccount} ownerId={ownerId!} onOpenBill={openBill} onReopen={(a) => { fetchAccounts(); setTab("credit"); }} cashierId={profile.id} />
       )}
       {tab === "create" && (
         <CreateTab ownerId={ownerId!} onCreated={handleCreated} />
@@ -559,7 +575,7 @@ function CreditPage() {
           ownerId={ownerId!}
           onClose={() => setPayAccount(null)}
           onDone={handlePaymentDone}
-          onOpenBill={setBillAccount}
+          onOpenBill={openBill}
         />
       )}
 
@@ -578,7 +594,7 @@ function CreditPage() {
 
       {/* Bill action modal */}
       {billAccount && (
-        <BillActionModal account={billAccount} ownerName={ownerName} onClose={() => setBillAccount(null)} />
+        <BillActionModal account={billAccount} ownerName={ownerName} chargeId={billChargeId ?? undefined} onClose={() => { setBillAccount(null); setBillChargeId(null); }} />
       )}
     </div>
   );
@@ -593,7 +609,7 @@ function OpenedTab({
   ownerName: string;
   onSelect: (a: CreditAccount) => void;
   onEdit: (a: CreditAccount) => void;
-  onOpenBill?: (a: CreditAccount) => void;
+  onOpenBill?: (a: CreditAccount, chargeId?: string) => void;
 }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
@@ -662,7 +678,7 @@ function OpenedTab({
 }
 
 // ── Closed Tab ─────────────────────────────────────────────────────────────────
-function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill, onReopen, cashierId }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string; onOpenBill?: (a: CreditAccount) => void; onReopen?: (a: CreditAccount) => void; cashierId?: string }) {
+function ClosedTab({ accounts, loading, ownerName, onEdit, ownerId, onOpenBill, onReopen, cashierId }: { accounts: CreditAccount[]; loading: boolean; ownerName: string; onEdit: (a: CreditAccount) => void; ownerId: string; onOpenBill?: (a: CreditAccount, chargeId?: string) => void; onReopen?: (a: CreditAccount) => void; cashierId?: string }) {
   const [printing, setPrinting] = useState<string | null>(null);
   const [printed, setPrinted] = useState<string | null>(null);
   const [cashAccounts, setCashAccounts] = useState<Set<string>>(new Set());
@@ -1137,7 +1153,7 @@ function PaymentOverlay({
   ownerId: string;
   onClose: () => void;
   onDone: () => void;
-  onOpenBill?: (a: CreditAccount) => void;
+  onOpenBill?: (a: CreditAccount, chargeId?: string) => void;
 }) {
   const { profile } = useAuth();
   const [amount, setAmount] = useState("");
@@ -1321,7 +1337,7 @@ function PaymentOverlay({
                         {/* Bill + Delete inline */}
                         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                           <button
-                            onClick={() => onOpenBill?.(account)}
+                            onClick={() => onOpenBill?.(account, c.id)}
                             className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                             title="Print bill"
                           >
