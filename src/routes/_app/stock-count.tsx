@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, categoryIcon, categoryLabel } from "@/lib/categories";
 import { downloadPdf } from "@/lib/download";
-import { drawHeader, addFootersToAllPages, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
+import { drawHeader, addFootersToAllPages, LM, RM, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 export const Route = createFileRoute("/_app/stock-count")({
   component: StockCountPage,
