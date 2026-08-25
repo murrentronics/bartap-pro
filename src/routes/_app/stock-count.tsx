@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2, RefreshCw } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2, RefreshCw, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -13,6 +13,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, categoryIcon, categoryLabel } from "@/lib/categories";
+import { downloadPdf } from "@/lib/download";
+import { drawHeader, addFootersToAllPages, CONTENT_BOTTOM } from "@/lib/pdfHelpers";
 
 export const Route = createFileRoute("/_app/stock-count")({
   component: StockCountPage,
@@ -39,6 +41,7 @@ function StockCountPage() {
   const [copying, setCopying] = useState(false);
   const [splitView, setSplitView] = useState(false);
   const [deleteRowModal, setDeleteRowModal] = useState<{ tableId: string; rowIdx: number } | null>(null);
+  const [deleteTableConfirmId, setDeleteTableConfirmId] = useState<string | null>(null);
   const [selectedCols, setSelectedCols] = useState<Set<number>>(new Set());
 
   // ── Copy-to-staff modal state ──────────────────────────────────────────────
@@ -303,6 +306,92 @@ function StockCountPage() {
     return sum > 0 ? String(sum) : "";
   };
 
+  const [pdfBusyTableId, setPdfBusyTableId] = useState<string | null>(null);
+
+  const generateTablePdf = async (table: Table) => {
+    if (pdfBusyTableId) return;
+    setPdfBusyTableId(table.id);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-GB");
+      const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      const title = `Stock Count — ${table.name}`;
+      let y = await drawHeader(
+        doc,
+        profile?.username ?? "Stock Count",
+        title,
+        dateStr,
+        `${dateStr} ${timeStr}`,
+      );
+
+      const ROW_H = 6;
+      const COL_START = LM + 2;
+      const COL_NAME_W = 70;
+      const COL_COL_W = 28;
+      const COL_TOTAL_W = 25;
+      let x = COL_START;
+
+      const checkPage = () => {
+        if (y > CONTENT_BOTTOM - ROW_H) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      // Header row
+      checkPage();
+      doc.setFillColor(232, 146, 42);
+      doc.rect(LM, y - 4, RM - LM, 6, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Item name", x, y);
+      x += COL_NAME_W;
+      for (const col of table.columns) {
+        doc.text(col, x, y, { align: "center" });
+        x += COL_COL_W;
+      }
+      doc.text("Total", x, y, { align: "right" });
+      y += 5;
+
+      // Rows
+      for (const row of table.rows) {
+        checkPage();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        x = COL_START;
+        const name = row[0] ?? "";
+        const nameLines = doc.splitTextToSize(name, COL_NAME_W - 4);
+        doc.text(nameLines, x, y);
+        x += COL_NAME_W;
+        const values = row.slice(1);
+        for (let i = 0; i < table.columns.length; i++) {
+          const val = values[i] ?? "";
+          const num = parseFloat(val);
+          doc.text(isNaN(num) ? val : num.toString(), x + COL_COL_W / 2, y, { align: "center" });
+          x += COL_COL_W;
+        }
+        const total = calcTotal(row);
+        doc.setFont("helvetica", "bold");
+        doc.text(total, x + COL_TOTAL_W - 2, y, { align: "right" });
+        doc.setFont("helvetica", "normal");
+        y += nameLines.length > 1 ? nameLines.length * 4 : ROW_H;
+      }
+
+      addFootersToAllPages(doc);
+      const filename = `stock-count-${table.name.replace(/[^a-z0-9]/gi, "_").toLowerCase()}-${dateStr.replace(/\//g, "-")}.pdf`;
+      await downloadPdf(filename, doc.output("datauristring"));
+      toast.success("PDF exported — check your downloads");
+    } catch (e: any) {
+      toast.error("PDF failed: " + (e?.message ?? "unknown"));
+    } finally {
+      setPdfBusyTableId(null);
+    }
+  };
+
   const isCashier = profile?.role === "cashier";
   const isManager = profile?.role === "manager" || (profile as any)?.job_title === "manager";
   const isOwner = profile?.role === "owner";
@@ -395,6 +484,19 @@ function StockCountPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => generateTablePdf(table)}
+                  disabled={pdfBusyTableId === table.id}
+                  className="h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95 disabled:opacity-50 flex items-center gap-1"
+                  title="Export table as PDF"
+                >
+                  {pdfBusyTableId === table.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">PDF</span>
+                </button>
+                <button
                   onClick={() => addColumn(table.id)}
                   className="h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95"
                 >
@@ -407,8 +509,9 @@ function StockCountPage() {
                   + Add Row
                 </button>
                 <button
-                  onClick={() => deleteTable(table.id)}
+                  onClick={() => setDeleteTableConfirmId(table.id)}
                   className="h-8 w-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 transition active:scale-95"
+                  title="Delete table"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -778,6 +881,34 @@ function StockCountPage() {
           </Dialog>
         );
       })()}
+      <Dialog open={!!deleteTableConfirmId} onOpenChange={(open) => !open && setDeleteTableConfirmId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this table?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground pt-2">
+            This will permanently remove the entire table and all its rows and columns. This action cannot be undone.
+          </p>
+          <div className="flex gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTableConfirmId(null)}
+              className="flex-1 h-11 font-black text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (deleteTableConfirmId) deleteTable(deleteTableConfirmId);
+                setDeleteTableConfirmId(null);
+              }}
+              className="flex-1 h-11 font-black text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -893,7 +1024,7 @@ function StockCheckPanel({ ownerId }: { ownerId?: string }) {
             </div>
           ))
         )}
-      </div>
+       </div>
     </div>
   );
 }
@@ -1007,7 +1138,7 @@ function RegisterPanel() {
             })
           )}
         </div>
-      </div>
-    </div>
-  );
-}
+       </div>
+     </div>
+   );
+ }
