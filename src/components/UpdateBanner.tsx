@@ -2,8 +2,8 @@
  * UpdateBanner
  *
  * Shows a full-screen modal when a new APK version is available on GitHub.
- * Tapping "Update Now" opens the APK download URL via the Capacitor Browser
- * plugin (falls back to window.open).
+ * Tapping "Update Now" opens the direct APK download URL via the Capacitor Browser
+ * plugin (falls back to window.open), so the file downloads straight to the device.
  *
  * The user can dismiss it and continue using the current version.
  */
@@ -22,23 +22,21 @@ interface Props {
 export function UpdateBanner({ update, onDismiss }: Props) {
   const [downloading, setDownloading] = useState(false);
 
-  const DOWNLOAD_PAGE = "https://bartendaz-pro.pages.dev/download.html";
-
   const handleUpdate = async () => {
     setDownloading(true);
     try {
       if (Capacitor.isNativePlatform()) {
         const { Browser } = await import("@capacitor/browser");
         await Browser.open({
-          url: DOWNLOAD_PAGE,
+          url: update.apkUrl,
           presentationStyle: "fullscreen",
           toolbarColor: "#0a0a02",
         });
       } else {
-        window.open(DOWNLOAD_PAGE, "_blank");
+        window.open(update.apkUrl, "_blank");
       }
     } catch {
-      window.open(DOWNLOAD_PAGE, "_blank");
+      window.open(update.apkUrl, "_blank");
     } finally {
       setDownloading(false);
     }
@@ -98,7 +96,7 @@ export function UpdateBanner({ update, onDismiss }: Props) {
               disabled={downloading}
             >
               <Download className="h-5 w-5" />
-              {downloading ? "Opening download…" : "Update Now"}
+              {downloading ? "Downloading…" : "Update Now"}
             </Button>
             <Button
               variant="ghost"
