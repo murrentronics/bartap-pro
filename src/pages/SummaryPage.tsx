@@ -439,15 +439,11 @@ function CombinedSummaryView({ fromDate, toDate, sessions, products, categoryFil
       return end > latest ? end : latest;
     }, sessions[0]?.closed_at ?? now);
 
-    // Expenses use expense_date (a plain date column) — keep using the calendar range.
-    const expFrom = fromDate;
-    const expTo   = toDate;
-
     Promise.all([
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
         .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
       supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
-        .eq("owner_id", ownerId).gte("expense_date", expFrom).lte("expense_date", expTo).order("expense_date", { ascending: false }),
+        .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
       supabase.from("wallet_transactions").select("amount, type, created_at")
         .eq("profile_id", ownerId).in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
         .gte("created_at", from).lte("created_at", to),
