@@ -419,25 +419,35 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
 
 // ─── CombinedSummaryView ──────────────────────────────────────────────────────
 // Aggregates ALL sessions/sub-sessions within a date range into one summary
-function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, ownerId }: {
-  fromDate: string; toDate: string; products: ProductCost[]; categoryFilter: string; ownerId: string;
+function CombinedSummaryView({ fromDate, toDate, sessions, products, categoryFilter, ownerId }: {
+  fromDate: string; toDate: string; sessions: BarSession[]; products: ProductCost[]; categoryFilter: string; ownerId: string;
 }) {
   const [data, setData] = useState<{ orders: Order[]; expenses: Expense[]; walletIncome: number; loading: boolean }>({ orders: [], expenses: [], walletIncome: 0, loading: true });
 
   useEffect(() => {
     let cancelled = false;
     setData(d => ({ ...d, loading: true }));
-    // Convert local Port of Spain dates to correct UTC boundaries.
-    // TT is UTC-4, so local midnight = 04:00Z, local 23:59:59.999 = next day 03:59:59.999Z
-    const from = `${fromDate}T04:00:00.000Z`;
-    const toNext = new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1);
-    const to = toNext.toISOString();
+
+    // Use the actual session open/close timestamps as the query window so a "day"
+    // correctly means bar-open → bar-close, not calendar midnight → midnight.
+    // If multiple sessions exist in the range, span from the earliest open to the
+    // latest close (or now if any session is still open).
+    const now = new Date().toISOString();
+    const from = sessions.reduce((earliest, s) => s.opened_at < earliest ? s.opened_at : earliest, sessions[0]?.opened_at ?? `${fromDate}T00:00:00.000Z`);
+    const to   = sessions.reduce((latest,   s) => {
+      const end = s.closed_at ?? now;
+      return end > latest ? end : latest;
+    }, sessions[0]?.closed_at ?? now);
+
+    // Expenses use expense_date (a plain date column) — keep using the calendar range.
+    const expFrom = fromDate;
+    const expTo   = toDate;
 
     Promise.all([
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
         .eq("owner_id", ownerId).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }),
       supabase.from("owner_expenses").select("id, amount, description, expense_date, created_at")
-        .eq("owner_id", ownerId).gte("expense_date", fromDate).lte("expense_date", toDate).order("expense_date", { ascending: false }),
+        .eq("owner_id", ownerId).gte("expense_date", expFrom).lte("expense_date", expTo).order("expense_date", { ascending: false }),
       supabase.from("wallet_transactions").select("amount, type, created_at")
         .eq("profile_id", ownerId).in("type", ["transfer_in", "credit_payment"]).gt("amount", 0)
         .gte("created_at", from).lte("created_at", to),
@@ -451,7 +461,7 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
       });
     });
     return () => { cancelled = true; };
-  }, [fromDate, toDate, ownerId]);
+  }, [fromDate, toDate, sessions, ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const costMap = new Map<string, number>(products.map(p => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const nameMap = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
@@ -722,8 +732,8 @@ export default function SummaryPage() {
     if (res.length === 0) {
       return [{
         id: `day-${fromDate}`,
-        opened_at: `${fromDate}T04:00:00.000Z`,
-        closed_at: new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1).toISOString(),
+        opened_at: `${fromDate}T00:00:00.000Z`,
+        closed_at: `${toDate}T23:59:59.999Z`,
       }];
     }
     return res;
@@ -869,6 +879,7 @@ export default function SummaryPage() {
         <CombinedSummaryView
           fromDate={fromDate}
           toDate={toDate}
+          sessions={filteredSessions}
           products={products}
           categoryFilter={categoryFilter}
           ownerId={ownerId}
