@@ -335,9 +335,10 @@ function FullBillPreview({ account, ownerName }: { account: CreditAccount; owner
       });
   }, [account.id]);
 
-  const totalCharges  = txs.filter(t => t.type === "charge").reduce((s, t) => s + Number(t.amount), 0);
-  const totalPayments = txs.filter(t => t.type === "payment").reduce((s, t) => s + Number(t.amount), 0);
-  const outstanding   = totalCharges - totalPayments;
+  // Use the database-maintained balance — do NOT recalculate.
+  // Some charges are cash sales (not owed) and some are credit sales (owed),
+  // so summing transactions gives the wrong figure.
+  const balanceOwed = Number(account.balance_owed ?? 0);
 
   return (
     <div className="px-5 py-2 max-h-72 overflow-y-auto">
@@ -381,23 +382,11 @@ function FullBillPreview({ account, ownerName }: { account: CreditAccount; owner
               );
             })}
 
+            {/* Balance owed — taken directly from the database field */}
             <div className="border-t border-dashed border-zinc-400 my-2" />
-
-            {/* Summary */}
-            <div className="space-y-0.5">
-              <div className="flex justify-between text-zinc-700">
-                <span>Total Charges</span>
-                <span>${totalCharges.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-zinc-700">
-                <span>Payments Made</span>
-                <span>-${totalPayments.toFixed(2)}</span>
-              </div>
-              <div className="border-t border-dashed border-zinc-400 my-1" />
-              <div className="flex justify-between font-black text-zinc-950">
-                <span>Balance Owed</span>
-                <span>${outstanding.toFixed(2)}</span>
-              </div>
+            <div className="flex justify-between font-black text-zinc-950">
+              <span>Balance Owed</span>
+              <span>${balanceOwed.toFixed(2)}</span>
             </div>
           </>
         )}
