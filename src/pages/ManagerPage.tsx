@@ -4131,7 +4131,7 @@ function ExpensesTab({
                         <span className="font-black text-sm text-red-400">
                           -${fmt(Number(e.amount))}
                         </span>
-                        {canEdit && !isStockExpense && (
+                         {canEdit && !isStockExpense && !cashierMatch && (
                           <div className="flex gap-1 mt-0.5">
                             <button
                               onClick={() => startEdit(e)}

@@ -340,13 +340,10 @@ function StockCountPage() {
         }
       };
 
-      // Header row
       checkPage();
-      doc.setFillColor(232, 146, 42);
-      doc.rect(LM, y - 4, RM - LM, 6, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(80, 80, 80);
       doc.text("Item name", x, y);
       x += COL_NAME_W;
       for (const col of table.columns) {
@@ -354,9 +351,10 @@ function StockCountPage() {
         x += COL_COL_W;
       }
       doc.text("Total", x, y, { align: "right" });
-      y += 5;
+      y += 4;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(LM, y - 1, RM, y - 1);
 
-      // Rows
       for (const row of table.rows) {
         checkPage();
         doc.setFont("helvetica", "normal");

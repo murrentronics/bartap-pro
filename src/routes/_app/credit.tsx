@@ -265,8 +265,29 @@ function BillActionModal({ account, ownerName, onClose }: {
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState<"print" | "share" | null>(null);
+  const [charges, setCharges] = useState<{ id: string; amount: number; items: { id: string; name: string; qty: number; price?: number }[] | null; created_at: string }[]>([]);
   const safeName = account.full_name.replace(/\s+/g, "-").toLowerCase();
   const filename = `credit-bill-${safeName}.pdf`;
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("credit_transactions")
+      .select("id, amount, items, created_at")
+      .eq("credit_account_id", account.id)
+      .eq("type", "charge")
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCharges((data ?? []).map((c: any) => ({
+          id: c.id,
+          amount: Number(c.amount),
+          items: c.items ?? [],
+          created_at: c.created_at,
+        })));
+      });
+    return () => { cancelled = true; };
+  }, [account.id]);
 
   const handlePrint = async () => {
     setBusy("print");
@@ -348,6 +369,61 @@ function BillActionModal({ account, ownerName, onClose }: {
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Receipt Paper Card */}
+        <div className="px-5 py-2 overflow-y-auto max-h-[50vh]">
+          <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
+            <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
+              {ownerName}
+            </div>
+            <div className="text-center text-[10px] text-zinc-600">
+              {new Date().toLocaleString("en-US", {
+                month: "numeric", day: "numeric", year: "numeric",
+                hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+              })}
+            </div>
+            <div className="text-center text-[10px] text-zinc-600">
+              Customer: {account.full_name}
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            <div className="text-center font-black text-base tracking-wide text-zinc-950 my-1">
+              CREDIT BILL
+            </div>
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            {charges.length === 0 ? (
+              <div className="text-center text-zinc-500 py-2">No charges recorded</div>
+            ) : (
+              <div className="space-y-1 my-2">
+                {charges.map((c) => (
+                  <div key={c.id} className="flex justify-between items-start">
+                    <span className="font-semibold text-zinc-900 pr-2 break-all">
+                      {c.items && c.items.length > 0
+                        ? c.items.map((it) => `${it.qty || 1}x ${it.name}`).join(", ")
+                        : "Charge"}
+                    </span>
+                    <span className="font-bold text-zinc-950 whitespace-nowrap">
+                      -${Number(c.amount).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t border-dashed border-zinc-400 my-2" />
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="font-bold text-zinc-700">Balance Owed</span>
+                <span className="font-black text-zinc-950">${Number(account.balance_owed).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
           <button
             onClick={handlePrint}
