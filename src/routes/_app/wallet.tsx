@@ -710,6 +710,15 @@ function CashierWallet({
     };
   }, [profile.id]);
 
+  // Refetch when user returns to the tab (e.g. after editing an order)
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
   const deleteLatestCashierOrder = async (order: Order) => {
     setDeletableOrderId(null);
     setDeletingOrderId(order.id);
