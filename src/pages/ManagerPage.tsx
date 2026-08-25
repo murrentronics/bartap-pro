@@ -724,43 +724,87 @@ function DashboardTab({
   const loadWalletSales = useCallback(async () => {
     setWalletSalesLoading(true);
     try {
-      // Step 1: only fetch wallet sales for owners (cashier_sale type)
-      // Managers see their orders directly from loadOrders filtered by cashier_id
       const isOwner = profile.role === "owner";
-      if (!isOwner) {
-        setWalletSales([]);
-        setWalletSalesLoading(false);
-        return;
-      }
+      
+      // Fetch wallet transactions: cashier_sale/manager_sale for owners, plus credit txns for both
+      const walletTypes = isOwner 
+        ? ["cashier_sale", "manager_sale", "credit_payment", "credit_charge"]
+        : ["credit_payment", "credit_charge"];
+      
       const { data: txData, error: txErr } = await sb
         .from("wallet_transactions")
-        .select("id, amount, type, note, order_id, created_at")
+        .select("id, amount, type, note, order_id, credit_tx_id, created_at")
         .eq("profile_id", profile.id)
-        .eq("type", "cashier_sale")
+        .in("type", walletTypes)
         .order("created_at", { ascending: false })
         .limit(100);
       if (txErr) throw txErr;
       const rows = (txData ?? []) as any[];
 
-      // Step 2: fetch the actual orders to get items/total/paid/change/method
+      // Fetch orders for cashier_sale/manager_sale rows
       const orderIds = rows.map((r) => r.order_id).filter(Boolean);
       let ordersMap: Record<string, any> = {};
       if (orderIds.length > 0) {
         const { data: ordData } = await sb
           .from("orders")
-          .select("id, items, total, paid, change_given, order_number, cashier_id")
+          .select("id, items, total, paid, change_given, order_number, cashier_id, payment_method")
           .in("id", orderIds);
         (ordData ?? []).forEach((o: any) => { ordersMap[o.id] = o; });
       }
 
+      // Fetch credit transactions for credit_payment/credit_charge rows
+      const creditTxIds = rows.map((r) => r.credit_tx_id).filter(Boolean);
+      let creditTxMap: Record<string, any> = {};
+      if (creditTxIds.length > 0) {
+        const { data: ctData } = await sb
+          .from("credit_transactions")
+          .select("id, credit_account_id, amount, type, items, created_at")
+          .in("id", creditTxIds);
+        (ctData ?? []).forEach((ct: any) => { creditTxMap[ct.id] = ct; });
+        
+        // Fetch account names for credit transactions
+        const accountIds = [...new Set((ctData ?? []).map((ct: any) => ct.credit_account_id))];
+        if (accountIds.length > 0) {
+          const { data: acctData } = await sb
+            .from("credit_accounts")
+            .select("id, full_name")
+            .in("id", accountIds);
+          (acctData ?? []).forEach((a: any) => { creditTxMap[a.id] = { ...creditTxMap[a.id], account_name: a.full_name }; });
+        }
+      }
+
       const mapped = rows.map((r) => {
         const ord = ordersMap[r.order_id] ?? null;
+        const ct = creditTxMap[r.credit_tx_id] ?? null;
+        const isCredit = r.type === "credit_payment" || r.type === "credit_charge";
+        
+        if (isCredit && ct) {
+          return {
+            id: r.id,
+            amount: Number(r.amount),
+            note: r.note,
+            created_at: r.created_at,
+            order_id: r.order_id,
+            credit_tx_id: r.credit_tx_id,
+            order_items: ct.items ?? [],
+            order_total: Number(ct.amount),
+            order_paid: Number(ct.amount),
+            order_change: 0,
+            order_payment_method: "credit",
+            order_number: null,
+            cashier_id: ct.cashier_id ?? null,
+            credit_type: ct.type,
+            account_name: (ct as any).account_name ?? "Customer",
+          };
+        }
+        
         return {
           id: r.id,
           amount: Number(r.amount),
           note: r.note,
           created_at: r.created_at,
           order_id: r.order_id,
+          credit_tx_id: r.credit_tx_id,
           order_items: ord?.items ?? [],
           order_total: ord ? Number(ord.total) : Number(r.amount),
           order_paid: ord ? Number(ord.paid) : Number(r.amount),
@@ -768,6 +812,8 @@ function DashboardTab({
           order_payment_method: ord?.payment_method ?? "cash",
           order_number: ord?.order_number ?? null,
           cashier_id: ord?.cashier_id ?? null,
+          credit_type: null,
+          account_name: null,
         };
       });
       setWalletSales(mapped);
@@ -777,7 +823,7 @@ function DashboardTab({
     } finally {
       setWalletSalesLoading(false);
     }
-  }, [profile.id]);
+  }, [profile.id, profile.role]);
 
   useEffect(() => {
     loadOrders();
@@ -1336,6 +1382,80 @@ function DashboardTab({
     nav("/register");
   };
 
+  const handleCreditEdit = async (creditTxId: string) => {
+    const { data: ct } = await sb
+      .from("credit_transactions")
+      .select("id, credit_account_id, amount, items, created_at")
+      .eq("id", creditTxId)
+      .maybeSingle();
+    if (!ct) {
+      toast.error("Could not load credit sale for editing");
+      return;
+    }
+    const { data: acct } = await sb
+      .from("credit_accounts")
+      .select("full_name")
+      .eq("id", ct.credit_account_id)
+      .maybeSingle();
+    sessionStorage.setItem(
+      "edit_credit_order",
+      JSON.stringify({
+        credit_tx_id: ct.id,
+        credit_account_id: ct.credit_account_id,
+        customer_name: acct?.full_name ?? "Customer",
+        items: (ct.items ?? []) as any[],
+        amount: ct.amount,
+        created_at: ct.created_at,
+      }),
+    );
+    nav("/register");
+  };
+
+  const handleCreditDelete = async (creditTxId: string) => {
+    setDeletingOrder(true);
+    try {
+      const { data: ct } = await sb
+        .from("credit_transactions")
+        .select("id, cashier_id, type, amount")
+        .eq("id", creditTxId)
+        .maybeSingle();
+      if (!ct) {
+        toast.error("Credit record not found");
+        setDeletingOrder(false);
+        return;
+      }
+      
+      if (ct.type === "payment") {
+        const { error } = await sb.rpc("delete_credit_payment", {
+          p_credit_tx_id: ct.id,
+          p_cashier_id: ct.cashier_id,
+        });
+        if (error) {
+          toast.error(error.message);
+          setDeletingOrder(false);
+          return;
+        }
+      } else if (ct.type === "charge") {
+        const { error } = await sb.rpc("delete_credit_charge", {
+          p_credit_tx_id: ct.id,
+          p_cashier_id: ct.cashier_id,
+        });
+        if (error) {
+          toast.error(error.message);
+          setDeletingOrder(false);
+          return;
+        }
+      }
+      
+      toast.success("Credit record removed");
+      loadWalletSales();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to delete credit record");
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
   const handleDeleteOrder = async (order: Order) => {
     setDeletingOrder(true);
     try {
@@ -1671,7 +1791,7 @@ function DashboardTab({
       </div>
 
       {dashTab === "sales" && (
-        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={openBillForOrder} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} managerId={profile.id} ownerId={ownerId} isOwner={profile.role === "owner"} />
+        <SalesTab orders={orders} walletSales={walletSales} loading={ordersLoading} walletSalesLoading={walletSalesLoading} barIsOpen={barIsOpen} onPrint={openBillForOrder} onEdit={handleEditOrder} onDeleteConfirm={setDeleteOrderConfirmId} deletingOrder={deletingOrder} onDeleteOrder={handleDeleteOrder} onCreditEdit={handleCreditEdit} onCreditDelete={handleCreditDelete} managerId={profile.id} ownerId={ownerId} isOwner={profile.role === "owner"} />
       )}
 
       {dashTab === "expenses" && (
@@ -3418,12 +3538,14 @@ function SalesTab({
   onDeleteConfirm,
   deletingOrder,
   onDeleteOrder,
+  onCreditEdit,
+  onCreditDelete,
   managerId,
   ownerId,
   isOwner,
 }: {
   orders: Order[];
-  walletSales: { id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null; cashier_id?: string | null }[];
+  walletSales: { id: string; amount: number; note: string; created_at: string; order_id?: string; order_items?: any; order_total?: number; order_paid?: number; order_change?: number; order_payment_method?: string; order_number?: number | null; cashier_id?: string | null; credit_tx_id?: string | null; credit_type?: string | null; account_name?: string | null }[];
   loading: boolean;
   walletSalesLoading: boolean;
   barIsOpen: boolean;
@@ -3432,6 +3554,8 @@ function SalesTab({
   onDeleteConfirm: (id: string) => void;
   deletingOrder: boolean;
   onDeleteOrder: (o: Order) => void;
+  onCreditEdit?: (creditTxId: string) => void;
+  onCreditDelete?: (creditTxId: string) => void;
   managerId: string;
   ownerId: string;
   isOwner: boolean;
@@ -3528,12 +3652,14 @@ function SalesTab({
               <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">
                 {isOwner ? "Wallet Sales (Read Only)" : "My Wallet Sales"}
               </p>
-              {walletSales.map((ws) => {
+              {walletSales.map((ws, idx) => {
+                const isCredit = ws.credit_type === "charge" || ws.credit_type === "payment";
+                const isLast = idx === 0;
                 const items = (ws.order_items as any[]) || [];
                 const itemDesc = items.map((it: any) => `${it.qty || 1}× ${it.name}`).join(", ") || "Sale";
                 const isStaffWalletSale = isOwner && ws.cashier_id && ws.cashier_id !== ownerId;
                 const payMethod = (ws.order_payment_method ?? "cash").toLowerCase();
-                const payLabel = payMethod === "credit" ? "Credit Sale" : "Cash Sale";
+                const payLabel = isCredit ? (ws.credit_type === "payment" ? "Credit Payment" : "Credit Charge") : (payMethod === "credit" ? "Credit Sale" : "Cash Sale");
                 const orderObj = {
                   id: ws.order_id ?? ws.id,
                   total: Number(ws.order_total || ws.amount),
@@ -3553,7 +3679,7 @@ function SalesTab({
                     style={{ background: "oklch(0.20 0.05 145 / 0.20)" }}
                   >
                     <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 border bg-green-500/15 border-green-500/25 text-base">
-                      {payMethod === "credit" ? "🧾" : "💵"}
+                      {isCredit ? "🧾" : payMethod === "credit" ? "🧾" : "💵"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">
@@ -3564,15 +3690,17 @@ function SalesTab({
                         })}
                       </p>
                       <p className="text-sm font-black mt-0.5" style={{ color: "var(--primary)" }}>
-                        ORDER #{ws.order_number ?? (ws.order_id ? ws.order_id.slice(0, 8) : ws.id.slice(0, 8))} · {payLabel}
+                        {isCredit && ws.account_name ? `Credit: ${ws.account_name}` : `ORDER #${ws.order_number ?? (ws.order_id ? ws.order_id.slice(0, 8) : ws.id.slice(0, 8))}`} · {payLabel}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                        {itemDesc}
+                        {isCredit ? (itemDesc || "Credit transaction") : itemDesc}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {payMethod === "credit"
-                          ? `Charged $${fmt(Number(ws.order_total || ws.amount))}`
-                          : `Paid $${fmt(Number(ws.order_paid || ws.amount))} · Change $${fmt(Number(ws.order_change || 0))}`}
+                        {isCredit
+                          ? `${ws.credit_type === "payment" ? "Paid" : "Charged"} $${fmt(Number(ws.order_total || ws.amount))}`
+                          : payMethod === "credit"
+                            ? `Charged $${fmt(Number(ws.order_total || ws.amount))}`
+                            : `Paid $${fmt(Number(ws.order_paid || ws.amount))} · Change $${fmt(Number(ws.order_change || 0))}`}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -3585,9 +3713,9 @@ function SalesTab({
                         <span className="font-black text-sm text-green-400">+${fmt(Number(ws.order_total || ws.amount))}</span>
                       )}
                       <div className="flex flex-row gap-2">
-                        {ws.order_id && (
+                        {(ws.order_id || isCredit) && (
                           <button
-                            onClick={() => onPrint(orderObj)}
+                            onClick={() => isCredit ? null : onPrint(orderObj)}
                             className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition"
                             title="Print bill"
                           >
@@ -3596,16 +3724,26 @@ function SalesTab({
                         )}
                         {barIsOpen && (
                           <>
-                            <button
-                              onClick={() => ws.order_id && onEdit(orderObj)}
-                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
-                              title="Edit this sale"
-                            >
-                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
-                            </button>
-                            {ws.id === walletSales[0]?.id && (
+                            {isCredit && ws.credit_tx_id ? (
                               <button
-                                onClick={() => ws.order_id && onDeleteConfirm(ws.order_id)}
+                                onClick={() => onCreditEdit?.(ws.credit_tx_id!)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                                title="Edit this credit sale"
+                              >
+                                <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => ws.order_id && onEdit(orderObj)}
+                                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition"
+                                title="Edit this sale"
+                              >
+                                <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
+                              </button>
+                            )}
+                            {isLast && (
+                              <button
+                                onClick={() => isCredit && ws.credit_tx_id ? onCreditDelete?.(ws.credit_tx_id!) : ws.order_id && onDeleteConfirm(ws.order_id)}
                                 className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-red-600 active:scale-95 transition"
                                 title="Delete this sale"
                               >

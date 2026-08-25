@@ -1491,10 +1491,10 @@ function CashierWallet({
                         <div className="flex flex-row gap-2">
                           <button
                             onClick={() => openBillForCreditTx(tx)}
-                            className="h-8 w-8 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                            className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-blue-500/20 active:scale-95 transition shrink-0"
                             title="Print bill"
                           >
-                            <Receipt className="h-3.5 w-3.5 text-blue-300" />
+                            <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-300" />
                           </button>
                           {(profile.role === "owner" ||
                             profile.role === "manager" ||
@@ -1539,10 +1539,10 @@ function CashierWallet({
                                 );
                                 nav("/register");
                               }}
-                              className="h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition mt-1 shrink-0 self-end"
+                              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center bg-primary/20 active:scale-95 transition shrink-0"
                               title="Edit this credit sale"
                             >
-                              <Pencil className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: "var(--primary)" }} />
                             </button>
                           )}
                         </div>
