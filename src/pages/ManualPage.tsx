@@ -134,7 +134,6 @@ export default function ManualPage() {
             steps: [
               ["Tap items to add to cart", "Browse by category tabs at the top. Tap any product to add one unit to the cart."],
               ["Adjust quantities in the cart", "Tap the − or + buttons on any cart item to change the quantity. Tap the × to remove it entirely."],
-              ["Split view", "On the Bar screen tap the split icon (top-right) to show the product grid and cart side by side. Useful on tablets or wide screens."],
               ["Choose cash or credit", "Tap Cash Sale or Credit Sale at the bottom to proceed to checkout."],
               ["Confirm the sale", "Enter the amount tendered (cash) or select the customer (credit), then confirm. The order is recorded instantly."],
             ],
@@ -247,6 +246,8 @@ export default function ManualPage() {
               ["Review current levels", "Each product shows its system stock level. Scroll through the full list."],
               ["Enter the physical count", "Tap any product and type the actual quantity you have on hand."],
               ["Save the count", "Tap Save. The system stock is updated to match your physical count. A variance note is recorded for the audit trail."],
+              ["Split View — owners & managers", "Tap the Split View button to open a two-panel layout: Stock Count on the left and Stock Check (current system levels) on the right. Swipe between panels on mobile. Useful for doing a count while comparing the system figures at the same time."],
+              ["Split View — cashiers", "Cashiers who tap Split View see Stock Count on the left and the Bar register on the right — so they can check stock while keeping the POS visible."],
               ["Download the sheet", "Tap the PDF / Export button to download a full stock count sheet for your records."],
             ],
             tip: "Run a stock count at the end of each session or week to keep your inventory accurate and your profit reports reliable.",
