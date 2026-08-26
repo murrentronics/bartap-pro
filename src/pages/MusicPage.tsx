@@ -509,10 +509,10 @@ export default function MusicPage() {
                 className="flex-1 min-w-0 flex flex-col justify-center gap-3 px-4 py-5 cursor-pointer active:opacity-80 transition"
                 onClick={() => setShowYTFullscreen(true)}
               >
-                {/* Animated bars */}
-                <div className="flex items-end gap-0.5 h-10 shrink-0">
-                  {[0,1,2,3,4,5,6].map(b => (
-                    <div key={b} className="w-1.5 rounded-full bg-red-400"
+                {/* Animated bars — stretch full width */}
+                <div className="flex items-end gap-0.5 h-10 w-full">
+                  {Array.from({ length: 24 }).map((_, b) => (
+                    <div key={b} className="flex-1 rounded-full bg-red-400"
                       style={{
                         height: "100%",
                         animation: yt.ytPaused

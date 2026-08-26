@@ -118,7 +118,7 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
       // Always remove any existing entry with the same id first, then prepend
       // This prevents duplicates when removing and re-saving the same track
       const filtered = prev.filter(h => h.id !== item.id);
-      const updated = [{ ...item, playedAt: Date.now() }, ...filtered].slice(0, HISTORY_MAX);
+      const updated = [...filtered, { ...item, playedAt: Date.now() }].slice(-HISTORY_MAX);
       saveHistory(updated);
       return updated;
     });
