@@ -16,9 +16,22 @@ export default function LoginPage() {
   const { session, profile, loading } = useAuth();
   const nav = useNavigate();
   const { t } = useTranslation();
-  // Track if forgot-password flow is open so we don't auto-redirect
-  // when the OTP verification temporarily signs the user in
   const [forgotOpen, setForgotOpen] = useState(false);
+  // Track visible viewport height so the container shrinks when the keyboard opens
+  const [vpHeight, setVpHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setVpHeight(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   useEffect(() => {
     // Don't redirect while the forgot-password flow is active —
@@ -40,8 +53,19 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen overflow-y-auto px-3 py-8 flex flex-col items-center justify-start"
-      style={{ background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)" }}
+      className="px-3 py-8 flex flex-col items-center"
+      style={{
+        background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)",
+        position: "fixed",
+        inset: 0,
+        // When keyboard is open, visualViewport.height is smaller than screen height.
+        // Capping the container height here means the form only occupies the visible
+        // area above the keyboard, and overflow-y:auto lets the user scroll to the
+        // terms/button at the bottom without anything being hidden behind the keyboard.
+        height: vpHeight != null ? `${vpHeight}px` : "100%",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -513,8 +537,8 @@ function SignUpForm() {
 
   const scrollIntoView = (e: React.FocusEvent<HTMLElement>) => {
     setTimeout(() => {
-      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 350);
+      e.target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 300);
   };
 
   const submit = async (e: React.FormEvent) => {
