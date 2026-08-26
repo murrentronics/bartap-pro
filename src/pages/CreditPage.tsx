@@ -1598,6 +1598,7 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
              value={name}
              onChange={(e) => { setDone(false); setName(e.target.value); }}
              onFocus={() => setActiveField("name")}
+             readOnly={Capacitor.isNativePlatform()}
              placeholder="e.g. John Smith"
              className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
              style={{ background: "#ffffff" }}
@@ -1622,7 +1623,8 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
             <Label>ID Number</Label>
              <input
                type="text"
-               inputMode="numeric"
+               inputMode={Capacitor.isNativePlatform() ? "none" : "numeric"}
+               readOnly={Capacitor.isNativePlatform()}
                value={idNumber}
                onChange={(e) => {
                  const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
@@ -1646,7 +1648,8 @@ function CreateTab({ ownerId, onCreated }: { ownerId: string; onCreated: (a: Cre
               <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
                <input
                  type="text"
-                 inputMode="tel"
+                 inputMode={Capacitor.isNativePlatform() ? "none" : "tel"}
+                 readOnly={Capacitor.isNativePlatform()}
                  value={contact}
                  onChange={(e) => {
                    const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
@@ -1841,6 +1844,7 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onFocus={() => setActiveField("name")}
+                readOnly={Capacitor.isNativePlatform()}
                 placeholder="e.g. John Smith"
                 className="w-full h-10 rounded-md border border-input px-3 text-left mt-1"
                 style={{ background: "#ffffff" }}
@@ -1860,7 +1864,8 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                 <Label>ID Number</Label>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode={Capacitor.isNativePlatform() ? "none" : "numeric"}
+                  readOnly={Capacitor.isNativePlatform()}
                   value={idNumber}
                   onChange={(e) => {
                     const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);
@@ -1880,7 +1885,8 @@ function EditCustomerModal({ account, onClose, onSaved }: {
                   <span className="h-10 px-3 flex items-center rounded-l-md border border-r-0 border-input bg-muted text-sm font-bold text-muted-foreground select-none">868</span>
                   <input
                     type="text"
-                    inputMode="tel"
+                    inputMode={Capacitor.isNativePlatform() ? "none" : "tel"}
+                    readOnly={Capacitor.isNativePlatform()}
                     value={contact}
                     onChange={(e) => {
                       const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 7);

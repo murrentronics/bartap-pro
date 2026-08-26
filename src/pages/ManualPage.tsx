@@ -137,7 +137,7 @@ export default function ManualPage() {
               ["Choose cash or credit", "Tap Cash Sale or Credit Sale at the bottom to proceed to checkout."],
               ["Confirm the sale", "Enter the amount tendered (cash) or select the customer (credit), then confirm. The order is recorded instantly."],
             ],
-            tip: "Long-press any item in the product grid to enter reorder mode — drag items to rearrange their position. Changes are saved automatically.",
+            tip: "Tap the ⇅ Sort Item Order button (visible when the cart is empty) to enter reorder mode. Tap one item to select it, then tap another to swap their positions. Changes are saved automatically.",
           },
 
           // ── 4. Cash ───────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ export default function ManualPage() {
             steps: [
               ["Tap Items in the menu", "Owners and managers can view and edit products."],
               ["Add a product", "Tap the + button. Set the name, category, selling price, cost price, stock level, and optionally a photo."],
-              ["Edit or delete", "Tap any product card to edit its details. Long-press to delete."],
+              ["Edit or delete", "Tap any product card to edit its details. Tap the red trash icon on the card to delete it."],
               ["Stock deducts automatically", "Every confirmed sale reduces the stock count. A low-stock badge appears when levels fall below the threshold you set."],
               ["Cost price drives profit reporting", "Set an accurate cost price to see your gross margin per item in the Summary reports."],
             ],

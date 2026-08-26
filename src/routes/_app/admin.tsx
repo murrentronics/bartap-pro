@@ -2162,7 +2162,7 @@ export default function AdminPage() {
   if (profile.role !== "admin") return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Sticky page title */}
       <div className="sticky top-0 z-20 -mx-3 px-3 pt-2 pb-2 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2">
@@ -2221,91 +2221,88 @@ export default function AdminPage() {
         </TabsList>
 
         {/* ── Panel (Dashboard + History sub-tabs) ── */}
-        <TabsContent value="panel" className="mt-4">
-          <Tabs value={panelSubTab} onValueChange={setPanelSubTab}>
-            <TabsList className="grid grid-cols-2 w-full mb-4">
-              <TabsTrigger
-                value="dashboard"
-                className="gap-1.5 font-bold"
-                style={
-                  panelSubTab === "dashboard"
-                    ? { background: "var(--gradient-hero)", color: "#fff" }
-                    : { background: "transparent", color: "var(--muted-foreground)" }
-                }
-              >
-                <BarChart3 className="h-3.5 w-3.5" /> Dashboard
-              </TabsTrigger>
-              <TabsTrigger
-                value="history"
-                className="gap-1.5 font-bold"
-                style={
-                  panelSubTab === "history"
-                    ? { background: "var(--gradient-hero)", color: "#fff" }
-                    : { background: "transparent", color: "var(--muted-foreground)" }
-                }
-              >
-                <History className="h-3.5 w-3.5" /> History
-              </TabsTrigger>
-            </TabsList>
+        <TabsContent value="panel" className="mt-3">
+          {/* Dashboard / History pill toggle */}
+          <div
+            className="flex rounded-xl overflow-hidden border border-border mb-3"
+            style={{ background: "oklch(0.16 0.02 260)" }}
+          >
+            <button
+              onClick={() => setPanelSubTab("dashboard")}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 text-xs font-bold transition rounded-xl"
+              style={
+                panelSubTab === "dashboard"
+                  ? { background: "var(--gradient-hero)", color: "#fff" }
+                  : { background: "transparent", color: "var(--muted-foreground)" }
+              }
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Dashboard
+            </button>
+            <button
+              onClick={() => setPanelSubTab("history")}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 text-xs font-bold transition rounded-xl"
+              style={
+                panelSubTab === "history"
+                  ? { background: "var(--gradient-hero)", color: "#fff" }
+                  : { background: "transparent", color: "var(--muted-foreground)" }
+              }
+            >
+              <History className="h-3.5 w-3.5" /> History
+            </button>
+          </div>
 
-            {/* ── Dashboard Sub-tab ── */}
-            <TabsContent value="dashboard" className="space-y-5 mt-0">
-              {/* Stat cards */}
-              <div className="grid grid-cols-2 gap-3">
+          {panelSubTab === "dashboard" && (
+            <div className="space-y-4">
+              {/* ── Compact 3-col stat grid ── */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Row 1 */}
                 <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
                   style={{ background: "var(--gradient-card)" }}
                 >
-                  <p className="text-xs text-muted-foreground font-medium">Pending Users</p>
-                  <p className="text-3xl font-black">{buckets.pending.length}</p>
-                  <p className="text-xs text-muted-foreground">awaiting billing approval</p>
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Pending Users</p>
+                  <p className="text-2xl font-black leading-none">{buckets.pending.length}</p>
                 </div>
                 <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
                   style={{ background: "var(--gradient-card)" }}
                 >
-                  <p className="text-xs text-muted-foreground font-medium">Approved Users</p>
-                  <p className="text-3xl font-black text-green-400">{buckets.approved.length}</p>
-                  <p className="text-xs text-muted-foreground">active accounts</p>
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Approved Users</p>
+                  <p className="text-2xl font-black leading-none text-green-400">{buckets.approved.length}</p>
                 </div>
                 <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
                   style={{ background: "var(--gradient-card)" }}
                 >
-                  <p className="text-xs text-muted-foreground font-medium">Pending Payments</p>
-                  <p className="text-3xl font-black text-yellow-400">{pendingBillingCount}</p>
-                  <p className="text-xs text-muted-foreground">waiting review</p>
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Pending Payments</p>
+                  <p className="text-2xl font-black leading-none text-yellow-400">{pendingBillingCount}</p>
+                </div>
+                {/* Row 2 */}
+                <div
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
+                  style={{ background: "var(--gradient-card)" }}
+                >
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Due Soon</p>
+                  <p className="text-2xl font-black leading-none text-orange-400">{nearExpiryCount}</p>
                 </div>
                 <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
                   style={{ background: "var(--gradient-card)" }}
                 >
-                  <p className="text-xs text-muted-foreground font-medium">Due Soon</p>
-                  <p className="text-3xl font-black text-orange-400">{nearExpiryCount}</p>
-                  <p className="text-xs text-muted-foreground">within 7 days</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
-                  style={{ background: "var(--gradient-card)" }}
-                >
-                  <p className="text-xs text-muted-foreground font-medium">Suspended</p>
-                  <p className="text-2xl font-black text-red-400">{buckets.suspended.length}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Suspended</p>
+                  <p className="text-2xl font-black leading-none text-red-400">{buckets.suspended.length}</p>
                 </div>
                 <div
-                  className="rounded-2xl border border-border p-4 space-y-1"
+                  className="rounded-xl border border-border px-3 py-2.5 space-y-0.5"
                   style={{ background: "var(--gradient-card)" }}
                 >
-                  <p className="text-xs text-muted-foreground font-medium">Total Registered</p>
-                  <p className="text-2xl font-black">
-                    {
-                      rows.filter(
-                        (r) =>
-                          !r.is_bar_account &&
-                          !["renard.sankersingh@gmail.com", "isabel@gmail.com"].includes(r.email),
-                      ).length
-                    }
+                  <p className="text-[10px] text-muted-foreground font-medium leading-tight">Total Registered</p>
+                  <p className="text-2xl font-black leading-none">
+                    {rows.filter(
+                      (r) =>
+                        !r.is_bar_account &&
+                        !["renard.sankersingh@gmail.com", "isabel@gmail.com"].includes(r.email),
+                    ).length}
                   </p>
                 </div>
               </div>
@@ -2314,36 +2311,27 @@ export default function AdminPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest">
+                  <h2 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                     Shareholder Income
                   </h2>
                 </div>
 
                 {/* Total revenue row */}
                 <div
-                  className="rounded-2xl border border-primary/30 p-4"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03))",
-                  }}
+                  className="rounded-xl border border-primary/30 px-4 py-3"
+                  style={{ background: "linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03))" }}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-end justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium">
-                        Total Revenue This Month
-                      </p>
-                      <p className="text-3xl font-black text-primary">
-                        {incomeLoading
-                          ? "…"
-                          : `$${currentMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                      <p className="text-[10px] text-muted-foreground font-medium">Total Revenue This Month</p>
+                      <p className="text-3xl font-black text-primary leading-tight">
+                        {incomeLoading ? "…" : `$${currentMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground font-medium">Last Month</p>
-                      <p className="text-xl font-black text-muted-foreground">
-                        {incomeLoading
-                          ? "…"
-                          : `$${lastMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
+                    <div className="text-right pb-0.5">
+                      <p className="text-[10px] text-muted-foreground font-medium">Last Month</p>
+                      <p className="text-lg font-black text-muted-foreground">
+                        {incomeLoading ? "…" : `$${lastMonthIncome.toLocaleString("en", { minimumFractionDigits: 0 })}`}
                       </p>
                     </div>
                   </div>
@@ -2351,46 +2339,38 @@ export default function AdminPage() {
 
                 {/* Per-shareholder cards */}
                 {SHAREHOLDERS.map((sh, idx) => (
-                  <div key={sh.name} className="space-y-2">
-                    <p className={`text-xs font-black uppercase tracking-widest ${sh.color}`}>
+                  <div key={sh.name} className="space-y-1.5">
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${sh.color}`}>
                       {sh.name} · {Math.round(sh.share * 100)}%
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <div
-                        className={`rounded-2xl border ${sh.bg} p-4 space-y-1`}
+                        className={`rounded-xl border ${sh.bg} px-3 py-2.5 space-y-0.5`}
                         style={{ background: sh.gradient }}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <TrendingUp className={`h-3.5 w-3.5 ${sh.color}`} />
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                            This Month
-                          </p>
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className={`h-3 w-3 ${sh.color}`} />
+                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">This Month</p>
                         </div>
-                        <p className={`text-2xl font-black ${sh.color}`}>
-                          {incomeLoading
-                            ? "…"
-                            : `$${Math.round(currentMonthIncome * sh.share).toLocaleString()}`}
+                        <p className={`text-xl font-black ${sh.color} leading-tight`}>
+                          {incomeLoading ? "…" : `$${Math.round(currentMonthIncome * sh.share).toLocaleString()}`}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[9px] text-muted-foreground">
                           {new Date().toLocaleString("en", { month: "long", year: "numeric" })}
                         </p>
                       </div>
                       <div
-                        className={`rounded-2xl border ${sh.bg} p-4 space-y-1`}
+                        className={`rounded-xl border ${sh.bg} px-3 py-2.5 space-y-0.5`}
                         style={{ background: sh.gradient }}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className={`h-3.5 w-3.5 ${sh.color} opacity-60`} />
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                            Last Month
-                          </p>
+                        <div className="flex items-center gap-1">
+                          <Calendar className={`h-3 w-3 ${sh.color} opacity-60`} />
+                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Last Month</p>
                         </div>
-                        <p className={`text-2xl font-black ${sh.color} opacity-70`}>
-                          {incomeLoading
-                            ? "…"
-                            : `$${Math.round(lastMonthIncome * sh.share).toLocaleString()}`}
+                        <p className={`text-xl font-black ${sh.color} opacity-70 leading-tight`}>
+                          {incomeLoading ? "…" : `$${Math.round(lastMonthIncome * sh.share).toLocaleString()}`}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[9px] text-muted-foreground">
                           {(() => {
                             const d = new Date();
                             d.setMonth(d.getMonth() - 1);
@@ -2402,10 +2382,11 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-            </TabsContent>
+            </div>
+          )}
 
-            {/* ── History Sub-tab ── */}
-            <TabsContent value="history" className="mt-0">
+          {panelSubTab === "history" && (
+            <div className="mt-0">
               {incomeLoading ? (
                 <div className="flex justify-center py-16">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2417,7 +2398,6 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <Accordion type="multiple" className="space-y-2">
-                  {/* Group by year */}
                   {Array.from(new Set(monthlyHistory.map((h) => h.year)))
                     .sort((a, b) => b - a)
                     .map((year) => {
@@ -2455,10 +2435,7 @@ export default function AdminPage() {
                                         {MONTH_NAMES[rec.month]}
                                       </span>
                                       <span className="font-black text-primary">
-                                        $
-                                        {rec.total.toLocaleString("en", {
-                                          minimumFractionDigits: 0,
-                                        })}
+                                        ${rec.total.toLocaleString("en", { minimumFractionDigits: 0 })}
                                       </span>
                                     </div>
                                     {SHAREHOLDERS.map((sh, idx) => (
@@ -2470,10 +2447,7 @@ export default function AdminPage() {
                                           {sh.name.split(" ")[0]} ({Math.round(sh.share * 100)}%)
                                         </span>
                                         <span className={`font-black ${sh.color}`}>
-                                          $
-                                          {rec.shares[idx].toLocaleString("en", {
-                                            minimumFractionDigits: 0,
-                                          })}
+                                          ${rec.shares[idx].toLocaleString("en", { minimumFractionDigits: 0 })}
                                         </span>
                                       </div>
                                     ))}
@@ -2486,8 +2460,8 @@ export default function AdminPage() {
                     })}
                 </Accordion>
               )}
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </TabsContent>
 
         {/* ── Billing ── */}

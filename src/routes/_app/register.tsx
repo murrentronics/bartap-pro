@@ -4696,15 +4696,16 @@ function CashOverlay({
               borderRadius: "1rem",
             }}
           >
-            {/* Done button — mobile only, closes the panel */}
+            {/* Header — mobile only */}
             <div className="md:hidden flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
               <span className="text-sm font-black text-white/60">Customer / Payment</span>
               <button
-                onClick={() => setShowRightPanel(false)}
-                className="h-9 px-5 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
+                onClick={() => setShowCreateCustomer(true)}
+                className="h-9 px-3 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition flex items-center gap-1.5"
                 style={{ background: "var(--gradient-hero)" }}
               >
-                Done
+                <UserPlus className="h-4 w-4" />
+                <span>+ Create</span>
               </button>
             </div>
             {/* Cash / Credit big square buttons */}
@@ -4746,71 +4747,84 @@ function CashOverlay({
             </div>
             {/* Customer list — visible when Cash or Credit is selected */}
             {payMode && (
-              <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 min-h-0 pt-1">
-                {loadingCustomers ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                ) : customers.length === 0 ? (
-                  <p className="text-xs text-white/30 text-center py-6">No customers yet</p>
-                ) : (
-                  customers.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedCustomer(selectedCustomer?.id === c.id ? null : c)}
-                      className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left transition active:scale-[0.98] min-h-[60px]"
-                      style={
-                        selectedCustomer?.id === c.id
-                          ? {
-                              background: "var(--gradient-hero)",
-                              color: "var(--primary-foreground)",
-                            }
-                          : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }
-                      }
-                    >
-                      <span
-                        className={`text-sm font-black leading-tight flex-1 pr-3 ${selectedCustomer?.id === c.id ? "text-black" : ""}`}
-                      >
-                        {c.full_name}
-                      </span>
-                      <span
-                        className={`text-xs font-black shrink-0 ${
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto px-4 pt-1 pb-2 space-y-2 min-h-0">
+                  {loadingCustomers ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : customers.length === 0 ? (
+                    <p className="text-xs text-white/30 text-center py-6">No customers yet</p>
+                  ) : (
+                    customers.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedCustomer(selectedCustomer?.id === c.id ? null : c)}
+                        className="w-full flex items-center justify-between px-4 py-4 rounded-2xl text-left transition active:scale-[0.98] min-h-[60px]"
+                        style={
                           selectedCustomer?.id === c.id
-                            ? "text-black"
-                            : Number(c.balance_owed) > 0
-                              ? "text-red-400"
-                              : "text-amber-700"
-                        }`}
+                            ? {
+                                background: "var(--gradient-hero)",
+                                color: "var(--primary-foreground)",
+                              }
+                            : { background: "oklch(0.22 0.02 60)", color: "rgba(255,255,255,0.85)" }
+                        }
                       >
-                        {Number(c.balance_owed) > 0
-                          ? `-$${Number(c.balance_owed).toFixed(2)}`
-                          : "$0.00"}
-                      </span>
-                    </button>
-                  ))
-                )}
-                <button
-                  onClick={() => setShowCreateCustomer(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-black text-sm transition active:scale-95 mt-2"
-                  style={{
-                    background: "var(--gradient-hero)",
-                    color: "var(--primary-foreground)",
-                  }}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Create New
-                </button>
+                        <span
+                          className={`text-sm font-black leading-tight flex-1 pr-3 ${selectedCustomer?.id === c.id ? "text-black" : ""}`}
+                        >
+                          {c.full_name}
+                        </span>
+                        <span
+                          className={`text-xs font-black shrink-0 ${
+                            selectedCustomer?.id === c.id
+                              ? "text-black"
+                              : Number(c.balance_owed) > 0
+                                ? "text-red-400"
+                                : "text-amber-700"
+                          }`}
+                        >
+                          {Number(c.balance_owed) > 0
+                            ? `-$${Number(c.balance_owed).toFixed(2)}`
+                            : "$0.00"}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+                {/* Done button — sticky footer */}
+                <div className="md:hidden px-4 pb-4 pt-2 shrink-0">
+                  <button
+                    onClick={() => setShowRightPanel(false)}
+                    className="w-full h-9 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             )}
             {!payMode && (
-              <div className="flex-1 flex items-center justify-center px-4 pb-4 min-h-[80px]">
-                <p className="text-xs text-white/30 text-center">
-                  Select Cash or Credit
-                  <br />
-                  to assign a customer,
-                  <br />
-                  or Proceed as Guest
-                </p>
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 flex items-center justify-center px-4 min-h-[80px]">
+                  <p className="text-xs text-white/30 text-center">
+                    Select Cash or Credit
+                    <br />
+                    to assign a customer,
+                    <br />
+                    or Proceed as Guest
+                  </p>
+                </div>
+                {/* Done button — sticky footer when no pay mode selected */}
+                <div className="md:hidden px-4 pb-4 pt-2 shrink-0">
+                  <button
+                    onClick={() => setShowRightPanel(false)}
+                    className="w-full h-9 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             )}
           </div>
