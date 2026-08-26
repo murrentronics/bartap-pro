@@ -4698,13 +4698,20 @@ function CashOverlay({
             className={`
             w-full md:w-64 flex flex-col shrink-0
             md:static
-            ${showRightPanel ? "absolute inset-0 z-[60] rounded-3xl" : "hidden md:flex"}
+            ${showRightPanel ? "absolute z-[60] rounded-3xl" : "hidden md:flex"}
           `}
             style={{
               background: "oklch(0.15 0.02 60)",
               border: "3px solid #f97316",
               borderRadius: "1rem",
-              ...(showRightPanel ? { inset: "12px", position: "absolute", height: "calc(100% - 24px)" } : {}),
+              ...(showRightPanel ? {
+                top: "12px",
+                right: "12px",
+                bottom: "12px",
+                left: "12px",
+                width: "auto",
+                height: "auto",
+              } : {}),
             }}
           >
             {/* Header — mobile only */}
