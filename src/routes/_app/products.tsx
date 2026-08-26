@@ -3094,7 +3094,26 @@ function AddItemDialog({
     }
   }, [activeNumpad]);
 
-  // Inline numpad rendered directly under its field
+  // Keep a stable ref so the keyboard handler always reads latest state
+  const handleNumpadRef = useRef(handleNumpad);
+  useEffect(() => { handleNumpadRef.current = handleNumpad; });
+
+  // Desktop keyboard support — fires whenever any numpad is open
+  useEffect(() => {
+    if (!activeNumpad) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") { e.preventDefault(); handleNumpadRef.current(e.key); }
+      else if (e.key === ".") { e.preventDefault(); handleNumpadRef.current("."); }
+      else if (e.key === "Backspace") { e.preventDefault(); handleNumpadRef.current("⌫"); }
+      else if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); setActiveNumpad(null); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeNumpad]);
+
+  // Inline numpad rendered directly under its field.
+  // Uses onMouseDown + preventDefault so desktop mouse clicks fire without
+  // the button unmounting between mousedown and mouseup due to re-renders.
   const InlineNumpad = ({ forField }: { forField: string }) => {
     if (activeNumpad !== forField) return null;
     return (
@@ -3103,6 +3122,7 @@ function AddItemDialog({
           <button
             key={k}
             type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleNumpad(k); }}
             onClick={() => handleNumpad(k)}
             className={`h-11 rounded-xl font-black text-lg transition active:scale-95 ${
               k === "⌫"
