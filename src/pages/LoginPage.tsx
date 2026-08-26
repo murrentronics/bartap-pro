@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-3 py-8"
+      className="min-h-screen overflow-y-auto px-3 py-8 flex flex-col items-center justify-start"
       style={{ background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)" }}
     >
       <div className="w-full max-w-md">
