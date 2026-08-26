@@ -4810,14 +4810,24 @@ function CashOverlay({
                     ))
                   )}
                 </div>
-                {/* Done button — sticky footer */}
-                <div className="md:hidden px-4 pb-4 pt-2 shrink-0 flex justify-center">
+                {/* Sticky footer — mobile: Done button | tablet+desktop: Create button */}
+                <div className="px-4 pb-4 pt-2 shrink-0 flex justify-center">
+                  {/* Mobile: Done closes the floating panel */}
                   <button
                     onClick={() => setShowRightPanel(false)}
-                    className="h-12 px-10 rounded-2xl font-black text-sm border-2 active:scale-95 transition"
+                    className="md:hidden h-12 px-10 rounded-2xl font-black text-sm border-2 active:scale-95 transition"
                     style={{ background: "rgba(37,211,102,0.10)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
                   >
                     Done
+                  </button>
+                  {/* Tablet / Desktop: Create button */}
+                  <button
+                    onClick={() => setShowCreateCustomer(true)}
+                    className="hidden md:flex h-11 px-5 rounded-2xl font-black text-sm text-primary-foreground active:scale-95 transition items-center gap-2 w-full justify-center"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>+ Create</span>
                   </button>
                 </div>
               </div>

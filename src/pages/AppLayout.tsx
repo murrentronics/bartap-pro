@@ -335,7 +335,7 @@ export default function AppLayout() {
   const isPending = !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "pending";
   const isSuspended =
     !isAdmin && !isCashier && !isManager && !isDemo && profile.status === "suspended";
-  const hasMusic = isOwner || isCashier;
+  const hasMusic = isOwner || isCashier || isManager;
   const isOnMusic = loc.pathname === "/music";
 
   if (!isAdmin && !isCashier && profile.status === "expelled") {
@@ -539,7 +539,7 @@ export default function AppLayout() {
           </div>
 
           {/* Music / Machines-or-Bar toggle — owners/cashiers only (not managers) */}
-          {hasMusic && !isManager && (
+          {hasMusic && (
             <Link
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
               className="h-10 px-3 sm:px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"

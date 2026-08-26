@@ -110,7 +110,7 @@ export default function MusicPage() {
   }, []);
 
   useEffect(() => {
-    if (profile && profile.role !== "owner" && profile.role !== "cashier") {
+    if (profile && profile.role !== "owner" && profile.role !== "cashier" && profile.role !== "manager" && (profile as any).job_title !== "manager") {
       nav("/register", { replace: true });
     }
   }, [profile, nav]);
@@ -201,7 +201,7 @@ export default function MusicPage() {
   }, [showYTFullscreen, yt.videoId, yt.history]);
 
   const bars = Array.from({ length: 14 });
-  if (!profile || (profile.role !== "owner" && profile.role !== "cashier")) return null;
+  if (!profile || (profile.role !== "owner" && profile.role !== "cashier" && profile.role !== "manager" && (profile as any).job_title !== "manager")) return null;
 
   const ytActive = !!yt.videoId; // video is loaded in iframe (may or may not be fullscreen)
 
