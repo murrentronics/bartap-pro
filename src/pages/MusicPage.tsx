@@ -476,7 +476,7 @@ export default function MusicPage() {
           }}
         >
           {yt.nowPlayingTitle ? (
-            <div className="flex items-center gap-0" style={{ minHeight: "152px" }}>
+            <div className="flex items-center gap-0" style={{ minHeight: "150px" }}>
 
               {/* LEFT — Play / Pause button */}
               <button
@@ -542,7 +542,7 @@ export default function MusicPage() {
 
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2 text-white/30" style={{ minHeight: "152px" }}>
+            <div className="flex items-center justify-center gap-2 text-white/30" style={{ minHeight: "150px" }}>
               <Youtube className="h-5 w-5" />
               <span className="text-sm">No video playing</span>
             </div>
