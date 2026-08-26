@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, Minus, Plus, Loader2, X, CheckCircle2, UserPlus } from "lucide-react";
+import { Trash2, Minus, Plus, Loader2, X, CheckCircle2, UserPlus, Bluetooth, Usb } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, type CategoryValue, categoryIcon, categoryKey } from "@/lib/categories";
 import { useTranslation } from "@/lib/i18n";
@@ -4704,6 +4704,7 @@ function CashOverlay({
               background: "oklch(0.15 0.02 60)",
               border: "3px solid #f97316",
               borderRadius: "1rem",
+              ...(showRightPanel ? { inset: "12px", position: "absolute", height: "calc(100% - 24px)" } : {}),
             }}
           >
             {/* Header — mobile only */}
@@ -4803,11 +4804,11 @@ function CashOverlay({
                   )}
                 </div>
                 {/* Done button — sticky footer */}
-                <div className="md:hidden px-4 pb-4 pt-2 shrink-0">
+                <div className="md:hidden px-4 pb-4 pt-2 shrink-0 flex justify-center">
                   <button
                     onClick={() => setShowRightPanel(false)}
-                    className="w-full h-9 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
-                    style={{ background: "var(--gradient-hero)" }}
+                    className="h-12 px-10 rounded-2xl font-black text-sm border-2 active:scale-95 transition"
+                    style={{ background: "rgba(37,211,102,0.10)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
                   >
                     Done
                   </button>
@@ -4826,11 +4827,11 @@ function CashOverlay({
                   </p>
                 </div>
                 {/* Done button — sticky footer when no pay mode selected */}
-                <div className="md:hidden px-4 pb-4 pt-2 shrink-0">
+                <div className="md:hidden px-4 pb-4 pt-2 shrink-0 flex justify-center">
                   <button
                     onClick={() => setShowRightPanel(false)}
-                    className="w-full h-9 rounded-xl font-black text-sm text-primary-foreground active:scale-95 transition"
-                    style={{ background: "var(--gradient-hero)" }}
+                    className="h-12 px-10 rounded-2xl font-black text-sm border-2 active:scale-95 transition"
+                    style={{ background: "rgba(37,211,102,0.10)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
                   >
                     Done
                   </button>
@@ -6568,7 +6569,7 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
                   className="h-11 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50 border-2"
                   style={{ background: "rgba(99,102,241,0.10)", color: "#a5b4fc", borderColor: "rgba(99,102,241,0.35)" }}
                 >
-                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "🔌 USB"}
+                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Usb className="h-4 w-4" />USB</>}
                 </button>
                 <button
                   onClick={handlePairBluetooth}
@@ -6576,7 +6577,7 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
                   className="h-11 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50 border-2"
                   style={{ background: "rgba(59,130,246,0.10)", color: "#93c5fd", borderColor: "rgba(59,130,246,0.35)" }}
                 >
-                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "📶 Bluetooth"}
+                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Bluetooth className="h-4 w-4" />Bluetooth</>}
                 </button>
               </div>
             </div>
@@ -6603,8 +6604,8 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
             )}
             <button
               onClick={onDone}
-              className={`h-14 rounded-2xl font-black text-sm flex items-center justify-center transition active:scale-95 text-primary-foreground shadow-lg ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
-              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+              className={`h-14 rounded-2xl font-black text-sm flex items-center justify-center transition active:scale-95 border-2 ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
+              style={{ background: "rgba(37,211,102,0.10)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
             >
               Done
             </button>
