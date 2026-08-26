@@ -543,7 +543,7 @@ function SignUpForm() {
   return (
     <form
       onSubmit={submit}
-      className="mt-6 space-y-4 rounded-2xl p-6"
+      className="mt-6 space-y-4 rounded-2xl p-6 pb-16"
       style={{ background: "var(--gradient-card)", boxShadow: "var(--shadow-elegant)" }}
     >
       <div>
