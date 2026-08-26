@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Never commit or build — user does it",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "agent",
+        "prompt": "IMPORTANT RULE: Never run git commit, git push, npm run build, npm run build:web, npm run cap:sync, or any build/deploy command. The user runs all builds and commits themselves via `npm run cap:sync`. Only edit source files."
+      }
+    }
+  ]
+}
