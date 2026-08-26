@@ -371,11 +371,11 @@ function BillActionModal({ account, ownerName, onClose, chargeId, charges: propC
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
       onClick={onClose}>
       <div
-        className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden"
+        className="w-full max-w-xs rounded-3xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
         style={{ background: "var(--gradient-card)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <div className="flex items-center justify-between px-5 pt-5 pb-2 shrink-0">
           <h3 className="font-black text-base">Bill — {account.full_name}</h3>
           <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted transition">
             <X className="h-4 w-4" />
@@ -383,7 +383,7 @@ function BillActionModal({ account, ownerName, onClose, chargeId, charges: propC
         </div>
 
         {/* Receipt Paper Card */}
-        <div className="px-5 py-2 overflow-y-auto max-h-[50vh]">
+        <div className="px-5 py-2 overflow-y-auto flex-1 min-h-0">
           <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
             <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
               {ownerName}
@@ -436,7 +436,7 @@ function BillActionModal({ account, ownerName, onClose, chargeId, charges: propC
           </div>
         </div>
 
-        <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
+        <div className="px-5 pb-5 pt-3 flex flex-col gap-3 shrink-0">
           <button
             onClick={handlePrint}
             disabled={!!busy}

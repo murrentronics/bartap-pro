@@ -341,7 +341,7 @@ function FullBillPreview({ account, ownerName }: { account: CreditAccount; owner
   const balanceOwed = Number(account.balance_owed ?? 0);
 
   return (
-    <div className="px-5 py-2 max-h-72 overflow-y-auto">
+    <div className="px-5 py-2 flex-1 min-h-0 overflow-y-auto">
       <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
         {/* Header */}
         <div className="text-center font-black text-zinc-950 text-sm font-sans tracking-tight uppercase mb-0.5">
@@ -518,11 +518,11 @@ function BillModal({ account, ownerName, onClose }: {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden"
+        className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
         style={{ background: "var(--gradient-card)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <div className="flex items-center justify-between px-5 pt-5 pb-2 shrink-0">
           <h3 className="font-black text-base">Bill — {account.full_name}</h3>
           <button onClick={onClose} className="h-8 w-8 rounded-full flex items-center justify-center bg-muted transition">
             <X className="h-4 w-4" />
@@ -532,7 +532,7 @@ function BillModal({ account, ownerName, onClose }: {
         {/* Receipt paper preview */}
         <FullBillPreview account={account} ownerName={ownerName} />
 
-        <div className="px-5 pb-5 pt-3 flex flex-col gap-2">
+        <div className="px-5 pb-5 pt-3 flex flex-col gap-2 shrink-0">
           <div className="flex gap-2">
             <button
               onClick={handlePrint}
