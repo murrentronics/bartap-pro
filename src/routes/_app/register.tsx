@@ -6597,7 +6597,8 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
             )}
             <button
               onClick={onDone}
-              className={`h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80 ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
+              className={`h-14 rounded-2xl font-black text-sm flex items-center justify-center transition active:scale-95 text-primary-foreground shadow-lg ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
+              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
             >
               Done
             </button>

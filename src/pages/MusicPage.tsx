@@ -476,11 +476,11 @@ export default function MusicPage() {
           }}
         >
           {yt.nowPlayingTitle ? (
-            <div className="flex items-center gap-0">
+            <div className="flex items-center gap-0" style={{ minHeight: "152px" }}>
 
               {/* LEFT — Play / Pause button */}
               <button
-                className="h-full px-4 py-3 flex items-center justify-center shrink-0 active:opacity-60 transition"
+                className="self-stretch px-5 flex items-center justify-center shrink-0 active:opacity-60 transition"
                 style={{ background: "rgba(239,68,68,0.15)" }}
                 onClick={() => {
                   const iframe = document.getElementById("yt-iframe") as HTMLIFrameElement | null;
@@ -499,20 +499,20 @@ export default function MusicPage() {
                 }}
               >
                 {yt.ytPaused
-                  ? <Play className="h-5 w-5 text-red-400" fill="currentColor" />
-                  : <Pause className="h-5 w-5 text-red-400" fill="currentColor" />
+                  ? <Play className="h-8 w-8 text-red-400" fill="currentColor" />
+                  : <Pause className="h-8 w-8 text-red-400" fill="currentColor" />
                 }
               </button>
 
               {/* MIDDLE — song info tap zone → opens player */}
               <div
-                className="flex-1 min-w-0 flex items-center gap-3 px-3 py-3 cursor-pointer active:opacity-80 transition"
+                className="flex-1 min-w-0 flex flex-col justify-center gap-3 px-4 py-5 cursor-pointer active:opacity-80 transition"
                 onClick={() => setShowYTFullscreen(true)}
               >
                 {/* Animated bars */}
-                <div className="flex items-end gap-px h-6 shrink-0">
-                  {[0,1,2,3,4].map(b => (
-                    <div key={b} className="w-1 rounded-full bg-red-400"
+                <div className="flex items-end gap-0.5 h-10 shrink-0">
+                  {[0,1,2,3,4,5,6].map(b => (
+                    <div key={b} className="w-1.5 rounded-full bg-red-400"
                       style={{
                         height: "100%",
                         animation: yt.ytPaused
@@ -524,8 +524,8 @@ export default function MusicPage() {
                   ))}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs font-black truncate">{yt.nowPlayingTitle}</p>
-                  <p className="text-red-400/60 text-[10px] mt-0.5">
+                  <p className="text-white text-sm font-black truncate leading-snug">{yt.nowPlayingTitle}</p>
+                  <p className="text-red-400/60 text-xs mt-1">
                     {yt.ytPaused ? "Paused — tap to open player" : "YouTube playing in background"}
                   </p>
                 </div>
@@ -533,18 +533,18 @@ export default function MusicPage() {
 
               {/* RIGHT — Stop / clear button */}
               <button
-                className="h-full px-4 py-3 flex items-center justify-center shrink-0 active:opacity-60 transition"
+                className="self-stretch px-5 flex items-center justify-center shrink-0 active:opacity-60 transition"
                 style={{ background: "rgba(239,68,68,0.15)" }}
                 onClick={() => yt.setVideoId(null)}
               >
-                <Square className="h-4 w-4 text-red-400" fill="currentColor" />
+                <Square className="h-7 w-7 text-red-400" fill="currentColor" />
               </button>
 
             </div>
           ) : (
-            <div className="flex items-center justify-center py-3 gap-2 text-white/30">
-              <Youtube className="h-4 w-4" />
-              <span className="text-xs">No video playing</span>
+            <div className="flex items-center justify-center gap-2 text-white/30" style={{ minHeight: "152px" }}>
+              <Youtube className="h-5 w-5" />
+              <span className="text-sm">No video playing</span>
             </div>
           )}
         </div>
