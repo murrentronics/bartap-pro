@@ -4377,6 +4377,23 @@ function CashOverlay({
     onSuccess(paidNum, changeNum, buildReceipt(paidNum, changeNum, newOrder?.id, newOrder?.order_number ?? undefined));
   };
 
+  // Allow Enter key on desktop keyboard to confirm the sale on step 2
+  const submitRef = useRef(submit);
+  useEffect(() => { submitRef.current = submit; });
+
+  useEffect(() => {
+    if (step !== 2) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      // Credit orders don't need a paid amount check; cash orders need enough funds
+      if (payMode === "credit" || enough) {
+        if (!busy) submitRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [step, payMode, enough, busy]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       {/* Outer container: side-by-side on md+, stacked on mobile */}
@@ -6425,6 +6442,10 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
   const [connType,       setConnType]       = useState<PrinterConnectionType>("none");
   // Pairing flow state
   const [pairing,        setPairing]        = useState(false);
+  // Keyboard focus: "print" | "done" — arrows navigate, Enter fires
+  const [focusedBtn, setFocusedBtn] = useState<"print" | "done">("done");
+  const printBtnRef = useRef<HTMLButtonElement>(null);
+  const doneBtnRef  = useRef<HTMLButtonElement>(null);
   // On mount: check pairing state + auto-fire cash drawer for cash sales
   useEffect(() => {
     const type = getPrinterConnectionType();
@@ -6439,6 +6460,35 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When printer paired state resolves to true, default focus to "print"
+  useEffect(() => {
+    if (printerPaired === true) setFocusedBtn("print");
+  }, [printerPaired]);
+  const onPrintRef = useRef(onPrint);
+  const onDoneRef2 = useRef(onDone);
+  useEffect(() => { onPrintRef.current = onPrint; onDoneRef2.current = onDone; });
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        // Only toggle to "print" if the printer button is actually available
+        if (printerPaired === true) {
+          setFocusedBtn((prev) => (prev === "done" ? "print" : "done"));
+        }
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (focusedBtn === "print" && printerPaired === true && !printing) {
+          onPrintRef.current();
+        } else {
+          onDoneRef2.current();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusedBtn, printerPaired, printing]);
 
   // ── Pairing helpers ────────────────────────────────────────────────────────
 
@@ -6605,10 +6655,15 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
             {/* Print & Done — only shown when printer is paired */}
             {printerPaired === true && (
               <button
+                ref={printBtnRef}
                 onClick={onPrint}
                 disabled={printing}
                 className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
-                style={{ background: "var(--gradient-hero)" }}
+                style={{
+                  background: "var(--gradient-hero)",
+                  outline: focusedBtn === "print" ? "3px solid white" : "none",
+                  outlineOffset: "2px",
+                }}
               >
                 {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print & Done"}
               </button>
@@ -6620,9 +6675,16 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
               </button>
             )}
             <button
+              ref={doneBtnRef}
               onClick={onDone}
               className={`h-14 rounded-2xl font-black text-sm flex items-center justify-center transition active:scale-95 border-2 ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
-              style={{ background: "rgba(37,211,102,0.10)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
+              style={{
+                background: "rgba(37,211,102,0.10)",
+                color: "#25D366",
+                borderColor: focusedBtn === "done" ? "#25D366" : "rgba(37,211,102,0.4)",
+                outline: focusedBtn === "done" ? "3px solid #25D366" : "none",
+                outlineOffset: "2px",
+              }}
             >
               Done
             </button>
