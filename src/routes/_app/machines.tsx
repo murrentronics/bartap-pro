@@ -6509,63 +6509,39 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   })();
 
   // Entry range for the selected filter period.
-  // Uses session timestamps (set_at) as boundaries — a session runs from its set_at until
-  // the next session's set_at (or now if it's the most recent / still active).
-  // floatSessions is sorted newest-first, so index 0 is the most recent.
+  // Always uses TT-aware calendar boundaries (UTC-4 offset) — same approach as SummaryPage.
+  // Session set_at times are NOT used as query bounds; entries are filtered by when they
+  // were recorded, regardless of which session was active.
   const getEntryRange = (): { startIso: string; endIso: string } | null => {
     if (summaryFilter === "all") return null;
-
-    // Find the sessions that started in this period (same calendar filter as above)
-    const inPeriod = filteredSessions;
-    if (inPeriod.length === 0) {
-      // No session started in this period — fall back to calendar bounds so the
-      // view still shows any entries recorded during that window even without a new session
-      if (summaryFilter === "day") {
-        return {
-          startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
-          endIso:   new Date(pickerDate + "T23:59:59-04:00").toISOString(),
-        };
-      }
-      if (summaryFilter === "week") {
-        const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
-        return {
-          startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
-          endIso:   new Date(we.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString(),
-        };
-      }
-      if (summaryFilter === "month") {
-        const first = new Date(pickerYear, pickerMonth, 1);
-        const last  = new Date(pickerYear, pickerMonth + 1, 0);
-        return {
-          startIso: new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString(),
-          endIso:   new Date(last.toLocaleDateString("en-CA")  + "T23:59:59-04:00").toISOString(),
-        };
-      }
-      if (summaryFilter === "year") {
-        return {
-          startIso: new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString(),
-          endIso:   new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString(),
-        };
-      }
-      return null;
+    if (summaryFilter === "day") {
+      return {
+        startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
+        endIso:   new Date(pickerDate + "T23:59:59.999-04:00").toISOString(),
+      };
     }
-
-    // Start = earliest set_at among sessions in the period
-    const startIso = inPeriod.reduce((earliest, r) =>
-      r.set_at < earliest ? r.set_at : earliest, inPeriod[0].set_at);
-
-    // End = set_at of the next session AFTER the period's sessions (i.e., when the next
-    // session reset the counter), or now if no later session exists.
-    // floatSessions is sorted newest-first; find the session immediately preceding inPeriod
-    // in the sorted list (i.e., older index = earlier session → the one AFTER in time is
-    // at a lower index in the array).
-    const oldestInPeriod = inPeriod.reduce((oldest, r) =>
-      r.set_at < oldest ? r.set_at : oldest, inPeriod[0].set_at);
-    // The session that comes after (newer than) the oldest in-period session but NOT in the period
-    const nextSession = floatSessions.find(r => r.set_at > oldestInPeriod && !inPeriod.includes(r));
-    const endIso = nextSession ? nextSession.set_at : new Date().toISOString();
-
-    return { startIso, endIso };
+    if (summaryFilter === "week") {
+      const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
+      return {
+        startIso: new Date(pickerDate + "T00:00:00-04:00").toISOString(),
+        endIso:   new Date(we.toLocaleDateString("en-CA") + "T23:59:59.999-04:00").toISOString(),
+      };
+    }
+    if (summaryFilter === "month") {
+      const first = new Date(pickerYear, pickerMonth, 1);
+      const last  = new Date(pickerYear, pickerMonth + 1, 0);
+      return {
+        startIso: new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString(),
+        endIso:   new Date(last.toLocaleDateString("en-CA")  + "T23:59:59.999-04:00").toISOString(),
+      };
+    }
+    if (summaryFilter === "year") {
+      return {
+        startIso: new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString(),
+        endIso:   new Date(`${pickerYear}-12-31T23:59:59.999-04:00`).toISOString(),
+      };
+    }
+    return null;
   };
 
   const entryRange = getEntryRange();
