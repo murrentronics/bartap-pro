@@ -509,20 +509,32 @@ export default function MusicPage() {
                 className="flex-1 min-w-0 flex flex-col justify-center gap-3 px-4 py-5 cursor-pointer active:opacity-80 transition"
                 onClick={() => setShowYTFullscreen(true)}
               >
-                {/* Animated bars — stretch full width */}
-                <div className="flex items-end gap-[3px] h-10 w-full overflow-hidden">
-                  {Array.from({ length: 40 }).map((_, b) => (
-                    <div key={b} className="w-[3px] shrink-0 rounded-full bg-red-400"
-                      style={{
-                        height: "100%",
-                        animation: yt.ytPaused
-                          ? "none"
-                          : `musicBar ${0.12 + (b % 7) * 0.04}s ease-in-out infinite alternate`,
-                        animationDelay: `${(b % 9) * 0.03}s`,
-                        opacity: yt.ytPaused ? 0.3 : 1,
-                      }} />
-                  ))}
-                </div>
+                {/* Animated bars — responsive count via container measurement */}
+                {(() => {
+                  const BAR_W = 3, GAP = 3;
+                  // Use a ref-less inline approach: render enough bars for the widest screen
+                  // and let the parent clip overflow. 200 bars @ 6px each = 1200px — covers any device.
+                  const count = 200;
+                  return (
+                    <div className="flex items-end h-10 w-full overflow-hidden" style={{ gap: GAP }}>
+                      {Array.from({ length: count }).map((_, b) => (
+                        <div key={b} style={{
+                          width: BAR_W,
+                          minWidth: BAR_W,
+                          height: "100%",
+                          borderRadius: 2,
+                          background: "#ef4444",
+                          flexShrink: 0,
+                          opacity: yt.ytPaused ? 0.3 : 1,
+                          animation: yt.ytPaused
+                            ? "none"
+                            : `musicBar ${0.1 + (b % 8) * 0.03}s ease-in-out infinite alternate`,
+                          animationDelay: `${(b % 11) * 0.025}s`,
+                        }} />
+                      ))}
+                    </div>
+                  );
+                })()}
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-black truncate leading-snug">{yt.nowPlayingTitle}</p>
                   <p className="text-red-400/60 text-xs mt-1">
