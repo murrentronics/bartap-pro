@@ -107,28 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // 2. Listen for auth state changes (login, logout, token refresh)
-    // We only clear the session on an explicit SIGNED_OUT event. Ignoring
-    // null-session events from other causes (e.g. Supabase revoking an older
-    // refresh token when the same account signs in on a second device) prevents
-    // the first device from being kicked out — allowing concurrent multi-device
-    // logins for cashiers and owners alike.
+    // Standard Supabase behaviour — always sync session state for every event.
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === "SIGNED_OUT") {
-        setSession(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
       setSession(s);
       if (s?.user) {
         loadProfile(s.user.id);
-      } else if (event === "INITIAL_SESSION") {
-        // No session on initial load — stop loading so the login page shows
+      } else {
+        setProfile(null);
         setLoading(false);
       }
-      // For all other events (TOKEN_REFRESHED, USER_UPDATED, etc.) where s is
-      // unexpectedly null, we leave the current session/profile intact to avoid
-      // spurious logouts caused by transient token revocation from another device.
     });
 
     return () => sub.subscription.unsubscribe();
