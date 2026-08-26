@@ -510,15 +510,15 @@ export default function MusicPage() {
                 onClick={() => setShowYTFullscreen(true)}
               >
                 {/* Animated bars — stretch full width */}
-                <div className="flex items-end gap-0.5 h-10 w-full">
-                  {Array.from({ length: 24 }).map((_, b) => (
-                    <div key={b} className="flex-1 rounded-full bg-red-400"
+                <div className="flex items-end gap-[3px] h-10 w-full overflow-hidden">
+                  {Array.from({ length: 40 }).map((_, b) => (
+                    <div key={b} className="w-[3px] shrink-0 rounded-full bg-red-400"
                       style={{
                         height: "100%",
                         animation: yt.ytPaused
                           ? "none"
-                          : `musicBar ${0.35+b*0.1}s ease-in-out infinite alternate`,
-                        animationDelay: `${b*0.07}s`,
+                          : `musicBar ${0.12 + (b % 7) * 0.04}s ease-in-out infinite alternate`,
+                        animationDelay: `${(b % 9) * 0.03}s`,
                         opacity: yt.ytPaused ? 0.3 : 1,
                       }} />
                   ))}
@@ -908,7 +908,7 @@ export default function MusicPage() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {/* Single row: SAVED + limit + Tips + Clear All */}
+                      {/* Single row: SAVED + limit + Tips | Clear All */}
                       <div className="flex items-center justify-between mt-4 mb-4">
                         <div className="flex items-center gap-2">
                           <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Saved</p>
@@ -916,20 +916,18 @@ export default function MusicPage() {
                             <span className="text-white/30">· Limit: </span>
                             <span className="text-green-400 font-bold">{300 - yt.history.length} remaining</span>
                           </p>
-                        </div>
-                        <div className="flex items-center gap-3">
                           <button onClick={() => setShowTips(true)}
-                            className="flex items-center gap-1.5 active:scale-90 transition"
+                            className="flex items-center gap-1 active:scale-90 transition"
                             style={{ color: "#facc15" }}>
-                            <HelpCircle className="h-4 w-4" />
-                            <span className="text-sm font-bold">Tips</span>
-                          </button>
-                          <button onClick={() => setShowClearConfirm(true)}
-                            className="text-sm font-bold active:scale-90 transition"
-                            style={{ color: "rgba(239,68,68,0.7)" }}>
-                            Clear All
+                            <HelpCircle className="h-3.5 w-3.5" />
+                            <span className="text-xs font-bold">Tips</span>
                           </button>
                         </div>
+                        <button onClick={() => setShowClearConfirm(true)}
+                          className="text-sm font-bold active:scale-90 transition"
+                          style={{ color: "rgba(239,68,68,0.7)" }}>
+                          Clear All
+                        </button>
                       </div>
                       {yt.history.map(item => (
                         <button key={item.id}
@@ -969,15 +967,27 @@ export default function MusicPage() {
             {/* ── Clear All confirm modal ── */}
             {showClearConfirm && (
               <div
-                style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}
+                style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}
                 onClick={() => setShowClearConfirm(false)}
               >
                 <div
-                  style={{ width: "100%", background: "linear-gradient(180deg, #1a0808 0%, #0d0505 100%)", borderRadius: 20, padding: "28px 24px", border: "1px solid rgba(239,68,68,0.3)" }}
+                  style={{ width: "100%", maxWidth: 360, background: "linear-gradient(180deg, #1a0808 0%, #0d0505 100%)", borderRadius: 24, padding: "28px 24px", border: "2px solid rgba(239,68,68,0.5)" }}
                   onClick={e => e.stopPropagation()}
                 >
-                  <p className="text-white font-black text-lg mb-2">Clear History?</p>
-                  <p className="text-white/50 text-sm mb-6">This will permanently delete all {yt.history.length} tracks from your recently played history. This cannot be undone.</p>
+                  {/* Warning icon */}
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="h-14 w-14 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.15)", border: "2px solid rgba(239,68,68,0.4)" }}>
+                      <Trash2 className="h-7 w-7 text-red-400" />
+                    </div>
+                  </div>
+                  <p className="text-white font-black text-xl text-center mb-2">Clear All Saved?</p>
+                  <p className="text-white/50 text-sm text-center mb-3">
+                    This will permanently delete all <span className="text-white font-bold">{yt.history.length} track{yt.history.length !== 1 ? "s" : ""}</span> from your saved list.
+                  </p>
+                  {/* Cannot be undone warning */}
+                  <div className="flex items-center justify-center gap-1.5 mb-6 px-4 py-2.5 rounded-xl" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                    <span className="text-red-400 text-xs font-black uppercase tracking-wider">⚠ This cannot be undone</span>
+                  </div>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowClearConfirm(false)}
