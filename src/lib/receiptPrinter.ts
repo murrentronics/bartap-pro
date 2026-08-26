@@ -183,20 +183,20 @@ export async function pairUsbPrinter(): Promise<boolean> {
 
 /**
  * Pair a Bluetooth printer via Web Bluetooth.
- * Opens the browser Bluetooth picker filtered to ESC/POS printers.
+ * Opens the browser Bluetooth picker. On mobile, shows ALL nearby devices
+ * since most thermal printers don't advertise the standard ESC/POS service UUID.
  */
 export async function pairBluetoothPrinter(): Promise<boolean> {
   const bt = (navigator as unknown as { bluetooth?: BluetoothAPI }).bluetooth;
   if (!bt?.requestDevice) return false;
   try {
+    // Use acceptAllDevices so every nearby BT/BLE device appears in the picker —
+    // most thermal printers don't broadcast the standard ESC/POS service UUID
+    // in their advertising packets, so a filter-based scan shows an empty list.
     const device = await bt.requestDevice({
-      // Try standard ESC/POS BLE service first; fall back to accepting all devices
-      // so printers that advertise a proprietary UUID are still discoverable.
-      filters: [{ services: [BLE_SERVICE_UUID] }],
+      acceptAllDevices: true,
       optionalServices: [BLE_SERVICE_UUID],
-    }).catch(() =>
-      bt.requestDevice({ acceptAllDevices: true, optionalServices: [BLE_SERVICE_UUID] }),
-    );
+    });
     if (!device) return false;
     writeStorage("bartap-printer-type", "bt");
     writeStorage("bartap-receipt-bt", "1");
@@ -204,8 +204,15 @@ export async function pairBluetoothPrinter(): Promise<boolean> {
     removeStorage("bartap-receipt-vid");
     removeStorage("bartap-receipt-pid");
     return true;
-  } catch {
-    return false;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // User cancelled the picker — not an error worth surfacing
+    if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("user cancelled") || msg.toLowerCase().includes("chooser")) {
+      return false;
+    }
+    // Rethrow real errors (BT unavailable, permission denied, etc.) so the
+    // caller can show a meaningful message instead of silently failing
+    throw e;
   }
 }
 

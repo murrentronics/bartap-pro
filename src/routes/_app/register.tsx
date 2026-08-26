@@ -6451,11 +6451,17 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
         setPrinterPaired(true);
         setConnType("bt");
         toast.success(name ? `Bluetooth printer connected: ${name}` : "Bluetooth printer connected");
-      } else {
-        toast.error("Could not connect Bluetooth printer");
       }
-    } catch {
-      toast.error("Could not connect Bluetooth printer");
+      // ok === false means user cancelled — no toast needed
+    } catch (e: any) {
+      const msg: string = e?.message ?? String(e);
+      if (msg.toLowerCase().includes("bluetooth") && msg.toLowerCase().includes("not available")) {
+        toast.error("Bluetooth not available — use Chrome on Android or Chrome desktop");
+      } else if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
+        toast.error("Bluetooth permission denied — allow Bluetooth access in your browser settings");
+      } else {
+        toast.error("Bluetooth pairing failed: " + msg);
+      }
     } finally {
       setPairing(false);
     }
