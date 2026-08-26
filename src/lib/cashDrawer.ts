@@ -23,7 +23,20 @@
  */
 
 import { Capacitor } from "@capacitor/core";
-import { getPrinterConnectionType } from "./receiptPrinter";
+
+// Inlined here to avoid a circular dependency with receiptPrinter.ts.
+// Both files need to know the active connection type; reading from localStorage
+// directly is simpler than a shared module.
+function getPrinterConnectionType(): "usb" | "bt" | "none" {
+  try {
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("bartap-printer-type") : null;
+    if (saved === "bt") return "bt";
+    if (saved === "usb") return "usb";
+    return "none";
+  } catch {
+    return "none";
+  }
+}
 
 export type CashDrawerMethod = "native" | "webserial" | "bluetooth" | "none";
 
