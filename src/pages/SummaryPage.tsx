@@ -421,8 +421,8 @@ function BarSessionAccordion({ session, subSessions, products, categoryFilter, a
 // Aggregates all records within the selected calendar date range (TT timezone).
 // Sessions are used only for the "X sessions this day" count — NOT as query bounds.
 // The owner picks a date range; we show everything recorded in that window.
-function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, ownerId }: {
-  fromDate: string; toDate: string; products: ProductCost[]; categoryFilter: string; ownerId: string;
+function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, ownerId, filter, filteredSessions }: {
+  fromDate: string; toDate: string; products: ProductCost[]; categoryFilter: string; ownerId: string; filter?: FilterType; filteredSessions?: BarSession[];
 }) {
   const [data, setData] = useState<{ orders: Order[]; expenses: Expense[]; walletIncome: number; loading: boolean }>({ orders: [], expenses: [], walletIncome: 0, loading: true });
 
@@ -433,8 +433,25 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
     // TT is UTC-4. Convert local calendar day boundaries to UTC for Supabase queries.
     // "fromDate 00:00 TT" = fromDate T04:00:00Z
     // "toDate   23:59 TT" = (toDate+1) T03:59:59.999Z
-    const fromUTC = new Date(`${fromDate}T04:00:00.000Z`).toISOString();
-    const toUTC   = new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1).toISOString();
+    const calFromUTC = new Date(`${fromDate}T04:00:00.000Z`).toISOString();
+    const calToUTC   = new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1).toISOString();
+
+    // For the Day view, if we have bar sessions that span midnight we extend the
+    // query window to cover every order that belongs to a session active that day.
+    // This prevents orders from cross-midnight sessions being cut off by the UTC boundary.
+    let fromUTC = calFromUTC;
+    let toUTC   = calToUTC;
+    if (filter === "day" && filteredSessions && filteredSessions.length > 0) {
+      const sessionStart = filteredSessions.reduce((min, s) => s.opened_at < min ? s.opened_at : min, filteredSessions[0].opened_at);
+      const sessionEnd   = filteredSessions.reduce((max, s) => {
+        const end = s.closed_at ?? new Date().toISOString();
+        return end > max ? end : max;
+      }, filteredSessions[0].closed_at ?? new Date().toISOString());
+      // Use whichever is earlier/later so we capture everything in both the
+      // calendar window AND the actual session window.
+      fromUTC = sessionStart < calFromUTC ? sessionStart : calFromUTC;
+      toUTC   = sessionEnd   > calToUTC   ? sessionEnd   : calToUTC;
+    }
 
     Promise.all([
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
@@ -454,7 +471,7 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
       });
     });
     return () => { cancelled = true; };
-  }, [fromDate, toDate, ownerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fromDate, toDate, ownerId, filter, filteredSessions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const costMap = new Map<string, number>(products.map(p => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
   const nameMap = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
@@ -473,7 +490,7 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
     <div className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
       <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <span className="text-xs font-black text-foreground">
-          {filterLabel("period", fromDate, toDate)} · Combined Summary
+          {filterLabel(filter ?? "period", fromDate, toDate)} · Combined Summary
         </span>
         {data.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
@@ -815,7 +832,7 @@ export default function SummaryPage() {
       {/* Date pickers */}
       {filter === "day" && (
         <div className="rounded-2xl border border-border p-4 space-y-2" style={{ background: "var(--gradient-card)" }}>
-          <CalendarPopover label={t("select_day", "Select Day")} value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => setFromDate(v)} />
+          <CalendarPopover label={t("select_day", "Select Day")} value={fromDate} maxDate={today} minDate={earliestDate} onChange={v => { setFromDate(v); setToDate(v); }} />
           {!loadingSessions && (
             <p className="text-xs text-muted-foreground pt-1">
               {filteredSessions.length === 0 ? t("bar_not_open_day", "Bar was not opened this day.") : `${filteredSessions.length} session${filteredSessions.length !== 1 ? "s" : ""} this day`}
@@ -873,6 +890,8 @@ export default function SummaryPage() {
           products={products}
           categoryFilter={categoryFilter}
           ownerId={ownerId}
+          filter={filter}
+          filteredSessions={filteredSessions}
         />
       )}
     </div>

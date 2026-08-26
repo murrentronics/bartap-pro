@@ -396,16 +396,15 @@ function StockNumpad({
     const totalQty = currentQty + addAmount;
     const finalCp = totalQty > 0 ? totalValue / totalQty : newCpPerItem;
 
-    // Auto-generate expense record using the new weighted average cost
+    // Auto-generate expense record using the actual batch cost paid (not weighted average)
     let newExpenseId: string | null = null;
-    if (finalCp > 0) {
-      const expenseAmount = finalCp * addAmount;
+    if (batchTotal > 0) {
       const today = new Date().toISOString().split("T")[0];
       const { data: expData, error: expErr } = await supabase
         .from("owner_expenses")
         .insert({
           owner_id: ownerId,
-          amount: expenseAmount,
+          amount: batchTotal,
           description: `${productName} ×${addAmount} total $${batchTotal.toFixed(2)} ($${finalCp.toFixed(2)} each)`,
           expense_date: today,
         })

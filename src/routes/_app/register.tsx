@@ -14,7 +14,16 @@ import { useNetworkStatus } from "@/lib/useNetworkStatus";
 import { enqueue } from "@/lib/offlineQueue";
 import { useImageCache } from "@/lib/useImageCache";
 import { productImageUrl } from "@/lib/imageUrl";
-import { printReceipt, type ReceiptData } from "@/lib/receiptPrinter";
+import {
+  printReceipt,
+  printReceiptAndOpenDrawer,
+  pairUsbPrinter,
+  pairBluetoothPrinter,
+  isPrinterPaired,
+  getPrinterConnectionType,
+  type ReceiptData,
+  type PrinterConnectionType,
+} from "@/lib/receiptPrinter";
 import { openCashDrawer } from "@/lib/cashDrawer";
 import {
   cacheProducts,
@@ -401,6 +410,7 @@ export default function RegisterPage() {
     if (!lastSale) return;
     setPrintingReceipt(true);
     try {
+      // Drawer already fired automatically on modal mount — just print the receipt
       await printReceipt(lastSale);
     } catch {
       // silent fail — user can still tap Done
@@ -6391,109 +6401,91 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
   onDone: () => void;
   printing: boolean;
 }) {
-  // Track whether printer/drawer ports are already paired in this browser
-  const [printerPaired, setPrinterPaired] = useState<boolean | null>(null);
-  const [drawerPaired, setDrawerPaired] = useState<boolean | null>(null);
-  const [pairingPrinter, setPairingPrinter] = useState(false);
-  const [pairingDrawer, setPairingDrawer] = useState(false);
-  const [openingDrawer, setOpeningDrawer] = useState(false);
-
-  // Check on mount which devices are already granted
+  // "none" = not yet checked, false = unpaired, true = paired
+  const [printerPaired,  setPrinterPaired]  = useState<boolean | null>(null);
+  // Which connection type is active (usb | bt | none)
+  const [connType,       setConnType]       = useState<PrinterConnectionType>("none");
+  // Pairing flow state
+  const [pairing,        setPairing]        = useState(false);
+  // On mount: check pairing state + auto-fire cash drawer for cash sales
   useEffect(() => {
-    const serial = (navigator as any).serial as {
-      getPorts: () => Promise<any[]>;
-      requestPort: (opts?: any) => Promise<any>;
-    } | undefined;
-    if (!serial?.getPorts) {
-      // Web Serial not supported — mark both as "no serial" (will use browser print)
-      setPrinterPaired(false);
-      setDrawerPaired(false);
-      return;
-    }
-    serial.getPorts().then((ports) => {
-      const printerVid = parseInt(localStorage.getItem("bartap-receipt-vid") ?? "", 10);
-      const drawerVid = parseInt(localStorage.getItem("bartap-drawer-vid") ?? "", 10);
-      // If VIDs are stored and a matching port exists → paired
-      const hasPrinter = ports.some((p) => !printerVid || p.getInfo().usbVendorId === printerVid);
-      const hasDrawer = ports.some((p) => !drawerVid || p.getInfo().usbVendorId === drawerVid);
-      setPrinterPaired(ports.length > 0 && hasPrinter);
-      setDrawerPaired(ports.length > 0 && hasDrawer);
-    }).catch(() => {
-      setPrinterPaired(false);
-      setDrawerPaired(false);
+    const type = getPrinterConnectionType();
+    setConnType(type);
+    isPrinterPaired().then((paired) => {
+      setPrinterPaired(paired);
+      // Auto-open the drawer immediately on sale success if printer is connected
+      // and this is a cash sale (credit sales don't need a drawer kick).
+      if (paired && sale.payMode !== "credit") {
+        openCashDrawer().catch(() => undefined);
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePairPrinter = async () => {
-    const serial = (navigator as any).serial;
-    if (!serial?.requestPort) return;
-    setPairingPrinter(true);
-    try {
-      const port = await serial.requestPort();
-      const info = port.getInfo();
-      if (info.usbVendorId) localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
-      if (info.usbProductId) localStorage.setItem("bartap-receipt-pid", String(info.usbProductId));
-      setPrinterPaired(true);
-      toast.success("Printer connected");
-    } catch (e: any) {
-      if (!e?.message?.includes("cancelled") && !e?.message?.includes("No port")) {
-        toast.error("Could not connect printer");
-      }
-    } finally {
-      setPairingPrinter(false);
-    }
-  };
+  // ── Pairing helpers ────────────────────────────────────────────────────────
 
-  const handlePairDrawer = async () => {
-    const serial = (navigator as any).serial;
-    if (!serial?.requestPort) return;
-    setPairingDrawer(true);
+  const handlePairUsb = async () => {
+    setPairing(true);
     try {
-      const port = await serial.requestPort();
-      const info = port.getInfo();
-      if (info.usbVendorId) localStorage.setItem("bartap-drawer-vid", String(info.usbVendorId));
-      if (info.usbProductId) localStorage.setItem("bartap-drawer-pid", String(info.usbProductId));
-      setDrawerPaired(true);
-      toast.success("Cash drawer connected");
-    } catch (e: any) {
-      if (!e?.message?.includes("cancelled") && !e?.message?.includes("No port")) {
-        toast.error("Could not connect drawer");
-      }
-    } finally {
-      setPairingDrawer(false);
-    }
-  };
-
-  const handleOpenDrawer = async () => {
-    setOpeningDrawer(true);
-    try {
-      const result = await openCashDrawer();
-      if (!result.opened) {
-        // Port gone / device disconnected — force re-pair
-        setDrawerPaired(false);
-        toast.error("Drawer not responding — reconnect device");
+      const ok = await pairUsbPrinter();
+      if (ok) {
+        setPrinterPaired(true);
+        setConnType("usb");
+        toast.success("USB printer connected");
+      } else {
+        toast.error("Could not connect USB printer");
       }
     } catch {
-      setDrawerPaired(false);
+      toast.error("Could not connect USB printer");
     } finally {
-      setOpeningDrawer(false);
+      setPairing(false);
     }
   };
 
-  const handlePrint = async () => {
-    // If Web Serial is available but printer isn't paired yet, pair first
-    const serial = (navigator as any).serial;
-    if (serial?.requestPort && !printerPaired) {
-      await handlePairPrinter();
-      return;
+  const handlePairBluetooth = async () => {
+    setPairing(true);
+    try {
+      const ok = await pairBluetoothPrinter();
+      if (ok) {
+        const name = localStorage.getItem("bartap-receipt-bt-name");
+        setPrinterPaired(true);
+        setConnType("bt");
+        toast.success(name ? `Bluetooth printer connected: ${name}` : "Bluetooth printer connected");
+      } else {
+        toast.error("Could not connect Bluetooth printer");
+      }
+    } catch {
+      toast.error("Could not connect Bluetooth printer");
+    } finally {
+      setPairing(false);
     }
-    onPrint();
   };
+
+  // ── Unpair / change printer ────────────────────────────────────────────────
+
+  const handleChangePrinter = () => {
+    localStorage.removeItem("bartap-printer-type");
+    localStorage.removeItem("bartap-receipt-vid");
+    localStorage.removeItem("bartap-receipt-pid");
+    localStorage.removeItem("bartap-receipt-bt");
+    localStorage.removeItem("bartap-receipt-bt-name");
+    setPrinterPaired(false);
+    setConnType("none");
+  };
+
+  // ── Derived UI labels ──────────────────────────────────────────────────────
+
+  const btName    = localStorage.getItem("bartap-receipt-bt-name");
+  const connLabel = connType === "bt"
+    ? (btName ? `Bluetooth · ${btName}` : "Bluetooth")
+    : connType === "usb" ? "USB" : "";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border border-border shadow-2xl"
         style={{ background: "var(--gradient-card)" }}>
+
+        {/* ── Header ── */}
         <div className="px-5 pt-5 pb-2 shrink-0 space-y-1">
           <div className="flex justify-center">
             <div className="h-10 w-10 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
@@ -6503,10 +6495,9 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
           <h2 className="font-black text-lg text-center">Sale Complete</h2>
         </div>
 
-        {/* Receipt Paper Card */}
+        {/* ── Receipt preview ── */}
         <div className="px-5 py-2 overflow-y-auto flex-1">
           <div className="bg-white text-zinc-900 rounded-xl p-4 shadow-inner text-left font-mono text-xs leading-tight border border-zinc-300 select-none">
-            {/* Store Header */}
             <div className="text-center font-black text-zinc-950 text-base font-sans tracking-tight uppercase mb-0.5">
               {sale.storeName || "My Business"}
             </div>
@@ -6515,132 +6506,118 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
             )}
             <div className="text-center text-[10px] text-zinc-600">{sale.date || ""}</div>
             <div className="text-center text-[10px] text-zinc-600">Served by {sale.serverName || "Staff"}</div>
-
             <div className="border-t border-dashed border-zinc-400 my-2" />
-
-            {/* Order Header */}
             <div className="text-center font-black text-base tracking-wide text-zinc-950 my-1">
               ORDER #{sale.orderNumber || "—"}
             </div>
-
             <div className="border-t border-dashed border-zinc-400 my-2" />
-
-            {/* Items */}
             <div className="space-y-1 my-2">
               {sale.items.map((it, idx) => (
                 <div key={idx} className="flex justify-between items-start">
-                  <span className="font-semibold text-zinc-900 pr-2 break-all">
-                    {it.qty}x {it.name}
-                  </span>
-                  <span className="font-bold text-zinc-950 whitespace-nowrap">
-                    ${(it.qty * it.price).toFixed(2)}
-                  </span>
+                  <span className="font-semibold text-zinc-900 pr-2 break-all">{it.qty}x {it.name}</span>
+                  <span className="font-bold text-zinc-950 whitespace-nowrap">${(it.qty * it.price).toFixed(2)}</span>
                 </div>
               ))}
             </div>
-
             <div className="border-t border-dashed border-zinc-400 my-2" />
-
-            {/* Subtotal & Total */}
             <div className="space-y-1">
               <div className="flex justify-between text-zinc-700">
-                <span>Subtotal</span>
-                <span>${sale.subtotal.toFixed(2)}</span>
+                <span>Subtotal</span><span>${sale.subtotal.toFixed(2)}</span>
               </div>
               {sale.tax != null && sale.tax > 0 && (
                 <div className="flex justify-between text-zinc-700">
-                  <span>Tax</span>
-                  <span>${sale.tax.toFixed(2)}</span>
+                  <span>Tax</span><span>${sale.tax.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-black text-sm text-zinc-950 pt-0.5">
-                <span>Total</span>
-                <span>${sale.total.toFixed(2)}</span>
+                <span>Total</span><span>${sale.total.toFixed(2)}</span>
               </div>
             </div>
-
             <div className="border-t border-dashed border-zinc-400 my-2" />
-
-            {/* Payment Breakdown */}
             <div className="space-y-1">
               <div className="flex justify-between text-zinc-700">
                 <span>{sale.payMode === "credit" ? "Credit" : "Cash Tendered"}</span>
                 <span>${sale.paid.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-zinc-900">
-                <span>Change</span>
-                <span>${sale.change.toFixed(2)}</span>
+                <span>Change</span><span>${sale.change.toFixed(2)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="px-6 pb-5 pt-2 flex flex-col gap-2 shrink-0">
-          {/* Cash Drawer */}
-          {drawerPaired ? (
-            <button
-              onClick={handleOpenDrawer}
-              disabled={openingDrawer}
-              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2 disabled:opacity-50"
-              style={{ background: "rgba(37,211,102,0.12)", color: "#25D366", borderColor: "rgba(37,211,102,0.4)" }}
-            >
-              {openingDrawer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Open Cash Drawer"}
-            </button>
-          ) : drawerPaired === false ? (
-            <button
-              onClick={handlePairDrawer}
-              disabled={pairingDrawer}
-              className="w-full h-12 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 border-2 disabled:opacity-50"
-              style={{ background: "rgba(37,211,102,0.06)", color: "#86efac", borderColor: "rgba(37,211,102,0.25)" }}
-            >
-              {pairingDrawer ? <Loader2 className="h-4 w-4 animate-spin" /> : "🔌 Connect Cash Drawer"}
-            </button>
-          ) : null}
+        {/* ── Actions ── */}
+        <div className="px-6 pb-5 pt-3 flex flex-col gap-2 shrink-0">
 
+          {/* ── NOT yet paired: show USB + Bluetooth connect options ── */}
+          {printerPaired === false && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground text-center">
+                Connect a printer to print receipts
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handlePairUsb}
+                  disabled={pairing}
+                  className="h-11 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50 border-2"
+                  style={{ background: "rgba(99,102,241,0.10)", color: "#a5b4fc", borderColor: "rgba(99,102,241,0.35)" }}
+                >
+                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "🔌 USB"}
+                </button>
+                <button
+                  onClick={handlePairBluetooth}
+                  disabled={pairing}
+                  className="h-11 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50 border-2"
+                  style={{ background: "rgba(59,130,246,0.10)", color: "#93c5fd", borderColor: "rgba(59,130,246,0.35)" }}
+                >
+                  {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "📶 Bluetooth"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Print & Done / Done row — always shown ── */}
           <div className="flex gap-2">
-            {/* Print button — shows "Connect Printer" if not yet paired */}
-            <button
-              onClick={handlePrint}
-              disabled={printing || pairingPrinter}
-              className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
-              style={{ background: "var(--gradient-hero)" }}
-            >
-              {printing || pairingPrinter
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : printerPaired === false
-                  ? "🔌 Connect Printer"
-                  : "Print"}
-            </button>
+            {/* Print & Done — only shown when printer is paired */}
+            {printerPaired === true && (
+              <button
+                onClick={onPrint}
+                disabled={printing}
+                className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50 text-primary-foreground shadow-lg"
+                style={{ background: "var(--gradient-hero)" }}
+              >
+                {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Print & Done"}
+              </button>
+            )}
+            {/* While pairing state is still loading, show a disabled placeholder */}
+            {printerPaired === null && (
+              <button disabled className="flex-1 h-14 rounded-2xl font-black text-sm flex items-center justify-center opacity-40 text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </button>
+            )}
             <button
               onClick={onDone}
-              className="flex-1 h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80"
+              className={`h-14 rounded-2xl font-black text-sm border border-border hover:bg-muted/30 transition active:scale-95 text-foreground/80 ${printerPaired === true || printerPaired === null ? "flex-1" : "w-full"}`}
             >
               Done
             </button>
           </div>
 
-          {/* Re-pair link — shown once devices are connected so user can change them */}
-          {(printerPaired || drawerPaired) && (
-            <div className="flex gap-3 justify-center pt-1">
-              {printerPaired && (
-                <button
-                  onClick={() => { setPrinterPaired(false); localStorage.removeItem("bartap-receipt-vid"); localStorage.removeItem("bartap-receipt-pid"); }}
-                  className="text-[11px] text-muted-foreground underline active:opacity-70"
-                >
-                  Change printer
-                </button>
+          {/* Connection info + change printer link */}
+          {printerPaired === true && (
+            <div className="flex items-center justify-center gap-2 pt-0.5">
+              {connLabel && (
+                <span className="text-[10px] text-muted-foreground/60">{connLabel}</span>
               )}
-              {drawerPaired && (
-                <button
-                  onClick={() => { setDrawerPaired(false); localStorage.removeItem("bartap-drawer-vid"); localStorage.removeItem("bartap-drawer-pid"); }}
-                  className="text-[11px] text-muted-foreground underline active:opacity-70"
-                >
-                  Change drawer
-                </button>
-              )}
+              <button
+                onClick={handleChangePrinter}
+                className="text-[11px] text-muted-foreground underline active:opacity-70"
+              >
+                Change printer
+              </button>
             </div>
           )}
+
         </div>
       </div>
     </div>

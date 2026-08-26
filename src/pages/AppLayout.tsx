@@ -36,8 +36,11 @@ import {
   ClipboardList,
   BookOpen,
   ShieldCheck,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isPrinterPaired } from "@/lib/receiptPrinter";
+import { openCashDrawer } from "@/lib/cashDrawer";
 
 const DEMO_EMAILS = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
 
@@ -52,6 +55,19 @@ export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const yt = useYouTube();
+
+  // Track whether a printer (USB or Bluetooth) is currently paired so the
+  // Drawer button can appear/disappear in the header automatically.
+  const [printerPaired, setPrinterPaired] = useState(false);
+  const [openingDrawer, setOpeningDrawer] = useState(false);
+  useEffect(() => {
+    // Check immediately on mount
+    isPrinterPaired().then(setPrinterPaired);
+    // Re-check every 5 s so the button hides quickly when the printer is
+    // unplugged and appears again if it's reconnected.
+    const id = setInterval(() => isPrinterPaired().then(setPrinterPaired), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   // Close the menu first, then navigate on the next animation frame so the
   // menu overlay fully unmounts before the new page renders — prevents the
@@ -526,7 +542,7 @@ export default function AppLayout() {
           {hasMusic && !isManager && (
             <Link
               to={isOnMusic ? (isMachinesOnlyUser ? "/machines" : "/register") : "/music"}
-              className="h-10 px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
+              className="h-10 px-3 sm:px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
               title={
                 isOnMusic
@@ -536,23 +552,57 @@ export default function AppLayout() {
                   : "Open Music Player"
               }
             >
-              {isOnMusic
-                ? isMachinesOnlyUser
-                  ? t("machines", "Machines")
-                  : t("bar", "Bar")
-                : t("music", "Music")}
+              {/* Mobile: icon only. Tablet+: text label */}
+              <span className="sm:hidden">
+                {isOnMusic
+                  ? <Wine className="h-5 w-5" />
+                  : <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>}
+              </span>
+              <span className="hidden sm:inline">
+                {isOnMusic
+                  ? isMachinesOnlyUser
+                    ? t("machines", "Machines")
+                    : t("bar", "Bar")
+                  : t("music", "Music")}
+              </span>
             </Link>
+          )}
+
+          {/* Drawer — only visible when a printer is connected (drawer wired through printer) */}
+          {printerPaired && (
+            <button
+              onClick={async () => {
+                if (openingDrawer) return;
+                setOpeningDrawer(true);
+                try {
+                  await openCashDrawer();
+                } finally {
+                  setOpeningDrawer(false);
+                }
+              }}
+              disabled={openingDrawer}
+              className="h-10 px-3 sm:px-4 rounded-lg flex items-center justify-center font-black text-sm transition active:scale-95 text-primary-foreground disabled:opacity-60"
+              style={{ background: "var(--gradient-hero)" }}
+              title="Open Cash Drawer"
+            >
+              {openingDrawer
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <>
+                    <Printer className="h-4 w-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Drawer</span>
+                  </>}
+            </button>
           )}
 
           {/* Hamburger — no username in header on mobile */}
           <div className="flex items-center gap-2 relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-2 px-4 h-10 rounded-lg font-black text-sm transition text-primary-foreground"
+              className="flex items-center gap-2 px-3 sm:px-4 h-10 rounded-lg font-black text-sm transition text-primary-foreground"
               style={{ background: "var(--gradient-hero)" }}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              {t("menu", "Menu")}
+              <span className="hidden sm:inline">{t("menu", "Menu")}</span>
             </button>
 
             {/* ── CASHIER MENU — full-width big-button grid + brown backdrop ── */}

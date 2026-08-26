@@ -286,7 +286,7 @@ export default function ManualPage() {
               ["Go to Customers", "Tap Customers in the menu to see all open and closed credit accounts."],
               ["View balance and history", "Tap a customer card to expand their record. You'll see every charge and payment with dates and times."],
               ["Record a payment", "Tap Add Payment, enter the amount, and confirm. The balance updates immediately."],
-              ["Print the full bill", "Tap Bill on any customer card to open the receipt modal showing their complete charge history and outstanding balance. From there you can print to a Bluetooth printer or share as a PDF via WhatsApp."],
+              ["Print the full bill", "Tap Bill on any customer card to open the receipt modal showing their complete charge history and outstanding balance. From there you can print to a USB or Bluetooth thermal printer or share as a PDF via WhatsApp."],
               ["Print a single record", "Tap the printer icon on any individual charge or payment row to open the receipt modal for just that transaction."],
               ["Close an account", "Once a customer's balance is zero, they automatically move to the Closed tab."],
             ],
@@ -296,16 +296,19 @@ export default function ManualPage() {
           // ── 16. Receipts ──────────────────────────────────────────────────
           {
             id: "m-receipts", icon: "🖨️", title: "Printing & Sharing Receipts", section: "Section 16",
-            intro: "Every sale, credit charge, and customer bill can be printed to a Bluetooth thermal printer or shared as a PDF via WhatsApp or email.",
+            intro: "Every sale, credit charge, and customer bill can be printed to a USB or Bluetooth thermal printer, or shared as a PDF via WhatsApp or email.",
             steps: [
               ["Tap the receipt / printer icon", "This appears on individual order rows in the Wallet, on credit transaction rows in Customers, and on the Bill button in the customer header."],
               ["The receipt modal opens", "A white receipt preview appears showing the business name, date, items, and totals."],
-              ["Connect Printer", "On first use, tap Connect Printer. The app pairs with your Bluetooth thermal printer. The pairing is remembered for future sessions."],
-              ["Print", "Once paired, tap Print to send the receipt to the printer."],
+              ["Connect Printer — USB", "On first use, tap 🔌 USB. The app uses the Web Serial API to pair with your USB thermal printer. Works on Chrome or Edge (desktop) and Chrome for Android via USB-C OTG adapter."],
+              ["Connect Printer — Bluetooth", "Tap 📶 Bluetooth to pair a wireless ESC/POS thermal printer via Web Bluetooth. Works on Chrome desktop and Chrome for Android."],
+              ["Print & Done", "Once paired, tap Print & Done to send the receipt to the printer and close the modal."],
+              ["Done", "Tap Done to close the receipt modal without printing."],
               ["PDF / WhatsApp", "Tap PDF / WhatsApp to download the receipt as a PDF or share it directly via WhatsApp or any share target."],
-              ["Change printer", "If you need to switch printers, tap Change Printer at the bottom of the receipt modal to unpair and re-pair."],
+              ["Change printer", "Tap Change Printer at the bottom of the receipt modal to unpair and re-pair with a different printer."],
+              ["Cash drawer", "If a cash drawer is wired to the printer's DK port, it opens automatically when a cash sale completes. Use the Drawer button in the app header to open it manually at any time."],
             ],
-            tip: "The receipt modal shows a full live preview of what will be printed before you commit.",
+            tip: "The printer only needs to be paired once — the app remembers the connection for future sessions. The cash drawer connects through the printer, so no separate setup is needed.",
           },
 
           // ── 17. Cashiers ──────────────────────────────────────────────────

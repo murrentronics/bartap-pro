@@ -741,9 +741,24 @@ function CashierWallet({
       });
     }
 
-    const itemDesc = items.map((i: any) => `${i.qty || 1}x ${i.name} = $${Number(i.price).toFixed(2)}`).join("\n");
-    const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}`;
-    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: Number(order.total), description, expense_date: new Date().toISOString().slice(0, 10) });
+    // Look up cost prices so the reverted expense reflects what the stock cost, not sale price.
+    const productIds2 = items.filter((i: any) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-")).map((i: any) => i.id);
+    const costMap2: Record<string, number> = {};
+    if (productIds2.length > 0) {
+      const { data: cpRows2 } = await (supabase as any).from("products").select("id, cost_price").in("id", productIds2);
+      for (const row of (cpRows2 ?? [])) costMap2[row.id] = Number(row.cost_price ?? 0);
+    }
+    const itemDesc2 = items.map((i: any) => {
+      const cp = costMap2[i.id] ?? 0;
+      const lineTotal = cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1);
+      return `${i.qty || 1}x ${i.name} = $${lineTotal.toFixed(2)}`;
+    }).join("\n");
+    const costTotal2 = items.reduce((s: number, i: any) => {
+      const cp = costMap2[i.id] ?? 0;
+      return s + (cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1));
+    }, 0);
+    const description2 = `Reverted Stock Expense\n${itemDesc2}\nTotal: $${costTotal2.toFixed(2)}`;
+    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: costTotal2, description: description2, expense_date: new Date().toISOString().slice(0, 10) });
 
     // Delete ALL wallet_transactions for this order (cashier 'sale' row + owner 'cashier_sale' row)
     // The DB trigger (migration 20260628000003) also does this server-side once applied.
@@ -4403,9 +4418,24 @@ function TransactionsTab({
     // 3. DB trigger on_order_delete handles deleting ALL wallet_transactions
     //    for this order (owner + cashier rows) and deducting wallet_balance.
 
-    const itemDesc = items.map((i: any) => `${i.qty || 1}x ${i.name} = $${Number(i.price).toFixed(2)}`).join("\n");
-    const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}`;
-    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: Number(order.total), description, expense_date: new Date().toISOString().slice(0, 10) });
+    // Look up cost prices so the reverted expense reflects what the stock cost, not sale price.
+    const productIds = items.filter((i: any) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-")).map((i: any) => i.id);
+    const costMap: Record<string, number> = {};
+    if (productIds.length > 0) {
+      const { data: cpRows } = await (supabase as any).from("products").select("id, cost_price").in("id", productIds);
+      for (const row of (cpRows ?? [])) costMap[row.id] = Number(row.cost_price ?? 0);
+    }
+    const itemDesc = items.map((i: any) => {
+      const cp = costMap[i.id] ?? 0;
+      const lineTotal = cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1);
+      return `${i.qty || 1}x ${i.name} = $${lineTotal.toFixed(2)}`;
+    }).join("\n");
+    const costTotal = items.reduce((s: number, i: any) => {
+      const cp = costMap[i.id] ?? 0;
+      return s + (cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1));
+    }, 0);
+    const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${costTotal.toFixed(2)}`;
+    await (supabase as any).from("owner_expenses").insert({ owner_id: order.owner_id, amount: costTotal, description, expense_date: new Date().toISOString().slice(0, 10) });
 
     // 4. Delete the order itself
     const { error } = await supabase.from("orders").delete().eq("id", order.id);

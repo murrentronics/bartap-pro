@@ -1475,10 +1475,24 @@ function DashboardTab({
           p_items: restorableItems.map((i: any) => ({ id: i.id, qty: i.qty })),
         });
       }
-      // Log a reverted expense so totals balance
-      const itemDesc = items.map((i: any) => `${i.qty || 1}x ${i.name} = $${Number(i.price).toFixed(2)}`).join("\n");
-      const description = `Reverted Stock Expense\n${itemDesc}\nTotal: $${Number(order.total).toFixed(2)}\n${tag}`;
-      await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: Number(order.total), description, expense_date: trinidadDate() });
+      // Log a reverted expense using cost prices (not selling prices) so totals balance correctly.
+      const productIdsM = items.filter((i: any) => i.id && !i.id.startsWith("shot-") && !i.id.startsWith("pack-")).map((i: any) => i.id);
+      const costMapM: Record<string, number> = {};
+      if (productIdsM.length > 0) {
+        const { data: cpRowsM } = await sb.from("products").select("id, cost_price").in("id", productIdsM);
+        for (const row of (cpRowsM ?? [])) costMapM[(row as any).id] = Number((row as any).cost_price ?? 0);
+      }
+      const itemDescM = items.map((i: any) => {
+        const cp = costMapM[i.id] ?? 0;
+        const lineTotal = cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1);
+        return `${i.qty || 1}x ${i.name} = $${lineTotal.toFixed(2)}`;
+      }).join("\n");
+      const costTotalM = items.reduce((s: number, i: any) => {
+        const cp = costMapM[i.id] ?? 0;
+        return s + (cp > 0 ? cp * (i.qty || 1) : Number(i.price) * (i.qty || 1));
+      }, 0);
+      const descriptionM = `Reverted Stock Expense\n${itemDescM}\nTotal: $${costTotalM.toFixed(2)}\n${tag}`;
+      await sb.from("owner_expenses").insert({ owner_id: ownerId, amount: costTotalM, description: descriptionM, expense_date: trinidadDate() });
       // Reverse wallet transactions for this order
       const sellerId = (order as any).cashier_id || profile.id;
       const orderTotal = Number(order.total);

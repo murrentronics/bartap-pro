@@ -1,19 +1,37 @@
 /**
  * receiptPrinter.ts — prints a sale receipt to an ESC/POS thermal printer.
  *
- * Sends raw ESC/POS commands over the Web Serial API or, when running inside
- * the Capacitor Android app, falls back to opening a browser print window.
+ * Supported connection methods (tried in order of preference):
+ *  1. USB via Web Serial API  — Chrome/Edge desktop, Chrome for Android (USB-C OTG)
+ *  2. Bluetooth via Web Bluetooth API — Chrome desktop/Android, paired BLE thermal printer
+ *  3. Browser print window fallback — any browser, any OS (opens a styled HTML receipt)
  *
- * Hardware overrides (optional — set via localStorage):
- *   bartap-receipt-vid -> decimal USB vendor id filter
- *   bartap-receipt-pid -> decimal USB product id filter
+ * The cash drawer is wired to the printer's DK port, so `openCashDrawer()` in
+ * cashDrawer.ts sends its ESC/POS kick pulse through the same connection.
+ *
+ * localStorage keys:
+ *   bartap-printer-type  -> "usb" | "bt"   (which connection method is active)
+ *   bartap-receipt-vid   -> decimal USB vendor id  (USB path)
+ *   bartap-receipt-pid   -> decimal USB product id (USB path)
+ *   bartap-receipt-bt    -> "1"             (Bluetooth path — port is re-requested by name)
+ *   bartap-receipt-bt-name -> device name   (display only)
  */
 
 const COL_WIDTH = 48;
 
+// ─── ESC/POS BLE service & characteristic UUIDs ──────────────────────────────
+// These are the standard UUIDs used by most ESC/POS BLE thermal printers
+// (Epson TM series, Star mPOP, Xprinter, GOOJPRT, iDPRT, etc.)
+const BLE_SERVICE_UUID      = "000018f0-0000-1000-8000-00805f9b34fb";
+const BLE_CHAR_UUID         = "00002af1-0000-1000-8000-00805f9b34fb";
+// Chunk size for BLE writes — 20 bytes is universally safe before MTU negotiation
+const BLE_CHUNK_SIZE = 20;
+
 function esc(b: number): string {
   return String.fromCharCode(b);
 }
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ReceiptData {
   storeName: string;
@@ -31,183 +49,16 @@ export interface ReceiptData {
   date?: string;
 }
 
-function buildReceiptEscPos(data: ReceiptData): string {
-  const cmds: string[] = [];
+export type PrinterConnectionType = "usb" | "bt" | "none";
 
-  // Reset printer
-  cmds.push(esc(0x1b) + esc(0x40));
-  // Align center
-  cmds.push(esc(0x1b) + esc(0x61) + esc(0x01));
-
-  // User Business Name Header (Bold & Uppercase)
-  cmds.push(center(data.storeName || "My Business", true));
-
-  // Location
-  if (data.locationName) {
-    cmds.push(center(data.locationName));
-  }
-
-  // Date timestamp (e.g. 8/15/2026, 6:39:42 AM)
-  const dateStr =
-    data.date ||
-    new Date().toLocaleString("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-  cmds.push(center(dateStr));
-
-  // Server line
-  const server = data.serverName ? `Served by ${data.serverName}` : "Served by Staff";
-  cmds.push(center(server));
-
-  // Horizontal divider
-  cmds.push(hr());
-
-  // ORDER #X (Centered, Double Size, Bold)
-  const orderNum = data.orderNumber ?? 1;
-  cmds.push(esc(0x1b) + esc(0x61) + esc(0x01)); // Center align
-  cmds.push(esc(0x1d) + esc(0x21) + esc(0x11)); // Double width & height
-  cmds.push(esc(0x1b) + esc(0x45) + esc(0x01)); // Bold ON
-  cmds.push(`ORDER #${orderNum}`);
-  cmds.push(esc(0x1d) + esc(0x21) + esc(0x00)); // Reset size
-  cmds.push(esc(0x1b) + esc(0x45) + esc(0x00)); // Bold OFF
-
-  // Horizontal divider
-  cmds.push(hr());
-
-  // Items List (Left align)
-  cmds.push(esc(0x1b) + esc(0x61) + esc(0x00));
-
-  for (const it of data.items) {
-    const qtyPrefix = `${it.qty}x `;
-    const priceStr = `$${(it.qty * it.price).toFixed(2)}`;
-    const maxNameLen = COL_WIDTH - qtyPrefix.length - priceStr.length;
-    const nameStr = padRight(it.name, Math.max(1, maxNameLen));
-    cmds.push(`${qtyPrefix}${nameStr}${priceStr}`);
-  }
-
-  // Divider
-  cmds.push(hr());
-
-  // Totals
-  const subtotalStr = `$${data.subtotal.toFixed(2)}`;
-  cmds.push(`${padRight("Subtotal", COL_WIDTH - subtotalStr.length)}${subtotalStr}`);
-
-  if (data.tax != null && data.tax > 0) {
-    const taxStr = `$${data.tax.toFixed(2)}`;
-    cmds.push(`${padRight("Tax", COL_WIDTH - taxStr.length)}${taxStr}`);
-  }
-
-  const totalStr = `$${data.total.toFixed(2)}`;
-  cmds.push(esc(0x1b) + esc(0x45) + esc(0x01)); // Bold ON
-  cmds.push(`${padRight("Total", COL_WIDTH - totalStr.length)}${totalStr}`);
-  cmds.push(esc(0x1b) + esc(0x45) + esc(0x00)); // Bold OFF
-
-  cmds.push(hr());
-
-  // Payment & Change
-  const payLabel = data.payMode === "credit" ? "Credit" : "Cash Tendered";
-  const paidStr = `$${data.paid.toFixed(2)}`;
-  cmds.push(`${padRight(payLabel, COL_WIDTH - paidStr.length)}${paidStr}`);
-
-  const changeStr = `$${data.change.toFixed(2)}`;
-  cmds.push(`${padRight("Change", COL_WIDTH - changeStr.length)}${changeStr}`);
-
-  if (data.customerName) {
-    cmds.push(hr());
-    cmds.push(`Customer: ${data.customerName}`);
-  }
-
-  cmds.push(hr());
-  cmds.push(center("Thank you for your purchase!", false));
-  cmds.push(esc(0x1b) + esc(0x64) + esc(0x03));
-  cmds.push(esc(0x1d) + esc(0x56) + esc(0x42) + esc(0x00));
-
-  return cmds.join("\n");
+export interface PrintResult {
+  opened: boolean;
+  method: string;
+  needsPairing?: boolean;
+  error?: string;
 }
 
-function center(text: string, bold = false): string {
-  const tag = bold ? esc(0x1b) + esc(0x45) + esc(0x01) : "";
-  const reset = bold ? esc(0x1b) + esc(0x45) + esc(0x00) : "";
-  const padded = text.padStart(Math.floor((COL_WIDTH + text.length) / 2)).slice(0, COL_WIDTH);
-  return `${tag}${padded}${reset}`;
-}
-
-function hr(): string {
-  return "\u2500".repeat(COL_WIDTH);
-}
-
-function padLeft(s: string, w: number): string {
-  return s.padStart(w).slice(-w);
-}
-
-function padRight(s: string, w: number): string {
-  return s.padEnd(w).slice(0, w);
-}
-
-function readStorage(key: string): string | null {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function printReceipt(
-  data: ReceiptData,
-): Promise<{ opened: boolean; method: string; needsPairing?: boolean; error?: string }> {
-  const dateStr =
-    data.date ||
-    new Date().toLocaleString("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-
-  const fullData: ReceiptData = {
-    ...data,
-    date: dateStr,
-  };
-
-  const payload = buildReceiptEscPos(fullData);
-  const vid = parseInt(readStorage("bartap-receipt-vid") ?? "", 10);
-  const pid = parseInt(readStorage("bartap-receipt-pid") ?? "", 10);
-
-  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (serial?.requestPort) {
-    // Check if any port is already granted — if not, signal caller to show pairing UI
-    try {
-      const granted = await serial.getPorts();
-      const hasPort = granted.length > 0;
-      if (!hasPort) {
-        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
-      }
-    } catch {
-      // If getPorts fails, proceed and let requestPort handle it
-    }
-    try {
-      return await printViaWebSerial(payload, vid, pid);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      // User cancelled the picker — not an error
-      if (message.includes("cancelled") || message.includes("No port")) {
-        return { opened: false, method: "none", needsPairing: true, error: message };
-      }
-      return { opened: false, method: "none", error: message };
-    }
-  }
-
-  return printViaBrowserWindow(fullData, payload);
-}
+// ─── Web Serial types ─────────────────────────────────────────────────────────
 
 interface WebSerialPort {
   open(options: {
@@ -228,289 +79,77 @@ interface WebSerialAPI {
   getPorts(): Promise<WebSerialPort[]>;
 }
 
-async function printViaWebSerial(
-  payload: string,
-  vid?: number,
-  pid?: number,
-): Promise<{ opened: boolean; method: string; error?: string }> {
-  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (!serial?.requestPort) {
-    return printViaBrowserWindow(
-      { storeName: "My Business", items: [], subtotal: 0, total: 0, paid: 0, change: 0, payMode: "cash" },
-      payload,
-    );
-  }
+// ─── Web Bluetooth types ──────────────────────────────────────────────────────
 
-  let port: WebSerialPort | undefined;
+interface BluetoothRemoteGATTCharacteristic {
+  writeValue(value: BufferSource): Promise<void>;
+  writeValueWithoutResponse?(value: BufferSource): Promise<void>;
+}
+
+interface BluetoothRemoteGATTService {
+  getCharacteristic(uuid: string): Promise<BluetoothRemoteGATTCharacteristic>;
+}
+
+interface BluetoothRemoteGATTServer {
+  connect(): Promise<BluetoothRemoteGATTServer>;
+  getPrimaryService(uuid: string): Promise<BluetoothRemoteGATTService>;
+  connected: boolean;
+  disconnect(): void;
+}
+
+interface BluetoothDevice {
+  name?: string;
+  gatt?: BluetoothRemoteGATTServer;
+}
+
+interface BluetoothAPI {
+  requestDevice(options: {
+    filters?: { services?: string[]; namePrefix?: string }[];
+    optionalServices?: string[];
+    acceptAllDevices?: boolean;
+  }): Promise<BluetoothDevice>;
+  getAvailability(): Promise<boolean>;
+}
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+
+function readStorage(key: string): string | null {
   try {
-    const granted = await serial.getPorts();
-    if (vid != null) {
-      port = granted.find((p) => p.getInfo().usbVendorId === vid);
-    }
-    if (!port) port = granted[0];
+    return typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
   } catch {
-    // ignore — fall through to requestPort
-  }
-
-  if (!port) {
-    const filters = vid != null ? [{ usbVendorId: vid }] : undefined;
-    port = await serial.requestPort(filters ? { filters } : undefined);
-  }
-
-  await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: "none", bufferSize: 4096 });
-
-  try {
-    const writer = await port.writable.getWriter();
-    await writer.write(new Uint8Array([...payload].map((c) => c.charCodeAt(0))));
-    writer.releaseLock();
-  } finally {
-    await new Promise((r) => setTimeout(r, 200));
-    await port.close().catch(() => undefined);
-  }
-
-  // Persist device info so we can filter the picker next time
-  try {
-    const info = port.getInfo();
-    if (info.usbVendorId != null) {
-      localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return { opened: true, method: "webserial" };
-}
-
-function printViaBrowserWindow(
-  data: ReceiptData,
-  rawPayload: string,
-): {
-  opened: boolean;
-  method: string;
-  error?: string;
-} {
-  try {
-    const win = window.open("", "_blank", "width=420,height=650");
-    if (!win) {
-      return {
-        opened: false,
-        method: "none",
-        error: "Popup blocked — allow popups to print receipts",
-      };
-    }
-
-    const itemsHtml = data.items
-      .map(
-        (it) => `
-      <tr>
-        <td class="item-qty-name">${it.qty}x  ${escapeHtml(it.name)}</td>
-        <td class="item-price">$${(it.qty * it.price).toFixed(2)}</td>
-      </tr>`,
-      )
-      .join("");
-
-    const taxHtml =
-      data.tax != null && data.tax > 0
-        ? `
-      <tr>
-        <td class="text-left">Tax</td>
-        <td class="text-right">$${data.tax.toFixed(2)}</td>
-      </tr>`
-        : "";
-
-    const customerHtml = data.customerName
-      ? `
-      <tr>
-        <td class="text-left">Customer</td>
-        <td class="text-right">${escapeHtml(data.customerName)}</td>
-      </tr>`
-        : "";
-
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Receipt - ORDER #${data.orderNumber || 1}</title>
-  <style>
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
-    body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px;
-      font-weight: 600;
-      color: #111;
-      background: #fff;
-      margin: 0 auto;
-      padding: 20px 16px;
-      width: 300px;
-      box-sizing: border-box;
-      line-height: 1.4;
-    }
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    .text-left { text-align: left; }
-
-    .brand-name {
-      font-size: 18px;
-      font-weight: 900;
-      color: #111;
-      letter-spacing: -0.5px;
-      margin-bottom: 2px;
-      text-transform: uppercase;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-
-    .header-info {
-      font-size: 12px;
-      color: #333;
-      margin-bottom: 2px;
-    }
-
-    .divider {
-      border-top: 1px dashed #333;
-      margin: 10px 0;
-    }
-
-    .order-title {
-      font-size: 22px;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin: 8px 0;
-    }
-
-    .item-table, .totals-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 4px 0;
-    }
-    .item-table td, .totals-table td {
-      padding: 3px 0;
-      vertical-align: top;
-    }
-    .item-qty-name {
-      text-align: left;
-    }
-    .item-price {
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .totals-table .total-row {
-      font-size: 16px;
-      font-weight: 900;
-    }
-
-    @media print {
-      body {
-        width: 100%;
-        padding: 4px 8px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="text-center brand-name">${escapeHtml(data.storeName || "My Business")}</div>
-  ${data.locationName ? `<div class="text-center header-info">${escapeHtml(data.locationName)}</div>` : ""}
-  <div class="text-center header-info">${escapeHtml(data.date || "")}</div>
-  <div class="text-center header-info">Served by ${escapeHtml(data.serverName || "Staff")}</div>
-
-  <div class="divider"></div>
-
-  <div class="text-center order-title">ORDER #${data.orderNumber || 1}</div>
-
-  <div class="divider"></div>
-
-  <table class="item-table">
-    <tbody>
-      ${itemsHtml}
-    </tbody>
-  </table>
-
-  <div class="divider"></div>
-
-  <table class="totals-table">
-    <tbody>
-      <tr>
-        <td class="text-left">Subtotal</td>
-        <td class="text-right">$${data.subtotal.toFixed(2)}</td>
-      </tr>
-      ${taxHtml}
-      <tr class="total-row">
-        <td class="text-left">Total</td>
-        <td class="text-right">$${data.total.toFixed(2)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="divider"></div>
-
-  <table class="totals-table">
-    <tbody>
-      <tr>
-        <td class="text-left">${data.payMode === "credit" ? "Credit" : "Cash Tendered"}</td>
-        <td class="text-right">$${data.paid.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td class="text-left">Change</td>
-        <td class="text-right">$${data.change.toFixed(2)}</td>
-      </tr>
-      ${customerHtml}
-    </tbody>
-  </table>
-
-</body>
-</html>`;
-
-    win.document.write(htmlContent);
-    win.document.close();
-    win.focus();
-    setTimeout(() => {
-      win.print();
-    }, 300);
-    return { opened: true, method: "browser" };
-  } catch (e) {
-    return {
-      opened: false,
-      method: "none",
-      error: e instanceof Error ? e.message : "Failed to open print window",
-    };
+    return null;
   }
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-/**
- * Pair the printer by prompting the user to select a USB serial device.
- * Stores the VID so subsequent printReceipt() calls skip the picker.
- * Returns true if a port was successfully selected.
- */
-export async function pairPrinter(): Promise<boolean> {
-  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (!serial?.requestPort) return false;
+function writeStorage(key: string, value: string): void {
   try {
-    const port = await serial.requestPort();
-    const info = port.getInfo();
-    if (info.usbVendorId != null) {
-      localStorage.setItem("bartap-receipt-vid", String(info.usbVendorId));
-    }
-    if (info.usbProductId != null) {
-      localStorage.setItem("bartap-receipt-pid", String(info.usbProductId));
-    }
-    return true;
-  } catch {
-    return false;
-  }
+    localStorage.setItem(key, value);
+  } catch { /* ignore */ }
 }
 
-/**
- * Returns true if a printer port is already granted in this browser session.
- */
+function removeStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch { /* ignore */ }
+}
+
+// ─── Connection type helpers ──────────────────────────────────────────────────
+
+/** Returns the saved connection type, defaulting to "usb" if not set. */
+export function getPrinterConnectionType(): PrinterConnectionType {
+  const saved = readStorage("bartap-printer-type");
+  if (saved === "bt") return "bt";
+  if (saved === "usb") return "usb";
+  return "none";
+}
+
+/** Returns true if a printer has been paired (either USB or Bluetooth). */
 export async function isPrinterPaired(): Promise<boolean> {
+  const type = getPrinterConnectionType();
+  if (type === "bt") {
+    return readStorage("bartap-receipt-bt") === "1";
+  }
+  // USB — check Web Serial granted ports
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
   if (!serial?.getPorts) return false;
   try {
@@ -519,4 +158,439 @@ export async function isPrinterPaired(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Pair a USB printer via Web Serial.
+ * Opens the browser device picker and saves the VID/PID.
+ */
+export async function pairUsbPrinter(): Promise<boolean> {
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (!serial?.requestPort) return false;
+  try {
+    const port = await serial.requestPort();
+    const info = port.getInfo();
+    if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
+    if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
+    writeStorage("bartap-printer-type", "usb");
+    removeStorage("bartap-receipt-bt");
+    removeStorage("bartap-receipt-bt-name");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pair a Bluetooth printer via Web Bluetooth.
+ * Opens the browser Bluetooth picker filtered to ESC/POS printers.
+ */
+export async function pairBluetoothPrinter(): Promise<boolean> {
+  const bt = (navigator as unknown as { bluetooth?: BluetoothAPI }).bluetooth;
+  if (!bt?.requestDevice) return false;
+  try {
+    const device = await bt.requestDevice({
+      // Try standard ESC/POS BLE service first; fall back to accepting all devices
+      // so printers that advertise a proprietary UUID are still discoverable.
+      filters: [{ services: [BLE_SERVICE_UUID] }],
+      optionalServices: [BLE_SERVICE_UUID],
+    }).catch(() =>
+      bt.requestDevice({ acceptAllDevices: true, optionalServices: [BLE_SERVICE_UUID] }),
+    );
+    if (!device) return false;
+    writeStorage("bartap-printer-type", "bt");
+    writeStorage("bartap-receipt-bt", "1");
+    if (device.name) writeStorage("bartap-receipt-bt-name", device.name);
+    removeStorage("bartap-receipt-vid");
+    removeStorage("bartap-receipt-pid");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Legacy alias — pairs a USB printer. Kept for backward-compat with callers
+ * in CreditPage, ManagerPage, wallet.tsx that import `pairPrinter`.
+ */
+export async function pairPrinter(): Promise<boolean> {
+  // If bluetooth was previously chosen, re-pair via BT; otherwise USB.
+  if (getPrinterConnectionType() === "bt") return pairBluetoothPrinter();
+  return pairUsbPrinter();
+}
+
+// ─── ESC/POS receipt builder ──────────────────────────────────────────────────
+
+function buildReceiptEscPos(data: ReceiptData): Uint8Array {
+  const cmds: string[] = [];
+
+  cmds.push(esc(0x1b) + esc(0x40));                   // Reset
+  cmds.push(esc(0x1b) + esc(0x61) + esc(0x01));       // Center
+
+  cmds.push(center(data.storeName || "My Business", true));
+  if (data.locationName) cmds.push(center(data.locationName));
+
+  const dateStr =
+    data.date ||
+    new Date().toLocaleString("en-US", {
+      month: "numeric", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+    });
+  cmds.push(center(dateStr));
+  cmds.push(center(data.serverName ? `Served by ${data.serverName}` : "Served by Staff"));
+  cmds.push(hr());
+
+  // ORDER # — double size, bold, centred
+  cmds.push(esc(0x1b) + esc(0x61) + esc(0x01));
+  cmds.push(esc(0x1d) + esc(0x21) + esc(0x11));       // Double width+height
+  cmds.push(esc(0x1b) + esc(0x45) + esc(0x01));       // Bold ON
+  cmds.push(`ORDER #${data.orderNumber ?? 1}`);
+  cmds.push(esc(0x1d) + esc(0x21) + esc(0x00));       // Reset size
+  cmds.push(esc(0x1b) + esc(0x45) + esc(0x00));       // Bold OFF
+  cmds.push(hr());
+
+  cmds.push(esc(0x1b) + esc(0x61) + esc(0x00));       // Left align
+  for (const it of data.items) {
+    const qtyPrefix = `${it.qty}x `;
+    const priceStr  = `$${(it.qty * it.price).toFixed(2)}`;
+    const maxName   = COL_WIDTH - qtyPrefix.length - priceStr.length;
+    cmds.push(`${qtyPrefix}${padRight(it.name, Math.max(1, maxName))}${priceStr}`);
+  }
+  cmds.push(hr());
+
+  const subtotalStr = `$${data.subtotal.toFixed(2)}`;
+  cmds.push(`${padRight("Subtotal", COL_WIDTH - subtotalStr.length)}${subtotalStr}`);
+  if (data.tax != null && data.tax > 0) {
+    const taxStr = `$${data.tax.toFixed(2)}`;
+    cmds.push(`${padRight("Tax", COL_WIDTH - taxStr.length)}${taxStr}`);
+  }
+  const totalStr = `$${data.total.toFixed(2)}`;
+  cmds.push(esc(0x1b) + esc(0x45) + esc(0x01));
+  cmds.push(`${padRight("Total", COL_WIDTH - totalStr.length)}${totalStr}`);
+  cmds.push(esc(0x1b) + esc(0x45) + esc(0x00));
+  cmds.push(hr());
+
+  const payLabel  = data.payMode === "credit" ? "Credit" : "Cash Tendered";
+  const paidStr   = `$${data.paid.toFixed(2)}`;
+  const changeStr = `$${data.change.toFixed(2)}`;
+  cmds.push(`${padRight(payLabel, COL_WIDTH - paidStr.length)}${paidStr}`);
+  cmds.push(`${padRight("Change", COL_WIDTH - changeStr.length)}${changeStr}`);
+
+  if (data.customerName) {
+    cmds.push(hr());
+    cmds.push(`Customer: ${data.customerName}`);
+  }
+
+  cmds.push(hr());
+  cmds.push(center("Thank you for your purchase!"));
+  cmds.push(esc(0x1b) + esc(0x64) + esc(0x03));       // Feed 3 lines
+  cmds.push(esc(0x1d) + esc(0x56) + esc(0x42) + esc(0x00)); // Full cut
+
+  const raw = cmds.join("\n");
+  return new Uint8Array([...raw].map((c) => c.charCodeAt(0)));
+}
+
+function center(text: string, bold = false): string {
+  const on  = bold ? esc(0x1b) + esc(0x45) + esc(0x01) : "";
+  const off = bold ? esc(0x1b) + esc(0x45) + esc(0x00) : "";
+  const padded = text.padStart(Math.floor((COL_WIDTH + text.length) / 2)).slice(0, COL_WIDTH);
+  return `${on}${padded}${off}`;
+}
+
+function hr(): string { return "\u2500".repeat(COL_WIDTH); }
+
+function padRight(s: string, w: number): string { return s.padEnd(w).slice(0, w); }
+
+// ─── USB (Web Serial) print path ──────────────────────────────────────────────
+
+async function printViaWebSerial(bytes: Uint8Array): Promise<PrintResult> {
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (!serial?.requestPort) {
+    return { opened: false, method: "none", error: "Web Serial not supported in this browser" };
+  }
+
+  const vid = parseInt(readStorage("bartap-receipt-vid") ?? "", 10);
+
+  let port: WebSerialPort | undefined;
+  try {
+    const granted = await serial.getPorts();
+    port = Number.isFinite(vid) && vid > 0
+      ? (granted.find((p) => p.getInfo().usbVendorId === vid) ?? granted[0])
+      : granted[0];
+  } catch { /* ignore */ }
+
+  if (!port) {
+    const filters = Number.isFinite(vid) && vid > 0 ? [{ usbVendorId: vid }] : undefined;
+    port = await serial.requestPort(filters ? { filters } : undefined);
+  }
+
+  await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: "none", bufferSize: 4096 });
+
+  try {
+    const writer = port.writable.getWriter();
+    await writer.write(bytes);
+    writer.releaseLock();
+  } finally {
+    await new Promise((r) => setTimeout(r, 200));
+    await port.close().catch(() => undefined);
+  }
+
+  // Persist VID after a successful print so future calls skip the picker
+  try {
+    const info = port.getInfo();
+    if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
+    if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
+  } catch { /* ignore */ }
+
+  writeStorage("bartap-printer-type", "usb");
+  return { opened: true, method: "webserial" };
+}
+
+// ─── Bluetooth (Web Bluetooth) print path ─────────────────────────────────────
+
+async function printViaBluetooth(bytes: Uint8Array): Promise<PrintResult> {
+  const bt = (navigator as unknown as { bluetooth?: BluetoothAPI }).bluetooth;
+  if (!bt?.requestDevice) {
+    return {
+      opened: false, method: "none",
+      error: "Web Bluetooth not available — use Chrome on desktop or Android",
+    };
+  }
+
+  // Request the device — try the standard ESC/POS BLE service UUID first,
+  // then fall back to acceptAllDevices so any printer is discoverable.
+  let device: BluetoothDevice;
+  try {
+    device = await bt.requestDevice({
+      filters: [{ services: [BLE_SERVICE_UUID] }],
+      optionalServices: [BLE_SERVICE_UUID],
+    });
+  } catch {
+    device = await bt.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [BLE_SERVICE_UUID],
+    });
+  }
+
+  if (!device.gatt) {
+    return { opened: false, method: "none", error: "Bluetooth device has no GATT server" };
+  }
+
+  const server  = await device.gatt.connect();
+  let service: BluetoothRemoteGATTService;
+  try {
+    service = await server.getPrimaryService(BLE_SERVICE_UUID);
+  } catch {
+    server.disconnect();
+    return {
+      opened: false, method: "none",
+      error: "Printer does not expose the ESC/POS BLE service — check printer model compatibility",
+    };
+  }
+
+  const characteristic = await service.getCharacteristic(BLE_CHAR_UUID);
+
+  // Write in 20-byte chunks (safe MTU for all BLE versions)
+  for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
+    const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
+    if (characteristic.writeValueWithoutResponse) {
+      await characteristic.writeValueWithoutResponse(chunk);
+    } else {
+      await characteristic.writeValue(chunk);
+    }
+    // Small delay between chunks to avoid buffer overrun on slower printers
+    await new Promise((r) => setTimeout(r, 10));
+  }
+
+  server.disconnect();
+
+  // Remember BT pairing
+  writeStorage("bartap-printer-type", "bt");
+  writeStorage("bartap-receipt-bt", "1");
+  if (device.name) writeStorage("bartap-receipt-bt-name", device.name);
+
+  return { opened: true, method: "bluetooth" };
+}
+
+// ─── Browser print window fallback ───────────────────────────────────────────
+
+function printViaBrowserWindow(data: ReceiptData): PrintResult {
+  try {
+    const win = window.open("", "_blank", "width=420,height=650");
+    if (!win) {
+      return { opened: false, method: "none", error: "Popup blocked — allow popups to print receipts" };
+    }
+
+    const escHtml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const itemsHtml = data.items.map((it) =>
+      `<tr>
+        <td class="item-qty-name">${it.qty}x ${escHtml(it.name)}</td>
+        <td class="item-price">$${(it.qty * it.price).toFixed(2)}</td>
+      </tr>`,
+    ).join("");
+
+    const taxHtml = (data.tax != null && data.tax > 0)
+      ? `<tr><td>Tax</td><td class="text-right">$${data.tax.toFixed(2)}</td></tr>` : "";
+
+    const customerHtml = data.customerName
+      ? `<tr><td>Customer</td><td class="text-right">${escHtml(data.customerName)}</td></tr>` : "";
+
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Receipt - ORDER #${data.orderNumber || 1}</title>
+<style>
+@page{size:80mm auto;margin:0}
+body{font-family:'Courier New',monospace;font-size:13px;font-weight:600;color:#111;
+  background:#fff;margin:0 auto;padding:20px 16px;width:300px;box-sizing:border-box;line-height:1.4}
+.text-center{text-align:center}.text-right{text-align:right}
+.brand-name{font-size:18px;font-weight:900;text-transform:uppercase;font-family:system-ui,sans-serif;margin-bottom:2px}
+.header-info{font-size:12px;color:#333;margin-bottom:2px}
+.divider{border-top:1px dashed #333;margin:10px 0}
+.order-title{font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:8px 0}
+.item-table,.totals-table{width:100%;border-collapse:collapse;margin:4px 0}
+.item-table td,.totals-table td{padding:3px 0;vertical-align:top}
+.item-qty-name{text-align:left}.item-price{text-align:right;white-space:nowrap}
+.totals-table .total-row{font-size:16px;font-weight:900}
+@media print{body{width:100%;padding:4px 8px}}
+</style></head><body>
+<div class="text-center brand-name">${escHtml(data.storeName || "My Business")}</div>
+${data.locationName ? `<div class="text-center header-info">${escHtml(data.locationName)}</div>` : ""}
+<div class="text-center header-info">${escHtml(data.date || "")}</div>
+<div class="text-center header-info">Served by ${escHtml(data.serverName || "Staff")}</div>
+<div class="divider"></div>
+<div class="text-center order-title">ORDER #${data.orderNumber || 1}</div>
+<div class="divider"></div>
+<table class="item-table"><tbody>${itemsHtml}</tbody></table>
+<div class="divider"></div>
+<table class="totals-table"><tbody>
+  <tr><td>Subtotal</td><td class="text-right">$${data.subtotal.toFixed(2)}</td></tr>
+  ${taxHtml}
+  <tr class="total-row"><td>Total</td><td class="text-right">$${data.total.toFixed(2)}</td></tr>
+</tbody></table>
+<div class="divider"></div>
+<table class="totals-table"><tbody>
+  <tr><td>${data.payMode === "credit" ? "Credit" : "Cash Tendered"}</td>
+      <td class="text-right">$${data.paid.toFixed(2)}</td></tr>
+  <tr><td>Change</td><td class="text-right">$${data.change.toFixed(2)}</td></tr>
+  ${customerHtml}
+</tbody></table>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 300);
+    return { opened: true, method: "browser" };
+  } catch (e) {
+    return { opened: false, method: "none", error: e instanceof Error ? e.message : "Failed to open print window" };
+  }
+}
+
+// ─── Main entry points ────────────────────────────────────────────────────────
+
+/**
+ * Print a receipt. Automatically uses whichever connection the user has paired:
+ *  - USB (Web Serial) if `bartap-printer-type` = "usb" or not set
+ *  - Bluetooth (Web Bluetooth BLE) if `bartap-printer-type` = "bt"
+ *  - Browser print window as final fallback
+ *
+ * Returns `needsPairing: true` if no printer has been paired yet so the caller
+ * can show the pairing UI.
+ */
+export async function printReceipt(data: ReceiptData): Promise<PrintResult> {
+  const dateStr = data.date || new Date().toLocaleString("en-US", {
+    month: "numeric", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+  });
+  const fullData: ReceiptData = { ...data, date: dateStr };
+  const bytes = buildReceiptEscPos(fullData);
+  const type  = getPrinterConnectionType();
+
+  // ── Bluetooth path ─────────────────────────────────────────────────────────
+  if (type === "bt") {
+    try {
+      return await printViaBluetooth(bytes);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("user cancelled")) {
+        return { opened: false, method: "none", needsPairing: true, error: msg };
+      }
+      // BT failed — fall through to browser window
+      return printViaBrowserWindow(fullData);
+    }
+  }
+
+  // ── USB / Web Serial path ──────────────────────────────────────────────────
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (serial?.requestPort) {
+    // Check whether any port is already granted
+    try {
+      const granted = await serial.getPorts();
+      if (granted.length === 0) {
+        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+      }
+    } catch { /* proceed */ }
+    try {
+      return await printViaWebSerial(bytes);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("cancelled") || msg.includes("No port")) {
+        return { opened: false, method: "none", needsPairing: true, error: msg };
+      }
+      return { opened: false, method: "none", error: msg };
+    }
+  }
+
+  // ── Browser window fallback ────────────────────────────────────────────────
+  return printViaBrowserWindow(fullData);
+}
+
+/**
+ * Print a receipt AND immediately send the cash-drawer kick pulse through the
+ * same connection in a single open/close cycle (USB) or sequential BLE writes.
+ * This avoids opening the serial port twice when the "Print" button is tapped.
+ */
+export async function printReceiptAndOpenDrawer(
+  data: ReceiptData,
+  drawerPulse: Uint8Array = new Uint8Array([0x1b, 0x70, 0x00, 0x19, 0x19]),
+): Promise<PrintResult> {
+  const dateStr = data.date || new Date().toLocaleString("en-US", {
+    month: "numeric", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+  });
+  const fullData: ReceiptData = { ...data, date: dateStr };
+  const receiptBytes = buildReceiptEscPos(fullData);
+  // Concatenate receipt bytes + drawer pulse into one buffer
+  const combined = new Uint8Array(receiptBytes.length + drawerPulse.length);
+  combined.set(receiptBytes, 0);
+  combined.set(drawerPulse, receiptBytes.length);
+
+  const type = getPrinterConnectionType();
+
+  if (type === "bt") {
+    try {
+      return await printViaBluetooth(combined);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return printViaBrowserWindow(fullData); // drawer won't open but receipt still prints
+    }
+  }
+
+  const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
+  if (serial?.requestPort) {
+    try {
+      const granted = await serial.getPorts();
+      if (granted.length === 0) {
+        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+      }
+    } catch { /* proceed */ }
+    try {
+      return await printViaWebSerial(combined);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { opened: false, method: "none", error: msg };
+    }
+  }
+
+  return printViaBrowserWindow(fullData);
 }
