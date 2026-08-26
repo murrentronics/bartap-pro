@@ -492,22 +492,25 @@ export default function AdminBillingManagementPage() {
           {/* Tabs — full width row below search */}
           <div className="flex gap-2 w-full">
             {(["pending", "due", "paid", "rejected"] as const).map((f) => (
-                <Button
+                <button
                   key={f}
-                  variant={filter === f ? "default" : "outline"}
                   onClick={() => { setFilter(f); setPage(0); }}
-                  className="flex-1 flex flex-col items-center gap-0.5 h-auto py-2 px-1 min-w-0"
-                  style={f === "due" && filter === f ? { background: "linear-gradient(135deg,#ea580c,#f59e0b)" } : {}}
+                  className="flex-1 flex flex-col items-center gap-0.5 py-2 px-1 min-w-0 rounded-lg border-2 transition-all"
+                  style={
+                    filter === f
+                      ? { borderColor: "#f59e0b", background: "rgba(245,158,11,0.08)" }
+                      : { borderColor: "var(--border)", background: "transparent" }
+                  }
                 >
                   {f === "pending"  && <Clock       className="h-4 w-4 text-yellow-500 shrink-0" />}
                   {f === "due"      && <AlertCircle className="h-4 w-4 text-orange-400 shrink-0" />}
                   {f === "paid"     && <CheckCircle className="h-4 w-4 text-green-500  shrink-0" />}
                   {f === "rejected" && <XCircle     className="h-4 w-4 text-red-500    shrink-0" />}
-                  <span className="text-[10px] font-black leading-none capitalize">{f}</span>
+                  <span className="text-[10px] font-black leading-none capitalize text-foreground">{f}</span>
                   {f === "pending"  && stats.pending  > 0 && <span className="text-[10px] font-black text-yellow-500">{stats.pending}</span>}
                   {f === "due"      && stats.dueSoonCount > 0 && <span className="text-[10px] font-black text-orange-400">{stats.dueSoonCount}</span>}
                   {f === "paid"     && stats.paid     > 0 && <span className="text-[10px] font-black text-green-500">{stats.paid}</span>}
-                </Button>
+                </button>
               ))}
           </div>
         </div>
