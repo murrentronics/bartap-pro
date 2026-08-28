@@ -214,7 +214,14 @@ function StockCountPage() {
     );
   };
 
+  const MAX_COLUMNS = 10;
+
   const addColumn = (tableId: string) => {
+    const table = tables.find((t) => t.id === tableId);
+    if (table && table.columns.length >= MAX_COLUMNS) {
+      toast.error(`Max ${MAX_COLUMNS} columns allowed per table`);
+      return;
+    }
     setActiveTableIdForColumn(tableId);
     setColumnName("");
     setShowAddColumnModal(true);
@@ -222,6 +229,14 @@ function StockCountPage() {
 
   const handleAddColumnConfirm = () => {
     if (!columnName.trim() || !activeTableIdForColumn) return;
+    const table = tables.find((t) => t.id === activeTableIdForColumn);
+    if (table && table.columns.length >= MAX_COLUMNS) {
+      toast.error(`Max ${MAX_COLUMNS} columns allowed per table`);
+      setShowAddColumnModal(false);
+      setColumnName("");
+      setActiveTableIdForColumn(null);
+      return;
+    }
     persist(
       tables.map((t) => {
         if (t.id !== activeTableIdForColumn) return t;
@@ -326,57 +341,105 @@ function StockCountPage() {
         `${dateStr} ${timeStr}`,
       );
 
-      const ROW_H = 6;
-      const COL_START = LM + 2;
-      const COL_NAME_W = 70;
-      const COL_COL_W = 28;
-      const COL_TOTAL_W = 25;
-      let x = COL_START;
+      const HEADER_H = 8;   // header row height
+      const ROW_H    = 8;   // data row height
+      const TEXT_PAD = 2;   // padding inside cell from top
 
-      const checkPage = () => {
-        if (y > CONTENT_BOTTOM - ROW_H) {
+      // Page content width = 180mm (LM=15, RM=195)
+      const CONTENT_W = RM - LM;
+      const NUM_COLS  = table.columns.length;
+      const COL_TOTAL_W = 22;
+      const COL_DATA_W  = NUM_COLS > 0
+        ? Math.min(28, Math.floor((CONTENT_W * 0.55) / NUM_COLS))
+        : 28;
+      const COL_NAME_W  = CONTENT_W - NUM_COLS * COL_DATA_W - COL_TOTAL_W;
+
+      // Absolute left-edge x of every column
+      const xName  = LM;
+      const xCols  = Array.from({ length: NUM_COLS }, (_, i) => LM + COL_NAME_W + i * COL_DATA_W);
+      const xTotal = LM + COL_NAME_W + NUM_COLS * COL_DATA_W;
+
+      // Draw a single cell rect + clipped text helper
+      const cell = (
+        cx: number, cy: number, cw: number, ch: number,
+        text: string,
+        opts: { bold?: boolean; align?: "left" | "center" | "right"; orange?: boolean; size?: number } = {}
+      ) => {
+        // Border
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.25);
+        doc.rect(cx, cy, cw, ch);
+
+        if (!text) return;
+        doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+        doc.setFontSize(opts.size ?? 7.5);
+        doc.setTextColor(...(opts.orange ? ([232, 146, 42] as [number, number, number]) : ([0, 0, 0] as [number, number, number])));
+
+        const textY = cy + ch / 2 + (opts.size ?? 7.5) * 0.18; // vertically centre
+        if (opts.align === "center") {
+          doc.text(text, cx + cw / 2, textY, { align: "center" });
+        } else if (opts.align === "right") {
+          doc.text(text, cx + cw - TEXT_PAD, textY, { align: "right" });
+        } else {
+          // left — clip to cell width
+          const lines = doc.splitTextToSize(text, cw - TEXT_PAD * 2) as string[];
+          doc.text(lines[0], cx + TEXT_PAD, textY);
+        }
+        doc.setTextColor(0, 0, 0);
+      };
+
+      const checkPage = (neededH: number) => {
+        if (y + neededH > CONTENT_BOTTOM) {
           doc.addPage();
           y = 20;
         }
       };
 
-      checkPage();
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(80, 80, 80);
-      doc.text("Item name", x, y);
-      x += COL_NAME_W;
-      for (const col of table.columns) {
-        doc.text(col, x, y, { align: "center" });
-        x += COL_COL_W;
-      }
-      doc.text("Total", x, y, { align: "right" });
-      y += 4;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(LM, y - 1, RM, y - 1);
+      // ── Header row ────────────────────────────────────────────────────
+      checkPage(HEADER_H);
+      // Shade header background (light grey)
+      doc.setFillColor(240, 240, 240);
+      doc.rect(LM, y, CONTENT_W, HEADER_H, "F");
 
+      cell(xName,  y, COL_NAME_W,  HEADER_H, "Item name", { bold: true, align: "left",  size: 8 });
+      for (let i = 0; i < NUM_COLS; i++) {
+        cell(xCols[i], y, COL_DATA_W, HEADER_H, table.columns[i], { bold: true, align: "center", size: 8 });
+      }
+      cell(xTotal, y, COL_TOTAL_W, HEADER_H, "Total", { bold: true, align: "center", size: 8 });
+      y += HEADER_H;
+
+      // ── Data rows ─────────────────────────────────────────────────────
       for (const row of table.rows) {
-        checkPage();
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
-        doc.setTextColor(0, 0, 0);
-        x = COL_START;
+        checkPage(ROW_H);
+
         const name = row[0] ?? "";
-        const nameLines = doc.splitTextToSize(name, COL_NAME_W - 4);
-        doc.text(nameLines, x, y);
-        x += COL_NAME_W;
-        const values = row.slice(1);
-        for (let i = 0; i < table.columns.length; i++) {
-          const val = values[i] ?? "";
-          const num = parseFloat(val);
-          doc.text(isNaN(num) ? val : num.toString(), x + COL_COL_W / 2, y, { align: "center" });
-          x += COL_COL_W;
+        cell(xName, y, COL_NAME_W, ROW_H, name, { align: "left" });
+
+        for (let i = 0; i < NUM_COLS; i++) {
+          const val  = row[i + 1] ?? "";
+          const num  = parseFloat(val);
+          const display = val === "" ? "" : isNaN(num) ? val : num.toString();
+          cell(xCols[i], y, COL_DATA_W, ROW_H, display, { align: "center" });
         }
+
         const total = calcTotal(row);
-        doc.setFont("helvetica", "bold");
-        doc.text(total, x + COL_TOTAL_W - 2, y, { align: "right" });
-        doc.setFont("helvetica", "normal");
-        y += nameLines.length > 1 ? nameLines.length * 4 : ROW_H;
+        cell(xTotal, y, COL_TOTAL_W, ROW_H, total, { bold: true, align: "center", orange: !!total });
+
+        y += ROW_H;
+      }
+
+      // Empty-table placeholder row
+      if (table.rows.length === 0) {
+        checkPage(ROW_H);
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.25);
+        doc.rect(LM, y, CONTENT_W, ROW_H);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text("No rows", LM + CONTENT_W / 2, y + ROW_H / 2 + 1, { align: "center" });
+        doc.setTextColor(0, 0, 0);
+        y += ROW_H;
       }
 
       addFootersToAllPages(doc);
@@ -496,7 +559,9 @@ function StockCountPage() {
                 </button>
                 <button
                   onClick={() => addColumn(table.id)}
-                  className="h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95"
+                  disabled={table.columns.length >= 10}
+                  className="h-8 px-3 rounded-lg text-[10px] font-black border border-border hover:bg-muted/50 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={table.columns.length >= 10 ? "Max 10 columns reached" : "Add column"}
                 >
                   + Add Column
                 </button>
