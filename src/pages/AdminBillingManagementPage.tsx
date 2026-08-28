@@ -111,19 +111,47 @@ export default function AdminBillingManagementPage() {
       return;
     }
 
-    // Exclude master account (renard.sankersingh@gmail.com) from billing records
-    // Master account has no billing payments so no filtering needed
-    const masterId: string | undefined = undefined;
-    const filtered = (data || []).filter((p: any) => !masterId || p.owner_id !== masterId);
+    // Exclude test accounts (renard.sankersingh@gmail.com + isabel@gmail.com) from billing list
+    const TEST_EMAILS = ["renard.sankersingh@gmail.com", "isabel@gmail.com"];
+    let testIds: string[] = [];
+    try {
+      const { data: listed } = await supabase.rpc("admin_list_profiles" as any);
+      if (listed) {
+        testIds = (listed as any[])
+          .filter((r: any) => TEST_EMAILS.includes(r.email))
+          .map((r: any) => r.id as string);
+      }
+    } catch { /* ignore */ }
+    const filtered = (data || []).filter((p: any) => !testIds.includes(p.owner_id));
 
     setPayments(filtered as PaymentWithOwner[]);
   };
 
   const loadStats = async () => {
+    // Resolve test account IDs to exclude from revenue stats
+    const TEST_EMAILS = ["renard.sankersingh@gmail.com", "isabel@gmail.com"];
+    let testIds: string[] = [];
+    try {
+      const { data: listed } = await supabase.rpc("admin_list_profiles" as any);
+      if (listed) {
+        testIds = (listed as any[])
+          .filter((r: any) => TEST_EMAILS.includes(r.email))
+          .map((r: any) => r.id as string);
+      }
+    } catch { /* ignore — no filtering if lookup fails */ }
+
+    // Build billing queries that exclude test accounts
+    let pendingQ = supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending");
+    let paidCntQ = supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "paid");
+    let paidAmtQ = supabase.from("billing_payments").select("amount").eq("status", "paid");
+    for (const id of testIds) {
+      pendingQ = pendingQ.neq("owner_id", id);
+      paidCntQ = paidCntQ.neq("owner_id", id);
+      paidAmtQ = paidAmtQ.neq("owner_id", id);
+    }
+
     const [{ count: pendingCount }, { count: paidCount }, { data: paidData }] = await Promise.all([
-      supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "pending"),
-      supabase.from("billing_payments").select("*", { count: "exact", head: true }).eq("status", "paid"),
-      supabase.from("billing_payments").select("amount").eq("status", "paid"),
+      pendingQ, paidCntQ, paidAmtQ,
     ]);
     const revenue = (paidData ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
 

@@ -23,8 +23,6 @@ import {
 } from "lucide-react";
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
-const SPECIAL_EMAIL = "renard.sankersingh@gmail.com";
-
 // ── Addon pricing constants ───────────────────────────────────────────────
 const PRICE_BAR_ONLY        = 1000;  // extra bar only /yr
 const PRICE_MACHINES_10     = 1200;  // extra machines 10 screens /yr
@@ -305,7 +303,6 @@ export default function BillingPage() {
   const pendingPayment  = payments.find(p => p.status === "pending");
   const hasActive       = profile?.billing_status === "active" ||
     ((profile?.plan_type === "machines_only" || (profile?.plan_type as string) === "machines_only_20") && !!profile?.machines_addon_active);
-  const isSpecial       = userEmail === SPECIAL_EMAIL;
   const isBasic         = profile?.plan_type === "basic";
   const isPremium       = profile?.plan_type === "premium" || (profile?.plan_type as string) === "premium_20";
   const isChain         = false; // chain plan retired — premium handles multi-bar
@@ -430,48 +427,6 @@ export default function BillingPage() {
 
   const histPages   = Math.max(1, Math.ceil(historyTotal / HIST_SIZE));
 
-
-  // ── Demo account — permanent free access, no billing ─────────────────────
-  const DEMO_EMAILS = ["isabel@gmail.com"];
-  const MASTER_EMAILS = ["renard.sankersingh@gmail.com"];
-  if (DEMO_EMAILS.includes(userEmail)) {
-    return (
-      <div className="pb-24 max-w-2xl mx-auto">
-      <div className="-mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
-          <div className="flex items-center gap-3">
-            <CreditCard className="h-5 w-5 text-orange-700" />
-            <h1 className="text-lg font-black">Billing</h1>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-emerald-500/30 p-6 text-center space-y-3" style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" }}>
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-500/40 mx-auto">
-            <CheckCircle className="h-8 w-8 text-emerald-400" />
-          </div>
-          <h2 className="text-xl font-black text-emerald-400">Free Demo Account</h2>
-          <p className="text-sm text-muted-foreground">This is a permanent demo account with full access. No billing or payments required.</p>
-        </div>
-      </div>
-    );
-  }
-  if (MASTER_EMAILS.includes(userEmail)) {
-    return (
-      <div className="pb-24 max-w-2xl mx-auto">
-      <div className="-mx-3 px-3 pt-2 pb-2 bg-background border-b border-border mb-6">
-          <div className="flex items-center gap-3">
-            <CreditCard className="h-5 w-5 text-orange-700" />
-            <h1 className="text-lg font-black">Billing</h1>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-amber-500/30 p-6 text-center space-y-3" style={{ background: "linear-gradient(135deg, rgba(251,146,60,0.12), rgba(251,146,60,0.04))" }}>
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 mx-auto">
-            <CheckCircle className="h-8 w-8 text-amber-400" />
-          </div>
-          <h2 className="text-xl font-black text-amber-400">Master Account with Free Access</h2>
-          <p className="text-sm text-muted-foreground">This account has permanent free access. No billing or payments required.</p>
-        </div>
-      </div>
-    );
-  }
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -601,7 +556,7 @@ export default function BillingPage() {
                         {basicDaysLeft !== null && !basicOverdue && basicDaysLeft <= 30 && ` (${basicDaysLeft}d)`}
                       </span>
                     </div>
-                    {!pendingPayment && !isSpecial && (
+                    {!pendingPayment && (
                       basicCanRenew ? (
                         <button onClick={() => { setSelectedPlan(basicPlan!); setRenewMode("basic"); setStep("payment"); }}
                           className={`w-full h-11 rounded-xl font-black text-sm active:scale-[0.98] transition ${basicOverdue ? "bg-red-500 text-white" : "bg-blue-600 text-white"}`}>
@@ -615,7 +570,7 @@ export default function BillingPage() {
                   )} {/* end isBasic */}
 
                   {/* Premium plan card */}
-                  {isPremium && !isSpecial && (
+                  {isPremium && (
                     <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -894,7 +849,7 @@ export default function BillingPage() {
                   )}
 
                   {/* ── Upgrade to Bar with Machines (Basic or Machines Only owners) ── */}
-                  {(isBasic || isMachinesOnly) && !isSpecial && (
+                  {(isBasic || isMachinesOnly) && (
                     <div className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm overflow-hidden relative">
                       <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                         Upgrade

@@ -15,6 +15,7 @@ export type AdminProfileRow = {
   address: string | null;
   plan_type?: string;
   chain_bar_count?: number;
+  addon_bar_count?: number;
   is_bar_account?: boolean;
 };
 

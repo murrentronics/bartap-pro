@@ -7201,7 +7201,13 @@ export default function MachinesPage() {
 
 
 
-  const isPremium = ownerPlanType === "premium" || MASTER_EMAILS.includes(user?.email ?? "");
+  const isPremium =
+    ownerPlanType === "premium" ||
+    ownerPlanType === "premium_20" ||
+    ownerPlanType === "chain" ||
+    ownerPlanType === "machines_only" ||
+    ownerPlanType === "machines_only_20" ||
+    MASTER_EMAILS.includes(user?.email ?? "");
 
 
 
@@ -8144,8 +8150,8 @@ export default function MachinesPage() {
     <>
 
 
-      {/* ── Machines locked when bar is closed ── */}
-      {barOverlayReadyMachines && !barSessionLoadingMachines && !barIsOpenMachines && (
+      {/* ── Machines locked when bar is closed — only on the Screens tab ── */}
+      {barOverlayReadyMachines && !barSessionLoadingMachines && !barIsOpenMachines && tab === "screens" && (
         <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
           <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
             style={{ background: "var(--gradient-card)" }}>

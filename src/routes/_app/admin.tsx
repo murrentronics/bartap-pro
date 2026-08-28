@@ -98,6 +98,7 @@ type Row = {
   address: string | null;
   plan_type?: string;
   chain_bar_count?: number;
+  addon_bar_count?: number;
   is_bar_account?: boolean;
 };
 
@@ -2005,18 +2006,18 @@ export default function AdminPage() {
   const loadShareholderIncome = useCallback(async () => {
     setIncomeLoading(true);
     try {
-      // Exclude demo account from income calculations
-      let demoId: string | undefined;
+      // Exclude test accounts (isabel@gmail.com + renard.sankersingh@gmail.com) from income
+      const testAccountEmails = ["isabel@gmail.com", "renard.sankersingh@gmail.com"];
+      const testAccountIds: string[] = [];
       try {
         const allProfiles = await listAllProfiles();
-        const demoProfile = allProfiles.find((p) => p.email === "isabel@gmail.com");
-        demoId = demoProfile?.id;
+        for (const email of testAccountEmails) {
+          const match = allProfiles.find((p) => p.email === email);
+          if (match?.id) testAccountIds.push(match.id);
+        }
       } catch {
         /* ignore */
       }
-
-      // Master account (renard.sankersingh@gmail.com) has no billing payments — no filtering needed
-      const masterId: string | undefined = undefined;
 
       let query = supabase
         .from("billing_payments")
@@ -2024,8 +2025,9 @@ export default function AdminPage() {
         .eq("status", "paid")
         .not("approved_at", "is", null);
 
-      if (demoId) query = query.neq("owner_id", demoId);
-      if (masterId) query = query.neq("owner_id", masterId);
+      for (const id of testAccountIds) {
+        query = query.neq("owner_id", id);
+      }
 
       const { data } = await query;
       const payments = (data ?? []) as { amount: number; approved_at: string }[];
@@ -2542,8 +2544,14 @@ export default function AdminPage() {
                           {r.plan_type === "chain" && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
                               <GitBranch className="h-2.5 w-2.5" />
-                              Chain · {r.chain_bar_count ?? 0} bar
-                              {(r.chain_bar_count ?? 0) !== 1 ? "s" : ""}
+                              {(() => {
+                                // addon_bar_count = sub-bars created; +1 for owner's own bar.
+                                // Fall back to chain_bar_count if addon_bar_count is missing (old rows).
+                                const realCount = (r.addon_bar_count ?? 0) > 0
+                                  ? (r.addon_bar_count! + 1)
+                                  : (r.chain_bar_count ?? 1);
+                                return `Chain · ${realCount} bar${realCount !== 1 ? "s" : ""}`;
+                              })()}
                             </span>
                           )}
                           {r.is_bar_account && (

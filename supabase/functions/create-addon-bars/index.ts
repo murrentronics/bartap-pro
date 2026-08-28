@@ -229,7 +229,7 @@ serve(async (req) => {
     const profileUpdates: Record<string, unknown> = {
       is_multi_bar:    true,
       addon_bar_count: newAddonCount,
-      chain_bar_count: (ownerProfile.chain_bar_count ?? 0),
+      chain_bar_count: (ownerProfile.chain_bar_count ?? 1) + createdIds.length,
       billing_status:  "active",
       status:          "approved",
     };
