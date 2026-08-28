@@ -59,16 +59,20 @@ function AppLayout() {
     setter(prev => (prev === "0" || prev === "" ? k : prev + k));
   };
 
+  // Keep a ref so the keyboard listener always calls the latest version
+  const handleOpenBarNumpadRef = useRef(handleOpenBarNumpad);
+  handleOpenBarNumpadRef.current = handleOpenBarNumpad;
+
   useEffect(() => {
     if (activeOpenBarField === null) return;
     const field = activeOpenBarField;
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
-        handleOpenBarNumpad(field, e.key);
+        handleOpenBarNumpadRef.current(field, e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
-        handleOpenBarNumpad(field, "⌫");
+        handleOpenBarNumpadRef.current(field, "⌫");
       }
     };
     window.addEventListener("keydown", onKey);

@@ -1658,12 +1658,12 @@ export default function RegisterPage() {
               <h2 className="font-black text-xl mb-2">Bar is Closed</h2>
               <p className="text-sm text-muted-foreground leading-snug">
                 {barSessionStart
-                  ? "The bar session has ended. The owner needs to set a new float to open a new session before sales can be made."
-                  : "No session has been started yet. The owner needs to set the cashier float to open the bar."}
+                  ? "The bar session has ended. Set a new float to open a new session before sales can be made."
+                  : "No session has been started yet. Set the cashier float to open the bar."}
               </p>
             </div>
             <div className="px-6 pb-6 pt-2">
-              {profile?.role === "owner" ? (
+              {(profile?.role === "owner" || profile?.role === "manager") ? (
                 <button
                   type="button"
                   disabled={barToggleBusy}
