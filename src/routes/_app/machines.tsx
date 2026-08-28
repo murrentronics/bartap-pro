@@ -4015,15 +4015,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                               <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Running Totals</div>
                               {/* 3 stat cards */}
                               <div className="grid grid-cols-3 gap-1">
-                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.18 0.04 145 / 0.5)", border: "1px solid oklch(0.72 0.18 145 / 0.2)" }}>
+                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.24 0.05 145 / 0.6)", border: "1px solid oklch(0.72 0.18 145 / 0.3)" }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">IN</div>
-                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.72 0.18 145)" }}>{Math.round(latest.in_present)}</div>
+                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.72 0.18 145)" }}>{Math.round(latest.in_diff)}</div>
                                 </div>
-                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.18 0.04 25 / 0.5)", border: "1px solid oklch(0.65 0.22 25 / 0.2)" }}>
+                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.24 0.05 25 / 0.6)", border: "1px solid oklch(0.65 0.22 25 / 0.3)" }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">OUT</div>
-                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.65 0.22 25)" }}>{Math.round(latest.out_present)}</div>
+                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.65 0.22 25)" }}>{Math.round(latest.out_diff)}</div>
                                 </div>
-                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: mProfit >= 0 ? "oklch(0.18 0.04 145 / 0.5)" : "oklch(0.18 0.04 25 / 0.5)", border: `1px solid ${mProfit >= 0 ? "oklch(0.72 0.18 145 / 0.25)" : "oklch(0.65 0.22 25 / 0.25)"}` }}>
+                                <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: mProfit >= 0 ? "oklch(0.24 0.05 145 / 0.6)" : "oklch(0.24 0.05 25 / 0.6)", border: `1px solid ${mProfit >= 0 ? "oklch(0.72 0.18 145 / 0.35)" : "oklch(0.65 0.22 25 / 0.35)"}` }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">PROFIT</div>
                                   <div className="text-[11px] font-black leading-tight" style={{ color: mProfit >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" }}>{mProfit >= 0 ? "+" : ""}{Math.round(mProfit)}</div>
                                 </div>
@@ -4105,7 +4105,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                                   {/* Expanded detail */}
                                   {isOpen && (
                                     <div className="px-4 pb-4 pt-3 space-y-3"
-                                      style={{ background: "oklch(0.20 0.035 60)", borderTop: "1px solid oklch(0.82 0.18 65 / 0.2)" }}>
+                                      style={{ background: "oklch(0.96 0.005 60)", borderTop: "1px solid oklch(0.82 0.18 65 / 0.2)" }}>
                                       {isEditing ? (
                                         <div className="space-y-3">
                                           <div className="flex items-center justify-between">
@@ -4147,29 +4147,29 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                                           <div className="grid grid-cols-2 gap-4">
                                             {/* IN */}
                                             <div className="space-y-2">
-                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.72 0.18 145)" }}>IN</p>
+                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.35 0.14 145)" }}>IN</p>
                                               {[
-                                                { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.72 0.18 145)" },
-                                                { label: "Last",    value: log.in_last.toFixed(2),    color: "oklch(0.72 0.18 145)" },
-                                                { label: "Total",   value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.72 0.18 145)" : "oklch(0.65 0.22 25)" },
+                                                { label: "Present", value: log.in_present.toFixed(2), color: "oklch(0.35 0.14 145)" },
+                                                { label: "Last",    value: log.in_last.toFixed(2),    color: "oklch(0.35 0.14 145)" },
+                                                { label: "Total",   value: (log.in_diff >= 0 ? "+" : "") + log.in_diff.toFixed(2), color: log.in_diff >= 0 ? "oklch(0.35 0.14 145)" : "oklch(0.50 0.20 25)" },
                                               ].map(({ label, value, color }) => (
                                                 <div key={label} className="space-y-0.5">
-                                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-                                                  <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "oklch(0.45 0.02 60)" }}>{label}</label>
+                                                  <div className="w-full rounded-xl border px-3 py-2 text-sm font-bold text-center" style={{ color, background: "rgba(255,255,255,0.7)", borderColor: "oklch(0.82 0.18 145 / 0.4)" }}>{value}</div>
                                                 </div>
                                               ))}
                                             </div>
                                             {/* OUT */}
                                             <div className="space-y-2">
-                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.65 0.22 25)" }}>OUT</p>
+                                              <p className="text-xs font-black text-center uppercase tracking-widest" style={{ color: "oklch(0.50 0.20 25)" }}>OUT</p>
                                               {[
-                                                { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.65 0.22 25)" },
-                                                { label: "Last",    value: log.out_last.toFixed(2),    color: "oklch(0.65 0.22 25)" },
-                                                { label: "Total",   value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: "oklch(0.65 0.22 25)" },
+                                                { label: "Present", value: log.out_present.toFixed(2), color: "oklch(0.50 0.20 25)" },
+                                                { label: "Last",    value: log.out_last.toFixed(2),    color: "oklch(0.50 0.20 25)" },
+                                                { label: "Total",   value: (log.out_diff >= 0 ? "+" : "") + log.out_diff.toFixed(2), color: "oklch(0.50 0.20 25)" },
                                               ].map(({ label, value, color }) => (
                                                 <div key={label} className="space-y-0.5">
-                                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-                                                  <div className="w-full rounded-xl border border-border/50 bg-muted/30 px-3 py-2 text-sm font-bold text-center" style={{ color }}>{value}</div>
+                                                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "oklch(0.45 0.02 60)" }}>{label}</label>
+                                                  <div className="w-full rounded-xl border px-3 py-2 text-sm font-bold text-center" style={{ color, background: "rgba(255,255,255,0.7)", borderColor: "oklch(0.82 0.18 25 / 0.4)" }}>{value}</div>
                                                 </div>
                                               ))}
                                             </div>
