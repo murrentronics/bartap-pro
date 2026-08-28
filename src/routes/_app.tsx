@@ -51,24 +51,24 @@ function AppLayout() {
   const [activeOpenBarField, setActiveOpenBarField] = useState<"bar" | "machine" | null>(null);
 
   const handleOpenBarNumpad = (field: "bar" | "machine", k: string) => {
-    const current = field === "bar" ? openBarFloat : openMachineFloat;
     const setter = field === "bar" ? setOpenBarFloat : setOpenMachineFloat;
     if (k === "⌫") {
-      setter(current.slice(0, -1));
+      setter(prev => prev.slice(0, -1));
       return;
     }
-    setter(current === "0" || current === "" ? k : current + k);
+    setter(prev => (prev === "0" || prev === "" ? k : prev + k));
   };
 
   useEffect(() => {
     if (activeOpenBarField === null) return;
+    const field = activeOpenBarField;
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
-        handleOpenBarNumpad(activeOpenBarField, e.key);
+        handleOpenBarNumpad(field, e.key);
       } else if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
-        handleOpenBarNumpad(activeOpenBarField, "⌫");
+        handleOpenBarNumpad(field, "⌫");
       }
     };
     window.addEventListener("keydown", onKey);
