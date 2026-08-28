@@ -2183,11 +2183,13 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   const latestLog = monitorLogs[0];
   const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
-  // Total Income  = latest log's PRESENT IN  (exactly as shown in log)
-  // Total Expense = latest log's PRESENT OUT (exactly as shown in log)
-  // Total Profit  = latest log header PROFIT (in_diff − out_diff, exactly as shown in log header)
-  const totalIncome = latestLog ? latestLog.in_present  : (monitorCardIn  ?? 0);
-  const totalPayout = latestLog ? latestLog.out_present : (monitorCardOut ?? 0);
+  // Total Income  = latest log's total throughput (in_diff — matches Meters TOTAL column)
+  // Total Expense = latest log's total throughput (out_diff — matches Meters TOTAL column)
+  // Total Profit  = in_diff − out_diff (matches Meters PROFIT row)
+  // When a new entry is started (PRESENT cleared to 0), in_diff/out_diff are also 0,
+  // so the hero cards correctly show $0 until the next log is saved.
+  const totalIncome = latestLog ? latestLog.in_diff  : (monitorCardIn  ?? 0);
+  const totalPayout = latestLog ? latestLog.out_diff : (monitorCardOut ?? 0);
   const totalProfit = latestLog ? (latestLog.in_diff - latestLog.out_diff) : (totalIncome - totalPayout);
 
   // ── Today's totals (bar_session_start → now) — machine payouts only, not manual expenses ──
@@ -4625,8 +4627,8 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
               latest.push(row);
             }
           }
-          const inSum     = latest.reduce((s: number, m: any) => s + Number(m.in_present  || 0), 0);
-          const outSum    = latest.reduce((s: number, m: any) => s + Number(m.out_present || 0), 0);
+          const inSum     = latest.reduce((s: number, m: any) => s + Number(m.in_diff  || 0), 0);
+          const outSum    = latest.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
           const profitSum = latest.reduce((s: number, m: any) => s + (Number(m.in_diff || 0) - Number(m.out_diff || 0)), 0);
           setMonitorTotals({ totalIn: inSum, totalOut: outSum, totalProfit: profitSum });
           // Store per-machine for individual card TP

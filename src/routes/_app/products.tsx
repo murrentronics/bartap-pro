@@ -492,8 +492,8 @@ function StockNumpad({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl"
-        style={{ background: "var(--gradient-card)" }}
+        className="w-full max-w-sm rounded-t-3xl border border-border shadow-2xl flex flex-col"
+        style={{ background: "var(--gradient-card)", maxHeight: "90svh" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex items-center justify-center px-5 pt-5 pb-3">
@@ -505,6 +505,9 @@ function StockNumpad({
           </button>
           <span className="text-base font-black">Add Stock</span>
         </div>
+
+        {/* Scrollable content — allows landscape/small-screen scroll */}
+        <div className="overflow-y-auto flex-1 min-h-0">
 
         {/* Stats row */}
         <div className="mx-5 mb-4 grid grid-cols-3 gap-2">
@@ -663,8 +666,11 @@ function StockNumpad({
             </button>
           </div>
 
-          {/* Row 2: Add full width */}
-          <div>
+        </div>{/* end px-5 pb-5 space-y-3 */}
+        </div>{/* end scrollable */}
+
+        {/* Row 2: Add full width — pinned at bottom */}
+        <div className="px-5 pb-5 pt-3">
             <button
               onClick={save}
               disabled={busy || addAmount === 0 || batchTotal === 0}
@@ -677,7 +683,6 @@ function StockNumpad({
                 `Add ${addAmount} → ${newTotal}`
               )}
             </button>
-          </div>
         </div>
       </div>
 
