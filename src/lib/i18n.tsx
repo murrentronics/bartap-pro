@@ -655,6 +655,61 @@ const ES: Record<string, string> = {
   "manager_only":       "Solo acceso de gerente.",
   "description_ph":     "Descripción (ej. Suministros)",
 
+  // ── Stock / Manual / Logs ────────────────────────────────────────────────
+  "stock_check":        "Conteo de Stock",
+  "stock_count":        "Conteo",
+  "manual":             "Manual",
+  "logs":               "Registros",
+  "machine_monitor":    "Monitor de Máquina",
+  "new_entry":          "Nueva Entrada",
+  "entry":              "Entrada",
+
+  // ── Session / Profit / Financial labels ───────────────────────────────────
+  "expense_history":    "Historial de Gastos",
+  "session_cash_in":    "Efectivo de Sesión",
+  "session_profit":     "Ganancia de Sesión",
+  "save":               "Guardar",
+  "present":            "Presente",
+  "last":               "Último",
+  "profit":             "Ganancia",
+  "in":                 "Entrada",
+  "out":                "Salida",
+  "running_totals":     "Totales Acumulados",
+
+  // ── Month names ───────────────────────────────────────────────────────────
+  "month_january":      "Enero",
+  "month_february":     "Febrero",
+  "month_march":        "Marzo",
+  "month_april":        "Abril",
+  "month_may":          "Mayo",
+  "month_june":         "Junio",
+  "month_july":         "Julio",
+  "month_august":       "Agosto",
+  "month_september":    "Septiembre",
+  "month_october":      "Octubre",
+  "month_november":     "Noviembre",
+  "month_december":     "Diciembre",
+
+  // ── Time cards / Clock / Timesheets ──────────────────────────────────────
+  "time_cards":         "Tarjetas de Tiempo",
+  "clock":              "Reloj",
+  "timesheets":         "Hojas de Tiempo",
+  "dashboard":          "Panel",
+  "manager":            "Gerente",
+  "cashier":            "Cajero",
+  "open_action":        "Abrir",
+  "open_bar":           "Abrir Bar",
+  "close_bar":          "Cerrar Bar",
+
+  // ── Financial / Wallet labels ─────────────────────────────────────────────
+  "cash_sales":         "Ventas en Efectivo",
+  "cash_in_machine":    "Efectivo en Máquina",
+  "bar_expenses":       "Gastos del Bar",
+  "machines_payout":    "Pago de Máquinas",
+  "sales":              "Ventas",
+  "expenses":           "Gastos",
+  "amount_set":         "Monto Establecido",
+
   // ── AppLayout extra ───────────────────────────────────────────────────────
   "summary":            "Resumen",
   "no_bar_selected":    "⚠ Sin bar seleccionado",

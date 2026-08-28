@@ -2708,7 +2708,7 @@ export function TimeCardsTab({
   };
 
   function roleLabel(emp: Employee) {
-    if (emp.role === "manager") return "Manager";
+    if (emp.role === "manager" || emp.job_title === "manager") return "Manager";
     if (emp.role === "custom" && emp.job_title) return emp.job_title;
     return "Cashier";
   }
