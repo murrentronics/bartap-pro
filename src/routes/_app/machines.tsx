@@ -140,8 +140,8 @@ function isoToDateM(iso: string): Date {
 function dateToIsoM(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function CalendarPopover({ value, onChange, minDate, maxDate, label }: {
-  value: string; onChange: (iso: string) => void; minDate?: string; maxDate?: string; label: string;
+function CalendarPopover({ value, onChange, minDate, maxDate, label, availableDays }: {
+  value: string; onChange: (iso: string) => void; minDate?: string; maxDate?: string; label: string; availableDays?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const selected = isoToDateM(value);
@@ -161,10 +161,13 @@ function CalendarPopover({ value, onChange, minDate, maxDate, label }: {
             defaultMonth={selected}
             startMonth={minDate ? isoToDateM(minDate) : undefined}
             endMonth={maxDate ? isoToDateM(maxDate) : undefined}
-            disabled={[
-              ...(minDate ? [{ before: isoToDateM(minDate) }] : []),
-              ...(maxDate ? [{ after:  isoToDateM(maxDate) }] : []),
-            ]}
+            disabled={availableDays
+              ? (day: Date) => !availableDays.includes(dateToIsoM(day))
+              : [
+                  ...(minDate ? [{ before: isoToDateM(minDate) }] : []),
+                  ...(maxDate ? [{ after:  isoToDateM(maxDate) }] : []),
+                ]
+            }
             captionLayout="dropdown" className="rounded-xl border-0" />
         </PopoverContent>
       </Popover>
@@ -3105,7 +3108,7 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
 
 
 
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 scrollbar-none" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", scrollbarWidth: "none", msOverflowStyle: "none" }}>
 
 
         {/* Hero */}
@@ -6518,6 +6521,12 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
     }
   }, [allLogs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Unique days (YYYY-MM-DD, TT timezone) that have at least one log or expense
+  const availableDays = Array.from(new Set([
+    ...allLogs.map(l => new Date(l.logged_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" })),
+    ...allExpenses.map(e => new Date(e.created_at).toLocaleDateString("en-CA", { timeZone: "America/Port_of_Spain" })),
+  ])).sort((a, b) => b.localeCompare(a)); // newest first
+
   const handleFilterChange = (f: SummaryFilter) => {
     setSummaryFilter(f);
     setPickerDate(today);
@@ -6717,7 +6726,7 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
 
         {/* Date pickers */}
         {summaryFilter === "day" && (
-          <CalendarPopover label={t("select_day", "Select Day")} value={pickerDate} maxDate={today} onChange={v => setPickerDate(v)} />
+          <CalendarPopover label={t("select_day", "Select Day")} value={pickerDate} maxDate={today} onChange={v => setPickerDate(v)} availableDays={availableDays} />
         )}
         {summaryFilter === "week" && (
           <div className="space-y-1">
@@ -9069,7 +9078,7 @@ export default function MachinesPage() {
                 <X className="h-4 w-4 text-white" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2" style={{ scrollbarWidth: "thin" }}>
+            <div className="flex-1 overflow-y-auto space-y-2 scrollbar-none" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
               {loadingMachineExpenses ? (
                 <div className="space-y-2">
                   {Array.from({ length: 3 }).map((_, i) => (
