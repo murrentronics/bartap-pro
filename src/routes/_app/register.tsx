@@ -691,6 +691,40 @@ export default function RegisterPage() {
     if (!editOrder || products.length === 0 || editOrderApplied.current) return;
     editOrderApplied.current = true;
     const preCart: CartItem[] = editOrder.items.flatMap((item) => {
+      // ── Shot items (open bottle) — id is "shot-{bottle_id}-{variation_key}-{ts}-{rand}" ──
+      if (item.id && item.id.startsWith("shot-")) {
+        const parts = item.id.split("-");
+        // parts: ["shot", bottle_uuid_parts..., variation_key, ts, rand]
+        // bottle uuid is 5 dash-separated groups (8-4-4-4-12), so indices 1-5, variation at 6
+        const bottleId = parts.slice(1, 6).join("-");
+        const variationKey = parts[6] ?? "shot";
+        return [{
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.qty,
+          image_url: null,
+          category: "liquor",
+          _bottle_id: bottleId,
+          _variation_key: variationKey,
+          _units_consumed: item.qty,
+        } as unknown as CartItem];
+      }
+      // ── Pack items (retail cigs) — id is "pack-{pack_id}-{ts}" or category cigarettes ──
+      if (item.id && item.id.startsWith("pack-")) {
+        const parts = item.id.split("-");
+        const packId = parts.slice(1, 6).join("-");
+        return [{
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.qty,
+          image_url: null,
+          category: "cigarettes",
+          _pack_id: packId,
+        } as unknown as CartItem];
+      }
+      // ── Regular product ──
       const prod =
         products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
       if (!prod) return [];
@@ -705,6 +739,38 @@ export default function RegisterPage() {
     if (!editCreditOrder || products.length === 0 || editCreditOrderApplied.current) return;
     editCreditOrderApplied.current = true;
     const preCart: CartItem[] = editCreditOrder.items.flatMap((item) => {
+      // ── Shot items ──
+      if (item.id && item.id.startsWith("shot-")) {
+        const parts = item.id.split("-");
+        const bottleId = parts.slice(1, 6).join("-");
+        const variationKey = parts[6] ?? "shot";
+        return [{
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.qty,
+          image_url: null,
+          category: "liquor",
+          _bottle_id: bottleId,
+          _variation_key: variationKey,
+          _units_consumed: item.qty,
+        } as unknown as CartItem];
+      }
+      // ── Pack items ──
+      if (item.id && item.id.startsWith("pack-")) {
+        const parts = item.id.split("-");
+        const packId = parts.slice(1, 6).join("-");
+        return [{
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.qty,
+          image_url: null,
+          category: "cigarettes",
+          _pack_id: packId,
+        } as unknown as CartItem];
+      }
+      // ── Regular product ──
       const prod =
         products.find((p) => p.id === item.id) ?? products.find((p) => p.name === item.name);
       if (!prod) return [];
