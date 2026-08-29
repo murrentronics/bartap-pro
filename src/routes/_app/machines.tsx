@@ -6491,6 +6491,7 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
   // Machine sessions = machine_float_sessions rows — kept for potential future use
   type FloatSessionRow = { id: string; set_at: string; amount: number };
   const [floatSessions, setFloatSessions] = useState<FloatSessionRow[]>([]);
+  const [loadingSessionsList, setLoadingSessionsList] = useState(false);
 
   useEffect(() => {
     if (!ownerId) return;
