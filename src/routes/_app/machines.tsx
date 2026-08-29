@@ -6488,10 +6488,9 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
       });
   }, [ownerId]);
 
-  // Machine sessions = machine_float_sessions rows (newest first) — kept for session list display
+  // Machine sessions = machine_float_sessions rows — kept for potential future use
   type FloatSessionRow = { id: string; set_at: string; amount: number };
   const [floatSessions, setFloatSessions] = useState<FloatSessionRow[]>([]);
-  const [loadingSessionsList, setLoadingSessionsList] = useState(true);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -6502,7 +6501,6 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
       .order("set_at", { ascending: false })
       .then(({ data }: { data: FloatSessionRow[] | null }) => {
         setFloatSessions(data ?? []);
-        setLoadingSessionsList(false);
       });
   }, [ownerId]);
 
@@ -6525,35 +6523,6 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
     setPickerMonth(new Date().getMonth());
     setPickerYear(availableYears[0] ?? new Date().getFullYear());
   };
-
-  // Filter sessions list by active date tab
-  const filteredSessions: FloatSessionRow[] = (() => {
-    if (summaryFilter === "all") return floatSessions;
-    if (summaryFilter === "day") {
-      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
-      const e = new Date(pickerDate + "T23:59:59-04:00").toISOString();
-      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
-    }
-    if (summaryFilter === "week") {
-      const we = new Date(pickerDate + "T00:00:00-04:00"); we.setDate(we.getDate() + 6);
-      const s = new Date(pickerDate + "T00:00:00-04:00").toISOString();
-      const e = new Date(we.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
-      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
-    }
-    if (summaryFilter === "month") {
-      const first = new Date(pickerYear, pickerMonth, 1);
-      const last  = new Date(pickerYear, pickerMonth + 1, 0);
-      const s = new Date(first.toLocaleDateString("en-CA") + "T00:00:00-04:00").toISOString();
-      const e = new Date(last.toLocaleDateString("en-CA") + "T23:59:59-04:00").toISOString();
-      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
-    }
-    if (summaryFilter === "year") {
-      const s = new Date(`${pickerYear}-01-01T00:00:00-04:00`).toISOString();
-      const e = new Date(`${pickerYear}-12-31T23:59:59-04:00`).toISOString();
-      return floatSessions.filter(r => r.set_at >= s && r.set_at <= e);
-    }
-    return floatSessions;
-  })();
 
   // Date range for filtering logs
   const getLogRange = (): { startIso: string; endIso: string } | null => {
