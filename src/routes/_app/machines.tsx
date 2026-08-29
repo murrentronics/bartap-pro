@@ -2192,18 +2192,15 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     : (monitorCardOut ?? 0);
   const totalProfit = totalIncome - totalPayout;
 
-  // ── Today's totals (bar_session_start → now) — machine payouts only, not manual expenses ──
-  const todayPayouts = barSessionStart
-    ? entries.filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
-
-  const todayIncome = barSessionStart
-    ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-
-  const todayProfit = todayIncome - todayPayouts;
-
-
+  // ── Today's totals — from meter logs logged during current bar session (bar_session_start → now) ──
+  // Uses monitorLogs (already loaded) filtered by logged_at >= barSessionStart.
+  // Falls back to all logs when bar session is unknown.
+  const todayLogs = barSessionStart
+    ? monitorLogs.filter(l => new Date(l.logged_at) >= new Date(barSessionStart))
+    : monitorLogs;
+  const todayIncome  = todayLogs.reduce((s, l) => s + Number(l.in_diff  || 0), 0);
+  const todayPayouts = todayLogs.reduce((s, l) => s + Number(l.out_diff || 0), 0);
+  const todayProfit  = todayIncome - todayPayouts;
 
 
 
@@ -4609,16 +4606,24 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   const [monitorTotals, setMonitorTotals] = useState<{ totalIn: number; totalOut: number; totalProfit: number }>({ totalIn: 0, totalOut: 0, totalProfit: 0 });
   const [monitorPerMachine, setMonitorPerMachine] = useState<Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }>>({});
+  // All log rows (with logged_at) — used for today's cards filtered by barSessionStart
+  const [allMonitorLogs, setAllMonitorLogs] = useState<{ machine_id: string; in_diff: number; out_diff: number; logged_at: string }[]>([]);
 
   useEffect(() => {
     if (!ownerId) return;
     // Sum ALL log rows per machine — same logic as the per-machine hero cards
     sb.from("machine_monitor_logs")
-      .select("machine_id, in_present, out_present, in_diff, out_diff, seq")
+      .select("machine_id, in_present, out_present, in_diff, out_diff, seq, logged_at")
       .eq("owner_id", ownerId)
       .order("seq", { ascending: false })
       .then(({ data }: any) => {
         if (data) {
+          setAllMonitorLogs(data.map((r: any) => ({
+            machine_id: r.machine_id,
+            in_diff:    Number(r.in_diff  || 0),
+            out_diff:   Number(r.out_diff || 0),
+            logged_at:  r.logged_at,
+          })));
           // Sum every row's in_diff / out_diff across all machines
           const inSum     = data.reduce((s: number, m: any) => s + Number(m.in_diff  || 0), 0);
           const outSum    = data.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
@@ -4642,20 +4647,19 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   // Manual cashier expenses only (Add Expense button)
   const manualExpenses = entries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
-  const totalIncome = monitorTotals.totalIn;                      // sum of in_present from latest logs
-  const totalPayout = monitorTotals.totalOut;                     // All Machines Payout — machine payouts only, no manual expenses
-  const grossProfit = (monitorTotals.totalProfit ?? 0);           // Gross Profit = machine in_diff − out_diff
-  const netProfit = grossProfit - manualExpenses;                 // Net Profit = Gross Profit − manual expenses
-  const totalProfit = grossProfit;                                // keep alias for any other usages
+  const totalIncome = monitorTotals.totalIn;
+  const totalPayout = monitorTotals.totalOut;
+  const grossProfit = (monitorTotals.totalProfit ?? 0);
+  const netProfit = grossProfit - manualExpenses;
+  const totalProfit = grossProfit;
 
-  // Today's sessions — machine payouts only since bar_session_start (manual expenses excluded)
-  const todayPayouts = barSessionStart
-    ? entries.filter(e => e.type === "payout" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => e.type === "payout" && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
-  const todayIncome = barSessionStart
-    ? entries.filter(e => e.type === "income" && new Date(e.created_at) >= new Date(barSessionStart)).reduce((s, e) => s + Number(e.amount), 0)
-    : entries.filter(e => e.type === "income" && e.entry_date === todayTT()).reduce((s, e) => s + Number(e.amount), 0);
-  const todayProfit = todayIncome - todayPayouts;
+  // Today's cards — meter logs logged since bar opened (bar_session_start → now)
+  const todayLogs = barSessionStart
+    ? allMonitorLogs.filter(l => new Date(l.logged_at) >= new Date(barSessionStart))
+    : allMonitorLogs.filter(l => l.logged_at.slice(0, 10) === todayTT());
+  const todayIncome  = todayLogs.reduce((s, l) => s + l.in_diff,  0);
+  const todayPayouts = todayLogs.reduce((s, l) => s + l.out_diff, 0);
+  const todayProfit  = todayIncome - todayPayouts;
 
 
 
@@ -6433,7 +6437,7 @@ function AllHistoryTab({ entries, machines }: { entries: MachineEntry[]; machine
 
 // ── Summary Tab ─────────────────────────────────────────────────────────────
 
-function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; machines: Machine[]; ownerId: string }) {
+function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: string }) {
 
   type SummaryFilter = "all" | "day" | "week" | "month" | "year";
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
@@ -6442,7 +6446,43 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   const [pickerDate, setPickerDate] = useState(today);
   const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
 
-  // Machine sessions = machine_float_sessions rows (newest first)
+  // ── Monitor logs — IN/OUT data source ───────────────────────────────────
+  type SummaryLog = { id: string; machine_id: string; in_diff: number; out_diff: number; logged_at: string };
+  const [allLogs, setAllLogs] = useState<SummaryLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    setLoadingLogs(true);
+    (supabase as any)
+      .from("machine_monitor_logs")
+      .select("id, machine_id, in_diff, out_diff, logged_at")
+      .eq("owner_id", ownerId)
+      .order("logged_at", { ascending: false })
+      .then(({ data }: { data: SummaryLog[] | null }) => {
+        setAllLogs(data ?? []);
+        setLoadingLogs(false);
+      });
+  }, [ownerId]);
+
+  // ── Expenses — from machine_entries type="expense" ───────────────────────
+  type ExpenseEntry = { id: string; amount: number; note: string | null; created_at: string };
+  const [allExpenses, setAllExpenses] = useState<ExpenseEntry[]>([]);
+
+  useEffect(() => {
+    if (!ownerId) return;
+    (supabase as any)
+      .from("machine_entries")
+      .select("id, amount, note, created_at")
+      .eq("owner_id", ownerId)
+      .eq("type", "expense")
+      .order("created_at", { ascending: false })
+      .then(({ data }: { data: ExpenseEntry[] | null }) => {
+        setAllExpenses(data ?? []);
+      });
+  }, [ownerId]);
+
+  // Machine sessions = machine_float_sessions rows (newest first) — kept for session list display
   type FloatSessionRow = { id: string; set_at: string; amount: number };
   const [floatSessions, setFloatSessions] = useState<FloatSessionRow[]>([]);
   const [loadingSessionsList, setLoadingSessionsList] = useState(true);
@@ -6450,7 +6490,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   useEffect(() => {
     if (!ownerId) return;
     setLoadingSessionsList(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("machine_float_sessions")
       .select("id, set_at, amount")
       .eq("owner_id", ownerId)
@@ -6462,10 +6501,17 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
   }, [ownerId]);
 
   const availableYears = Array.from(
-    new Set(entries.map(e => parseInt(e.created_at.slice(0, 4))))
+    new Set(allLogs.map(l => parseInt(l.logged_at.slice(0, 4))))
   ).sort((a, b) => b - a);
   const defaultYear = availableYears[0] ?? new Date().getFullYear();
   const [pickerYear, setPickerYear] = useState(defaultYear);
+
+  // Keep pickerYear in sync when logs load
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(pickerYear)) {
+      setPickerYear(availableYears[0]);
+    }
+  }, [allLogs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFilterChange = (f: SummaryFilter) => {
     setSummaryFilter(f);
@@ -6474,8 +6520,7 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     setPickerYear(availableYears[0] ?? new Date().getFullYear());
   };
 
-  // Filter sessions list by active date tab — finds which float sessions STARTED in the selected period.
-  // Uses calendar-date bounds only to identify which sessions belong to the period.
+  // Filter sessions list by active date tab
   const filteredSessions: FloatSessionRow[] = (() => {
     if (summaryFilter === "all") return floatSessions;
     if (summaryFilter === "day") {
@@ -6504,11 +6549,8 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     return floatSessions;
   })();
 
-  // Entry range for the selected filter period.
-  // Always uses TT-aware calendar boundaries (UTC-4 offset) — same approach as SummaryPage.
-  // Session set_at times are NOT used as query bounds; entries are filtered by when they
-  // were recorded, regardless of which session was active.
-  const getEntryRange = (): { startIso: string; endIso: string } | null => {
+  // Date range for filtering logs
+  const getLogRange = (): { startIso: string; endIso: string } | null => {
     if (summaryFilter === "all") return null;
     if (summaryFilter === "day") {
       return {
@@ -6540,46 +6582,43 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
     return null;
   };
 
-  const entryRange = getEntryRange();
-  const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const logRange = getLogRange();
+  const filteredLogs = logRange
+    ? allLogs.filter(l => l.logged_at >= logRange.startIso && l.logged_at <= logRange.endIso)
+    : allLogs;
+
+  // Expenses filtered by same date range (using created_at)
+  const filteredExpenses = logRange
+    ? allExpenses.filter(e => e.created_at >= logRange.startIso && e.created_at <= logRange.endIso)
+    : allExpenses;
 
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
-  if (sorted.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
-  }
+  // ── Derived stats from monitor logs + expenses ────────────────────────────
+  const totalIncome        = filteredLogs.reduce((s, l) => s + Number(l.in_diff  || 0), 0);
+  const totalMachinePayout = filteredLogs.reduce((s, l) => s + Number(l.out_diff || 0), 0);
+  const totalExpense       = filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const grossProfit        = totalIncome - totalMachinePayout;
+  const totalProfit        = grossProfit - totalExpense;  // net profit after expenses
 
-  const filteredEntries = entryRange
-    ? sorted.filter(e => e.created_at >= entryRange.startIso && e.created_at <= entryRange.endIso)
-    : sorted;
-
-  const totalMachinePayout = filteredEntries.filter(e => e.type === "payout").reduce((s, e) => s + Number(e.amount), 0);
-  const totalSessionExpense = filteredEntries.filter(e => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
-  const totalExpense = totalMachinePayout + totalSessionExpense;
-  const totalIncome = filteredEntries.filter(e => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-  const totalProfit = totalIncome - totalExpense;
-
-  // Expense entries list (manual session-level expenses)
-  const expenseEntries = filteredEntries.filter(e => e.type === "expense");
-
-  if (sorted.length === 0) {
-    return <div className="text-center py-12 text-muted-foreground text-sm">No records yet.</div>;
-  }
-
-  // Machine breakdown — only payout/income entries (expense entries are session-level, not per-machine)
+  // Machine breakdown — group log diffs by machine_id
   const machineStats: Record<string, { name: string; income: number; payout: number }> = {};
-  filteredEntries.filter(e => e.type !== "expense").forEach(e => {
-    const m = machines.find(x => x.id === e.machine_id);
+  filteredLogs.forEach(l => {
+    const m = machines.find(x => x.id === l.machine_id);
     const name = m?.name ?? "Unknown";
-    if (!machineStats[e.machine_id]) machineStats[e.machine_id] = { name, income: 0, payout: 0 };
-    if (e.type === "income") machineStats[e.machine_id].income += Number(e.amount);
-    else machineStats[e.machine_id].payout += Number(e.amount);
+    if (!machineStats[l.machine_id]) machineStats[l.machine_id] = { name, income: 0, payout: 0 };
+    machineStats[l.machine_id].income  += Number(l.in_diff  || 0);
+    machineStats[l.machine_id].payout  += Number(l.out_diff || 0);
   });
-  const statList = Object.values(machineStats);
-  const byIncome = [...statList].sort((a, b) => b.income - a.income);
-  const byPayout = [...statList].sort((a, b) => b.payout - a.payout);
+  const statList  = Object.values(machineStats);
+  const byIncome  = [...statList].sort((a, b) => b.income - a.income);
+  const byPayout  = [...statList].sort((a, b) => b.payout - a.payout);
   const profitList = [...statList].map(m => ({ ...m, profit: m.income - m.payout })).sort((a, b) => b.profit - a.profit);
+
+  if (!loadingLogs && allLogs.length === 0 && allExpenses.length === 0) {
+    return <div className="text-center py-12 text-muted-foreground text-sm">No meter logs yet.</div>;
+  }
 
   const handleDownloadPdf = async () => {
     if (downloading) return;
@@ -6614,10 +6653,10 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
       doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
       doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
       const cols = [
-        { label: "Cash In",       value: "+$" + fmtWhole(totalIncome),          r: 40,  g: 140, b: 40 },
-        { label: "Payout",        value: "-$" + fmtWhole(totalMachinePayout),   r: 180, g: 40,  b: 40 },
-        { label: "Expense",       value: "-$" + fmtWhole(totalSessionExpense),  r: 180, g: 140, b: 0 },
-        { label: "Net Profit",    value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
+        { label: "Cash In",     value: "+$" + fmtWhole(totalIncome),         r: 40,  g: 140, b: 40 },
+        { label: "Payout",      value: "-$" + fmtWhole(totalMachinePayout),  r: 180, g: 40,  b: 40 },
+        { label: "Expense",     value: "-$" + fmtWhole(totalExpense),        r: 180, g: 140, b: 0  },
+        { label: "Net Profit",  value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
       ];
       const cw = bw / 4;
       cols.forEach((c, i) => {
@@ -6649,17 +6688,18 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         y += 4;
       }
       // Expenses list
-      if (expenseEntries.length > 0) {
+      if (filteredExpenses.length > 0) {
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
         doc.text("Expenses", LM, y); y += 6;
         doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(0, 0, 0);
-        expenseEntries.forEach(e => {
+        filteredExpenses.forEach(e => {
           if (y > CONTENT_BOTTOM) { doc.addPage(); y = 20; }
           const label = e.note || new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
           doc.text(label, LM, y);
           doc.setTextColor(180, 40, 40); doc.text("-$" + fmtWhole(Number(e.amount)), RM, y, { align: "right" });
           doc.setTextColor(0, 0, 0); y += 5;
         });
+        y += 4;
       }
       addFootersToAllPages(doc);
       await downloadPdf("machines-summary.pdf", doc.output("datauristring"));
@@ -6731,9 +6771,9 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
         )}
 
         {/* Stats */}
-        {filteredEntries.length > 0 && (
+        {filteredLogs.length > 0 && (
           <>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("income", "Income")}</div>
                 <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
@@ -6741,10 +6781,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("payout", "Payout")}</div>
                 <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
-              </div>
-              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
-                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("add_expense", "Expense")}</div>
-                <div className="font-black text-xs text-yellow-400">${fmtWhole(totalSessionExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("net_profit", "Net Profit")}</div>
@@ -6796,27 +6832,6 @@ function SummaryTab({ entries, machines, ownerId }: { entries: MachineEntry[]; m
                     })}
                   </div>
                 </div>
-                {expenseEntries.length > 0 && (
-                  <div>
-                    <p className="text-[9px] font-black text-amber-400/70 uppercase tracking-wider mb-1.5">Expense</p>
-                    <div className="space-y-1">
-                       {expenseEntries.map((e, i) => (
-                         <div key={e.id} className="flex items-start gap-2">
-                           <span className="text-[9px] font-black text-white/30 w-4 shrink-0 pt-0.5">{i + 1}</span>
-                           <div className="flex-1 min-w-0">
-                             <span className="text-xs text-white/60 block truncate">
-                               {e.note || "Expense"}
-                             </span>
-                             <span className="text-[9px] text-muted-foreground block">
-                               {new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
-                             </span>
-                           </div>
-                           <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
-                         </div>
-                       ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -8405,7 +8420,7 @@ export default function MachinesPage() {
           {tab === "allHistory" && <AllHistoryTab entries={entries} machines={machines} />}
 
 
-          {tab === "summary" && <SummaryTab entries={entries} machines={machines} ownerId={ownerId} />}
+          {tab === "summary" && <SummaryTab machines={machines} ownerId={ownerId} />}
 
 
           {tab === "create" && (
