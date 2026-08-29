@@ -1401,6 +1401,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   useEffect(() => {
     if (monitorFocus === null) return;
     const onKey = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in a text input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
         if (monitorFocus === "in") {
@@ -1934,6 +1937,9 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
   useEffect(() => {
     if (!amountFocused) return;
     const onKey = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in a text input (e.g. note field)
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
         const parts = amountRef.current.split(".");
@@ -7287,6 +7293,9 @@ export default function MachinesPage() {
   useEffect(() => {
     if (!showAddMachineExpense) return;
     const onKey = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in a text input (e.g. the note field)
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
         const parts = expenseAmountRef.current.split(".");
