@@ -6771,9 +6771,9 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
         )}
 
         {/* Stats */}
-        {filteredLogs.length > 0 && (
+        {(filteredLogs.length > 0 || filteredExpenses.length > 0) && (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("income", "Income")}</div>
                 <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
@@ -6781,6 +6781,10 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("payout", "Payout")}</div>
                 <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
+              </div>
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Expense</div>
+                <div className="font-black text-xs text-yellow-400">${fmtWhole(totalExpense)}</div>
               </div>
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("net_profit", "Net Profit")}</div>
@@ -6832,6 +6836,24 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
                     })}
                   </div>
                 </div>
+              </div>
+            )}
+            {/* Expense list */}
+            {filteredExpenses.length > 0 && (
+              <div className="space-y-1 pt-1 border-t border-border/40">
+                <p className="text-[9px] font-black text-amber-400/70 uppercase tracking-wider mb-1.5">Expenses</p>
+                {filteredExpenses.map((e, i) => (
+                  <div key={e.id} className="flex items-start gap-2">
+                    <span className="text-[9px] font-black text-white/30 w-4 shrink-0 pt-0.5">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-white/60 block truncate">{e.note || "Expense"}</span>
+                      <span className="text-[9px] text-muted-foreground block">
+                        {new Date(e.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Port_of_Spain" })}
+                      </span>
+                    </div>
+                    <span className="text-xs font-black text-amber-400 shrink-0">${fmtWhole(Number(e.amount))}</span>
+                  </div>
+                ))}
               </div>
             )}
           </>
