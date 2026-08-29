@@ -1154,7 +1154,12 @@ export default function BillingPage() {
             </p>
           </div>
 
-          {/* Existing bar option */}
+          {/* Existing bar option — only shown when the addon is machines_10 AND the owner
+              does NOT already have machines on their main account (premium = Bar+10 already
+              maxes the main account at 10; machines_20 always needs a brand-new account).
+              bar_machines_10 / bar_machines_20 include a bar so they can never go to an
+              existing machines-only sub-account. */}
+          {addonAskType === "machines_10" && !isPremium && (
           <button
             onClick={async () => {
               setAddonDestination("existing");
@@ -1183,6 +1188,7 @@ export default function BillingPage() {
             </div>
             <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
           </button>
+          )}
 
           {/* New account option */}
           <button
