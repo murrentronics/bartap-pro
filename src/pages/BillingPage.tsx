@@ -1154,12 +1154,11 @@ export default function BillingPage() {
             </p>
           </div>
 
-          {/* Existing bar option — only shown when the addon is machines_10 AND the owner
-              does NOT already have machines on their main account (premium = Bar+10 already
-              maxes the main account at 10; machines_20 always needs a brand-new account).
-              bar_machines_10 / bar_machines_20 include a bar so they can never go to an
-              existing machines-only sub-account. */}
-          {addonAskType === "machines_10" && !isPremium && (
+          {/* Existing bar option — only shown for machines_10 (upgrade a 10-screen sub-account
+              to 20). bar_machines_10 / bar_machines_20 / machines_20 go to new account only:
+              - bar_machines_* include a bar so existing machines-only accounts can't take them
+              - machines_20 is a brand-new 20-screen account (max 20 per account, can't stack) */}
+          {addonAskType === "machines_10" && (
           <button
             onClick={async () => {
               setAddonDestination("existing");
