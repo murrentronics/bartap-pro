@@ -2179,18 +2179,18 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
     setLoading(false);
   }, [machine.id]);
 
-  // ── Machine Totals (directly from latest log header — no calculations) ──────
-  const latestLog = monitorLogs[0];
+  // ── Machine Totals — sum ALL log entries' diffs ───────────────────────────
   const manualPayouts = entries.filter(e => (e.type === "payout" || e.type === "expense")).reduce((s, e) => s + Number(e.amount), 0);
 
-  // Total Income  = latest log's total throughput (in_diff — matches Meters TOTAL column)
-  // Total Expense = latest log's total throughput (out_diff — matches Meters TOTAL column)
-  // Total Profit  = in_diff − out_diff (matches Meters PROFIT row)
-  // When a new entry is started (PRESENT cleared to 0), in_diff/out_diff are also 0,
-  // so the hero cards correctly show $0 until the next log is saved.
-  const totalIncome = latestLog ? latestLog.in_diff  : (monitorCardIn  ?? 0);
-  const totalPayout = latestLog ? latestLog.out_diff : (monitorCardOut ?? 0);
-  const totalProfit = latestLog ? (latestLog.in_diff - latestLog.out_diff) : (totalIncome - totalPayout);
+  // Each log row's in_diff/out_diff is the incremental change for that reading.
+  // Summing all rows gives the true running total across the machine's lifetime.
+  const totalIncome = monitorLogs.length > 0
+    ? monitorLogs.reduce((s, l) => s + Number(l.in_diff  || 0), 0)
+    : (monitorCardIn  ?? 0);
+  const totalPayout = monitorLogs.length > 0
+    ? monitorLogs.reduce((s, l) => s + Number(l.out_diff || 0), 0)
+    : (monitorCardOut ?? 0);
+  const totalProfit = totalIncome - totalPayout;
 
   // ── Today's totals (bar_session_start → now) — machine payouts only, not manual expenses ──
   const todayPayouts = barSessionStart
@@ -3989,9 +3989,10 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                   return grouped.map(({ monthKey, label, logs: mLogs }) => {
                     const isMonthOpen = openMonthKeys.has(monthKey);
                     const isDownloading = downloadingMonthKey === monthKey;
-                    // Summary numbers from the most recent log in this month
-                    const latest = mLogs[0];
-                    const mProfit = latest.in_diff - latest.out_diff;
+                    // Summary numbers — tally ALL rows in this month
+                    const mInTotal  = mLogs.reduce((s, l) => s + l.in_diff,  0);
+                    const mOutTotal = mLogs.reduce((s, l) => s + l.out_diff, 0);
+                    const mProfit   = mInTotal - mOutTotal;
 
                     return (
                       <div key={monthKey} className="rounded-2xl border border-border overflow-hidden" style={{ background: "var(--gradient-card)" }}>
@@ -4017,11 +4018,11 @@ function MachineDetail({ machine, screenNumber, ownerId, profile, floatSession, 
                               <div className="grid grid-cols-3 gap-1">
                                 <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.24 0.05 145 / 0.6)", border: "1px solid oklch(0.72 0.18 145 / 0.3)" }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">IN</div>
-                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.72 0.18 145)" }}>{Math.round(latest.in_diff)}</div>
+                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.72 0.18 145)" }}>{Math.round(mInTotal)}</div>
                                 </div>
                                 <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: "oklch(0.24 0.05 25 / 0.6)", border: "1px solid oklch(0.65 0.22 25 / 0.3)" }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">OUT</div>
-                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.65 0.22 25)" }}>{Math.round(latest.out_diff)}</div>
+                                  <div className="text-[11px] font-black leading-tight" style={{ color: "oklch(0.65 0.22 25)" }}>{Math.round(mOutTotal)}</div>
                                 </div>
                                 <div className="rounded-lg px-1 py-1.5 text-center" style={{ background: mProfit >= 0 ? "oklch(0.24 0.05 145 / 0.6)" : "oklch(0.24 0.05 25 / 0.6)", border: `1px solid ${mProfit >= 0 ? "oklch(0.72 0.18 145 / 0.35)" : "oklch(0.65 0.22 25 / 0.35)"}` }}>
                                   <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">PROFIT</div>
@@ -4611,35 +4612,28 @@ function ScreensTab({ machines: initialMachines, entries, ownerId, profileId, on
 
   useEffect(() => {
     if (!ownerId) return;
-    // Pull the latest log per machine — in_present/out_present never get wiped by New Entry
+    // Sum ALL log rows per machine — same logic as the per-machine hero cards
     sb.from("machine_monitor_logs")
       .select("machine_id, in_present, out_present, in_diff, out_diff, seq")
       .eq("owner_id", ownerId)
       .order("seq", { ascending: false })
       .then(({ data }: any) => {
         if (data) {
-          // Keep only the most recent log per machine
-          const seen = new Set<string>();
-          const latest: any[] = [];
-          for (const row of data) {
-            if (!seen.has(row.machine_id)) {
-              seen.add(row.machine_id);
-              latest.push(row);
-            }
-          }
-          const inSum     = latest.reduce((s: number, m: any) => s + Number(m.in_diff  || 0), 0);
-          const outSum    = latest.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
-          const profitSum = latest.reduce((s: number, m: any) => s + (Number(m.in_diff || 0) - Number(m.out_diff || 0)), 0);
+          // Sum every row's in_diff / out_diff across all machines
+          const inSum     = data.reduce((s: number, m: any) => s + Number(m.in_diff  || 0), 0);
+          const outSum    = data.reduce((s: number, m: any) => s + Number(m.out_diff || 0), 0);
+          const profitSum = inSum - outSum;
           setMonitorTotals({ totalIn: inSum, totalOut: outSum, totalProfit: profitSum });
-          // Store per-machine for individual card TP
+          // Store per-machine totals (sum of all logs for each machine) for individual cards
           const perMachine: Record<string, { in_present: number; out_present: number; in_diff: number; out_diff: number }> = {};
-          for (const row of latest) {
-            perMachine[row.machine_id] = {
-              in_present:  Number(row.in_present  || 0),
-              out_present: Number(row.out_present || 0),
-              in_diff:     Number(row.in_diff     || 0),
-              out_diff:    Number(row.out_diff    || 0),
-            };
+          for (const row of data) {
+            const id = row.machine_id;
+            if (!perMachine[id]) perMachine[id] = { in_present: 0, out_present: 0, in_diff: 0, out_diff: 0 };
+            perMachine[id].in_diff  += Number(row.in_diff  || 0);
+            perMachine[id].out_diff += Number(row.out_diff || 0);
+            // keep latest in_present/out_present (rows are already newest-first)
+            if (perMachine[id].in_present === 0) perMachine[id].in_present = Number(row.in_present || 0);
+            if (perMachine[id].out_present === 0) perMachine[id].out_present = Number(row.out_present || 0);
           }
           setMonitorPerMachine(perMachine);
         }

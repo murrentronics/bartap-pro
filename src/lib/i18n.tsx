@@ -668,7 +668,6 @@ const ES: Record<string, string> = {
   "expense_history":    "Historial de Gastos",
   "session_cash_in":    "Efectivo de Sesión",
   "session_profit":     "Ganancia de Sesión",
-  "save":               "Guardar",
   "present":            "Presente",
   "last":               "Último",
   "profit":             "Ganancia",

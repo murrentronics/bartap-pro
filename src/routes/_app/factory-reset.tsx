@@ -121,6 +121,8 @@ export default function FactoryResetPage() {
   const resetMachines = async (ownerId: string) => {
     await (supabase as any).from("machine_float_sessions").delete().eq("owner_id", ownerId);
     await (supabase as any).from("machine_entries").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("machine_monitor_logs").delete().eq("owner_id", ownerId);
+    await (supabase as any).from("machine_monitor").delete().eq("owner_id", ownerId);
     await (supabase as any).from("machines").delete().eq("owner_id", ownerId);
   };
 
