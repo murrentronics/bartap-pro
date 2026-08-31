@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2, RefreshCw, FileDown } from "lucide-react";
+import { ClipboardList, Plus, Trash2, X, Loader2, Copy, Users, LayoutPanelLeft, Share2, RefreshCw, FileDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -43,6 +43,9 @@ function StockCountPage() {
   const [deleteRowModal, setDeleteRowModal] = useState<{ tableId: string; rowIdx: number } | null>(null);
   const [deleteTableConfirmId, setDeleteTableConfirmId] = useState<string | null>(null);
   const [selectedCols, setSelectedCols] = useState<Set<number>>(new Set());
+  // inline-edit state: key = "table-{id}" | "col-{tableId}-{ci}"
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
 
   // ── Copy-to-staff modal state ──────────────────────────────────────────────
   type StaffMember = { id: string; username: string; role: string };
@@ -264,6 +267,21 @@ function StockCountPage() {
     );
   };
 
+  const updateTableName = (tableId: string, name: string) => {
+    persist(tables.map((t) => t.id !== tableId ? t : { ...t, name }));
+  };
+
+  const updateColumnName = (tableId: string, colIdx: number, name: string) => {
+    persist(
+      tables.map((t) => {
+        if (t.id !== tableId) return t;
+        const newColumns = [...t.columns];
+        newColumns[colIdx] = name;
+        return { ...t, columns: newColumns };
+      }),
+    );
+  };
+
   const deleteRow = (tableId: string, rowIdx: number) => {
     setDeleteRowModal({ tableId, rowIdx });
     setSelectedCols(new Set());
@@ -341,7 +359,7 @@ function StockCountPage() {
         `${dateStr} ${timeStr}`,
       );
 
-      const HEADER_H = 8;   // header row height
+      const HEADER_H = 14;  // header row height — tall enough for 2-line wrapped titles
       const ROW_H    = 8;   // data row height
       const TEXT_PAD = 2;   // padding inside cell from top
 
@@ -359,7 +377,7 @@ function StockCountPage() {
       const xCols  = Array.from({ length: NUM_COLS }, (_, i) => LM + COL_NAME_W + i * COL_DATA_W);
       const xTotal = LM + COL_NAME_W + NUM_COLS * COL_DATA_W;
 
-      // Draw a single cell rect + clipped text helper
+      // Draw a single cell rect + wrapped text helper
       const cell = (
         cx: number, cy: number, cw: number, ch: number,
         text: string,
@@ -372,18 +390,27 @@ function StockCountPage() {
 
         if (!text) return;
         doc.setFont("helvetica", opts.bold ? "bold" : "normal");
-        doc.setFontSize(opts.size ?? 7.5);
+        const fontSize = opts.size ?? 7.5;
+        doc.setFontSize(fontSize);
         doc.setTextColor(...(opts.orange ? ([232, 146, 42] as [number, number, number]) : ([0, 0, 0] as [number, number, number])));
 
-        const textY = cy + ch / 2 + (opts.size ?? 7.5) * 0.18; // vertically centre
+        const lines = doc.splitTextToSize(text, cw - TEXT_PAD * 2) as string[];
+        const lineH = fontSize * 0.4; // mm per line at this font size
+        const blockH = lines.length * lineH;
+        const startY = cy + (ch - blockH) / 2 + lineH * 0.85; // vertically centre the block
+
         if (opts.align === "center") {
-          doc.text(text, cx + cw / 2, textY, { align: "center" });
+          lines.forEach((line, i) => {
+            doc.text(line, cx + cw / 2, startY + i * lineH, { align: "center" });
+          });
         } else if (opts.align === "right") {
-          doc.text(text, cx + cw - TEXT_PAD, textY, { align: "right" });
+          lines.forEach((line, i) => {
+            doc.text(line, cx + cw - TEXT_PAD, startY + i * lineH, { align: "right" });
+          });
         } else {
-          // left — clip to cell width
-          const lines = doc.splitTextToSize(text, cw - TEXT_PAD * 2) as string[];
-          doc.text(lines[0], cx + TEXT_PAD, textY);
+          lines.forEach((line, i) => {
+            doc.text(line, cx + TEXT_PAD, startY + i * lineH);
+          });
         }
         doc.setTextColor(0, 0, 0);
       };
@@ -541,7 +568,33 @@ function StockCountPage() {
             >
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" style={{ color: "var(--primary)" }} />
-                <span className="font-black text-sm">{table.name}</span>
+                {editingKey === `table-${table.id}` ? (
+                  <input
+                    autoFocus
+                    value={editingDraft}
+                    onChange={(e) => setEditingDraft(e.target.value)}
+                    onBlur={() => {
+                      if (editingDraft.trim()) updateTableName(table.id, editingDraft.trim());
+                      setEditingKey(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+                      if (e.key === "Escape") { setEditingKey(null); }
+                    }}
+                    className="h-7 px-2 rounded-lg border border-primary bg-background text-sm font-black outline-none focus:ring-1 focus:ring-primary w-40"
+                  />
+                ) : (
+                  <>
+                    <span className="font-black text-sm">{table.name}</span>
+                    <button
+                      onClick={() => { setEditingDraft(table.name); setEditingKey(`table-${table.id}`); }}
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/50 transition active:scale-95"
+                      title="Rename table"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -596,7 +649,33 @@ function StockCountPage() {
                         key={ci}
                         className="text-center px-2 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground w-[90px] min-w-[90px]"
                       >
-                        {col}
+                        {editingKey === `col-${table.id}-${ci}` ? (
+                          <input
+                            autoFocus
+                            value={editingDraft}
+                            onChange={(e) => setEditingDraft(e.target.value)}
+                            onBlur={() => {
+                              if (editingDraft.trim()) updateColumnName(table.id, ci, editingDraft.trim());
+                              setEditingKey(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+                              if (e.key === "Escape") { setEditingKey(null); }
+                            }}
+                            className="w-full h-6 px-1 rounded border border-primary bg-background text-[10px] font-black text-center outline-none focus:ring-1 focus:ring-primary uppercase"
+                          />
+                        ) : (
+                          <span className="inline-flex items-center justify-center gap-1">
+                            {col}
+                            <button
+                              onClick={() => { setEditingDraft(col); setEditingKey(`col-${table.id}-${ci}`); }}
+                              className="h-4 w-4 rounded flex items-center justify-center text-muted-foreground/50 hover:text-primary transition active:scale-95"
+                              title="Rename column"
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        )}
                       </th>
                     ))}
                     <th className="text-left px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground min-w-[80px]">
