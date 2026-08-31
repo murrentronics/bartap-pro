@@ -7,9 +7,9 @@
  *
  * Usage:
  *   import { labelImage } from "@/lib/labelImage";
- *   const name = await labelImage(file);     // File object
- *   const name = await labelImage("https://example.com/product.jpg");  // URL
- *   const name = await labelImage("blob:...");  // object URL (converted to dataUri)
+ *   const name = await labelImage(file);                        // File object
+ *   const name = await labelImage("https://example.com/img");  // URL
+ *   const name = await labelImage("blob:...", dataUri);         // blob: + pre-computed dataUri
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -51,17 +51,21 @@ function titleCase(raw: string): string {
 /**
  * Auto-label an image via the label-image edge function.
  *
- * @param input  File object, blob URL ("blob:..."), or any https:// URL
- * @returns      Clean title-cased product name, e.g. "Heineken 330ml Can"
+ * @param input    File object, blob URL ("blob:..."), or any https:// URL
+ * @param dataUri  Optional pre-computed base64 data URI (avoids re-fetching blob: URLs)
+ * @returns        Clean title-cased product name, e.g. "Heineken 330ml Can"
  */
-export async function labelImage(input: File | string): Promise<string> {
+export async function labelImage(input: File | string, dataUri?: string): Promise<string> {
   let imageUrl: string;
 
   if (input instanceof File) {
     // Convert file to base64 data URI — edge function accepts both
     imageUrl = await fileToDataUri(input);
+  } else if (dataUri) {
+    // Use pre-computed data URI directly — avoids re-fetching the blob
+    imageUrl = dataUri;
   } else if (input.startsWith("blob:")) {
-    // Convert blob URL to data URI so the server can receive it
+    // Fall back to converting blob URL to data URI
     imageUrl = await blobUrlToDataUri(input);
   } else {
     // Public https:// URL — send as-is
@@ -76,14 +80,18 @@ export async function labelImage(input: File | string): Promise<string> {
       "apikey": SUPABASE_KEY,
     },
     body: JSON.stringify({ imageUrl }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(45000),
   });
 
-  if (!res.ok) throw new Error(`label-image edge function returned ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`label-image returned ${res.status}${body ? ": " + body.slice(0, 120) : ""}`);
+  }
 
-  const data = await res.json() as { label?: string; confidence?: number; source?: string };
+  const data = await res.json() as { label?: string; confidence?: number; source?: string; error?: string };
 
-  if (!data.label) throw new Error("No label returned");
+  if (data.error) throw new Error(data.error);
+  if (!data.label) throw new Error("No label returned from any provider");
 
   return titleCase(data.label);
 }

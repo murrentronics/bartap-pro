@@ -309,7 +309,23 @@ function decodeAndCleanLabel(raw: string, fallbackUrl = ""): string {
   return s || "Untitled";
 }
 
-// ─── Template Import Panel (Image Link Scraper style) ────────────────────────
+// ─── Infer category from label text ───────────────────────────────────────────
+function inferCategoryFromLabel(label: string): TemplateCategory | null {
+  const l = label.toLowerCase();
+  if (/beer|lager|ale|stout|malt|heineken|carib|stag|guinness|corona|budweiser|amstel|carlsberg|smirnoff|cider/.test(l))
+    return "beers";
+  if (/rum|vodka|whiskey|whisky|gin|brandy|tequila|wine|champagne|cognac|bourbon|scotch|liquor|spirit|baileys|angostura|bacardi|johnnie|jack|absolut|bitters|punch/.test(l))
+    return "liquor";
+  if (/soda|cola|juice|energy|sprite|pepsi|fanta|gatorade|red bull|water|lemonade|tea|milo|ovaltine|soft drink|drink/.test(l))
+    return "drinks";
+  if (/cigarette|cigar|tobacco|marlboro|camel|benson|dunhill|lucky|winston|newport|rolling|rizla/.test(l))
+    return "cigarettes";
+  if (/chip|crisp|snack|peanut|nut|biscuit|cookie|cracker|doritos|lays|pringles|popcorn|pretzel|cheez|candy|chocolate/.test(l))
+    return "snacks";
+  return null; // can't determine — keep existing category
+}
+
+
 //
 // How it works:
 //  1. User pastes image URLs (one per line) or drags/pastes actual image files
@@ -456,18 +472,27 @@ function TemplateImportPanel() {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, labeling: true } : i)));
     try {
       const { labelImage } = await import("@/lib/labelImage");
-      // Prefer the object URL (works for both local files and remote URLs).
-      // dataUri is only passed when we have a base64 version — use url instead
-      // since transformers.js handles blob: and https: URLs natively.
-      const label = await labelImage(url);
+      // Pass dataUri directly when available — skips re-fetching the blob URL
+      const label = await labelImage(url, dataUri);
+      const cleanedLabel = decodeAndCleanLabel(label, url);
+      // Auto-infer category from the label text
+      const inferredCategory = inferCategoryFromLabel(cleanedLabel);
       setItems((prev) =>
         prev.map((i) =>
           i.id === id
-            ? { ...i, label: decodeAndCleanLabel(label, url), labelSource: "web", labeling: false }
+            ? {
+                ...i,
+                label: cleanedLabel,
+                labelSource: "web",
+                labeling: false,
+                ...(inferredCategory ? { category: inferredCategory } : {}),
+              }
             : i,
         ),
       );
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Label failed";
+      toast.error(`Auto-label failed: ${msg}`);
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, labeling: false } : i)));
     }
   };
