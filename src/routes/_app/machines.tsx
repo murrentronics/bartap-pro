@@ -6632,27 +6632,46 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
       }
       let y = await drawHeader(doc, "All Machines", "Summary", title, generated);
       const bw = RM - LM;
-      // Summary box
-      doc.setFillColor(245, 240, 230);
-      doc.roundedRect(LM, y, bw, 26, 2, 2, "F");
-      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
-      doc.roundedRect(LM, y, bw, 26, 2, 2, "S");
-      const cols = [
-        { label: "Cash In",     value: "+$" + fmtWhole(totalIncome),         r: 40,  g: 140, b: 40 },
-        { label: "Payout",      value: "-$" + fmtWhole(totalMachinePayout),  r: 180, g: 40,  b: 40 },
-        { label: "Expense",     value: "-$" + fmtWhole(totalExpense),        r: 180, g: 140, b: 0  },
-        { label: "Net Profit",  value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
+      // Summary box — Row 1: Cash In | Payout | Profit
+      const row1 = [
+        { label: "Cash In",  value: "+$" + fmtWhole(totalIncome),                                                              r: 40,  g: 140, b: 40 },
+        { label: "Payout",   value: "-$" + fmtWhole(totalMachinePayout),                                                       r: 180, g: 40,  b: 40 },
+        { label: "Profit",   value: (grossProfit >= 0 ? "+" : "") + "$" + fmtWhole(grossProfit), r: grossProfit >= 0 ? 40 : 180, g: grossProfit >= 0 ? 140 : 40, b: 40 },
       ];
-      const cw = bw / 4;
-      cols.forEach((c, i) => {
-        const cx = LM + i * cw + cw / 2;
+      const rowH = 26;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, bw, rowH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, rowH, 2, 2, "S");
+      const cw3 = bw / 3;
+      row1.forEach((c, i) => {
+        const cx = LM + i * cw3 + cw3 / 2;
         doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
         doc.text(c.label, cx, y + 10, { align: "center" });
         doc.setFont("helvetica", "bold"); doc.setFontSize(9);
         doc.setTextColor(c.r, c.g, c.b);
         doc.text(c.value, cx, y + 19, { align: "center" });
       });
-      doc.setTextColor(0, 0, 0); y += 32;
+      y += rowH + 3;
+      // Summary box — Row 2: Expense | Net Profit
+      const row2 = [
+        { label: "Expense",    value: "-$" + fmtWhole(totalExpense),                                                                r: 180, g: 140, b: 0  },
+        { label: "Net Profit", value: (totalProfit >= 0 ? "+" : "") + "$" + fmtWhole(totalProfit), r: totalProfit >= 0 ? 40 : 180, g: totalProfit >= 0 ? 140 : 40, b: 40 },
+      ];
+      const cw2 = bw / 2;
+      doc.setFillColor(245, 240, 230);
+      doc.roundedRect(LM, y, bw, rowH, 2, 2, "F");
+      doc.setDrawColor(232, 146, 42); doc.setLineWidth(0.4);
+      doc.roundedRect(LM, y, bw, rowH, 2, 2, "S");
+      row2.forEach((c, i) => {
+        const cx = LM + i * cw2 + cw2 / 2;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+        doc.text(c.label, cx, y + 10, { align: "center" });
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+        doc.setTextColor(c.r, c.g, c.b);
+        doc.text(c.value, cx, y + 19, { align: "center" });
+      });
+      doc.setTextColor(0, 0, 0); y += rowH + 6;
       // Machine breakdown
       if (statList.length > 0) {
         doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
@@ -6758,7 +6777,8 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
         {/* Stats */}
         {(filteredLogs.length > 0 || filteredExpenses.length > 0) && (
           <>
-            <div className="grid grid-cols-4 gap-2">
+            {/* Row 1: Income | Payout | Profit — always 3 cols */}
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("income", "Income")}</div>
                 <div className="font-black text-xs text-green-400">${fmtWhole(totalIncome)}</div>
@@ -6767,6 +6787,15 @@ function SummaryTab({ machines, ownerId }: { machines: Machine[]; ownerId: strin
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">{t("payout", "Payout")}</div>
                 <div className="font-black text-xs text-red-400">${fmtWhole(totalMachinePayout)}</div>
               </div>
+              <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
+                <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Profit</div>
+                <div className="font-black text-xs" style={{ color: grossProfit >= 0 ? "#86efac" : "#fca5a5" }}>
+                  {grossProfit >= 0 ? "+" : ""}${fmtWhole(grossProfit)}
+                </div>
+              </div>
+            </div>
+            {/* Row 2: Expense | Net Profit — 2 cols on portrait mobile, inline on wider screens */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
               <div className="rounded-xl px-2 py-2 text-center" style={{ background: "oklch(0.22 0.02 60)" }}>
                 <div className="text-[9px] font-semibold text-white/40 uppercase tracking-wider">Expense</div>
                 <div className="font-black text-xs text-yellow-400">${fmtWhole(totalExpense)}</div>
