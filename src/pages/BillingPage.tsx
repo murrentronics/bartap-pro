@@ -24,15 +24,16 @@ import {
 import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/billing";
 
 // ── Addon pricing constants ───────────────────────────────────────────────
-const PRICE_BAR_ONLY        = 1000;  // extra bar only /yr
-const PRICE_MACHINES_10     = 1200;  // extra machines 10 screens /yr
-const PRICE_MACHINES_20     = 1800;  // extra machines 20 screens /yr
-const PRICE_BAR_MACHINES_10 = 3000;  // extra bar + 10 machines /yr
-const PRICE_BAR_MACHINES_20 = 3500;  // extra bar + 20 machines /yr
-const PRICE_BASE_BASIC      = 1200;  // bar only base plan
-const PRICE_BASE_MACHINES   = 2400;  // machines only base plan
-const PRICE_BASE_PREMIUM    = 3000;  // bar + 10 machines base plan
-const PRICE_BASE_PREMIUM_20 = 3500;  // bar + 20 machines base plan
+const PRICE_BAR_ONLY        = 1200;  // extra bar only addon /yr
+const PRICE_MACHINES_10     = 1200;  // extra machines 10-screen addon /yr
+const PRICE_MACHINES_20     = 1800;  // extra machines 20-screen addon /yr
+const PRICE_BAR_MACHINES_10 = 3000;  // extra bar + 10 machines addon /yr
+const PRICE_BAR_MACHINES_20 = 3500;  // extra bar + 20 machines addon /yr
+const PRICE_BASE_BASIC      = 1800;  // bar only base plan /yr
+const PRICE_BASE_MACHINES   = 1800;  // machines only 10-screen base plan /yr
+const PRICE_BASE_MACHINES_20 = 2400; // machines only 20-screen base plan /yr
+const PRICE_BASE_PREMIUM    = 3000;  // bar + 10 machines base plan /yr
+const PRICE_BASE_PREMIUM_20 = 3500;  // bar + 20 machines base plan /yr
 
 type Step = "status" | "choose" | "addons" | "addon-bars" | "addon-ask" | "payment" | "confirm";
 
@@ -367,13 +368,13 @@ export default function BillingPage() {
   // Pro-rata only applies at the time of purchasing a new addon — never at renewal.
   const addonBarQty = profile?.addon_bar_count ?? 0;
 
-  const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 1200)
+  const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 1800)
                       : isPremium      ? (premiumPlan?.amount      ?? 3000)
-                      : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 2400)
+                      : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 1800)
                       : 0;
 
-  // Bar Only extra bars renew at $800 each; Premium addon at $2,000 each; Machines addon at $1,200 each
-  const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 800)
+  // Bar Only extra bars renew at $1,200 each; Premium addon at $2,000 each; Machines addon at $1,200 each
+  const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 1200)
                         : isPremium      ? (premiumAddonPlan?.amount     ?? 2000)
                         : isMachinesOnly ? (machinesBarAddonPlan?.amount ?? 1200)
                         : 0;
@@ -424,6 +425,26 @@ export default function BillingPage() {
   const totalDue: number = isAddonPlanSelected
     ? proRataUnitPrice * addonBarCount
     : selectedPlan?.amount ?? 0;
+
+  // ── Preview pro-rata helpers (used on addon cards BEFORE wizard is entered) ──
+  // Always derived from the profile's active plan expiry, regardless of wizard state.
+  const addonPreviewEndDate: Date | null = (() => {
+    if ((profile?.plan_type === "premium" || (profile?.plan_type as string) === "premium_20") && profile?.premium_subscription_end_date)
+      return new Date(profile.premium_subscription_end_date);
+    if ((profile?.plan_type as string) === "machines_only" && (profile as any)?.machines_addon_end_date)
+      return new Date((profile as any).machines_addon_end_date);
+    if (profile?.subscription_end_date)
+      return new Date(profile.subscription_end_date);
+    return null;
+  })();
+  const addonPreviewDays: number = addonPreviewEndDate
+    ? Math.min(365, Math.max(0, Math.ceil((addonPreviewEndDate.getTime() - Date.now()) / 86400000)))
+    : 365;
+  const addonPreviewFraction: number = addonPreviewDays / 365;
+  // Returns the prorated price for a given full annual amount
+  const previewProRata = (fullPrice: number) => Math.round(fullPrice * addonPreviewFraction);
+  // True when the owner has an active plan with less than a full year remaining
+  const hasActiveProRata = addonPreviewEndDate !== null && addonPreviewDays < 365;
 
   const histPages   = Math.max(1, Math.ceil(historyTotal / HIST_SIZE));
 
@@ -683,7 +704,12 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add More Bars</p>
-                          <p className="text-xs text-gray-500">${barOnlyAddonPlan.amount.toFixed(0)} TT per extra bar / year</p>
+                          <p className="text-xs text-gray-500">
+                            ${barOnlyAddonPlan.amount.toFixed(0)} TT per extra bar / year
+                            {hasActiveProRata && (
+                              <span className="text-blue-600 font-bold"> · ${previewProRata(barOnlyAddonPlan.amount).toFixed(0)} TT due now (prorated)</span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
@@ -692,13 +718,16 @@ export default function BillingPage() {
                       <button
                         onClick={() => {
                           setSelectedPlan(barOnlyAddonPlan);
+                          setOverrideAmount(barOnlyAddonPlan.amount);
                           setAddonBarCount(1);
                           setAddonBars([{ name: "", location: "", type: "bar" }]);
                           setStep("addon-bars");
                         }}
                         className="w-full h-11 rounded-xl font-black text-sm text-white bg-blue-600 active:scale-[0.98] transition"
                       >
-                        Add Extra Bar — ${barOnlyAddonPlan.amount.toFixed(0)} TT/yr each
+                        {hasActiveProRata
+                          ? `Add Extra Bar — $${previewProRata(barOnlyAddonPlan.amount).toFixed(0)} TT now · $${barOnlyAddonPlan.amount.toFixed(0)} TT/yr at renewal`
+                          : `Add Extra Bar — $${barOnlyAddonPlan.amount.toFixed(0)} TT/yr each`}
                       </button>
                     </div>
                   )}
@@ -712,7 +741,9 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add More Machine Accounts</p>
-                          <p className="text-xs text-gray-500">10 screens ${PRICE_MACHINES_10} · 20 screens ${PRICE_MACHINES_20} TT/yr · prorated to your renewal date</p>
+                          <p className="text-xs text-gray-500">
+                            10 screens ${PRICE_MACHINES_10} · 20 screens ${PRICE_MACHINES_20} TT/yr · prorated to your renewal date
+                          </p>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mb-3">
@@ -726,16 +757,18 @@ export default function BillingPage() {
                             setAddonDestination(null);
                             setSelectedBarId(null);
                             setOverrideAmount(PRICE_MACHINES_10);
-                            // find a fake plan to hold plan_type — use machinesBarAddonPlan or fallback
                             setSelectedPlan(machinesBarAddonPlan ?? null);
                             setAddonBarCount(1);
                             setAddonBars([{ name: "", location: "", type: "machines_only" }]);
                             setStep("addon-ask");
                           }}
-                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="flex-1 h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
                         >
-                          + 10 Screens<br />${PRICE_MACHINES_10} TT/yr
+                          + 10 Screens<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_MACHINES_10)} TT now<br /><span className="font-normal opacity-80">${PRICE_MACHINES_10} TT/yr</span></span>
+                            : <span>${PRICE_MACHINES_10} TT/yr</span>}
                         </button>
                         {/* +20 Screens — always new account (max 20 per bar) */}
                         <button
@@ -748,10 +781,13 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "machines_only_20" }]);
                             setStep("addon-bars");
                           }}
-                          className="flex-1 h-11 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="flex-1 h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
                         >
-                          + 20 Screens<br />${PRICE_MACHINES_20} TT/yr
+                          + 20 Screens<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_MACHINES_20)} TT now<br /><span className="font-normal opacity-80">${PRICE_MACHINES_20} TT/yr</span></span>
+                            : <span>${PRICE_MACHINES_20} TT/yr</span>}
                         </button>
                       </div>
                     </div>
@@ -766,7 +802,11 @@ export default function BillingPage() {
                         </div>
                         <div>
                           <p className="font-black text-gray-900 text-sm">Add Another Account</p>
-                          <p className="text-xs text-gray-500">All prorated to your renewal date</p>
+                          <p className="text-xs text-gray-500">
+                            {hasActiveProRata
+                              ? `All prorated to your renewal date (${addonPreviewDays} days remaining)`
+                              : "All prorated to your renewal date"}
+                          </p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -780,9 +820,12 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "bar" }]);
                             setStep("addon-bars");
                           }}
-                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition bg-blue-600"
+                          className="h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition bg-blue-600"
                         >
-                          Bar Only<br />${PRICE_BAR_ONLY} TT/yr
+                          Bar Only<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_BAR_ONLY)} TT now<br /><span className="font-normal opacity-80">${PRICE_BAR_ONLY} TT/yr</span></span>
+                            : <span>${PRICE_BAR_ONLY} TT/yr</span>}
                         </button>
                         <button
                           onClick={() => {
@@ -794,10 +837,13 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "machines_only" }]);
                             setStep("addon-ask");
                           }}
-                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#ea580c,#f59e0b)" }}
                         >
-                          Machines 10<br />${PRICE_MACHINES_10} TT/yr
+                          Machines 10<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_MACHINES_10)} TT now<br /><span className="font-normal opacity-80">${PRICE_MACHINES_10} TT/yr</span></span>
+                            : <span>${PRICE_MACHINES_10} TT/yr</span>}
                         </button>
                         <button
                           onClick={() => {
@@ -809,10 +855,13 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "machines_only_20" }]);
                             setStep("addon-ask");
                           }}
-                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#c2410c,#ea580c)" }}
                         >
-                          Machines 20<br />${PRICE_MACHINES_20} TT/yr
+                          Machines 20<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_MACHINES_20)} TT now<br /><span className="font-normal opacity-80">${PRICE_MACHINES_20} TT/yr</span></span>
+                            : <span>${PRICE_MACHINES_20} TT/yr</span>}
                         </button>
                         <button
                           onClick={() => {
@@ -824,10 +873,13 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "bar_machines" }]);
                             setStep("addon-ask");
                           }}
-                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
+                          className="h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
                         >
-                          Bar+10 Machines<br />${PRICE_BAR_MACHINES_10} TT/yr
+                          Bar+10 Machines<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_BAR_MACHINES_10)} TT now<br /><span className="font-normal opacity-80">${PRICE_BAR_MACHINES_10} TT/yr</span></span>
+                            : <span>${PRICE_BAR_MACHINES_10} TT/yr</span>}
                         </button>
                         <button
                           onClick={() => {
@@ -839,10 +891,13 @@ export default function BillingPage() {
                             setAddonBars([{ name: "", location: "", type: "bar_machines_20" }]);
                             setStep("addon-ask");
                           }}
-                          className="h-12 rounded-xl font-black text-xs text-white active:scale-[0.98] transition col-span-2"
+                          className="h-14 rounded-xl font-black text-xs text-white active:scale-[0.98] transition col-span-2"
                           style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
                         >
-                          Bar + 20 Machines<br />${PRICE_BAR_MACHINES_20} TT/yr
+                          Bar + 20 Machines<br />
+                          {hasActiveProRata
+                            ? <span>${previewProRata(PRICE_BAR_MACHINES_20)} TT now<br /><span className="font-normal opacity-80">${PRICE_BAR_MACHINES_20} TT/yr</span></span>
+                            : <span>${PRICE_BAR_MACHINES_20} TT/yr</span>}
                         </button>
                       </div>
                     </div>
@@ -874,7 +929,7 @@ export default function BillingPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            const diff = isMachinesOnly ? 600 : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC;
+                            const diff = isMachinesOnly ? PRICE_BASE_PREMIUM - PRICE_BASE_MACHINES : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC;
                             setOverrideAmount(diff);
                             setAddonAskType("upgrade_same_premium");
                             setSelectedPlan(premiumPlan ?? null);
@@ -884,12 +939,12 @@ export default function BillingPage() {
                           className="flex-1 h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
                           style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
                         >
-                          Bar + 10 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? 600 : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC} TT prorated</span>
+                          Bar + 10 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? PRICE_BASE_PREMIUM - PRICE_BASE_MACHINES : PRICE_BASE_PREMIUM - PRICE_BASE_BASIC} TT prorated</span>
                         </button>
                         {premiumPlan20 && (
                           <button
                             onClick={() => {
-                              const diff = isMachinesOnly ? 600 : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC;
+                              const diff = isMachinesOnly ? PRICE_BASE_PREMIUM_20 - PRICE_BASE_MACHINES : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC;
                               setOverrideAmount(diff);
                               setAddonAskType("upgrade_same_premium_20");
                               setSelectedPlan(premiumPlan20 ?? null);
@@ -899,7 +954,7 @@ export default function BillingPage() {
                             className="flex-1 h-11 rounded-xl font-black text-sm text-white active:scale-[0.98] transition"
                             style={{ background: "linear-gradient(135deg,#ea580c,#dc2626)" }}
                           >
-                            Bar + 20 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? 600 : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC} TT prorated</span>
+                            Bar + 20 Machines<br /><span className="text-xs font-normal">${isMachinesOnly ? PRICE_BASE_PREMIUM_20 - PRICE_BASE_MACHINES : PRICE_BASE_PREMIUM_20 - PRICE_BASE_BASIC} TT prorated</span>
                           </button>
                         )}
                       </div>
@@ -1160,13 +1215,10 @@ export default function BillingPage() {
               - machines_20 is a brand-new 20-screen account (max 20 per account, can't stack) */}
           {addonAskType === "machines_10" && (
           <button
-            onClick={async () => {
+            onClick={() => {
               setAddonDestination("existing");
-              if (addonAskType === "machines_10" || addonAskType === "machines_20") {
-                await loadEligibleBars("machines_upgrade");
-              } else {
-                await loadEligibleBars("bar_upgrade");
-              }
+              setSelectedBarId(profile?.id ?? null);
+              setStep("payment");
             }}
             className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
             style={{ background: "var(--gradient-card)", borderColor: "var(--primary)" }}
@@ -1179,10 +1231,10 @@ export default function BillingPage() {
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {addonAskType === "machines_10"
-                  ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_10 + " TT"
+                  ? `Upgrade an account from 10 to 20 screens — $${proRataUnitPrice} TT due now${planEndDate && daysRemaining < 365 ? ` (prorated, $${PRICE_MACHINES_10} TT/yr at renewal)` : ""}`
                   : addonAskType === "machines_20"
-                  ? "Upgrade an account from 10 to 20 screens — prorated $" + PRICE_MACHINES_20 + " TT"
-                  : "Add bar features to an existing machine account — prorated $" + (overrideAmount ?? 0) + " TT"}
+                  ? `New 20-screen account — $${proRataUnitPrice} TT due now${planEndDate && daysRemaining < 365 ? ` (prorated, $${PRICE_MACHINES_20} TT/yr at renewal)` : ""}`
+                  : `Add to existing account — $${proRataUnitPrice} TT due now${planEndDate && daysRemaining < 365 ? " (prorated)" : ""}`}
               </p>
             </div>
             <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
@@ -1202,7 +1254,7 @@ export default function BillingPage() {
             <div className="flex-1">
               <p className="font-black text-sm text-foreground">Create a new account</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                New separate account — prorated ${overrideAmount ?? 0} TT
+                New separate account — ${proRataUnitPrice} TT due now{planEndDate && daysRemaining < 365 ? ` (prorated, $${overrideAmount ?? 0} TT/yr at renewal)` : ""}
               </p>
             </div>
             <span className="text-xs font-black px-3 py-1 rounded-full text-black shrink-0" style={{ background: "var(--gradient-hero)" }}>Select →</span>
@@ -1252,11 +1304,11 @@ export default function BillingPage() {
                   ${proRataUnitPrice.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""} — pro-rated for {daysRemaining} days remaining
                 </p>
                 <p className="text-xs text-orange-600 font-bold">
-                  At renewal ({planEndDate.toLocaleDateString("en-GB")}) you'll pay full price: ${selectedPlan.amount.toFixed(0)} TT/yr per bar
+                  At renewal ({planEndDate.toLocaleDateString("en-GB")}) you'll pay full price: ${baseAmount.toFixed(0)} TT/yr per bar
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-gray-400 mt-0.5">${selectedPlan.amount.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""}</p>
+              <p className="text-xs text-gray-400 mt-0.5">${baseAmount.toFixed(0)} × {addonBarCount} bar{addonBarCount > 1 ? "s" : ""}</p>
             )}
           </div>
 
@@ -1350,7 +1402,7 @@ export default function BillingPage() {
             )}
           </div>
 
-          <p className="text-sm font-black text-gray-900">How would you like to pay?</p>
+          <p className="text-sm font-black text-amber-500">How would you like to pay?</p>
 
           {/* Cash */}
           <button onClick={() => { setPayMethod("cash"); setStep("confirm"); }}
@@ -1399,7 +1451,7 @@ export default function BillingPage() {
               {isAddonPlanSelected && planEndDate && daysRemaining < 365 && (
                 <div className="text-xs text-orange-600 font-bold bg-orange-50 rounded-lg px-3 py-2">
                   Pro-rated for {daysRemaining} of 365 days ({Math.round(proRataFraction * 100)}%).
-                  Full price is ${selectedPlan.amount.toFixed(0)} TT/yr per bar. At renewal on {planEndDate.toLocaleDateString("en-GB")} you'll pay full price for all bars together.
+                  Full price is ${baseAmount.toFixed(0)} TT/yr per bar. At renewal on {planEndDate.toLocaleDateString("en-GB")} you'll pay full price for all bars together.
                 </div>
               )}
               <div className="flex justify-between border-t border-gray-100 pt-2 font-black text-base">
