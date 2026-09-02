@@ -5805,9 +5805,11 @@ function OwnerWallet({
 
     const initialExpense = finRes.data ? Number(finRes.data.initial_expense) : 0;
     // Only count manual (non-stock) expenses for Est. Total Out — stock costs are in totalStockSoldCost
+    // Only count manual (non-stock) expenses — "Reverted Stock Expense" rows are stock cost
+    // events and must NOT be included here.
     const monthlyExpenses = (expRes.data ?? [])
-      .filter((e: { description: string | null }) =>
-        (e.description ?? "").startsWith("Non-Stock Expense"),
+      .filter((e: { description: string | null; amount: number }) =>
+        (e.description ?? "").startsWith("Non-Stock Expense") && Number(e.amount) > 0,
       )
       .reduce((s: number, e: { amount: number }) => s + Number(e.amount), 0);
     const transfersIncome = (transfersRes.data ?? []).reduce(

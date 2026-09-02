@@ -169,7 +169,8 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
   const categoryMap = new Map<string, string>(products.map(p => [p.name, p.category ?? "miscellaneous"]));
   const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap);
   const items = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
-  const nonStockExpenses = data.expenses.filter(e => { const d = e.description ?? ""; return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense"); });
+  // "Reverted Stock Expense" rows are stock-cost events, not manual expenses — exclude them.
+  const nonStockExpenses = data.expenses.filter(e => (e.description ?? "").startsWith("Non-Stock Expense"));
   const totalNonStockExpenses = nonStockExpenses.filter(e => Number(e.amount) > 0).reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome    = items.reduce((s, it) => s + it.revenue, 0) + data.walletIncome;
   const totalItemsCost = items.reduce((s, it) => s + it.costTotal, 0);
@@ -478,7 +479,8 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
   const categoryMap = new Map<string, string>(products.map(p => [p.name, p.category ?? "miscellaneous"]));
   const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap);
   const items = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
-  const nonStockExpenses = data.expenses.filter(e => { const d = e.description ?? ""; return d.startsWith("Non-Stock Expense") || d.startsWith("Reverted Stock Expense"); });
+  // "Reverted Stock Expense" rows are stock-cost events, not manual expenses — exclude them.
+  const nonStockExpenses = data.expenses.filter(e => (e.description ?? "").startsWith("Non-Stock Expense"));
   const totalNonStockExpenses = nonStockExpenses.filter(e => Number(e.amount) > 0).reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome    = items.reduce((s, it) => s + it.revenue, 0) + data.walletIncome;
   const totalItemsCost = items.reduce((s, it) => s + it.costTotal, 0);
