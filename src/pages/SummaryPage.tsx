@@ -48,26 +48,64 @@ function filterLabel(filter: FilterType, from: string, to: string): string {
 }
 
 function aggregateItems(
-  orders: Order[], costMap: Map<string, number>, nameMap: Map<string, number>, categoryMap: Map<string, string>,
+  orders: Order[],
+  costMap: Map<string, number>,     // per-unit cost (cost_price / units_per_item) keyed by product id
+  nameMap: Map<string, number>,     // per-unit cost keyed by product name
+  categoryMap: Map<string, string>, // category keyed by product name
+  fullCostMap: Map<string, number>, // full cost_price keyed by product id (for whole-unit direct sales)
+  fullNameMap: Map<string, number>, // full cost_price keyed by product name
 ): { name: string; qty: number; revenue: number; costTotal: number; category: string }[] {
+  const SYNTH = ["Shot", "2oz", "1oz", "Retail", "Pack"];
+  const isSynthId = (id: string) => id.startsWith("shot-") || id.startsWith("pack-");
   const map = new Map<string, { qty: number; revenue: number; costTotal: number; category: string }>();
+
   for (const o of orders) {
     for (const it of o.items) {
       const existing = map.get(it.name) ?? { qty: 0, revenue: 0, costTotal: 0, category: "miscellaneous" };
+      const itemId = it.id ?? "";
+      const isSynth = isSynthId(itemId);
+
+      // Resolve category — strip synthetic prefix ("Shot: X" → "X") for lookup
+      let resolvedProductName = it.name;
+      const ci = it.name.indexOf(": ");
+      if (ci !== -1 && (SYNTH.some(p => it.name.slice(0, ci).toLowerCase().startsWith(p.toLowerCase())) || isSynth)) {
+        resolvedProductName = it.name.slice(ci + 2);
+      }
+      const cat = categoryMap.get(resolvedProductName) ?? categoryMap.get(it.name) ?? existing.category;
+
       let costEach = 0;
-      if (it.id && costMap.has(it.id)) costEach = costMap.get(it.id)!;
-      else if (nameMap.has(it.name)) costEach = nameMap.get(it.name)!;
-      else {
-        const SYNTH = ["Shot", "2oz", "1oz", "Retail", "Pack"];
-        const ci = it.name.indexOf(": ");
-        if (ci !== -1 && (SYNTH.some(p => it.name.slice(0, ci).toLowerCase().startsWith(p.toLowerCase())) || (it.id ?? "").startsWith("shot-"))) {
-          const pn = it.name.slice(ci + 2);
-          if (nameMap.has(pn)) costEach = nameMap.get(pn)!;
+      let costUnits = it.qty;
+
+      if (!isSynth && it.id && fullCostMap.has(it.id)) {
+        // Direct whole-unit sale (real product UUID, not a shot- or pack- synthetic id).
+        // Use the full cost_price — units_consumed is null for these items.
+        costEach  = fullCostMap.get(it.id)!;
+        costUnits = it.qty;
+      } else if (isSynth || (ci !== -1 && SYNTH.some(p => it.name.slice(0, ci).toLowerCase().startsWith(p.toLowerCase())))) {
+        // Shot or retail-stick sale — use per-unit cost × units_consumed (shots) or qty (retail sticks)
+        if (it.id && costMap.has(it.id)) {
+          costEach = costMap.get(it.id)!;
+        } else if (nameMap.has(resolvedProductName)) {
+          costEach = nameMap.get(resolvedProductName)!;
+        }
+        costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
+      } else {
+        // Fallback: item id not in maps (deleted product etc.) — try name, then full-name
+        if (fullNameMap.has(it.name)) {
+          costEach  = fullNameMap.get(it.name)!;
+          costUnits = it.qty;
+        } else if (nameMap.has(it.name)) {
+          costEach  = nameMap.get(it.name)!;
+          costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
         }
       }
-      const cat = categoryMap.get(it.name) ?? existing.category;
-      const costUnits = (it.units_consumed != null && it.units_consumed > 0) ? it.units_consumed : it.qty;
-      map.set(it.name, { qty: existing.qty + it.qty, revenue: existing.revenue + it.qty * it.price, costTotal: existing.costTotal + costUnits * costEach, category: cat });
+
+      map.set(it.name, {
+        qty: existing.qty + it.qty,
+        revenue: existing.revenue + it.qty * it.price,
+        costTotal: existing.costTotal + costUnits * costEach,
+        category: cat,
+      });
     }
   }
   return Array.from(map.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => a.name.localeCompare(b.name));
@@ -164,10 +202,12 @@ function SubSessionAccordion({ sub, products, categoryFilter, isActive, ownerId 
 
   const handleToggle = () => { const next = !open; setOpen(next); if (next && !loadedRef.current) loadData(); };
 
-  const costMap = new Map<string, number>(products.map(p => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
-  const nameMap = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const costMap     = new Map<string, number>(products.map(p => [p.id,   p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const nameMap     = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const fullCostMap = new Map<string, number>(products.map(p => [p.id,   p.cost_price]));
+  const fullNameMap = new Map<string, number>(products.map(p => [p.name, p.cost_price]));
   const categoryMap = new Map<string, string>(products.map(p => [p.name, p.category ?? "miscellaneous"]));
-  const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap);
+  const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap, fullCostMap, fullNameMap);
   const items = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
   // "Reverted Stock Expense" rows are stock-cost events, not manual expenses — exclude them.
   const nonStockExpenses = data.expenses.filter(e => (e.description ?? "").startsWith("Non-Stock Expense"));
@@ -474,10 +514,12 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
     return () => { cancelled = true; };
   }, [fromDate, toDate, ownerId, filter, filteredSessions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const costMap = new Map<string, number>(products.map(p => [p.id, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
-  const nameMap = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const costMap     = new Map<string, number>(products.map(p => [p.id,   p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const nameMap     = new Map<string, number>(products.map(p => [p.name, p.units_per_item > 0 ? p.cost_price / p.units_per_item : p.cost_price]));
+  const fullCostMap = new Map<string, number>(products.map(p => [p.id,   p.cost_price]));
+  const fullNameMap = new Map<string, number>(products.map(p => [p.name, p.cost_price]));
   const categoryMap = new Map<string, string>(products.map(p => [p.name, p.category ?? "miscellaneous"]));
-  const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap);
+  const allItems = aggregateItems(data.orders, costMap, nameMap, categoryMap, fullCostMap, fullNameMap);
   const items = categoryFilter === "all" ? allItems : allItems.filter(it => it.category === categoryFilter);
   // "Reverted Stock Expense" rows are stock-cost events, not manual expenses — exclude them.
   const nonStockExpenses = data.expenses.filter(e => (e.description ?? "").startsWith("Non-Stock Expense"));
