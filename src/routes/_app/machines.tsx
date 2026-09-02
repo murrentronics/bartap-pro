@@ -8198,21 +8198,7 @@ export default function MachinesPage() {
     <>
 
 
-      {/* ── Machines locked when bar is closed — only on the Screens tab ── */}
-      {barOverlayReadyMachines && !barSessionLoadingMachines && !barIsOpenMachines && tab === "screens" && (
-        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm px-6">
-          <div className="w-full max-w-sm rounded-3xl border border-border shadow-2xl overflow-hidden text-center"
-            style={{ background: "var(--gradient-card)" }}>
-            <div className="px-6 pt-8 pb-6">
-              <div className="text-5xl mb-4">🔒</div>
-              <h2 className="font-black text-xl mb-2">Machines Locked</h2>
-              <p className="text-sm text-muted-foreground leading-snug">
-                The bar is closed. Machine records are view-only until the owner opens a new bar session.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* MachineDetail overlays the list but keeps MachinesPage mounted so
 
