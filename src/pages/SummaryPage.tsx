@@ -477,22 +477,12 @@ function CombinedSummaryView({ fromDate, toDate, products, categoryFilter, owner
     const calFromUTC = new Date(`${fromDate}T04:00:00.000Z`).toISOString();
     const calToUTC   = new Date(new Date(`${toDate}T04:00:00.000Z`).getTime() + 86400000 - 1).toISOString();
 
-    // For the Day view, if we have bar sessions that span midnight we extend the
-    // query window to cover every order that belongs to a session active that day.
-    // This prevents orders from cross-midnight sessions being cut off by the UTC boundary.
-    let fromUTC = calFromUTC;
-    let toUTC   = calToUTC;
-    if (filter === "day" && filteredSessions && filteredSessions.length > 0) {
-      const sessionStart = filteredSessions.reduce((min, s) => s.opened_at < min ? s.opened_at : min, filteredSessions[0].opened_at);
-      const sessionEnd   = filteredSessions.reduce((max, s) => {
-        const end = s.closed_at ?? new Date().toISOString();
-        return end > max ? end : max;
-      }, filteredSessions[0].closed_at ?? new Date().toISOString());
-      // Use whichever is earlier/later so we capture everything in both the
-      // calendar window AND the actual session window.
-      fromUTC = sessionStart < calFromUTC ? sessionStart : calFromUTC;
-      toUTC   = sessionEnd   > calToUTC   ? sessionEnd   : calToUTC;
-    }
+    // For the Day view just use the plain calendar window (00:00–23:59 TT).
+    // We no longer expand to bar session boundaries — that was pulling in orders
+    // from cross-midnight sessions on different calendar days and confusing users.
+    // All other filters (week, month, year, period) already use calFromUTC/calToUTC directly.
+    const fromUTC = calFromUTC;
+    const toUTC   = calToUTC;
 
     Promise.all([
       supabase.from("orders").select("id, total, paid, change_given, items, created_at")
