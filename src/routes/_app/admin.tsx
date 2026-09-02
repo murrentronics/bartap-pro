@@ -584,7 +584,7 @@ function TemplateImportPanel() {
             const path = `templates/import/${crypto.randomUUID()}.png`;
             const { error: upErr } = await supabase.storage
               .from("product-images")
-              .upload(path, processed, { upsert: false });
+              .upload(path, processed, { upsert: false, cacheControl: "31536000" });
             if (upErr) throw upErr;
             const storedUrl = supabase.storage.from("product-images").getPublicUrl(path)
               .data.publicUrl;
@@ -712,7 +712,7 @@ function TemplateImportPanel() {
           }
           const { error: upErr } = await supabase.storage
             .from("product-images")
-            .upload(match[1], compressed, { upsert: true, contentType: compressed.type });
+            .upload(match[1], compressed, { upsert: true, contentType: compressed.type, cacheControl: "31536000" });
           if (upErr) {
             skipped++;
             continue;
@@ -1461,7 +1461,7 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
       const path = `templates/manual/${crypto.randomUUID()}.png`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, processed, { upsert: false });
+        .upload(path, processed, { upsert: false, cacheControl: "31536000" });
       if (upErr) {
         toast.error(upErr.message);
         setBusy(false);
@@ -1504,7 +1504,7 @@ function AddTemplateModal({ onDone }: { onDone: () => void }) {
       const path = `templates/manual/${crypto.randomUUID()}.png`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, processed, { upsert: false });
+        .upload(path, processed, { upsert: false, cacheControl: "31536000" });
       if (upErr) {
         toast.error(`${it.name}: ${upErr.message}`);
         continue;

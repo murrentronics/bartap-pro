@@ -3255,7 +3255,7 @@ function AddItemDialog({
       const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("product-images")
-        .upload(path, compressed, { upsert: false });
+        .upload(path, compressed, { upsert: false, cacheControl: "31536000" });
       if (upErr) {
         toast.error(upErr.message);
         setBusy(false);

@@ -27,13 +27,13 @@ import type { BillingPlan, BillingPayment, AdminBankDetails } from "@/types/bill
 const PRICE_BAR_ONLY        = 1200;  // extra bar only addon /yr
 const PRICE_MACHINES_10     = 1800;  // extra machines 10-screen addon /yr
 const PRICE_MACHINES_20     = 2400;  // extra machines 20-screen addon /yr
-const PRICE_BAR_MACHINES_10 = 2500;  // extra bar + 10 machines addon /yr
-const PRICE_BAR_MACHINES_20 = 3000;  // extra bar + 20 machines addon /yr
+const PRICE_BAR_MACHINES_10 = 3000;  // extra bar + 10 machines addon /yr
+const PRICE_BAR_MACHINES_20 = 3400;  // extra bar + 20 machines addon /yr
 const PRICE_BASE_BASIC      = 1800;  // bar only base plan /yr
 const PRICE_BASE_MACHINES   = 2400;  // machines only 10-screen base plan /yr
-const PRICE_BASE_MACHINES_20 = 3000; // machines only 20-screen base plan /yr
-const PRICE_BASE_PREMIUM    = 3000;  // bar + 10 machines base plan /yr
-const PRICE_BASE_PREMIUM_20 = 3500;  // bar + 20 machines base plan /yr
+const PRICE_BASE_MACHINES_20 = 3600; // machines only 20-screen base plan /yr
+const PRICE_BASE_PREMIUM    = 3500;  // bar + 10 machines base plan /yr
+const PRICE_BASE_PREMIUM_20 = 4000;  // bar + 20 machines base plan /yr
 
 type Step = "status" | "choose" | "addons" | "addon-bars" | "addon-ask" | "payment" | "confirm";
 
@@ -369,13 +369,13 @@ export default function BillingPage() {
   const addonBarQty = profile?.addon_bar_count ?? 0;
 
   const basePlanPrice = isBasic        ? (basicPlan?.amount       ?? 1800)
-                      : isPremium      ? (premiumPlan?.amount      ?? 3000)
+                      : isPremium      ? (premiumPlan?.amount      ?? 3500)
                       : isMachinesOnly ? (machinesOnlyPlan?.amount ?? 2400)
                       : 0;
 
-  // Bar Only extra bars renew at $1,200 each; Premium addon at $2,000 each; Machines addon at $1,200 each
+  // Bar Only extra bars renew at $1,200 each; Premium addon at $3,000 each; Machines addon at $1,800 each
   const perBarFullPrice = isBasic        ? (barOnlyAddonPlan?.amount    ?? 1200)
-                        : isPremium      ? (premiumAddonPlan?.amount     ?? 2500)
+                        : isPremium      ? (premiumAddonPlan?.amount     ?? 3000)
                         : isMachinesOnly ? (machinesBarAddonPlan?.amount ?? 1800)
                         : 0;
   const extraBarPrice = addonBarQty * perBarFullPrice;
