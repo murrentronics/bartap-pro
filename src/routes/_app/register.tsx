@@ -6508,6 +6508,8 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
   const [connType,       setConnType]       = useState<PrinterConnectionType>("none");
   // Pairing flow state
   const [pairing,        setPairing]        = useState(false);
+  // "Printer not showing?" help tip toggle
+  const [showUsbHelp,    setShowUsbHelp]    = useState(false);
   // Keyboard focus: "print" | "done" — arrows navigate, Enter fires
   const [focusedBtn, setFocusedBtn] = useState<"print" | "done">("done");
   const printBtnRef = useRef<HTMLButtonElement>(null);
@@ -6713,6 +6715,57 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
                   {pairing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Bluetooth className="h-4 w-4" />Bluetooth</>}
                 </button>
               </div>
+
+              {/* ── "Printer not showing?" collapsible help tip ── */}
+              <div className="text-center">
+                <button
+                  onClick={() => setShowUsbHelp((v) => !v)}
+                  className="text-[10px] text-muted-foreground/60 underline underline-offset-2 active:opacity-70"
+                >
+                  {showUsbHelp ? "Hide help" : "Printer not showing?"}
+                </button>
+              </div>
+              {showUsbHelp && (
+                <div
+                  className="rounded-xl px-3 py-2.5 space-y-1.5 text-[10px] leading-relaxed"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <p className="font-bold text-foreground/80">USB printer not in list?</p>
+                  <p className="text-muted-foreground">
+                    Make sure the printer is plugged in and powered on, then open{" "}
+                    <span className="text-foreground/70 font-semibold">Device Manager</span> → look under{" "}
+                    <span className="text-foreground/70 font-semibold">Ports (COM &amp; LPT)</span>.
+                    If it appears there it will show in the USB picker above.
+                    If it shows as an unknown device, install the driver for your printer&apos;s USB chip:
+                  </p>
+                  <div className="flex flex-col gap-1 pl-1">
+                    <a
+                      href="https://www.silabs.com/documents/public/software/CP210x_Universal_Windows_Driver.zip"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                      style={{ color: "#a5b4fc" }}
+                    >
+                      ↓ CP210x driver — Silicon Labs (most common)
+                    </a>
+                    <a
+                      href="https://www.wch-ic.com/downloads/CH341SER_EXE.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                      style={{ color: "#a5b4fc" }}
+                    >
+                      ↓ CH340 / CH341 driver — WCH
+                    </a>
+                  </div>
+                  <p className="font-bold text-foreground/80 pt-0.5">Bluetooth printer not in list?</p>
+                  <p className="text-muted-foreground">
+                    First pair the printer in your{" "}
+                    <span className="text-foreground/70 font-semibold">device Bluetooth settings</span>,
+                    then tap the Bluetooth button above. Make sure the printer is on and in pairing mode (usually hold the feed button on startup).
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

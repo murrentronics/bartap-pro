@@ -53,9 +53,12 @@ export interface CashDrawerOptions {
 }
 
 // ─── ESC/POS BLE UUIDs — must match receiptPrinter.ts ────────────────────────
-const BLE_SERVICE_UUID = "000018f0-0000-1000-8000-00805f9b34fb";
-const BLE_CHAR_UUID    = "00002af1-0000-1000-8000-00805f9b34fb";
-const BLE_CHUNK_SIZE   = 20;
+const BLE_SERVICE_UUID     = "000018f0-0000-1000-8000-00805f9b34fb";
+const BLE_CHAR_UUID        = "00002af1-0000-1000-8000-00805f9b34fb";
+const BLE_SERVICE_UUID_ALT = "e7810a71-73ae-499d-8c15-faa9aef0c3f2";
+const BLE_CHAR_UUID_ALT    = "bef8d6c9-9c21-4c9e-b632-bd58c1009f9f";
+const BLE_CHUNK_SIZE       = 20;
+const ALL_BLE_OPTIONAL     = [BLE_SERVICE_UUID, BLE_SERVICE_UUID_ALT];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +109,7 @@ interface BluetoothAPI {
     optionalServices?: string[];
     acceptAllDevices?: boolean;
   }): Promise<BluetoothDevice>;
+  getDevices?(): Promise<BluetoothDevice[]>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -214,14 +218,25 @@ async function openViaBluetooth(pulse: Uint8Array): Promise<CashDrawerResult> {
     };
   }
 
-  let device: BluetoothDevice;
-  try {
+  // Try to reconnect to the previously paired device silently first
+  let device: BluetoothDevice | undefined;
+  const savedName = readStorage("bartap-receipt-bt-name");
+  if (bt.getDevices) {
+    try {
+      const granted = await bt.getDevices();
+      if (granted.length > 0) {
+        device = savedName
+          ? (granted.find((d) => d.name === savedName) ?? granted[0])
+          : granted[0];
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (!device) {
     device = await bt.requestDevice({
-      filters: [{ services: [BLE_SERVICE_UUID] }],
-      optionalServices: [BLE_SERVICE_UUID],
+      acceptAllDevices: true,
+      optionalServices: ALL_BLE_OPTIONAL,
     });
-  } catch {
-    device = await bt.requestDevice({ acceptAllDevices: true, optionalServices: [BLE_SERVICE_UUID] });
   }
 
   if (!device.gatt) {
@@ -229,18 +244,28 @@ async function openViaBluetooth(pulse: Uint8Array): Promise<CashDrawerResult> {
   }
 
   const server = await device.gatt.connect();
-  let service: BluetoothRemoteGATTService;
-  try {
-    service = await server.getPrimaryService(BLE_SERVICE_UUID);
-  } catch {
+
+  // Try both known UUID pairs
+  let char: BluetoothRemoteGATTCharacteristic | undefined;
+  for (const [svcUuid, charUuid] of [
+    [BLE_SERVICE_UUID, BLE_CHAR_UUID],
+    [BLE_SERVICE_UUID_ALT, BLE_CHAR_UUID_ALT],
+  ] as const) {
+    try {
+      const svc = await server.getPrimaryService(svcUuid);
+      char = await svc.getCharacteristic(charUuid);
+      break;
+    } catch { /* try next */ }
+  }
+
+  if (!char) {
     server.disconnect();
     return {
       opened: false, method: "none",
-      error: "Printer does not expose the ESC/POS BLE service",
+      error: "Printer does not expose a known ESC/POS BLE service",
     };
   }
 
-  const char = await service.getCharacteristic(BLE_CHAR_UUID);
   for (let i = 0; i < pulse.length; i += BLE_CHUNK_SIZE) {
     const chunk = pulse.slice(i, i + BLE_CHUNK_SIZE);
     if (char.writeValueWithoutResponse) await char.writeValueWithoutResponse(chunk);
