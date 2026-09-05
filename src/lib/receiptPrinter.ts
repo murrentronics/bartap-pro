@@ -64,6 +64,54 @@ export interface PrintResult {
   error?: string;
 }
 
+// ─── Web USB types ────────────────────────────────────────────────────────────
+
+interface USBEndpoint {
+  endpointNumber: number;
+  direction: "in" | "out";
+  type: "bulk" | "interrupt" | "isochronous";
+  packetSize: number;
+}
+
+interface USBAlternateInterface {
+  alternateSetting: number;
+  interfaceClass: number;
+  endpoints: USBEndpoint[];
+}
+
+interface USBInterface {
+  interfaceNumber: number;
+  alternate: USBAlternateInterface;
+  alternates: USBAlternateInterface[];
+  claimed: boolean;
+}
+
+interface USBConfiguration {
+  configurationValue: number;
+  interfaces: USBInterface[];
+}
+
+interface USBDevice {
+  vendorId: number;
+  productId: number;
+  productName?: string;
+  manufacturerName?: string;
+  configuration: USBConfiguration | null;
+  configurations: USBConfiguration[];
+  open(): Promise<void>;
+  close(): Promise<void>;
+  forget?(): Promise<void>;
+  selectConfiguration(value: number): Promise<void>;
+  claimInterface(interfaceNumber: number): Promise<void>;
+  releaseInterface(interfaceNumber: number): Promise<void>;
+  transferOut(endpointNumber: number, data: BufferSource): Promise<{ status: string; bytesWritten: number }>;
+}
+
+interface WebUSBAPI {
+  requestDevice(options: { filters: Record<string, unknown>[] }): Promise<USBDevice>;
+  getDevices(): Promise<USBDevice[]>;
+}
+
 // ─── Web Serial types ─────────────────────────────────────────────────────────
 
 interface WebSerialPort {
@@ -150,59 +198,82 @@ export function getPrinterConnectionType(): PrinterConnectionType {
   return "none";
 }
 
-/** Returns true if a printer has been paired (USB via Web Serial or Bluetooth). */
+/** Returns true if a printer has been paired (USB via WebUSB/Web Serial, or Bluetooth). */
 export async function isPrinterPaired(): Promise<boolean> {
   const type = getPrinterConnectionType();
   if (type === "bt") return readStorage("bartap-receipt-bt") === "1";
-  // USB — check Web Serial granted ports list
+  // USB — check WebUSB granted devices first, then Web Serial granted ports
+  const usb    = (navigator as unknown as { usb?: WebUSBAPI }).usb;
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (!serial?.getPorts) return false;
   try {
-    const ports = await serial.getPorts();
-    return ports.length > 0;
-  } catch {
-    return false;
-  }
+    if (usb?.getDevices) {
+      const devices = await usb.getDevices();
+      if (devices.length > 0) return true;
+    }
+    if (serial?.getPorts) {
+      const ports = await serial.getPorts();
+      if (ports.length > 0) return true;
+    }
+  } catch { /* ignore */ }
+  return false;
 }
 
 /**
- * Pair a USB printer via Web Serial.
+ * Pair a USB printer.
  *
- * On both desktop and mobile this shows the browser's native serial device
- * picker — the same style of dialog the barcode scanner uses for HID. The user
- * selects their printer from the list once; subsequent prints reconnect
- * automatically without showing the picker again.
+ * Uses WebUSB (`navigator.usb.requestDevice`) with empty filters so the browser
+ * shows **every USB device** connected to the PC in its picker — the same style
+ * of dialog that POS Pro's barcode scanner uses. The user selects their printer
+ * once; subsequent prints reconnect silently via `getDevices()`.
  *
- * If the user cancels (their printer isn't in the list) we return false so the
- * UI stays on the pairing screen and they can try Bluetooth instead.
+ * Falls back to Web Serial if WebUSB is unavailable (e.g. Firefox, or a
+ * Chrome for Android device that exposes the printer as a COM port via OTG).
  */
 export async function pairUsbPrinter(): Promise<boolean> {
+  const usb    = (navigator as unknown as { usb?: WebUSBAPI }).usb;
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
 
-  if (!serial?.requestPort) {
-    // Web Serial not supported in this browser — nothing to show
-    return false;
+  // ── Primary: WebUSB — shows ALL USB devices, just like the HID picker ──────
+  if (usb?.requestDevice) {
+    try {
+      // [{}] = one empty filter = no restrictions = show everything connected
+      const device = await usb.requestDevice({ filters: [{}] });
+      writeStorage("bartap-receipt-vid", String(device.vendorId));
+      writeStorage("bartap-receipt-pid", String(device.productId));
+      writeStorage("bartap-printer-type", "usb");
+      removeStorage("bartap-receipt-bt");
+      removeStorage("bartap-receipt-bt-name");
+      return true;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("no device selected") || msg.toLowerCase().includes("user cancelled")) {
+        return false; // user dismissed the picker
+      }
+      throw e;
+    }
   }
 
-  try {
-    // Empty filters = show every serial/USB-serial device connected to this PC,
-    // identical UX to the HID picker in POS Pro's barcode scanner.
-    const port = await serial.requestPort();
-    const info = port.getInfo();
-    if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
-    if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
-    writeStorage("bartap-printer-type", "usb");
-    removeStorage("bartap-receipt-bt");
-    removeStorage("bartap-receipt-bt-name");
-    return true;
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    // User cancelled the picker — return false so UI stays on pairing screen
-    if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("no port selected") || msg.toLowerCase().includes("user cancelled")) {
-      return false;
+  // ── Fallback: Web Serial — for COM-port devices (mobile OTG, etc.) ─────────
+  if (serial?.requestPort) {
+    try {
+      const port = await serial.requestPort();
+      const info = port.getInfo();
+      if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
+      if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
+      writeStorage("bartap-printer-type", "usb");
+      removeStorage("bartap-receipt-bt");
+      removeStorage("bartap-receipt-bt-name");
+      return true;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("no port selected") || msg.toLowerCase().includes("user cancelled")) {
+        return false;
+      }
+      throw e;
     }
-    throw e; // real error — surface it to the caller
   }
+
+  return false; // neither API available
 }
 
 /**
@@ -332,7 +403,86 @@ function hr(): string { return "\u2500".repeat(COL_WIDTH); }
 
 function padRight(s: string, w: number): string { return s.padEnd(w).slice(0, w); }
 
-// ─── USB (Web Serial) print path ──────────────────────────────────────────────
+// ─── USB print paths (WebUSB primary, Web Serial fallback) ───────────────────
+
+/**
+ * Print via WebUSB — finds the bulk-OUT endpoint on the printer's USB
+ * interface and writes raw ESC/POS bytes directly to it.
+ *
+ * Reconnects silently to the previously paired device using `getDevices()`
+ * so the picker only appears on first pair, not every print.
+ */
+async function printViaWebUsb(bytes: Uint8Array): Promise<PrintResult> {
+  const usb = (navigator as unknown as { usb?: WebUSBAPI }).usb;
+  if (!usb) return { opened: false, method: "none", error: "WebUSB not available" };
+
+  const vid = parseInt(readStorage("bartap-receipt-vid") ?? "", 10);
+  const pid = parseInt(readStorage("bartap-receipt-pid") ?? "", 10);
+
+  // Try to reconnect to the previously granted device silently first
+  let device: USBDevice | undefined;
+  try {
+    const granted = await usb.getDevices();
+    device = (Number.isFinite(vid) && vid > 0)
+      ? (granted.find((d) => d.vendorId === vid && d.productId === pid) ?? granted[0])
+      : granted[0];
+  } catch { /* ignore */ }
+
+  if (!device) {
+    device = await usb.requestDevice({ filters: [{}] });
+  }
+
+  await device.open();
+
+  try {
+    if (device.configuration === null) {
+      await device.selectConfiguration(device.configurations[0].configurationValue);
+    }
+
+    // Find the printer interface — USB Printer class is 0x07,
+    // but we try every interface to be compatible with all models.
+    let claimedInterface: number | undefined;
+    let bulkOutEndpoint: number | undefined;
+
+    for (const iface of device.configuration?.interfaces ?? []) {
+      for (const alt of iface.alternates) {
+        // Prefer printer class (0x07) but accept any interface with a bulk-out endpoint
+        const bulkOut = alt.endpoints.find((e) => e.direction === "out" && e.type === "bulk");
+        if (bulkOut) {
+          try {
+            await device.claimInterface(iface.interfaceNumber);
+            claimedInterface = iface.interfaceNumber;
+            bulkOutEndpoint = bulkOut.endpointNumber;
+            break;
+          } catch { /* try next interface */ }
+        }
+      }
+      if (claimedInterface !== undefined) break;
+    }
+
+    if (bulkOutEndpoint === undefined) {
+      throw new Error("No bulk-OUT endpoint found — printer may not support WebUSB on this OS");
+    }
+
+    // Send in chunks to avoid USB buffer overflow on slower printers
+    const CHUNK = 16384;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      await device.transferOut(bulkOutEndpoint, bytes.slice(i, i + CHUNK));
+    }
+
+    if (claimedInterface !== undefined) {
+      await device.releaseInterface(claimedInterface);
+    }
+  } finally {
+    await device.close();
+  }
+
+  // Persist IDs for silent reconnect
+  writeStorage("bartap-receipt-vid", String(device.vendorId));
+  writeStorage("bartap-receipt-pid", String(device.productId));
+  writeStorage("bartap-printer-type", "usb");
+  return { opened: true, method: "webusb" };
+}
 
 async function printViaWebSerial(bytes: Uint8Array): Promise<PrintResult> {
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
@@ -495,22 +645,47 @@ export async function printReceipt(data: ReceiptData): Promise<PrintResult> {
     }
   }
 
-  // ── USB / Web Serial path ──────────────────────────────────────────────────
+  // ── USB path — WebUSB primary, Web Serial fallback ────────────────────────
+  const usb    = (navigator as unknown as { usb?: WebUSBAPI }).usb;
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (serial?.requestPort) {
+
+  // Check whether we have any previously granted device
+  let hasGranted = false;
+  try {
+    if (usb?.getDevices) {
+      const devices = await usb.getDevices();
+      if (devices.length > 0) hasGranted = true;
+    }
+    if (!hasGranted && serial?.getPorts) {
+      const ports = await serial.getPorts();
+      if (ports.length > 0) hasGranted = true;
+    }
+  } catch { /* proceed */ }
+
+  if (!hasGranted) {
+    return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+  }
+
+  // Try WebUSB first (shows all USB devices in picker, works for printer class)
+  if (usb?.getDevices) {
     try {
-      const granted = await serial.getPorts();
-      if (granted.length === 0) {
-        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+      return await printViaWebUsb(bytes);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Access denied on Windows means the kernel driver owns the interface —
+      // fall through to Web Serial which may have a COM port for this printer
+      if (!msg.toLowerCase().includes("access") && !msg.toLowerCase().includes("bulk")) {
+        return { opened: false, method: "none", error: msg };
       }
-    } catch { /* proceed */ }
+    }
+  }
+
+  // Web Serial fallback (COM port / OTG)
+  if (serial?.requestPort) {
     try {
       return await printViaWebSerial(bytes);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("cancelled") || msg.includes("No port")) {
-        return { opened: false, method: "none", needsPairing: true, error: msg };
-      }
       return { opened: false, method: "none", error: msg };
     }
   }
@@ -549,14 +724,37 @@ export async function printReceiptAndOpenDrawer(
     }
   }
 
+  const usb    = (navigator as unknown as { usb?: WebUSBAPI }).usb;
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  if (serial?.requestPort) {
+
+  let hasGranted = false;
+  try {
+    if (usb?.getDevices) {
+      const devices = await usb.getDevices();
+      if (devices.length > 0) hasGranted = true;
+    }
+    if (!hasGranted && serial?.getPorts) {
+      const ports = await serial.getPorts();
+      if (ports.length > 0) hasGranted = true;
+    }
+  } catch { /* proceed */ }
+
+  if (!hasGranted) {
+    return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+  }
+
+  if (usb?.getDevices) {
     try {
-      const granted = await serial.getPorts();
-      if (granted.length === 0) {
-        return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
+      return await printViaWebUsb(combined);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.toLowerCase().includes("access") && !msg.toLowerCase().includes("bulk")) {
+        return { opened: false, method: "none", error: msg };
       }
-    } catch { /* proceed */ }
+    }
+  }
+
+  if (serial?.requestPort) {
     try {
       return await printViaWebSerial(combined);
     } catch (e) {
