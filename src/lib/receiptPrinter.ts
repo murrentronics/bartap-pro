@@ -1,28 +1,21 @@
 /**
  * receiptPrinter.ts — prints a sale receipt to a thermal receipt printer.
  *
- * Supported connection methods (tried in order):
- *  1. USB via Web Serial API  — printer shows as a COM port in Device Manager
- *  2. Bluetooth via Web Bluetooth API — paired BLE thermal printer
- *  3. OS system printer via hidden iframe + window.print() — works for any printer
- *     installed in Windows/macOS Printers & Scanners (USB, network, etc.)
- *
- * How method 3 works: most USB thermal printers on Windows install as a
- * standard Windows printer (not a COM port). The browser cannot claim that USB
- * interface directly — Windows kernel owns it. Instead we inject a hidden
- * <iframe> with receipt HTML sized to 80mm paper and call contentWindow.print().
- * The OS print dialog appears once so the user can select their printer; after
- * that, setting it as the default makes every print silent.
+ * Supported connection methods:
+ *  1. USB via Web Serial API  — shows a device picker listing every USB/serial
+ *     device connected to this PC (same style as the HID picker). Works on
+ *     Chrome/Edge desktop and Chrome for Android (USB-C OTG).
+ *  2. Bluetooth via Web Bluetooth API — paired BLE thermal printer.
  *
  * The cash drawer is wired to the printer's DK port, so `openCashDrawer()` in
  * cashDrawer.ts sends its ESC/POS kick pulse through the same connection.
  *
  * localStorage keys:
- *   bartap-printer-type  -> "usb" | "bt" | "os"   (active connection method)
- *   bartap-receipt-vid   -> decimal USB vendor id   (USB/Web Serial path)
- *   bartap-receipt-pid   -> decimal USB product id  (USB/Web Serial path)
- *   bartap-receipt-bt    -> "1"                     (Bluetooth path)
- *   bartap-receipt-bt-name -> device name           (display only)
+ *   bartap-printer-type    -> "usb" | "bt"   (active connection method)
+ *   bartap-receipt-vid     -> decimal USB vendor id   (USB path)
+ *   bartap-receipt-pid     -> decimal USB product id  (USB path)
+ *   bartap-receipt-bt      -> "1"                     (Bluetooth path)
+ *   bartap-receipt-bt-name -> device name             (display only)
  */
 
 const COL_WIDTH = 48;
@@ -62,7 +55,7 @@ export interface ReceiptData {
   date?: string;
 }
 
-export type PrinterConnectionType = "usb" | "bt" | "os" | "none";
+export type PrinterConnectionType = "usb" | "bt" | "none";
 
 export interface PrintResult {
   opened: boolean;
@@ -154,17 +147,14 @@ export function getPrinterConnectionType(): PrinterConnectionType {
   const saved = readStorage("bartap-printer-type");
   if (saved === "bt") return "bt";
   if (saved === "usb") return "usb";
-  if (saved === "os") return "os";
   return "none";
 }
 
-/** Returns true if a printer has been paired (USB, Bluetooth, or OS system printer). */
+/** Returns true if a printer has been paired (USB via Web Serial or Bluetooth). */
 export async function isPrinterPaired(): Promise<boolean> {
   const type = getPrinterConnectionType();
   if (type === "bt") return readStorage("bartap-receipt-bt") === "1";
-  // OS system printer — always ready, no handshake needed
-  if (type === "os") return true;
-  // USB — check Web Serial granted ports
+  // USB — check Web Serial granted ports list
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
   if (!serial?.getPorts) return false;
   try {
@@ -176,74 +166,43 @@ export async function isPrinterPaired(): Promise<boolean> {
 }
 
 /**
- * Returns true when running on a mobile device or inside the Capacitor native
- * app. Used to decide which USB pairing strategy to try first.
- */
-function isMobileOrNative(): boolean {
-  // Capacitor sets a custom UA suffix; also catches Android/iOS browsers
-  if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod|capacitor/i.test(navigator.userAgent);
-}
-
-/**
- * Pair a USB printer.
+ * Pair a USB printer via Web Serial.
  *
- * Strategy depends on platform:
+ * On both desktop and mobile this shows the browser's native serial device
+ * picker — the same style of dialog the barcode scanner uses for HID. The user
+ * selects their printer from the list once; subsequent prints reconnect
+ * automatically without showing the picker again.
  *
- * Desktop browser (Windows/macOS):
- *   → Try OS print dialog first (silent iframe, works for any installed printer)
- *   → Only fall back to Web Serial COM picker if the user explicitly requests it
- *      (they would need to "Change printer" and select a COM port device)
- *
- * Mobile / Capacitor native app:
- *   → Try Web Serial COM picker first (USB-C OTG)
- *   → Fall back to OS print dialog if Web Serial isn't available or user cancels
+ * If the user cancels (their printer isn't in the list) we return false so the
+ * UI stays on the pairing screen and they can try Bluetooth instead.
  */
 export async function pairUsbPrinter(): Promise<boolean> {
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
-  const mobile = isMobileOrNative();
 
-  // ── Desktop: OS system printer is the primary path ─────────────────────────
-  if (!mobile) {
-    // Mark as "os" immediately — the iframe print path works for every printer
-    // installed in Windows/macOS Printers & Scanners with no further setup.
-    // If the user's printer is a serial/COM device they can tap "Change printer"
-    // and re-pair via the COM picker (which shows when type is already "usb").
-    writeStorage("bartap-printer-type", "os");
+  if (!serial?.requestPort) {
+    // Web Serial not supported in this browser — nothing to show
+    return false;
+  }
+
+  try {
+    // Empty filters = show every serial/USB-serial device connected to this PC,
+    // identical UX to the HID picker in POS Pro's barcode scanner.
+    const port = await serial.requestPort();
+    const info = port.getInfo();
+    if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
+    if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
+    writeStorage("bartap-printer-type", "usb");
     removeStorage("bartap-receipt-bt");
     removeStorage("bartap-receipt-bt-name");
-    removeStorage("bartap-receipt-vid");
-    removeStorage("bartap-receipt-pid");
     return true;
-  }
-
-  // ── Mobile / Native: Web Serial (USB-C OTG) is the primary path ────────────
-  if (serial?.requestPort) {
-    try {
-      const port = await serial.requestPort();
-      const info = port.getInfo();
-      if (info.usbVendorId != null) writeStorage("bartap-receipt-vid", String(info.usbVendorId));
-      if (info.usbProductId != null) writeStorage("bartap-receipt-pid", String(info.usbProductId));
-      writeStorage("bartap-printer-type", "usb");
-      removeStorage("bartap-receipt-bt");
-      removeStorage("bartap-receipt-bt-name");
-      return true;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      // User cancelled the picker — fall through to OS mode
-      if (!msg.toLowerCase().includes("cancel") && !msg.toLowerCase().includes("no port selected")) {
-        throw e; // real error, surface it
-      }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // User cancelled the picker — return false so UI stays on pairing screen
+    if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("no port selected") || msg.toLowerCase().includes("user cancelled")) {
+      return false;
     }
+    throw e; // real error — surface it to the caller
   }
-
-  // Fallback for mobile when Web Serial isn't available or was cancelled
-  writeStorage("bartap-printer-type", "os");
-  removeStorage("bartap-receipt-bt");
-  removeStorage("bartap-receipt-bt-name");
-  removeStorage("bartap-receipt-vid");
-  removeStorage("bartap-receipt-pid");
-  return true;
 }
 
 /**
@@ -506,143 +465,12 @@ async function printViaBluetooth(bytes: Uint8Array): Promise<PrintResult> {
   return { opened: true, method: "bluetooth" };
 }
 
-// ─── OS system printer — hidden iframe + window.print() ──────────────────────
-//
-// When the printer is installed as a Windows/macOS system printer (shows in
-// Printers & Scanners, not as a COM port), the browser cannot send raw ESC/POS
-// bytes directly — the OS kernel driver owns that USB interface. Instead we
-// inject a hidden <iframe> with receipt HTML and call iframe.contentWindow.print().
-// The OS print dialog appears; the user picks their printer once. On subsequent
-// prints, if the printer is set as default, Chrome remembers the last-used
-// printer per-origin and the dialog is skipped automatically.
-//
-// Receipt HTML is sized to 80mm thermal paper with @page media so the output
-// looks identical to what the Web Serial ESC/POS path produces.
-
-function buildReceiptHtml(data: ReceiptData): string {
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  const itemRows = data.items.map((it) =>
-    `<tr>
-      <td class="name">${it.qty}x ${esc(it.name)}</td>
-      <td class="price">$${(it.qty * it.price).toFixed(2)}</td>
-    </tr>`
-  ).join("");
-
-  const taxRow = (data.tax != null && data.tax > 0)
-    ? `<tr><td>Tax</td><td class="r">$${data.tax.toFixed(2)}</td></tr>` : "";
-
-  const customerRow = data.customerName
-    ? `<tr><td colspan="2" class="customer">Customer: ${esc(data.customerName)}</td></tr>` : "";
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<style>
-@page { size: 80mm auto; margin: 4mm 2mm; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: #000;
-  width: 76mm;
-}
-.center { text-align: center; }
-.store { font-size: 15px; font-weight: 900; text-transform: uppercase;
-         font-family: Arial, sans-serif; margin-bottom: 1mm; }
-.sub { font-size: 10px; color: #333; margin-bottom: 0.5mm; }
-hr { border: none; border-top: 1px dashed #555; margin: 2mm 0; }
-.order { font-size: 18px; font-weight: 900; text-transform: uppercase;
-         letter-spacing: 0.5mm; text-align: center; margin: 2mm 0; }
-table { width: 100%; border-collapse: collapse; }
-td { padding: 0.8mm 0; vertical-align: top; }
-.name { text-align: left; }
-.price { text-align: right; white-space: nowrap; }
-.r { text-align: right; }
-.total-row { font-size: 13px; font-weight: 900; }
-.customer { padding-top: 1mm; font-size: 11px; }
-</style>
-</head><body>
-<div class="center store">${esc(data.storeName || "My Business")}</div>
-${data.locationName ? `<div class="center sub">${esc(data.locationName)}</div>` : ""}
-<div class="center sub">${esc(data.date || "")}</div>
-<div class="center sub">Served by ${esc(data.serverName || "Staff")}</div>
-<hr>
-<div class="order">ORDER #${data.orderNumber || 1}</div>
-<hr>
-<table><tbody>${itemRows}</tbody></table>
-<hr>
-<table><tbody>
-  <tr><td>Subtotal</td><td class="r">$${data.subtotal.toFixed(2)}</td></tr>
-  ${taxRow}
-  <tr class="total-row"><td>Total</td><td class="r">$${data.total.toFixed(2)}</td></tr>
-</tbody></table>
-<hr>
-<table><tbody>
-  <tr><td>${data.payMode === "credit" ? "Credit" : "Cash Tendered"}</td>
-      <td class="r">$${data.paid.toFixed(2)}</td></tr>
-  <tr><td>Change</td><td class="r">$${data.change.toFixed(2)}</td></tr>
-  ${customerRow}
-</tbody></table>
-</body></html>`;
-}
-
-/**
- * Print via the OS print dialog using a hidden iframe.
- * Works for any printer installed in Windows/macOS Printers & Scanners.
- * No popup tab — the iframe is 0×0 and removed after printing.
- */
-function printViaSilentIframe(data: ReceiptData): PrintResult {
-  try {
-    const html = buildReceiptHtml(data);
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
-    if (!doc) {
-      document.body.removeChild(iframe);
-      return { opened: false, method: "none", error: "Could not create print frame" };
-    }
-
-    doc.open();
-    doc.write(html);
-    doc.close();
-
-    // Wait for resources to load before triggering print
-    const doprint = () => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } finally {
-        // Remove iframe after a short delay so the print dialog has time to open
-        setTimeout(() => {
-          try { document.body.removeChild(iframe); } catch { /* already removed */ }
-        }, 2000);
-      }
-    };
-
-    if (iframe.contentDocument?.readyState === "complete") {
-      doprint();
-    } else {
-      iframe.onload = doprint;
-    }
-
-    writeStorage("bartap-printer-type", "os");
-    return { opened: true, method: "os-print" };
-  } catch (e) {
-    return { opened: false, method: "none", error: e instanceof Error ? e.message : "Print failed" };
-  }
-}
-
 // ─── Main entry points ────────────────────────────────────────────────────────
 
 /**
  * Print a receipt using whichever connection the user has paired:
- *  - "os"  → hidden iframe + window.print() (OS system printer, any installed printer)
  *  - "bt"  → Web Bluetooth BLE
- *  - "usb" → Web Serial (COM port, USB-C OTG on mobile)
+ *  - "usb" → Web Serial (device picker dialog, same as the HID barcode scanner picker)
  *  - none  → returns needsPairing:true so the UI shows the pairing buttons
  */
 export async function printReceipt(data: ReceiptData): Promise<PrintResult> {
@@ -663,14 +491,8 @@ export async function printReceipt(data: ReceiptData): Promise<PrintResult> {
       if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("user cancelled")) {
         return { opened: false, method: "none", needsPairing: true, error: msg };
       }
-      // BT failed — fall through to OS print dialog
-      return printViaSilentIframe(fullData);
+      return { opened: false, method: "none", error: msg };
     }
-  }
-
-  // ── OS system printer path (Windows/macOS Printers & Scanners) ─────────────
-  if (type === "os") {
-    return printViaSilentIframe(fullData);
   }
 
   // ── USB / Web Serial path ──────────────────────────────────────────────────
@@ -693,8 +515,8 @@ export async function printReceipt(data: ReceiptData): Promise<PrintResult> {
     }
   }
 
-  // ── Final fallback — OS print dialog via iframe ────────────────────────────
-  return printViaSilentIframe(fullData);
+  // No connection method available — show pairing UI
+  return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
 }
 
 /**
@@ -723,12 +545,8 @@ export async function printReceiptAndOpenDrawer(
     try {
       return await printViaBluetooth(combined);
     } catch {
-      return printViaSilentIframe(fullData); // drawer won't open but receipt still prints
+      return { opened: false, method: "none", needsPairing: true, error: "Bluetooth print failed" };
     }
-  }
-
-  if (type === "os") {
-    return printViaSilentIframe(fullData);
   }
 
   const serial = (navigator as unknown as { serial?: WebSerialAPI }).serial;
@@ -747,5 +565,5 @@ export async function printReceiptAndOpenDrawer(
     }
   }
 
-  return printViaSilentIframe(fullData);
+  return { opened: false, method: "none", needsPairing: true, error: "No printer paired yet" };
 }

@@ -6618,8 +6618,7 @@ function ReceiptModal({ sale, onPrint, onDone, printing }: {
   const btName    = localStorage.getItem("bartap-receipt-bt-name");
   const connLabel = connType === "bt"
     ? (btName ? `Bluetooth · ${btName}` : "Bluetooth")
-    : connType === "usb" ? "USB · Serial"
-    : connType === "os"  ? "USB · System Printer"
+    : connType === "usb" ? "USB"
     : "";
 
   return (
