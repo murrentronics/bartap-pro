@@ -441,6 +441,13 @@ export default function AppLayout() {
     );
   }
 
+  // True only in a mobile browser (not Capacitor APK, not desktop).
+  // Used to show the Download menu item only to phone users on the web app.
+  const isMobileWeb = typeof window !== "undefined"
+    && window.innerWidth < 640
+    && window.location.protocol !== "capacitor:"
+    && !/capacitor/i.test(navigator.userAgent);
+
   const navItems = isPending
     ? [] // pending users get no nav items — only Billing + Logout shown separately below
     : isAdmin
@@ -481,6 +488,7 @@ export default function AppLayout() {
               { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
             ]
           : [
+              ...(isMobileWeb ? [{ to: "/download", label: "Get App", icon: Download }] : []),
               ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
               ...(ownerHasBar
                  ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: User }]
@@ -516,7 +524,6 @@ export default function AppLayout() {
                 ? [{ to: "/profile", label: t("profile", "Profile"), icon: UserCircle }]
                 : []),
               { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
-              { to: "/download", label: "Download", icon: Download, desktopOnly: true },
             ];
 
   return (
@@ -639,7 +646,7 @@ export default function AppLayout() {
                     <button
                       key={it.to}
                       onClick={() => closeAndNav(it.to)}
-                      className={`${(it as any).desktopOnly ? "hidden sm:flex" : "flex"} flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
+                      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
                       style={{
                         background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
                         borderColor: active ? "var(--primary)" : "var(--border)",
@@ -828,7 +835,7 @@ export default function AppLayout() {
                       <button
                         key={it.to}
                         onClick={() => closeAndNav(it.to)}
-                        className={`${(it as any).desktopOnly ? "hidden sm:flex" : "flex"} flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
+                        className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
                         style={{
                           background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
                           borderColor: active ? "var(--primary)" : "var(--border)",
