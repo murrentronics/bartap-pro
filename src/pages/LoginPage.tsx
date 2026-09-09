@@ -20,15 +20,14 @@ export default function LoginPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [vpHeight, setVpHeight] = useState<number | null>(null);
 
-  // ── Get App button — mobile browser only, hidden in Capacitor APK ──────────
-  // Use Capacitor.isNativePlatform() as the definitive check — this is false
-  // in every browser (mobile or desktop) and true only inside the APK WebView.
-  const isMobileWeb = !Capacitor.isNativePlatform() && window.innerWidth < 640;
+  // Get App button — all browsers (mobile + tablet + desktop), hidden only in Capacitor APK
+  const isMobileWeb = !Capacitor.isNativePlatform();
 
   const [apkUrl, setApkUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isMobileWeb) return;
+
     const fetchApk = async () => {
       try {
         const res = await fetch(
@@ -41,7 +40,17 @@ export default function LoginPage() {
         if (apk) setApkUrl(apk.browser_download_url);
       } catch { /* silent fail */ }
     };
+
+    // Fetch immediately on mount
     fetchApk();
+
+    // Refetch whenever the user comes back to this tab/window
+    const onVisible = () => { if (document.visibilityState === "visible") fetchApk(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
