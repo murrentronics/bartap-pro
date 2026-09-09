@@ -37,6 +37,7 @@ import {
   BookOpen,
   ShieldCheck,
   Printer,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isPrinterPaired } from "@/lib/receiptPrinter";
@@ -515,6 +516,7 @@ export default function AppLayout() {
                 ? [{ to: "/profile", label: t("profile", "Profile"), icon: UserCircle }]
                 : []),
               { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
+              { to: "/download", label: "Download", icon: Download, desktopOnly: true },
             ];
 
   return (
@@ -637,7 +639,7 @@ export default function AppLayout() {
                     <button
                       key={it.to}
                       onClick={() => closeAndNav(it.to)}
-                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                      className={`${(it as any).desktopOnly ? "hidden sm:flex" : "flex"} flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
                       style={{
                         background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
                         borderColor: active ? "var(--primary)" : "var(--border)",
@@ -826,7 +828,7 @@ export default function AppLayout() {
                       <button
                         key={it.to}
                         onClick={() => closeAndNav(it.to)}
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none"
+                        className={`${(it as any).desktopOnly ? "hidden sm:flex" : "flex"} flex-col items-center justify-center gap-2 rounded-2xl border-2 py-4 px-2 active:scale-95 transition-transform select-none`}
                         style={{
                           background: active ? "var(--gradient-hero)" : "var(--gradient-card)",
                           borderColor: active ? "var(--primary)" : "var(--border)",
