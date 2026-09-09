@@ -32,7 +32,6 @@ import ManagerPage from "@/pages/ManagerPage";
 import StockCheckPage from "@/pages/StockCheckPage";
 import StockCountPage from "@/routes/_app/stock-count";
 import ManualPage from "@/pages/ManualPage";
-import DownloadPage from "@/pages/DownloadPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import TermsPage from "@/pages/TermsPage";
 import { MusicPlayerProvider } from "@/lib/MusicPlayerContext";
@@ -128,7 +127,6 @@ function AppWithUpdateCheck() {
             <Route path="stock-check" element={<StockCheckPage />} />
             <Route path="stock-count" element={<StockCountPage />} />
             <Route path="manual" element={<ManualPage />} />
-            <Route path="download" element={<DownloadPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/banking" element={<AdminBankingPage />} />
             <Route path="admin/billing" element={<AdminBillingManagementPage />} />

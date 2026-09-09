@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wine, Eye, EyeOff, X, FileText, Download } from "lucide-react";
+import { Wine, Eye, EyeOff, X, FileText } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { friendlyError } from "@/lib/network-error";
 import { useTranslation } from "@/lib/i18n";
+import { Capacitor } from "@capacitor/core";
 
 export default function LoginPage() {
   const { session, profile, loading } = useAuth();
@@ -20,11 +21,9 @@ export default function LoginPage() {
   const [vpHeight, setVpHeight] = useState<number | null>(null);
 
   // ── Get App button — mobile browser only, hidden in Capacitor APK ──────────
-  // Detect: small screen + not capacitor protocol + not capacitor UA
-  const isMobileWeb = typeof window !== "undefined"
-    && window.innerWidth < 640
-    && window.location.protocol !== "capacitor:"
-    && !/capacitor/i.test(navigator.userAgent);
+  // Use Capacitor.isNativePlatform() as the definitive check — this is false
+  // in every browser (mobile or desktop) and true only inside the APK WebView.
+  const isMobileWeb = !Capacitor.isNativePlatform() && window.innerWidth < 640;
 
   const [apkUrl, setApkUrl] = useState<string | null>(null);
 
@@ -89,16 +88,26 @@ export default function LoginPage() {
         WebkitOverflowScrolling: "touch",
       }}
     >
-      {/* Get App button — top-right, mobile browser only */}
+      {/* Get App button — top-right, mobile browser only, instant APK download */}
       {isMobileWeb && apkUrl && (
-        <a
-          href={apkUrl}
-          className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs text-primary-foreground transition active:scale-95 shadow-lg z-10"
+        <button
+          onClick={() => {
+            const a = document.createElement("a");
+            a.href = apkUrl;
+            a.download = "bartendaz-pro.apk";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+          className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-xl font-black text-xs text-primary-foreground transition active:scale-95 shadow-lg z-10"
           style={{ background: "var(--gradient-hero)" }}
         >
-          <Download className="h-3.5 w-3.5" />
+          {/* Android logo SVG */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.523 15.341a.875.875 0 0 1-.875-.875V9.593a.875.875 0 0 1 1.75 0v4.873a.875.875 0 0 1-.875.875ZM6.477 15.341a.875.875 0 0 1-.875-.875V9.593a.875.875 0 1 1 1.75 0v4.873a.875.875 0 0 1-.875.875ZM8.762 18.648a.875.875 0 0 1-.875-.875v-2.307a.875.875 0 1 1 1.75 0v2.307a.875.875 0 0 1-.875.875ZM15.238 18.648a.875.875 0 0 1-.875-.875v-2.307a.875.875 0 1 1 1.75 0v2.307a.875.875 0 0 1-.875.875ZM8.415 7.91h7.17A4.19 4.19 0 0 1 19.77 12v3.466H4.23V12a4.19 4.19 0 0 1 4.185-4.09ZM9.148 5.09l-.924-1.6a.219.219 0 0 1 .38-.219l.936 1.621a6.027 6.027 0 0 1 4.92 0l.936-1.621a.219.219 0 0 1 .38.219l-.924 1.6A5.568 5.568 0 0 0 12 4.633a5.568 5.568 0 0 0-2.852.457ZM10.5 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0ZM14.5 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z"/>
+          </svg>
           Get App
-        </a>
+        </button>
       )}
 
       <div className="w-full max-w-md">
