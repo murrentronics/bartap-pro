@@ -329,22 +329,23 @@ function DownloadPage() {
       {/* Manual modal */}
       {showManual && <ManualModal onClose={() => setShowManual(false)} />}
 
-      {/* Floating manual button */}
-      <button
-        onClick={() => setShowManual(true)}
-        className="fixed top-20 right-4 z-50 flex items-center gap-2 px-3 h-9 rounded-xl font-black text-xs transition active:scale-95 text-primary-foreground shadow-lg"
-        style={{ background: "var(--gradient-hero)" }}
-      >
-        <BookOpen className="h-4 w-4" />
-        Manual
-      </button>
-
       {/* ── HERO ── */}
       <section className="flex flex-col items-center justify-center text-center px-6 py-20 space-y-6"
         style={{
           background: "radial-gradient(ellipse at 30% 0%, rgba(240,160,48,0.10) 0%, transparent 60%), radial-gradient(ellipse at 70% 100%, rgba(192,68,26,0.08) 0%, transparent 60%)",
         }}
       >
+        {/* Manual button — aligned right inside the content width */}
+        <div className="w-full flex justify-end">
+          <button
+            onClick={() => setShowManual(true)}
+            className="flex items-center gap-2 px-3 h-9 rounded-xl font-black text-xs transition active:scale-95 text-primary-foreground shadow-lg"
+            style={{ background: "var(--gradient-hero)" }}
+          >
+            <BookOpen className="h-4 w-4" />
+            Manual
+          </button>
+        </div>
         {/* Logo */}
         <div className="h-20 w-20 rounded-3xl flex items-center justify-center shadow-2xl"
           style={{ background: "linear-gradient(135deg,#C0441A 0%,#F0A030 55%,#ffb700 100%)" }}>

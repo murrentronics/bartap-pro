@@ -488,7 +488,6 @@ export default function AppLayout() {
               { to: "/manual", label: t("manual", "Manual"), icon: BookOpen },
             ]
           : [
-              ...(isMobileWeb ? [{ to: "/download", label: "Get App", icon: Download }] : []),
               ...(ownerHasBar ? [{ to: "/register", label: t("bar", "Bar"), icon: Wine }] : []),
               ...(ownerHasBar
                  ? [{ to: "/credit", label: t("customers_title", "Customers"), icon: User }]
@@ -635,7 +634,19 @@ export default function AppLayout() {
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-4 border-b border-border/50">
-              <span className="text-sm font-black text-foreground">{profile.username}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-black text-foreground">{profile.username}</span>
+                {isMobileWeb && (
+                  <button
+                    onClick={() => closeAndNav("/download")}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-black text-[11px] transition active:scale-95 shrink-0 text-primary-foreground"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    <Download className="h-3 w-3" />
+                    Get App
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-4 pb-[30vh]">
               <div className="grid grid-cols-3 gap-3">
@@ -756,9 +767,21 @@ export default function AppLayout() {
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-border/50">
-              <span className="text-sm font-semibold text-muted-foreground truncate block">
-                {profile.username}
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-muted-foreground truncate">
+                  {profile.username}
+                </span>
+                {isMobileWeb && (
+                  <button
+                    onClick={() => closeAndNav("/download")}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-black text-[11px] transition active:scale-95 shrink-0 text-primary-foreground"
+                    style={{ background: "var(--gradient-hero)" }}
+                  >
+                    <Download className="h-3 w-3" />
+                    Get App
+                  </button>
+                )}
+              </div>
               {isChainOwner && activeBar && (
                 <span className="text-xs font-black text-primary truncate block mt-0.5">
                   📍 {activeBar.bar_name}
