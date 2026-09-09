@@ -37,7 +37,6 @@ import {
   BookOpen,
   ShieldCheck,
   Printer,
-  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isPrinterPaired } from "@/lib/receiptPrinter";
@@ -441,13 +440,6 @@ export default function AppLayout() {
     );
   }
 
-  // True only in a mobile browser (not Capacitor APK, not desktop).
-  // Used to show the Download menu item only to phone users on the web app.
-  const isMobileWeb = typeof window !== "undefined"
-    && window.innerWidth < 640
-    && window.location.protocol !== "capacitor:"
-    && !/capacitor/i.test(navigator.userAgent);
-
   const navItems = isPending
     ? [] // pending users get no nav items — only Billing + Logout shown separately below
     : isAdmin
@@ -636,16 +628,6 @@ export default function AppLayout() {
             <div className="px-4 py-4 border-b border-border/50">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-black text-foreground">{profile.username}</span>
-                {isMobileWeb && (
-                  <button
-                    onClick={() => closeAndNav("/download")}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-black text-[11px] transition active:scale-95 shrink-0 text-primary-foreground"
-                    style={{ background: "var(--gradient-hero)" }}
-                  >
-                    <Download className="h-3 w-3" />
-                    Get App
-                  </button>
-                )}
               </div>
             </div>
             <div className="p-4 pb-[30vh]">
@@ -771,16 +753,6 @@ export default function AppLayout() {
                 <span className="text-sm font-semibold text-muted-foreground truncate">
                   {profile.username}
                 </span>
-                {isMobileWeb && (
-                  <button
-                    onClick={() => closeAndNav("/download")}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-black text-[11px] transition active:scale-95 shrink-0 text-primary-foreground"
-                    style={{ background: "var(--gradient-hero)" }}
-                  >
-                    <Download className="h-3 w-3" />
-                    Get App
-                  </button>
-                )}
               </div>
               {isChainOwner && activeBar && (
                 <span className="text-xs font-black text-primary truncate block mt-0.5">

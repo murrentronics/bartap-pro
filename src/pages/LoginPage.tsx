@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wine, Eye, EyeOff, X, FileText } from "lucide-react";
+import { Wine, Eye, EyeOff, X, FileText, Download } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { friendlyError } from "@/lib/network-error";
 import { useTranslation } from "@/lib/i18n";
@@ -17,8 +17,34 @@ export default function LoginPage() {
   const nav = useNavigate();
   const { t } = useTranslation();
   const [forgotOpen, setForgotOpen] = useState(false);
-  // Track visible viewport height so the container shrinks when the keyboard opens
   const [vpHeight, setVpHeight] = useState<number | null>(null);
+
+  // ── Get App button — mobile browser only, hidden in Capacitor APK ──────────
+  // Detect: small screen + not capacitor protocol + not capacitor UA
+  const isMobileWeb = typeof window !== "undefined"
+    && window.innerWidth < 640
+    && window.location.protocol !== "capacitor:"
+    && !/capacitor/i.test(navigator.userAgent);
+
+  const [apkUrl, setApkUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isMobileWeb) return;
+    const fetchApk = async () => {
+      try {
+        const res = await fetch(
+          "https://api.github.com/repos/murrentronics/bartap-pro/releases/latest",
+          { headers: { Accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return;
+        const data = await res.json() as { assets: { name: string; browser_download_url: string }[] };
+        const apk = data.assets?.find((a) => a.name.endsWith(".apk"));
+        if (apk) setApkUrl(apk.browser_download_url);
+      } catch { /* silent fail */ }
+    };
+    fetchApk();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -58,15 +84,23 @@ export default function LoginPage() {
         background: "radial-gradient(circle at 20% 0%, oklch(0.3 0.05 60) 0%, oklch(0.15 0.02 60) 60%)",
         position: "fixed",
         inset: 0,
-        // When keyboard is open, visualViewport.height is smaller than screen height.
-        // Capping the container height here means the form only occupies the visible
-        // area above the keyboard, and overflow-y:auto lets the user scroll to the
-        // terms/button at the bottom without anything being hidden behind the keyboard.
         height: vpHeight != null ? `${vpHeight}px` : "100%",
         overflowY: "auto",
         WebkitOverflowScrolling: "touch",
       }}
     >
+      {/* Get App button — top-right, mobile browser only */}
+      {isMobileWeb && apkUrl && (
+        <a
+          href={apkUrl}
+          className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs text-primary-foreground transition active:scale-95 shadow-lg z-10"
+          style={{ background: "var(--gradient-hero)" }}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Get App
+        </a>
+      )}
+
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div

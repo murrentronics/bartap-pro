@@ -1,7 +1,7 @@
 /**
  * cap-sync.cjs
  * Temporarily swaps index.html to the Capacitor app for cap sync,
- * then ALWAYS restores it to the download page — even on error or crash.
+ * then ALWAYS restores it to the web app index — even on error or crash.
  */
 
 const { execSync } = require('child_process');
@@ -11,13 +11,19 @@ const path = require('path');
 const dist       = path.join(__dirname, '..', 'dist', 'client');
 const appHtml    = path.join(dist, 'index.capacitor.html');
 const indexHtml  = path.join(dist, 'index.html');
-const downloadSrc = path.join(__dirname, '..', 'public', 'download.html');
+const webHtml    = path.join(__dirname, '..', 'dist', 'web', 'index.html');
 
-// Restore function — always puts the download page back
+// Restore function — puts the web app index back after cap sync
 function restore() {
   try {
-    fs.copyFileSync(downloadSrc, indexHtml);
-    console.log('✓ Restored index.html to download page');
+    if (fs.existsSync(webHtml)) {
+      fs.copyFileSync(webHtml, indexHtml);
+      console.log('✓ Restored index.html to web app');
+    } else {
+      // Fallback: copy the capacitor html back (better than nothing)
+      fs.copyFileSync(appHtml, indexHtml);
+      console.log('✓ Restored index.html (capacitor fallback)');
+    }
   } catch (e) {
     console.error('✗ Failed to restore index.html:', e.message);
   }
@@ -32,10 +38,6 @@ process.on('uncaughtException', (e) => { console.error(e); process.exit(1); });
 // Validate
 if (!fs.existsSync(appHtml)) {
   console.error('✗ index.capacitor.html not found — run build:android first');
-  process.exit(1);
-}
-if (!fs.existsSync(downloadSrc)) {
-  console.error('✗ public/download.html not found');
   process.exit(1);
 }
 
